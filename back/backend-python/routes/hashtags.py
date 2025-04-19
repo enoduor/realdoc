@@ -1,0 +1,1 @@
+# Hashtag generation route
