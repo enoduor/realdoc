@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const jwt = require('jsonwebtoken');
 const stripeWebhook = require("./webhooks/stripeWebhook");
+const authRoutes = require("./routes/auth");
 
 dotenv.config();
 
@@ -24,83 +25,18 @@ mongoose.connect(process.env.MONGODB_URI)
 const app = express();
 
 // Important: Stripe webhook route must come BEFORE express.json middleware
-
 app.use("/webhook", stripeWebhook);
 
 // Regular middleware
 app.use(cors());
 app.use(express.json());
 
+// Mount auth routes
+app.use("/api/auth", authRoutes);
+
 // Simple test route
 app.get("/", (req, res) => {
     res.send("✅ Node backend is running");
-});
-
-// Registration route with database save and more logging
-app.post("/api/auth/register", async (req, res) => {
-    try {
-        console.log("📝 Attempting to save user:", req.body.email);
-        
-        // Hash password before saving
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(req.body.password, salt);
-        
-        const users = mongoose.connection.collection('users');
-        const result = await users.insertOne({
-            email: req.body.email,
-            password: hashedPassword,  // Save hashed password
-            createdAt: new Date()
-        });
-        
-        console.log("✅ User saved to database with ID:", result.insertedId);
-        res.json({ 
-            success: true, 
-            id: result.insertedId,
-            message: "User created successfully"
-        });
-    } catch (error) {
-        console.error("❌ Error saving user:", error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Add login route
-app.post("/api/auth/login", async (req, res) => {
-    try {
-        console.log("🔑 Login attempt for:", req.body.email);
-        
-        const users = mongoose.connection.collection('users');
-        const user = await users.findOne({ email: req.body.email });
-
-        if (!user) {
-            console.log("❌ User not found:", req.body.email);
-            return res.status(401).json({ error: "Invalid credentials" });
-        }
-
-        const validPassword = await bcrypt.compare(req.body.password, user.password);
-        if (!validPassword) {
-            console.log("❌ Invalid password for:", req.body.email);
-            return res.status(401).json({ error: "Invalid credentials" });
-        }
-
-        const token = jwt.sign(
-            { userId: user._id, email: user.email },
-            process.env.JWT_SECRET,
-            { expiresIn: '24h' }
-        );
-
-        console.log("✅ Login successful for:", req.body.email);
-        res.json({ 
-            success: true, 
-            message: "Login successful",
-            token: token,
-            userId: user._id
-        });
-
-    } catch (error) {
-        console.error("❌ Login error:", error);
-        res.status(500).json({ error: error.message });
-    }
 });
 
 // Middleware to verify JWT token

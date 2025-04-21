@@ -1,22 +1,33 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import captions
+from routes.captions import router as captions_router
+from routes.hashtags import router as hashtags_router
+import uvicorn
+import os
+from dotenv import load_dotenv
 
-app = FastAPI()
+# Load environment variables
+load_dotenv()
 
-# CORS: Allow access from frontend + backend-node
+app = FastAPI(title="CreatorSync AI Service")
+
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Update to specific domains in prod
+    allow_origins=["http://localhost:3000"],  # Frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Basic health check
+# Include routers with unique prefixes
+app.include_router(captions_router, prefix="/api/v1/captions", tags=["captions"])
+app.include_router(hashtags_router, prefix="/api/v1/hashtags", tags=["hashtags"])
+
 @app.get("/ping")
 def ping():
-    return {"message": "Python AI service active"}
+    return {"status": "ok", "message": "AI service running"}
 
-# Mount caption route
-app.include_router(captions.router)
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 5001))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True) 
