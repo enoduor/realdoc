@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes.captions import router as captions_router
 from routes.hashtags import router as hashtags_router
+from routes.media import router as media_router
 import uvicorn
 import os
 from dotenv import load_dotenv
@@ -23,6 +24,7 @@ app.add_middleware(
 # Include routers with unique prefixes
 app.include_router(captions_router, prefix="/api/v1/captions", tags=["captions"])
 app.include_router(hashtags_router, prefix="/api/v1/hashtags", tags=["hashtags"])
+app.include_router(media_router, prefix="/api/v1", tags=["media"])
 
 @app.get("/ping")
 def ping():
