@@ -6,6 +6,7 @@ const bcrypt = require("bcrypt");
 const jwt = require('jsonwebtoken');
 const stripeWebhook = require("./webhooks/stripeWebhook");
 const authRoutes = require("./routes/auth");
+const schedulerRoutes = require("./routes/scheduler");
 
 dotenv.config();
 
@@ -33,6 +34,9 @@ app.use(express.json());
 
 // Mount auth routes
 app.use("/api/auth", authRoutes);
+
+// Mount scheduler routes
+app.use("/api/scheduler", schedulerRoutes);
 
 // Simple test route
 app.get("/", (req, res) => {
