@@ -1,0 +1,24 @@
+{
+    "Rules": [
+        {
+            "ID": "DeleteUploadsAfter1Day",
+            "Status": "Enabled",
+            "Filter": {
+                "Prefix": "media/"
+            },
+            "Expiration": {
+                "Days": 1
+            }
+        },
+        {
+            "ID": "DeleteIncompleteMultipartUploads",
+            "Status": "Enabled",
+            "Filter": {
+                "Prefix": "media/"
+            },
+            "AbortIncompleteMultipartUpload": {
+                "DaysAfterInitiation": 1
+            }
+        }
+    ]
+}

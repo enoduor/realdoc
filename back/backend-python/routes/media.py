@@ -142,13 +142,18 @@ async def upload_media(
                 else:
                     raise HTTPException(status_code=500, detail=f"Error accessing bucket: {error_message}")
             
-            # Upload the file
+            # Upload the file with metadata
             try:
                 s3.put_object(
                     Bucket=bucket_name,
                     Key=f"media/{filename}",
                     Body=content,
-                    ContentType=content_type
+                    ContentType=content_type,
+                    Metadata={
+                        'upload-date': datetime.now().isoformat(),
+                        'platform': platform or 'unknown',
+                        'user-upload': 'true'
+                    }
                 )
                 
                 # Generate a pre-signed URL that expires in 1 hour

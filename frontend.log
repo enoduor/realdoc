@@ -1,0 +1,238 @@
+
+> frontend@0.1.0 start
+> react-scripts start
+
+(node:93130) [DEP_WEBPACK_DEV_SERVER_ON_AFTER_SETUP_MIDDLEWARE] DeprecationWarning: 'onAfterSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:93130) [DEP_WEBPACK_DEV_SERVER_ON_BEFORE_SETUP_MIDDLEWARE] DeprecationWarning: 'onBeforeSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+Starting the development server...
+
+Compiled successfully!
+
+You can now view frontend in the browser.
+
+  Local:            http://localhost:3000
+  On Your Network:  http://192.168.50.102:3000
+
+Note that the development build is not optimized.
+To create a production build, use npm run build.
+
+webpack compiled successfully
+Compiling...
+Failed to compile.
+
+[eslint] 
+src/components/PlatformPreviewPanel.jsx
+Syntax error: Expected corresponding JSX closing tag for <main>. (140:16) (140:16)
+ERROR in ./src/components/PlatformPreviewPanel.jsx
+Module build failed (from ./node_modules/babel-loader/lib/index.js):
+SyntaxError: /Users/mzmzma/Desktop/creatorsync/frontend/src/components/PlatformPreviewPanel.jsx: Expected corresponding JSX closing tag for <main>. (140:16)
+
+  138 |                         </button>
+  139 |                     </div>
+> 140 |                 </div>
+      |                 ^
+  141 |             </main>
+  142 |         </div>
+  143 |     );
+    at constructor (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:360:19)
+    at FlowParserMixin.raise (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:3338:19)
+    at FlowParserMixin.jsxParseElementAt (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:6913:16)
+    at FlowParserMixin.jsxParseElementAt (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:6884:32)
+    at FlowParserMixin.jsxParseElement (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:6935:17)
+    at FlowParserMixin.parseExprAtom (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:6945:19)
+    at FlowParserMixin.parseExprSubscripts (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10785:23)
+    at FlowParserMixin.parseUpdate (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10770:21)
+    at FlowParserMixin.parseMaybeUnary (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10750:23)
+    at FlowParserMixin.parseMaybeUnaryOrPrivate (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10603:61)
+    at FlowParserMixin.parseExprOps (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10608:23)
+    at FlowParserMixin.parseMaybeConditional (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10585:23)
+    at FlowParserMixin.parseMaybeAssign (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10538:21)
+    at /Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5735:39
+    at FlowParserMixin.tryParse (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:3676:20)
+    at FlowParserMixin.parseMaybeAssign (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5735:18)
+    at /Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10507:39
+    at FlowParserMixin.allowInAnd (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12126:12)
+    at FlowParserMixin.parseMaybeAssignAllowIn (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10507:17)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:11386:28)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5828:18)
+    at FlowParserMixin.parseExprAtom (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:11033:23)
+    at FlowParserMixin.parseExprAtom (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:6950:20)
+    at FlowParserMixin.parseExprSubscripts (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10785:23)
+    at FlowParserMixin.parseUpdate (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10770:21)
+    at FlowParserMixin.parseMaybeUnary (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10750:23)
+    at FlowParserMixin.parseMaybeUnaryOrPrivate (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10603:61)
+    at FlowParserMixin.parseExprOps (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10608:23)
+    at FlowParserMixin.parseMaybeConditional (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10585:23)
+    at FlowParserMixin.parseMaybeAssign (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10538:21)
+    at FlowParserMixin.parseMaybeAssign (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5786:18)
+    at FlowParserMixin.parseExpressionBase (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10491:23)
+    at /Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10487:39
+    at FlowParserMixin.allowInAnd (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12121:16)
+    at FlowParserMixin.parseExpression (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10487:17)
+    at FlowParserMixin.parseReturnStatement (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12806:28)
+    at FlowParserMixin.parseStatementContent (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12463:21)
+    at FlowParserMixin.parseStatementLike (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12432:17)
+    at FlowParserMixin.parseStatementLike (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5153:24)
+    at FlowParserMixin.parseStatementListItem (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12412:17)
+    at FlowParserMixin.parseBlockOrModuleBlockBody (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12980:61)
+    at FlowParserMixin.parseBlockBody (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12973:10)
+    at FlowParserMixin.parseBlock (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12961:10)
+    at FlowParserMixin.parseFunctionBody (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:11810:24)
+    at /Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5127:63
+    at FlowParserMixin.forwardNoArrowParamsConversionAt (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5303:16)
+    at FlowParserMixin.parseFunctionBody (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5127:12)
+    at FlowParserMixin.parseArrowExpression (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:11785:10)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:11398:12)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5828:18)
+
+ERROR in [eslint] 
+src/components/PlatformPreviewPanel.jsx
+  Line 140:16:  Parsing error: Expected corresponding JSX closing tag for <main>. (140:16)
+
+webpack compiled with 2 errors
+Compiling...
+Failed to compile.
+
+[eslint] 
+src/components/PlatformPreviewPanel.jsx
+Syntax error: Expected corresponding JSX closing tag for <main>. (468:16) (468:16)
+ERROR in ./src/components/PlatformPreviewPanel.jsx
+Module build failed (from ./node_modules/babel-loader/lib/index.js):
+SyntaxError: /Users/mzmzma/Desktop/creatorsync/frontend/src/components/PlatformPreviewPanel.jsx: Expected corresponding JSX closing tag for <main>. (468:16)
+
+  466 |                         </button>
+  467 |                     </div>
+> 468 |                 </div>
+      |                 ^
+  469 |             </main>
+  470 |         </div>
+  471 |     );
+    at constructor (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:360:19)
+    at FlowParserMixin.raise (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:3338:19)
+    at FlowParserMixin.jsxParseElementAt (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:6913:16)
+    at FlowParserMixin.jsxParseElementAt (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:6884:32)
+    at FlowParserMixin.jsxParseElement (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:6935:17)
+    at FlowParserMixin.parseExprAtom (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:6945:19)
+    at FlowParserMixin.parseExprSubscripts (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10785:23)
+    at FlowParserMixin.parseUpdate (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10770:21)
+    at FlowParserMixin.parseMaybeUnary (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10750:23)
+    at FlowParserMixin.parseMaybeUnaryOrPrivate (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10603:61)
+    at FlowParserMixin.parseExprOps (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10608:23)
+    at FlowParserMixin.parseMaybeConditional (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10585:23)
+    at FlowParserMixin.parseMaybeAssign (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10538:21)
+    at /Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5735:39
+    at FlowParserMixin.tryParse (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:3676:20)
+    at FlowParserMixin.parseMaybeAssign (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5735:18)
+    at /Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10507:39
+    at FlowParserMixin.allowInAnd (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12126:12)
+    at FlowParserMixin.parseMaybeAssignAllowIn (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10507:17)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:11386:28)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5828:18)
+    at FlowParserMixin.parseExprAtom (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:11033:23)
+    at FlowParserMixin.parseExprAtom (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:6950:20)
+    at FlowParserMixin.parseExprSubscripts (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10785:23)
+    at FlowParserMixin.parseUpdate (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10770:21)
+    at FlowParserMixin.parseMaybeUnary (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10750:23)
+    at FlowParserMixin.parseMaybeUnaryOrPrivate (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10603:61)
+    at FlowParserMixin.parseExprOps (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10608:23)
+    at FlowParserMixin.parseMaybeConditional (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10585:23)
+    at FlowParserMixin.parseMaybeAssign (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10538:21)
+    at FlowParserMixin.parseMaybeAssign (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5786:18)
+    at FlowParserMixin.parseExpressionBase (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10491:23)
+    at /Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10487:39
+    at FlowParserMixin.allowInAnd (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12121:16)
+    at FlowParserMixin.parseExpression (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:10487:17)
+    at FlowParserMixin.parseReturnStatement (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12806:28)
+    at FlowParserMixin.parseStatementContent (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12463:21)
+    at FlowParserMixin.parseStatementLike (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12432:17)
+    at FlowParserMixin.parseStatementLike (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5153:24)
+    at FlowParserMixin.parseStatementListItem (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12412:17)
+    at FlowParserMixin.parseBlockOrModuleBlockBody (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12980:61)
+    at FlowParserMixin.parseBlockBody (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12973:10)
+    at FlowParserMixin.parseBlock (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:12961:10)
+    at FlowParserMixin.parseFunctionBody (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:11810:24)
+    at /Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5127:63
+    at FlowParserMixin.forwardNoArrowParamsConversionAt (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5303:16)
+    at FlowParserMixin.parseFunctionBody (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5127:12)
+    at FlowParserMixin.parseArrowExpression (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:11785:10)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:11398:12)
+    at FlowParserMixin.parseParenAndDistinguishExpression (/Users/mzmzma/Desktop/creatorsync/frontend/node_modules/@babel/parser/lib/index.js:5828:18)
+
+ERROR in [eslint] 
+src/components/PlatformPreviewPanel.jsx
+  Line 468:16:  Parsing error: Expected corresponding JSX closing tag for <main>. (468:16)
+
+webpack compiled with 2 errors
+Compiling...
+Compiled successfully!
+webpack compiled successfully
+Compiling...
+Compiled successfully!
+webpack compiled successfully
+Compiling...
+Compiled successfully!
+webpack compiled successfully
+Compiling...
+Compiled successfully!
+webpack compiled successfully
+Compiling...
+Compiled successfully!
+webpack compiled successfully
+Compiling...
+Compiled successfully!
+webpack compiled successfully
+Compiling...
+Compiled successfully!
+webpack compiled successfully
+Compiling...
+Compiled successfully!
+webpack compiled successfully
+Compiling...
+Compiled successfully!
+webpack compiled successfully
+Compiling...
+Compiled with warnings.
+
+[eslint] 
+src/components/PlatformPreviewPanel.jsx
+  Line 25:8:  React Hook useEffect has a missing dependency: 'debugMediaUrl'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/components/PlatformPreviewPanel.jsx
+  Line 25:8:  React Hook useEffect has a missing dependency: 'debugMediaUrl'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+webpack compiled with 1 warning
+Compiling...
+Compiled with warnings.
+
+[eslint] 
+src/components/PlatformPreviewPanel.jsx
+  Line 25:8:  React Hook useEffect has a missing dependency: 'debugMediaUrl'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/components/PlatformPreviewPanel.jsx
+  Line 25:8:  React Hook useEffect has a missing dependency: 'debugMediaUrl'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+webpack compiled with 1 warning
+Compiling...
+Compiled with warnings.
+
+[eslint] 
+src/components/PlatformPreviewPanel.jsx
+  Line 25:8:  React Hook useEffect has a missing dependency: 'debugMediaUrl'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/components/PlatformPreviewPanel.jsx
+  Line 25:8:  React Hook useEffect has a missing dependency: 'debugMediaUrl'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+webpack compiled with 1 warning

@@ -1,0 +1,14 @@
+
+> backend-node@1.0.0 start
+> node index.js
+
+📡 Attempting MongoDB connection...
+🚀 Server running on http://localhost:4001
+✅ MongoDB Connected
+📊 Database: test
+🔑 Login attempt for: newuser@example.com
+✅ Login successful for: newuser@example.com
+🔑 Login attempt for: newuser@example.com
+✅ Login successful for: newuser@example.com
+🔑 Login attempt for: newuser@example.com
+✅ Login successful for: newuser@example.com
