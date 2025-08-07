@@ -6,8 +6,9 @@ from .platform_constants import get_platform_limits, get_prompt_style
 # Load environment variables
 load_dotenv()
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Initialize OpenAI client dynamically
+def get_openai_client():
+    return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def generate_caption(platform: str, topic: str, tone: str = "professional", language: str = "en", max_length: int = None) -> str:
     """
@@ -33,6 +34,7 @@ def generate_caption(platform: str, topic: str, tone: str = "professional", lang
     Make it platform-appropriate and optimized for {platform}'s audience."""
     
     try:
+        client = get_openai_client()
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[
@@ -77,6 +79,7 @@ def generate_hashtags(topic: str, platform: str, count: int = 5) -> list:
     Do not exceed {max_hashtags} hashtags."""
     
     try:
+        client = get_openai_client()
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[

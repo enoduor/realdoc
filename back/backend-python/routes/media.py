@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from fastapi.responses import JSONResponse
 from PIL import Image
 import os
@@ -6,20 +6,24 @@ import boto3
 from botocore.exceptions import ClientError
 from datetime import datetime
 import io
-from dotenv import load_dotenv
-
-load_dotenv()
 
 router = APIRouter()
 
-# Configure S3
-s3 = boto3.client(
-    's3',
-    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-    region_name=os.getenv('AWS_REGION')
-)
-BUCKET_NAME = os.getenv('AWS_BUCKET_NAME')
+def get_s3_client():
+    aws_access_key = os.getenv('AWS_ACCESS_KEY_ID')
+    aws_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+    aws_region = os.getenv('AWS_REGION')
+    
+    print(f"AWS Region: {aws_region}")
+    print(f"AWS Access Key ID exists: {bool(aws_access_key)}")
+    print(f"AWS Secret Key exists: {bool(aws_secret_key)}")
+    
+    return boto3.client(
+        's3',
+        aws_access_key_id=aws_access_key,
+        aws_secret_access_key=aws_secret_key,
+        region_name=aws_region
+    )
 
 # Platform-specific dimensions
 PLATFORM_DIMENSIONS = {
@@ -82,7 +86,10 @@ def resize_image(image, platform, media_type):
     return final_image
 
 @router.post("/upload")
-async def upload_media(file: UploadFile = File(...), platform: str = None):
+async def upload_media(
+    file: UploadFile = File(...),
+    platform: str = Form(None)
+):
     try:
         # Read file content
         content = await file.read()
@@ -113,28 +120,72 @@ async def upload_media(file: UploadFile = File(...), platform: str = None):
 
         # Upload to S3
         try:
-            s3.put_object(
-                Bucket=BUCKET_NAME,
-                Key=f"media/{filename}",
-                Body=content,
-                ContentType=file.content_type
-            )
+            s3 = get_s3_client()
+            bucket_name = os.getenv('AWS_BUCKET_NAME')
+            content_type = file.content_type if file.content_type else 'video/mp4'
             
-            # Generate S3 URL
-            file_url = f"https://{BUCKET_NAME}.s3.{os.getenv('AWS_REGION')}.amazonaws.com/media/{filename}"
+            print(f"Uploading to bucket: {bucket_name}")
+            print(f"Content type: {content_type}")
+            print(f"File size: {len(content)} bytes")
+            
+            # First, try to check if bucket exists
+            try:
+                s3.head_bucket(Bucket=bucket_name)
+            except ClientError as e:
+                error_code = e.response['Error']['Code']
+                error_message = e.response['Error']['Message']
+                print(f"S3 Bucket Error - Code: {error_code}, Message: {error_message}")
+                if error_code == '404':
+                    raise HTTPException(status_code=500, detail=f"Bucket {bucket_name} does not exist")
+                elif error_code == '403':
+                    raise HTTPException(status_code=500, detail=f"Access denied to bucket {bucket_name}")
+                else:
+                    raise HTTPException(status_code=500, detail=f"Error accessing bucket: {error_message}")
+            
+            # Upload the file
+            try:
+                s3.put_object(
+                    Bucket=bucket_name,
+                    Key=f"media/{filename}",
+                    Body=content,
+                    ContentType=content_type
+                )
+                
+                # Generate a pre-signed URL that expires in 1 hour
+                file_url = s3.generate_presigned_url(
+                    'get_object',
+                    Params={
+                        'Bucket': bucket_name,
+                        'Key': f"media/{filename}"
+                    },
+                    ExpiresIn=3600  # URL expires in 1 hour
+                )
+            except ClientError as e:
+                error_code = e.response['Error']['Code']
+                error_message = e.response['Error']['Message']
+                print(f"S3 Upload Error - Code: {error_code}, Message: {error_message}")
+                raise HTTPException(status_code=500, detail=f"S3 Upload Error: {error_message}")
+            
+            # Determine media type and dimensions
+            media_type = "image" if ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp'] else \
+                        "video" if ext in ['.mp4', '.mov', '.avi', '.wmv', '.flv', '.mkv'] else \
+                        "audio" if ext in ['.mp3', '.wav', '.ogg', '.m4a'] else \
+                        "document"
+            
+            # Get dimensions if it's an image
+            dimensions = None
+            if media_type == "image" and 'img' in locals():
+                dimensions = {
+                    "width": img.size[0],
+                    "height": img.size[1]
+                }
             
             return JSONResponse({
                 "success": True,
                 "url": file_url,
                 "filename": filename,
-                "type": "image" if ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp'] else 
-                       "video" if ext in ['.mp4', '.mov', '.avi', '.wmv', '.flv', '.mkv'] else
-                       "audio" if ext in ['.mp3', '.wav', '.ogg', '.m4a'] else
-                       "document",
-                "dimensions": {
-                    "width": img.size[0] if 'img' in locals() else None,
-                    "height": img.size[1] if 'img' in locals() else None
-                }
+                "type": media_type,
+                "dimensions": dimensions
             })
             
         except ClientError as e:
