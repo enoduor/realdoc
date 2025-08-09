@@ -211,7 +211,7 @@ class PlatformPublisher {
         // Use real LinkedIn API if configured
         if (platform === 'linkedin' && this.linkedinService && this.linkedinService.accessToken) {
             try {
-                console.log('💼 Using real LinkedIn API...');
+                console.log('💼 Making clean LinkedIn API call...');
                 
                 const { caption, mediaUrl, hashtags } = content;
                 let postText = caption || '';
@@ -224,7 +224,7 @@ class PlatformPublisher {
                 
                 // Post with media if available
                 if (mediaUrl) {
-                    const result = await this.linkedinService.postWithMedia(postText, mediaUrl);
+                    const result = await this.linkedinService.postWithMedia(postText, mediaUrl, content.mediaType);
                     return result;
                 } else {
                     // Post text only
@@ -232,8 +232,8 @@ class PlatformPublisher {
                     return result;
                 }
             } catch (error) {
-                console.error('❌ Real LinkedIn API failed, falling back to simulation:', error.message);
-                // Fall back to simulation if real API fails
+                console.error('❌ LinkedIn API call failed:', error.message);
+                throw error; // Don't fall back to simulation, show the real error
             }
         }
         

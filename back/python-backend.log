@@ -1,16 +1,15 @@
 INFO:     Will watch for changes in these directories: ['/Users/mzmzma/Desktop/creatorsync/back/backend-python']
 INFO:     Uvicorn running on http://0.0.0.0:5001 (Press CTRL+C to quit)
-INFO:     Started reloader process [29021] using StatReload
-INFO:     Started server process [29027]
+INFO:     Started reloader process [77924] using StatReload
+INFO:     Started server process [77928]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     127.0.0.1:52754 - "GET /docs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52758 - "OPTIONS /api/v1/captions HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52758 - "POST /api/v1/captions HTTP/1.1" 307 Temporary Redirect
-INFO:     127.0.0.1:52760 - "OPTIONS /api/v1/captions/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52758 - "POST /api/v1/captions/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52758 - "OPTIONS /api/v1/hashtags HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52758 - "POST /api/v1/hashtags HTTP/1.1" 307 Temporary Redirect
-INFO:     127.0.0.1:52768 - "OPTIONS /api/v1/hashtags/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52758 - "POST /api/v1/hashtags/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55802 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59169 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59191 - "OPTIONS /api/v1/captions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59191 - "POST /api/v1/captions HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59191 - "OPTIONS /api/v1/captions/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59191 - "POST /api/v1/captions/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59191 - "OPTIONS /api/v1/hashtags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59191 - "POST /api/v1/hashtags HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59191 - "OPTIONS /api/v1/hashtags/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59191 - "POST /api/v1/hashtags/ HTTP/1.1" 200 OK
