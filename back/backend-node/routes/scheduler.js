@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/auth');
+const { clerkAuthMiddleware } = require('../middleware/clerkAuth');
 const {
     schedulePost,
     publishNow,
@@ -11,9 +11,10 @@ const {
     retryPost,
     getPlatformStatus
 } = require('../controllers/schedulerController');
+const LinkedInService = require('../services/linkedinService');
 
-// Apply authentication middleware to all routes
-router.use(authenticateToken);
+// Apply Clerk authentication to all routes
+router.use(clerkAuthMiddleware);
 
 // Schedule a post
 router.post('/schedule', schedulePost);
@@ -38,5 +39,45 @@ router.post('/posts/:postId/retry', retryPost);
 
 // Get platform connection status
 router.get('/platforms/status', getPlatformStatus);
+
+// Test LinkedIn API connection
+router.get('/test-linkedin', async (req, res) => {
+    try {
+        const linkedinService = new LinkedInService();
+        
+        // Check if LinkedIn is configured
+        if (!linkedinService.accessToken) {
+            return res.status(400).json({
+                success: false,
+                message: 'LinkedIn API not configured. Please add LINKEDIN_ACCESS_TOKEN to your environment variables.'
+            });
+        }
+
+        // Test the connection
+        const result = await linkedinService.testConnection();
+        
+        if (result.connected) {
+            res.json({
+                success: true,
+                message: 'LinkedIn API is properly configured and connected!',
+                user: result.user
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                message: 'LinkedIn API connection failed',
+                error: result.error
+            });
+        }
+
+    } catch (error) {
+        console.error('LinkedIn test error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to test LinkedIn API',
+            error: error.message
+        });
+    }
+});
 
 module.exports = router;

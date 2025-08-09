@@ -1,4 +1,5 @@
 const axios = require('axios');
+const LinkedInService = require('./linkedinService');
 
 class PlatformPublisher {
     constructor() {
@@ -34,6 +35,9 @@ class PlatformPublisher {
                 token: process.env.FACEBOOK_ACCESS_TOKEN
             }
         };
+
+        // Initialize real API services
+        this.linkedinService = new LinkedInService();
     }
 
     // Main publishing method
@@ -204,7 +208,36 @@ class PlatformPublisher {
     async publishContent(platform, content) {
         const platformConfig = this.platforms[platform];
         
-        // For demo purposes, simulate API calls
+        // Use real LinkedIn API if configured
+        if (platform === 'linkedin' && this.linkedinService && this.linkedinService.accessToken) {
+            try {
+                console.log('💼 Using real LinkedIn API...');
+                
+                const { caption, mediaUrl, hashtags } = content;
+                let postText = caption || '';
+                
+                // Add hashtags to the post
+                if (hashtags && hashtags.length > 0) {
+                    const hashtagString = hashtags.map(tag => `#${tag}`).join(' ');
+                    postText += ` ${hashtagString}`;
+                }
+                
+                // Post with media if available
+                if (mediaUrl) {
+                    const result = await this.linkedinService.postWithMedia(postText, mediaUrl);
+                    return result;
+                } else {
+                    // Post text only
+                    const result = await this.linkedinService.postText(postText);
+                    return result;
+                }
+            } catch (error) {
+                console.error('❌ Real LinkedIn API failed, falling back to simulation:', error.message);
+                // Fall back to simulation if real API fails
+            }
+        }
+        
+        // For demo purposes, simulate API calls for other platforms
         // In production, you would make actual API calls to each platform
         
         const headers = {
@@ -275,7 +308,13 @@ class PlatformPublisher {
         }
 
         try {
-            // Simulate connection check
+            // Test real LinkedIn connection
+            if (platform === 'linkedin' && this.linkedinService) {
+                const result = await this.linkedinService.testConnection();
+                return result;
+            }
+            
+            // Simulate connection check for other platforms
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             return {

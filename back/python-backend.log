@@ -1,38 +1,16 @@
 INFO:     Will watch for changes in these directories: ['/Users/mzmzma/Desktop/creatorsync/back/backend-python']
 INFO:     Uvicorn running on http://0.0.0.0:5001 (Press CTRL+C to quit)
-INFO:     Started reloader process [97229] using StatReload
-INFO:     Started server process [97233]
+INFO:     Started reloader process [29021] using StatReload
+INFO:     Started server process [29027]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     127.0.0.1:65506 - "GET /docs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49201 - "GET /docs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49263 - "OPTIONS /api/v1/captions HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49263 - "POST /api/v1/captions HTTP/1.1" 307 Temporary Redirect
-INFO:     127.0.0.1:49265 - "OPTIONS /api/v1/captions/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49263 - "POST /api/v1/captions/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49273 - "OPTIONS /api/v1/hashtags HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49273 - "POST /api/v1/hashtags HTTP/1.1" 307 Temporary Redirect
-INFO:     127.0.0.1:49275 - "OPTIONS /api/v1/hashtags/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49273 - "POST /api/v1/hashtags/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49283 - "GET /ping HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49283 - "GET /ping HTTP/1.1" 200 OK
-AWS Region: us-west-2
-AWS Access Key ID exists: False
-AWS Secret Key exists: False
-Uploading to bucket: bigvideograb-media
-Content type: video/mp4
-File size: 2401858 bytes
-INFO:     127.0.0.1:49286 - "POST /api/v1/upload HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49568 - "POST /api/v1/captions HTTP/1.1" 307 Temporary Redirect
-INFO:     127.0.0.1:49568 - "POST /api/v1/captions/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49578 - "POST /api/v1/hashtags HTTP/1.1" 307 Temporary Redirect
-INFO:     127.0.0.1:49578 - "POST /api/v1/hashtags/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49586 - "GET /ping HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49586 - "GET /ping HTTP/1.1" 200 OK
-AWS Region: us-west-2
-AWS Access Key ID exists: False
-AWS Secret Key exists: False
-Uploading to bucket: bigvideograb-media
-Content type: video/mp4
-File size: 2401858 bytes
-INFO:     127.0.0.1:49590 - "POST /api/v1/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52754 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52758 - "OPTIONS /api/v1/captions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52758 - "POST /api/v1/captions HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52760 - "OPTIONS /api/v1/captions/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52758 - "POST /api/v1/captions/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52758 - "OPTIONS /api/v1/hashtags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52758 - "POST /api/v1/hashtags HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52768 - "OPTIONS /api/v1/hashtags/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52758 - "POST /api/v1/hashtags/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55802 - "GET /docs HTTP/1.1" 200 OK

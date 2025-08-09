@@ -2,11 +2,10 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
-const bcrypt = require("bcrypt");
-const jwt = require('jsonwebtoken');
 const stripeWebhook = require("./webhooks/stripeWebhook");
 const authRoutes = require("./routes/auth");
 const schedulerRoutes = require("./routes/scheduler");
+const { clerkAuthMiddleware } = require("./middleware/clerkAuth");
 
 dotenv.config();
 
@@ -35,7 +34,7 @@ app.use(express.json());
 // Mount auth routes
 app.use("/api/auth", authRoutes);
 
-// Mount scheduler routes
+// Mount scheduler routes (Clerk auth is applied in the routes file)
 app.use("/api/scheduler", schedulerRoutes);
 
 // Simple test route
@@ -43,26 +42,8 @@ app.get("/", (req, res) => {
     res.send("✅ Node backend is running");
 });
 
-// Middleware to verify JWT token
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-    if (!token) {
-        return res.status(401).json({ error: "No token provided" });
-    }
-
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) {
-            return res.status(403).json({ error: "Invalid token" });
-        }
-        req.user = user;
-        next();
-    });
-};
-
-// Protected route example
-app.get("/api/auth/profile", authenticateToken, async (req, res) => {
+// Protected route example using Clerk
+app.get("/api/auth/profile", clerkAuthMiddleware, async (req, res) => {
     try {
         const users = mongoose.connection.collection('users');
         const user = await users.findOne(
