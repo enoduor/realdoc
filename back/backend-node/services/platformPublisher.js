@@ -37,7 +37,9 @@ class PlatformPublisher {
         };
 
         // Initialize real API services
-        this.linkedinService = new LinkedInService();
+        this.linkedinService = new LinkedInService({
+            accessToken: process.env.LINKEDIN_ACCESS_TOKEN
+        });
     }
 
     // Main publishing method
@@ -211,7 +213,7 @@ class PlatformPublisher {
         // Use real LinkedIn API if configured
         if (platform === 'linkedin' && this.linkedinService && this.linkedinService.accessToken) {
             try {
-                console.log('💼 Making clean LinkedIn API call...');
+                console.log('💼 Making clean LinkedIn API call with version negotiation...');
                 
                 const { caption, mediaUrl, hashtags } = content;
                 let postText = caption || '';
@@ -222,14 +224,27 @@ class PlatformPublisher {
                     postText += ` ${hashtagString}`;
                 }
                 
-                // Post with media if available
-                if (mediaUrl) {
-                    const result = await this.linkedinService.postWithMedia(postText, mediaUrl, content.mediaType);
-                    return result;
+                // Use the new createPost method with version negotiation
+                const result = await this.linkedinService.createPost(postText, mediaUrl);
+                
+                if (result.success) {
+                    // LinkedIn permalink format: /feed/update/ not /posts/
+                    const linkedinPermalinkFromUrn = (urn) => {
+                        if (!urn) return null;
+                        // URN can be "urn:li:share:..." or "urn:li:ugcPost:..."
+                        return `https://www.linkedin.com/feed/update/${encodeURIComponent(urn)}`;
+                    };
+                    
+                    const url = linkedinPermalinkFromUrn(result.postId);
+                    
+                    return {
+                        id: result.postId,
+                        url: url,
+                        version: result.version,
+                        message: result.message
+                    };
                 } else {
-                    // Post text only
-                    const result = await this.linkedinService.postText(postText);
-                    return result;
+                    throw new Error(result.error);
                 }
             } catch (error) {
                 console.error('❌ LinkedIn API call failed:', error.message);
@@ -261,7 +276,7 @@ class PlatformPublisher {
                 },
                 linkedin: {
                     id: `li_${Date.now()}`,
-                    url: `https://linkedin.com/posts/li_${Date.now()}`
+                    url: `https://www.linkedin.com/feed/update/li_${Date.now()}`
                 },
                 twitter: {
                     id: `tw_${Date.now()}`,

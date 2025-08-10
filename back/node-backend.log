@@ -6,3 +6,25 @@
 🚀 Server running on http://localhost:4001
 ✅ MongoDB Connected
 📊 Database: test
+🚀 Publishing to linkedin...
+📤 Publishing to linkedin...
+💼 Making clean LinkedIn API call with version negotiation...
+✅ Successfully published to linkedin
+✅ Published to linkedin: {
+  success: true,
+  platform: 'linkedin',
+  postId: 'urn:li:share:7360154297105285120',
+  url: 'https://www.linkedin.com/feed/update/urn%3Ali%3Ashare%3A7360154297105285120',
+  message: 'Successfully published to linkedin'
+}
+🚀 Publishing to linkedin...
+📤 Publishing to linkedin...
+💼 Making clean LinkedIn API call with version negotiation...
+✅ Successfully published to linkedin
+✅ Published to linkedin: {
+  success: true,
+  platform: 'linkedin',
+  postId: 'urn:li:share:7360154532540051456',
+  url: 'https://www.linkedin.com/feed/update/urn%3Ali%3Ashare%3A7360154532540051456',
+  message: 'Successfully published to linkedin'
+}

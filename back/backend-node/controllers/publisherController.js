@@ -52,7 +52,12 @@ exports.publishNow = async (req, res) => {
         res.json({
             success: successCount > 0,
             message: `Published to ${successCount}/${totalCount} platforms`,
-            results: publishResults
+            post: {
+                id: Date.now(),
+                platforms: publishResults,
+                timestamp: new Date().toISOString(),
+                results: publishResults
+            }
         });
 
     } catch (error) {
