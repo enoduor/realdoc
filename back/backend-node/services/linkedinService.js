@@ -22,10 +22,12 @@ function looksLikeVersionError(status, text = '') {
   return false;
 }
 
-function uniqueCommentary(base) {
-  const stamp = new Date().toISOString(); // ISO second precision
-  const rand  = crypto.randomBytes(3).toString('hex'); // extra entropy
-  return `${base} • ${stamp} • ${rand}`;
+function uniqueCommentary(baseText) {
+  const text = (baseText ?? '').toString().trim();
+  const stamp = new Date().toISOString();
+  const rand  = crypto.randomBytes(3).toString('hex');
+  // append, don’t replace
+  return text ? `${text}\n\n• ${stamp} • ${rand}` : `• ${stamp} • ${rand}`;
 }
 
 async function safeJson(res) {
@@ -187,30 +189,25 @@ class LinkedInService {
    * Publishes content; by default ensures uniqueness to avoid DUPLICATE_POST (422).
    * Pass { ensureUnique: false } to post exact text (not recommended).
    */
-  async createPost(content, mediaUrl = null, { ensureUnique = true } = {}) {
-    try {
-      let postText = content;
+async createPost(content, mediaUrl = null, { ensureUnique = true } = {}) {
+  try {
+    let postText = (content ?? '').toString().trim();
 
-      if (mediaUrl) {
-        // Placeholder for future media upload flow; reference media in text for now.
-        postText += `\n\nMedia: ${mediaUrl}`;
-      }
-
-      if (ensureUnique) {
-        postText = uniqueCommentary(postText);
-      }
-
-      const result = await this.postText(postText);
-      return {
-        success: true,
-        postId: result.id,
-        version: result.versionUsed,
-        message: 'Post published successfully'
-      };
-    } catch (error) {
-      return { success: false, error: error.message };
+    if (mediaUrl) {
+      postText = [postText, `Media: ${mediaUrl}`].filter(Boolean).join('\n\n');
     }
+    if (!postText) throw new Error('No content to publish (empty caption and no media).');
+
+    if (ensureUnique) postText = uniqueCommentary(postText);
+
+    console.log('[LinkedIn] postText.preview =', postText.slice(0, 140));
+    const result = await this.postText(postText);
+
+    return { success: true, postId: result.id, version: result.versionUsed, message: 'Post published successfully' };
+  } catch (error) {
+    return { success: false, error: error.message };
   }
+}
 }
 
 module.exports = LinkedInService;

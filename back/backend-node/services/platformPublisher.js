@@ -55,20 +55,69 @@ class PlatformPublisher {
             // Validate platform-specific requirements
             this.validatePlatformRequirements(platform, postData);
 
-            // Format content for platform
-            const formattedContent = this.formatContentForPlatform(platform, postData);
+            // Handle platforms with specific logic
+            switch (platform) {
+                case 'linkedin': {
+                    if (!this.linkedinService || !this.linkedinService.accessToken) {
+                        throw new Error('LinkedIn service not configured');
+                    }
+                    
+                    const caption = (postData?.caption ?? '').toString().trim();
+                    const tagsArr = Array.isArray(postData?.hashtags) ? postData.hashtags : [];
+                    const tags = tagsArr
+                        .map(t => (t ?? '').toString().trim().replace(/^#+/, '')) // strip leading #
+                        .filter(Boolean)
+                        .map(t => `#${t}`)
+                        .join(' ');
 
-            // Publish to platform
-            const result = await this.publishContent(platform, formattedContent);
+                    // FINAL TEXT STRING sent to LinkedIn
+                    const postText = [caption, tags].filter(Boolean).join('\n\n');
 
-            console.log(`✅ Successfully published to ${platform}`);
-            return {
-                success: true,
-                platform,
-                postId: result.postId || result.id,
-                url: result.url,
-                message: `Successfully published to ${platform}`
-            };
+                    // quick visibility while debugging
+                    console.log('[Publisher][LinkedIn] postText.preview =', postText.slice(0, 140));
+
+                    const result = await this.linkedinService.createPost(
+                        postText,                      // <-- STRING (not {text: ...})
+                        postData?.mediaUrl || null,
+                        { ensureUnique: true }
+                    );
+
+                    if (result.success) {
+                        // LinkedIn permalink format: /feed/update/ not /posts/
+                        const linkedinPermalinkFromUrn = (urn) => {
+                            if (!urn) return null;
+                            // URN can be "urn:li:share:..." or "urn:li:ugcPost:..."
+                            return `https://www.linkedin.com/feed/update/${encodeURIComponent(urn)}`;
+                        };
+                        
+                        const url = linkedinPermalinkFromUrn(result.postId);
+                        
+                        return {
+                            success: true,
+                            platform,
+                            postId: result.postId,
+                            url: url,
+                            version: result.version,
+                            message: result.message
+                        };
+                    } else {
+                        throw new Error(result.error);
+                                         }
+                 }
+                 default:
+                     // For other platforms, use the general flow
+                     const formattedContent = this.formatContentForPlatform(platform, postData);
+                     const result = await this.publishContent(platform, formattedContent);
+
+                     console.log(`✅ Successfully published to ${platform}`);
+                     return {
+                         success: true,
+                         platform,
+                         postId: result.postId || result.id,
+                         url: result.url,
+                         message: `Successfully published to ${platform}`
+                     };
+             }
 
         } catch (error) {
             console.error(`❌ Failed to publish to ${platform}:`, error.message);
@@ -174,9 +223,11 @@ class PlatformPublisher {
                 };
 
             case 'linkedin':
+                // Return raw data for LinkedIn - formatting happens in publishContent
                 return {
-                    text: formattedCaption,
-                    media_url: mediaUrl
+                    caption: caption || '',
+                    hashtags: hashtags || [],
+                    mediaUrl: mediaUrl
                 };
 
             case 'twitter':
@@ -206,51 +257,9 @@ class PlatformPublisher {
         }
     }
 
-    // Publish content to platform API
+    // Publish content to platform API (for non-LinkedIn platforms)
     async publishContent(platform, content) {
         const platformConfig = this.platforms[platform];
-        
-        // Use real LinkedIn API if configured
-        if (platform === 'linkedin' && this.linkedinService && this.linkedinService.accessToken) {
-            try {
-                console.log('💼 Making clean LinkedIn API call with version negotiation...');
-                
-                const { caption, mediaUrl, hashtags } = content;
-                let postText = caption || '';
-                
-                // Add hashtags to the post
-                if (hashtags && hashtags.length > 0) {
-                    const hashtagString = hashtags.map(tag => `#${tag}`).join(' ');
-                    postText += ` ${hashtagString}`;
-                }
-                
-                // Use the new createPost method with version negotiation
-                const result = await this.linkedinService.createPost(postText, mediaUrl);
-                
-                if (result.success) {
-                    // LinkedIn permalink format: /feed/update/ not /posts/
-                    const linkedinPermalinkFromUrn = (urn) => {
-                        if (!urn) return null;
-                        // URN can be "urn:li:share:..." or "urn:li:ugcPost:..."
-                        return `https://www.linkedin.com/feed/update/${encodeURIComponent(urn)}`;
-                    };
-                    
-                    const url = linkedinPermalinkFromUrn(result.postId);
-                    
-                    return {
-                        id: result.postId,
-                        url: url,
-                        version: result.version,
-                        message: result.message
-                    };
-                } else {
-                    throw new Error(result.error);
-                }
-            } catch (error) {
-                console.error('❌ LinkedIn API call failed:', error.message);
-                throw error; // Don't fall back to simulation, show the real error
-            }
-        }
         
         // For demo purposes, simulate API calls for other platforms
         // In production, you would make actual API calls to each platform
