@@ -40,6 +40,10 @@ app.use(express.json());
 const googleAuthRoutes = require('./routes/googleAuth');
 app.use(googleAuthRoutes);
 
+// Mount Twitter Auth routes
+const twitterAuthRoutes = require('./routes/twitterAuth');
+app.use(twitterAuthRoutes);
+
 // Mount auth routes
 app.use("/api/auth", authRoutes);
 

@@ -2,6 +2,7 @@
 const axios = require('axios');
 const LinkedInService = require('./linkedinService');
 const youtubeService = require('./youtubeService'); // ⬅️ real YouTube API
+const twitterService = require('./twitterService'); // ⬅️ real Twitter API
 
 class PlatformPublisher {
   constructor() {
@@ -118,6 +119,35 @@ class PlatformPublisher {
             postId: data.id,
             url: `https://youtu.be/${data.id}`,
             message: 'Successfully published to YouTube'
+          };
+        }
+
+        case 'twitter': {
+          // We accept accessToken either in postData.accessToken OR from env for testing
+          const accessToken = postData?.accessToken || process.env.TWITTER_TEST_ACCESS_TOKEN;
+          if (!accessToken || accessToken === 'your_twitter_access_token_here') {
+            throw new Error('Twitter accessToken missing. Please get a real token from: http://localhost:4001/oauth2/start/twitter');
+          }
+
+          const { text, media_url, hashtags } = this.formatContentForPlatform('twitter', postData);
+
+          console.log('[Publisher][Twitter] text =', text);
+          console.log('[Publisher][Twitter] media_url =', media_url);
+
+          const result = await twitterService.createPost(accessToken, {
+            text,
+            mediaUrl: media_url,
+            hashtags
+          });
+
+          if (!result.success) throw new Error(result.error);
+
+          return {
+            success: true,
+            platform,
+            postId: result.tweetId,
+            url: result.url,
+            message: result.message
           };
         }
 
