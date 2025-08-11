@@ -36,6 +36,10 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Mount Google Auth routes
+const googleAuthRoutes = require('./routes/googleAuth');
+app.use(googleAuthRoutes);
+
 // Mount auth routes
 app.use("/api/auth", authRoutes);
 
