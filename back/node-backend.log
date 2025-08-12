@@ -1,0 +1,18 @@
+
+> backend-node@1.0.0 start
+> node index.js
+
+📡 Attempting MongoDB connection...
+✅ Stripe key loaded: sk_test_pl...
+🚀 Server running on http://localhost:4001
+✅ MongoDB Connected
+📊 Database: test
+📤 Publishing to twitter...
+❌ Failed to publish to twitter: Twitter access token not configured
+[Twitter OAuth] client_id: M3dDQkthSThDQ2tBTEhuam5Xejc6MTpjaQ
+[Twitter OAuth] redirect_uri: http://localhost:4001/oauth2/callback/twitter
+[Twitter OAuth] URL: https://x.com/i/oauth2/authorize?response_type=code&client_id=M3dDQkthSThDQ2tBTEhuam5Xejc6MTpjaQ&redirect_uri=http%3A%2F%2Flocalhost%3A4001%2Foauth2%2Fcallback%2Ftwitter&state=-6IZ3USnHu~oICcik.8zM6qRYsRTkE7E&code_challenge=7HAMT33WFTqfG8ClhBf5oVFGl1gzayueNTX_nBZyols&code_challenge_method=s256&scope=tweet.read%20tweet.write%20users.read
+Request failed with code 403
+[Twitter OAuth] client_id: M3dDQkthSThDQ2tBTEhuam5Xejc6MTpjaQ
+[Twitter OAuth] redirect_uri: http://localhost:4001/oauth2/callback/twitter
+[Twitter OAuth] URL: https://x.com/i/oauth2/authorize?response_type=code&client_id=M3dDQkthSThDQ2tBTEhuam5Xejc6MTpjaQ&redirect_uri=http%3A%2F%2Flocalhost%3A4001%2Foauth2%2Fcallback%2Ftwitter&state=kxK9d~DTe2sY0RxRHGtX~_FoMoGhOnuw&code_challenge=SKf5ygEF2iIKIl-KkJSbhDalggoHI4LImdxPoR5KKfw&code_challenge_method=s256&scope=tweet.read%20tweet.write%20users.read
