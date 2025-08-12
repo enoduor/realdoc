@@ -47,6 +47,10 @@ app.use(twitterAuthRoutes);
 // Mount auth routes
 app.use("/api/auth", authRoutes);
 
+// Mount Stripe routes
+const stripeRoutes = require("./routes/stripe");
+app.use("/api/stripe", stripeRoutes);
+
 // Mount publisher routes (Clerk auth is applied in the routes file)
 app.use("/api/publisher", publisherRoutes);
 

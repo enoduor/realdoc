@@ -21,7 +21,7 @@ const client = new TwitterApi({
 router.get('/oauth2/start/twitter', (req, res) => {
   const { url, codeVerifier, state } = client.generateOAuth2AuthLink(
     TWITTER_REDIRECT_URI,
-    { scope: ['tweet.read', 'tweet.write', 'users.read'] }
+    { scope: ['tweet.read', 'tweet.write', 'users.read', 'offline.access'] }
   );
 
   // Store OAuth state in memory (in production, use Redis/database)

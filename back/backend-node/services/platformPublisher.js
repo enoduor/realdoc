@@ -1,8 +1,38 @@
 /* eslint-disable no-console */
 const axios = require('axios');
 const LinkedInService = require('./linkedinService');
-const youtubeService = require('./youtubeService'); // ⬅️ real YouTube API
-const twitterService = require('./twitterService'); // ⬅️ real Twitter API
+const youtubeService = require('./youtubeService'); // real YouTube API
+const { createPost } = require('./twitterService'); // real Twitter API
+
+// ---- hashtag helpers ----
+function extractHashtags(str = '') {
+  return Array.from(str.matchAll(/#[\p{L}\p{N}_]+/gu)).map(m => m[0]);
+}
+function stripHashtags(str = '') {
+  return str.replace(/#[\p{L}\p{N}_]+/gu, '').replace(/\s{2,}/g, ' ').trim();
+}
+function dedupeCaseInsensitive(arr = []) {
+  const seen = new Set();
+  const out = [];
+  for (const t of arr) {
+    const k = String(t).toLowerCase();
+    if (t && !seen.has(k)) { seen.add(k); out.push(t); }
+  }
+  return out;
+}
+// normalize hashtags to PascalCase (first letter uppercase per token)
+function normalizeHashtagCase(tag = '') {
+  return '#' + tag
+    .replace(/^#+/, '') // remove existing #
+    .toLowerCase()
+    .split(/[\s_-]+/)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join('');
+}
+// trim and clean final caption
+function cleanCaption(str = '') {
+  return str.toString().trim().replace(/\s+$/g, '');
+}
 
 class PlatformPublisher {
   constructor() {
@@ -25,7 +55,7 @@ class PlatformPublisher {
       twitter: {
         name: 'Twitter',
         apiUrl: process.env.TWITTER_API_URL,
-        token: process.env.TWITTER_ACCESS_TOKEN
+        token: process.env.TWITTER_TEST_ACCESS_TOKEN // legacy direct token (optional)
       },
       youtube: {
         name: 'YouTube',
@@ -43,6 +73,10 @@ class PlatformPublisher {
     this.linkedinService = new LinkedInService({
       accessToken: process.env.LINKEDIN_ACCESS_TOKEN
     });
+
+    // Real Twitter API - using function-based approach
+    this.twitterAccessToken = process.env.TWITTER_ACCESS_TOKEN;
+    this.twitterRefreshToken = process.env.TWITTER_REFRESH_TOKEN;
   }
 
   // ===== Main publish switch =====
@@ -55,25 +89,33 @@ class PlatformPublisher {
       this.validatePlatformRequirements(platform, postData);
 
       switch (platform) {
+        // ------------ LINKEDIN ------------
         case 'linkedin': {
           if (!this.linkedinService || !this.linkedinService.accessToken) {
             throw new Error('LinkedIn service not configured');
           }
-          const caption = (postData?.caption ?? '').toString().trim();
-          const tagsArr = Array.isArray(postData?.hashtags) ? postData.hashtags : [];
-          const tags = tagsArr
-            .map(t => (t ?? '').toString().trim().replace(/^#+/, ''))
-            .filter(Boolean)
-            .map(t => `#${t}`)
-            .join(' ');
-          const postText = [caption, tags].filter(Boolean).join('\n\n');
 
-          console.log('[Publisher][LinkedIn] postText.preview =', postText.slice(0, 140));
+          const rawCaption = (postData?.caption ?? '').toString();
+          const captionTags = extractHashtags(rawCaption);          // tags present in caption
+          const caption = cleanCaption(stripHashtags(rawCaption));  // caption without tags, cleaned
+
+          const inputTags = Array.isArray(postData?.hashtags) ? postData.hashtags : [];
+          const allTags = dedupeCaseInsensitive([...captionTags, ...inputTags])
+            .map(t => t.replace(/^#+/, '')) // remove leading # for normalization
+            .map(normalizeHashtagCase);     // -> #TagFormat
+
+          const mediaUrl = postData?.mediaUrl || null;
+
+          console.log('[Publisher][LinkedIn] caption.preview =', caption.slice(0, 140));
+          console.log('[Publisher][LinkedIn] hashtags =', allTags);
 
           const result = await this.linkedinService.createPost(
-            postText,
-            postData?.mediaUrl || null,
-            { ensureUnique: true }
+            caption,   // message only (no inline hashtags)
+            mediaUrl,
+            {
+              ensureUnique: postData?.ensureUnique !== false,
+              hashtags: allTags // service formats to "#Tag" tokens in one block
+            }
           );
 
           if (!result.success) throw new Error(result.error);
@@ -91,8 +133,8 @@ class PlatformPublisher {
           };
         }
 
+        // ------------ YOUTUBE ------------
         case 'youtube': {
-          // We accept refreshToken either in postData.refreshToken OR from env for testing
           const refreshToken = postData?.refreshToken || process.env.YT_TEST_REFRESH_TOKEN;
           if (!refreshToken) {
             throw new Error('YouTube refreshToken missing (provide in body.refreshToken or set YT_TEST_REFRESH_TOKEN)');
@@ -122,23 +164,58 @@ class PlatformPublisher {
           };
         }
 
+        // ------------ TWITTER ------------
         case 'twitter': {
-          // We accept accessToken either in postData.accessToken OR from env for testing
-          const accessToken = postData?.accessToken || process.env.TWITTER_TEST_ACCESS_TOKEN;
-          if (!accessToken || accessToken === 'your_twitter_access_token_here') {
-            throw new Error('Twitter accessToken missing. Please get a real token from: http://localhost:4001/oauth2/start/twitter');
+          if (!this.twitterAccessToken) {
+            throw new Error('Twitter access token not configured');
           }
 
-          const { text, media_url, hashtags } = this.formatContentForPlatform('twitter', postData);
+          // Auto-shrink logic for Twitter's 280 character limit
+          const rawCaption = (postData?.caption ?? '').toString();
+          const captionTags = extractHashtags(rawCaption);
+          const caption = cleanCaption(stripHashtags(rawCaption));
 
-          console.log('[Publisher][Twitter] text =', text);
-          console.log('[Publisher][Twitter] media_url =', media_url);
+          const inputTags = Array.isArray(postData?.hashtags) ? postData.hashtags : [];
+          const allTags = dedupeCaseInsensitive([...captionTags, ...inputTags])
+            .map(t => t.replace(/^#+/, ''))
+            .map(normalizeHashtagCase);
 
-          const result = await twitterService.createPost(accessToken, {
-            text,
-            mediaUrl: media_url,
-            hashtags
-          });
+          const mediaUrl = postData?.mediaUrl || null;
+
+          console.log('[Publisher][Twitter] caption.preview =', caption.slice(0, 140));
+          console.log('[Publisher][Twitter] hashtags =', allTags);
+
+          // Auto-shrink: remove hashtags first, then truncate caption
+          let finalText = caption;
+          let remainingTags = [...allTags];
+
+          // If text is too long, start removing hashtags
+          while (Array.from(finalText + ' ' + remainingTags.map(t => `#${t}`).join(' ')).length > 280 && remainingTags.length > 0) {
+            remainingTags.pop(); // Remove last hashtag
+          }
+
+          // If still too long, truncate the caption at word boundary
+          const finalTextWithTags = finalText + (remainingTags.length > 0 ? ' ' + remainingTags.map(t => `#${t}`).join(' ') : '');
+          if (Array.from(finalTextWithTags).length > 280) {
+            const maxCaptionLength = 280 - (remainingTags.length > 0 ? remainingTags.map(t => `#${t}`).join(' ').length + 1 : 0);
+            finalText = finalText.substring(0, maxCaptionLength).replace(/\s+\S*$/, '').trim();
+          } else {
+            finalText = finalTextWithTags;
+          }
+
+          console.log('[Publisher][Twitter] finalText.preview =', finalText.slice(0, 140));
+          console.log('[Publisher][Twitter] finalText.length =', Array.from(finalText).length);
+
+          // Use the Twitter service function with auto-renewal
+          const result = await createPost(
+            this.twitterAccessToken,
+            {
+              text: finalText,
+              mediaUrl: mediaUrl,
+              hashtags: [] // already embedded in finalText
+            },
+            this.twitterRefreshToken // Pass refresh token for auto-renewal
+          );
 
           if (!result.success) throw new Error(result.error);
 
@@ -151,8 +228,8 @@ class PlatformPublisher {
           };
         }
 
+        // ------------ DEFAULT (simulated for others) ------------
         default: {
-          // Keep simulated flow for other platforms (until real APIs are added)
           const formattedContent = this.formatContentForPlatform(platform, postData);
           const result = await this.publishContent(platform, formattedContent);
           console.log(`✅ Successfully published to ${platform}`);
@@ -193,15 +270,21 @@ class PlatformPublisher {
         if (hashtags && hashtags.length > 20) throw new Error('TikTok allows maximum 20 hashtags');
         break;
 
-      case 'linkedin':
-        if (caption && caption.length > 3000) throw new Error('LinkedIn post exceeds 3000 character limit');
+      case 'linkedin': {
+        // validate the *message* length after stripping inline hashtags
+        const stripped = (caption || '').toString().replace(/#[\p{L}\p{N}_]+/gu, '');
+        if (stripped.length > 3000) throw new Error('LinkedIn post exceeds 3000 character limit');
         if (hashtags && hashtags.length > 50) throw new Error('LinkedIn allows maximum 50 hashtags');
         break;
+      }
 
-      case 'twitter':
-        if (caption && caption.length > 280) throw new Error('Twitter post exceeds 280 character limit');
-        if (hashtags && hashtags.length > 25) throw new Error('Twitter allows maximum 25 hashtags');
+      case 'twitter': {
+        // Character limit validation removed - auto-shrink logic handles this
+        if (hashtags && hashtags.length > 25) {
+          throw new Error('Twitter allows maximum 25 hashtags');
+        }
         break;
+      }
 
       case 'youtube':
         if (!mediaUrl) throw new Error('YouTube requires video content');
@@ -239,7 +322,7 @@ class PlatformPublisher {
 
       case 'linkedin':
         return {
-          caption: safeCaption,
+          caption: (caption || '').toString(),
           hashtags: Array.isArray(hashtags) ? hashtags : [],
           mediaUrl
         };
@@ -247,7 +330,8 @@ class PlatformPublisher {
       case 'twitter':
         return {
           text: [safeCaption, tagString].filter(Boolean).join(' ').trim(),
-          media_url: mediaUrl
+          media_url: mediaUrl,
+          hashtags: Array.isArray(hashtags) ? hashtags : []
         };
 
       case 'youtube': {
@@ -281,21 +365,20 @@ class PlatformPublisher {
 
   // ===== Simulated publisher for non-wired platforms =====
   async publishContent(platform, content) {
-    const platformConfig = this.platforms[platform];
-
     // Simulate API latency
     await new Promise(resolve => setTimeout(resolve, 1200));
 
+    const idBase = Date.now();
     const responses = {
-      instagram: { id: `ig_${Date.now()}`, url: `https://instagram.com/p/ig_${Date.now()}` },
-      tiktok:    { id: `tt_${Date.now()}`, url: `https://tiktok.com/@user/video/tt_${Date.now()}` },
-      linkedin:  { id: `li_${Date.now()}`, url: `https://www.linkedin.com/feed/update/li_${Date.now()}` },
-      twitter:   { id: `tw_${Date.now()}`, url: `https://twitter.com/user/status/tw_${Date.now()}` },
-      youtube:   { id: `yt_${Date.now()}`, url: `https://youtube.com/watch?v=yt_${Date.now()}` },
-      facebook:  { id: `fb_${Date.now()}`, url: `https://facebook.com/permalink.php?story_fbid=fb_${Date.now()}` }
+      instagram: { id: `ig_${idBase}`, url: `https://instagram.com/p/ig_${idBase}` },
+      tiktok:    { id: `tt_${idBase}`, url: `https://tiktok.com/@user/video/tt_${idBase}` },
+      linkedin:  { id: `li_${idBase}`, url: `https://www.linkedin.com/feed/update/li_${idBase}` },
+      twitter:   { id: `tw_${idBase}`, url: `https://twitter.com/user/status/tw_${idBase}` },
+      youtube:   { id: `yt_${idBase}`, url: `https://youtube.com/watch?v=yt_${idBase}` },
+      facebook:  { id: `fb_${idBase}`, url: `https://facebook.com/permalink.php?story_fbid=fb_${idBase}` }
     };
 
-    return responses[platform] || { id: `post_${Date.now()}` };
+    return responses[platform] || { id: `post_${idBase}` };
   }
 
   // ===== Bulk publish; also normalizes body shape =====

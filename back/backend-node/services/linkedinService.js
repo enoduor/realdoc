@@ -1,11 +1,11 @@
 /* eslint-disable no-console */
-const fetch = require('node-fetch');     // used for GET /v2/userinfo
-const axios = require('axios');          // used for POST /rest/posts
+const fetch = require('node-fetch');
+const axios = require('axios');
 const crypto = require('crypto');
 
 // ---------- Config ----------
-const PRIMARY_VERSION = '202503';           // proven working in your tenant
-const FALLBACK_VERSIONS = ['202502'];       // next best; extend if needed
+const PRIMARY_VERSION = '202503';
+const FALLBACK_VERSIONS = ['202502'];
 
 // ---------- Helpers ----------
 function normalizeVersion(v) {
@@ -22,12 +22,38 @@ function looksLikeVersionError(status, text = '') {
   return false;
 }
 
+// Invisible uniqueness: append a random number (1–6) of zero-width joiners.
+// Keeps UI identical while changing the string to avoid 422 duplicate errors.
 function uniqueCommentary(baseText) {
   const text = (baseText ?? '').toString().trim();
-  const stamp = new Date().toISOString();
-  const rand  = crypto.randomBytes(3).toString('hex');
-  // append, don’t replace
-  return text ? `${text}\n\n• ${stamp} • ${rand}` : `• ${stamp} • ${rand}`;
+  const count = (crypto.randomBytes(1)[0] % 6) + 1; // 1..6
+  const ZWJ = '\u200D'; // zero-width joiner
+  return text + ZWJ.repeat(count);
+}
+
+// Normalize an array/string of hashtags into "#Tag" tokens separated by single spaces.
+function formatHashtags(input) {
+  if (!input) return '';
+  const parts = Array.isArray(input) ? input : String(input).split(/[,\s]+/);
+
+  const cleaned = parts
+    .map(h => String(h || '').trim())
+    .filter(Boolean)
+    .map(h => (h.startsWith('#') ? h : `#${h}`))
+    // remove internal spaces and punctuation around hashtags
+    .map(h => '#' + h.slice(1).replace(/[^\p{L}\p{N}_]+/gu, ''))
+    .filter(h => h.length > 1);
+
+  // Dedup, preserve order
+  const seen = new Set();
+  const uniq = [];
+  for (const h of cleaned) {
+    if (!seen.has(h.toLowerCase())) {
+      seen.add(h.toLowerCase());
+      uniq.push(h);
+    }
+  }
+  return uniq.join(' ');
 }
 
 async function safeJson(res) {
@@ -44,11 +70,6 @@ async function getOpenIdUserinfo(token, apiV2) {
   return body; // { sub, ... }
 }
 
-/**
- * POST with strict version negotiation using Axios:
- *  - Try PRIMARY_VERSION, then each FALLBACK_VERSION
- *  - No "no-version" attempt (your tenant requires the header)
- */
 async function postWithVersionNegotiation(token, apiRest, payload) {
   const attempt = async (version) => {
     const headers = {
@@ -60,7 +81,7 @@ async function postWithVersionNegotiation(token, apiRest, payload) {
 
     const res = await axios.post(`${apiRest}/posts`, payload, {
       headers,
-      validateStatus: () => true, // we handle non-2xx manually
+      validateStatus: () => true,
     });
 
     const ok = res.status >= 200 && res.status < 300;
@@ -68,7 +89,7 @@ async function postWithVersionNegotiation(token, apiRest, payload) {
     return { ok, status: res.status, body, headers: res.headers, version };
   };
 
-  // 1) Primary
+  // Primary
   {
     const r = await attempt(PRIMARY_VERSION);
     if (r.ok) return r;
@@ -77,12 +98,11 @@ async function postWithVersionNegotiation(token, apiRest, payload) {
       throw new Error(`POST /rest/posts ${r.status}: ${msg}`);
     }
   }
-
-  // 2) Fallbacks
+  // Fallbacks
   for (const v of FALLBACK_VERSIONS) {
     const r = await attempt(v);
-    if (r.ok) return r;
     const msg = typeof r.body === 'string' ? r.body : JSON.stringify(r.body);
+    if (r.ok) return r;
     if (!looksLikeVersionError(r.status, msg)) {
       throw new Error(`POST /rest/posts ${r.status}: ${msg}`);
     }
@@ -114,16 +134,12 @@ class LinkedInService {
     return `urn:li:person:${userInfo.sub}`;
   }
 
-  /**
-   * Return shape kept for compatibility with existing test script:
-   * { connected, user:{id, authorUrn}, permissions:[], canPost, details? }
-   */
   async testConnection() {
     try {
       const userInfo  = await getOpenIdUserinfo(this.accessToken, this.apiV2);
       const authorUrn = await this.getAuthorUrn();
 
-      // Probe with unique message (avoid 422 duplicates)
+      // Probe with invisible uniqueness
       const message = uniqueCommentary('🧪 CreatorSync probe');
       const payload = {
         author: authorUrn,
@@ -145,7 +161,6 @@ class LinkedInService {
           details: { versionUsed: r.version, restliId }
         };
       } catch (e) {
-        // Duplicate content is a healthy pipeline signal for probes
         const msg = String(e.message || '');
         const isDup = /422/.test(msg) && /duplicate|already exists/i.test(msg);
         if (isDup) {
@@ -186,28 +201,45 @@ class LinkedInService {
   }
 
   /**
-   * Publishes content; by default ensures uniqueness to avoid DUPLICATE_POST (422).
-   * Pass { ensureUnique: false } to post exact text (not recommended).
+   * Publishes content with visible hashtags (as hashtags) and an invisible uniqueness suffix.
+   * @param {string} content - main post text (message)
+   * @param {string|null} mediaUrl - optional media line (kept as text for now)
+   * @param {object} opts
+   * @param {boolean} [opts.ensureUnique=true]
+   * @param {string[]|string} [opts.hashtags=[]]
    */
-async createPost(content, mediaUrl = null, { ensureUnique = true } = {}) {
-  try {
-    let postText = (content ?? '').toString().trim();
+  async createPost(content, mediaUrl = null, { ensureUnique = true, hashtags = [] } = {}) {
+    try {
+      const MAX_LEN = 3000; // LinkedIn text hard limit (approx)
+      const msg = (content ?? '').toString().trim();
 
-    if (mediaUrl) {
-      postText = [postText, `Media: ${mediaUrl}`].filter(Boolean).join('\n\n');
+      if (!msg && !mediaUrl) throw new Error('No content to publish (empty caption and no media).');
+
+      let body = msg;
+      if (mediaUrl) body = [body, `Media: ${mediaUrl}`].filter(Boolean).join('\n\n');
+
+      const tags = formatHashtags(hashtags);
+      // Assemble message + hashtags with a blank line in between if tags exist.
+      let commentary = tags ? `${body}\n\n${tags}` : body;
+
+      // Enforce length (prefer keeping hashtags visible)
+      if (commentary.length > MAX_LEN) {
+        const over = commentary.length - MAX_LEN;
+        const keep = Math.max(0, body.length - over - 1);
+        body = body.slice(0, keep).trimEnd();
+        commentary = tags ? `${body}\n\n${tags}` : body;
+      }
+
+      if (ensureUnique) commentary = uniqueCommentary(commentary);
+
+      console.log('[LinkedIn] postText.preview =', commentary.slice(0, 140).replace(/\n/g, '⏎'));
+      const result = await this.postText(commentary);
+
+      return { success: true, postId: result.id, version: result.versionUsed, message: 'Post published successfully' };
+    } catch (error) {
+      return { success: false, error: error.message };
     }
-    if (!postText) throw new Error('No content to publish (empty caption and no media).');
-
-    if (ensureUnique) postText = uniqueCommentary(postText);
-
-    console.log('[LinkedIn] postText.preview =', postText.slice(0, 140));
-    const result = await this.postText(postText);
-
-    return { success: true, postId: result.id, version: result.versionUsed, message: 'Post published successfully' };
-  } catch (error) {
-    return { success: false, error: error.message };
   }
-}
 }
 
 module.exports = LinkedInService;

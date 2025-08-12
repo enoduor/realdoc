@@ -1,19 +1,23 @@
 INFO:     Will watch for changes in these directories: ['/Users/mzmzma/Desktop/creatorsync/back/backend-python']
 INFO:     Uvicorn running on http://0.0.0.0:5001 (Press CTRL+C to quit)
-INFO:     Started reloader process [43520] using StatReload
-INFO:     Started server process [43524]
+INFO:     Started reloader process [42496] using StatReload
+INFO:     Started server process [42505]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     127.0.0.1:56764 - "GET /docs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56791 - "OPTIONS /api/v1/captions HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56791 - "POST /api/v1/captions HTTP/1.1" 307 Temporary Redirect
-INFO:     127.0.0.1:56791 - "OPTIONS /api/v1/captions/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56791 - "POST /api/v1/captions/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56791 - "OPTIONS /api/v1/hashtags HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56791 - "POST /api/v1/hashtags HTTP/1.1" 307 Temporary Redirect
-INFO:     127.0.0.1:56791 - "OPTIONS /api/v1/hashtags/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56791 - "POST /api/v1/hashtags/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56838 - "POST /api/v1/captions HTTP/1.1" 307 Temporary Redirect
-INFO:     127.0.0.1:56838 - "POST /api/v1/captions/ HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56841 - "POST /api/v1/hashtags HTTP/1.1" 307 Temporary Redirect
-INFO:     127.0.0.1:56841 - "POST /api/v1/hashtags/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59291 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59298 - "OPTIONS /api/v1/captions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59298 - "POST /api/v1/captions HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59300 - "OPTIONS /api/v1/captions/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59298 - "POST /api/v1/captions/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59304 - "OPTIONS /api/v1/hashtags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59304 - "POST /api/v1/hashtags HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59306 - "OPTIONS /api/v1/hashtags/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59304 - "POST /api/v1/hashtags/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59397 - "OPTIONS /api/v1/captions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59397 - "POST /api/v1/captions HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59397 - "OPTIONS /api/v1/captions/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59397 - "POST /api/v1/captions/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59412 - "OPTIONS /api/v1/hashtags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59412 - "POST /api/v1/hashtags HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:59412 - "OPTIONS /api/v1/hashtags/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59412 - "POST /api/v1/hashtags/ HTTP/1.1" 200 OK

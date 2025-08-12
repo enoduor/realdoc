@@ -3,21 +3,16 @@
 > node index.js
 
 📡 Attempting MongoDB connection...
+✅ Stripe key loaded: sk_test_pl...
 🚀 Server running on http://localhost:4001
 ✅ MongoDB Connected
 📊 Database: test
 📤 Publishing to twitter...
-[Publisher][Twitter] text = "Unleashing the power of AI for your business has never been so simple! Discover the easiest methods to supercharge your strategy with #ArtificialIntelligence. Don't miss out, join the AI revolution today! #BusinessGrowth #AIinBusiness" #AISimplified #AIForBusiness #TechTrends #StartupsWithAI #DigitalTransformation
-[Publisher][Twitter] media_url = 
-❌ Failed to publish to twitter: Tweet exceeds 280 character limit (316 characters)
-📤 Publishing to twitter...
-[Publisher][Twitter] text = "Starting a business with AI is as easy as pie. 🥧🤖 Just remember, when it starts asking for a raise, you might've gone too far! 😂 Ready to embark on this tech-venture? #AIinBusiness #TechHumor" #AISimplified #AIStartupTips #TechTrends #BusinessInnovation #FutureOfAI
-[Publisher][Twitter] media_url = 
-[Twitter] Posting tweet: "Starting a business with AI is as easy as pie. 🥧🤖 Just remember, when it starts asking for a rais...
-📤 Publishing to twitter...
-[Publisher][Twitter] text = "Starting a business with AI is as easy as pie. 🥧🤖 Just remember, when it starts asking for a raise, you might've gone too far! 😂 Ready to embark on this tech-venture? #AIinBusiness #TechHumor" #AISimplified #AIStartupTips #TechTrends #BusinessInnovation #FutureOfAI
-[Publisher][Twitter] media_url = 
-[Twitter] Posting tweet: "Starting a business with AI is as easy as pie. 🥧🤖 Just remember, when it starts asking for a rais...
-📤 Publishing to linkedin...
-[Publisher][LinkedIn] postText.preview = "Starting a business with AI is as easy as pie. 🥧🤖 Just remember, when it starts asking for a raise, you might've gone too far! 😂 Ready t
-[LinkedIn] postText.preview = "Starting a business with AI is as easy as pie. 🥧🤖 Just remember, when it starts asking for a raise, you might've gone too far! 😂 Ready t
+❌ Failed to publish to twitter: Twitter access token not configured
+[Twitter OAuth] client_id: M3dDQkthSThDQ2tBTEhuam5Xejc6MTpjaQ
+[Twitter OAuth] redirect_uri: http://localhost:4001/oauth2/callback/twitter
+[Twitter OAuth] URL: https://x.com/i/oauth2/authorize?response_type=code&client_id=M3dDQkthSThDQ2tBTEhuam5Xejc6MTpjaQ&redirect_uri=http%3A%2F%2Flocalhost%3A4001%2Foauth2%2Fcallback%2Ftwitter&state=-6IZ3USnHu~oICcik.8zM6qRYsRTkE7E&code_challenge=7HAMT33WFTqfG8ClhBf5oVFGl1gzayueNTX_nBZyols&code_challenge_method=s256&scope=tweet.read%20tweet.write%20users.read
+Request failed with code 403
+[Twitter OAuth] client_id: M3dDQkthSThDQ2tBTEhuam5Xejc6MTpjaQ
+[Twitter OAuth] redirect_uri: http://localhost:4001/oauth2/callback/twitter
+[Twitter OAuth] URL: https://x.com/i/oauth2/authorize?response_type=code&client_id=M3dDQkthSThDQ2tBTEhuam5Xejc6MTpjaQ&redirect_uri=http%3A%2F%2Flocalhost%3A4001%2Foauth2%2Fcallback%2Ftwitter&state=kxK9d~DTe2sY0RxRHGtX~_FoMoGhOnuw&code_challenge=SKf5ygEF2iIKIl-KkJSbhDalggoHI4LImdxPoR5KKfw&code_challenge_method=s256&scope=tweet.read%20tweet.write%20users.read
