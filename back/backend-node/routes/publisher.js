@@ -5,6 +5,7 @@ const {
     publishNow,
     getPlatformStatus
 } = require('../controllers/publisherController');
+const platformPublisher = require('../services/platformPublisher');
 
 // Test endpoint - no auth required (for development testing)
 router.get('/test-linkedin', async (req, res) => {
@@ -26,36 +27,46 @@ router.get('/test-linkedin', async (req, res) => {
     }
 });
 
-router.post('/test-publish', async (req, res) => {
+// Twitter-specific publish endpoint - uses twitterUserId authentication (no Clerk)
+router.post('/twitter/publish', async (req, res) => {
   try {
-    const { platforms = [], content = {} } = req.body;
-    const publisher = require('../services/platformPublisher');
-    const results = [];
-    for (const platform of platforms) {
-      const r = await publisher.publishToPlatform(platform, content);
-      results.push({ platform, ...r });
+    const { content, twitterUserId } = req.body;
+    
+    if (!content) {
+      return res.status(400).json({ success: false, message: 'Content required' });
     }
-    const allOk = results.every(r => r.success);
-    res.json({
-      success: allOk,
-      post: {
-        id: Date.now(),
-        timestamp: new Date().toISOString(),
-        results
-      }
-    });
-  } catch (e) {
-    res.status(500).json({ success: false, error: e.message });
+    if (!twitterUserId) {
+      return res.status(400).json({ success: false, message: 'twitterUserId required for Twitter publishing' });
+    }
+
+    console.log(`🚀 Publishing to Twitter with separated flow (twitterUserId: ${twitterUserId})...`);
+    
+    try {
+      const result = await platformPublisher.publishToPlatform('twitter', { ...content, twitterUserId });
+      return res.json({
+        success: true,
+        platform: 'twitter',
+        result
+      });
+    } catch (error) {
+      console.error(`❌ Failed to publish to Twitter:`, error.message);
+      return res.status(500).json({ 
+        success: false, 
+        platform: 'twitter',
+        error: error.message 
+      });
+    }
+
+  } catch (error) {
+    console.error('Error publishing to Twitter:', error);
+    return res.status(500).json({ success: false, message: 'Failed to publish to Twitter', error: error.message });
   }
 });
 
-// Apply Clerk authentication to protected routes
-router.use(clerkAuthMiddleware);
+// General publish endpoint - requires Clerk authentication
+router.post('/publish', clerkAuthMiddleware, publishNow);
 
-// Publish post immediately
-router.post('/publish', publishNow);
-
-// Get platform connection status
-router.get('/platforms/status', getPlatformStatus);
+// Get platform connection status - requires Clerk authentication
+router.get('/platforms/status', clerkAuthMiddleware, getPlatformStatus);
 
 module.exports = router;

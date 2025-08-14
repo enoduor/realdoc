@@ -6,6 +6,7 @@ const stripeWebhook = require("./webhooks/stripeWebhook");
 const authRoutes = require("./routes/auth");
 const publisherRoutes = require("./routes/publisher");
 const { clerkAuthMiddleware } = require("./middleware/clerkAuth");
+const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
 
 dotenv.config();
 
@@ -35,6 +36,34 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 app.use(express.json());
+
+// Clerk authentication middleware (optional - only for protected routes)
+app.use((req, res, next) => {
+  console.log(`🔍 Clerk middleware checking path: ${req.path}`);
+  
+  // Skip auth for public routes
+  if (req.path === '/' || 
+      req.path === '/ping' || 
+      req.path.startsWith('/webhook') ||
+      req.path.startsWith('/oauth2/') ||
+      req.path.startsWith('/api/auth/') ||
+      req.path.startsWith('/api/publisher/twitter/')) {
+    console.log(`✅ Skipping Clerk auth for path: ${req.path}`);
+    return next();
+  }
+  
+  console.log(`🔒 Applying Clerk auth for path: ${req.path}`);
+  // Apply Clerk auth for protected routes
+  ClerkExpressRequireAuth()(req, res, (err) => {
+    if (err) {
+      // Auth failed, but continue for routes that handle it
+      req.user = null;
+      return next();
+    }
+    req.user = { id: req.auth.userId };
+    next();
+  });
+});
 
 // Mount Google Auth routes
 const googleAuthRoutes = require('./routes/googleAuth');

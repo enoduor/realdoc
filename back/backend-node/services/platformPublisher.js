@@ -2,7 +2,7 @@
 const axios = require('axios');
 const LinkedInService = require('./linkedinService');
 const youtubeService = require('./youtubeService'); // real YouTube API
-const { createPost } = require('./twitterService'); // real Twitter API
+const { postTweet } = require('./twitterService'); // real Twitter API
 
 // ---- hashtag helpers ----
 function extractHashtags(str = '') {
@@ -74,9 +74,7 @@ class PlatformPublisher {
       accessToken: process.env.LINKEDIN_ACCESS_TOKEN
     });
 
-    // Real Twitter API - using function-based approach
-    this.twitterAccessToken = process.env.TWITTER_ACCESS_TOKEN;
-    this.twitterRefreshToken = process.env.TWITTER_REFRESH_TOKEN;
+    // Real Twitter API - using function-based approach with token persistence
   }
 
   // ===== Main publish switch =====
@@ -166,65 +164,28 @@ class PlatformPublisher {
 
         // ------------ TWITTER ------------
         case 'twitter': {
-          if (!this.twitterAccessToken) {
-            throw new Error('Twitter access token not configured');
+          // Accept either twitterUserId (preferred) or userId (legacy)
+          const { twitterUserId, userId, caption, text } = postData || {};
+          const identifier =
+            twitterUserId ? { twitterUserId } :
+            userId ? { userId } :
+            null;
+
+          if (!identifier) {
+            throw new Error('Twitter requires twitterUserId or userId');
           }
 
-          // Auto-shrink logic for Twitter's 280 character limit
-          const rawCaption = (postData?.caption ?? '').toString();
-          const captionTags = extractHashtags(rawCaption);
-          const caption = cleanCaption(stripHashtags(rawCaption));
+          const tweetText = (caption || text || '').trim();
+          if (!tweetText) throw new Error('Tweet text is empty');
 
-          const inputTags = Array.isArray(postData?.hashtags) ? postData.hashtags : [];
-          const allTags = dedupeCaseInsensitive([...captionTags, ...inputTags])
-            .map(t => t.replace(/^#+/, ''))
-            .map(normalizeHashtagCase);
-
-          const mediaUrl = postData?.mediaUrl || null;
-
-          console.log('[Publisher][Twitter] caption.preview =', caption.slice(0, 140));
-          console.log('[Publisher][Twitter] hashtags =', allTags);
-
-          // Auto-shrink: remove hashtags first, then truncate caption
-          let finalText = caption;
-          let remainingTags = [...allTags];
-
-          // If text is too long, start removing hashtags
-          while (Array.from(finalText + ' ' + remainingTags.map(t => `#${t}`).join(' ')).length > 280 && remainingTags.length > 0) {
-            remainingTags.pop(); // Remove last hashtag
-          }
-
-          // If still too long, truncate the caption at word boundary
-          const finalTextWithTags = finalText + (remainingTags.length > 0 ? ' ' + remainingTags.map(t => `#${t}`).join(' ') : '');
-          if (Array.from(finalTextWithTags).length > 280) {
-            const maxCaptionLength = 280 - (remainingTags.length > 0 ? remainingTags.map(t => `#${t}`).join(' ').length + 1 : 0);
-            finalText = finalText.substring(0, maxCaptionLength).replace(/\s+\S*$/, '').trim();
-          } else {
-            finalText = finalTextWithTags;
-          }
-
-          console.log('[Publisher][Twitter] finalText.preview =', finalText.slice(0, 140));
-          console.log('[Publisher][Twitter] finalText.length =', Array.from(finalText).length);
-
-          // Use the Twitter service function with auto-renewal
-          const result = await createPost(
-            this.twitterAccessToken,
-            {
-              text: finalText,
-              mediaUrl: mediaUrl,
-              hashtags: [] // already embedded in finalText
-            },
-            this.twitterRefreshToken // Pass refresh token for auto-renewal
-          );
-
-          if (!result.success) throw new Error(result.error);
-
+          const result = await postTweet(identifier, tweetText);
+          // X returns { data: { id, text } }
           return {
             success: true,
             platform,
-            postId: result.tweetId,
-            url: result.url,
-            message: result.message
+            postId: result?.data?.id || result?.id,
+            url: `https://twitter.com/user/status/${result?.data?.id || result?.id}`,
+            message: 'Successfully published to Twitter'
           };
         }
 
