@@ -1,9 +1,0 @@
-
-> backend-node@1.0.0 start
-> node index.js
-
-📡 Attempting MongoDB connection...
-✅ Stripe key loaded: sk_test_pl...
-🚀 Server running on http://localhost:4001
-✅ MongoDB Connected
-📊 Database: test
