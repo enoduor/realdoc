@@ -41,28 +41,18 @@ app.use(express.json());
 app.use((req, res, next) => {
   console.log(`🔍 Clerk middleware checking path: ${req.path}`);
   
-  // Skip auth for public routes
+  // Skip auth for public routes only
   if (req.path === '/' || 
       req.path === '/ping' || 
       req.path.startsWith('/webhook') ||
       req.path.startsWith('/oauth2/') ||
-      req.path.startsWith('/api/auth/') ||
       req.path.startsWith('/api/publisher/twitter/')) {
     console.log(`✅ Skipping Clerk auth for path: ${req.path}`);
     return next();
   }
   
-  console.log(`🔒 Applying Clerk auth for path: ${req.path}`);
-  // Apply Clerk auth for protected routes
-  ClerkExpressRequireAuth()(req, res, (err) => {
-    if (err) {
-      // Auth failed, but continue for routes that handle it
-      req.user = null;
-      return next();
-    }
-    req.user = { id: req.auth.userId };
-    next();
-  });
+  // Let individual routes handle their own auth
+  next();
 });
 
 // Mount Google Auth routes
@@ -86,6 +76,11 @@ app.use("/api/publisher", publisherRoutes);
 // Simple test route
 app.get("/", (req, res) => {
     res.send("✅ Node backend is running");
+});
+
+// Protected route to test Clerk auth
+app.get('/auth-test', ClerkExpressRequireAuth(), (req, res) => {
+  res.json({ ok: true, userId: req.auth.userId });
 });
 
 // Protected route example using Clerk

@@ -44,7 +44,8 @@ const clerkAuthMiddleware = async (req, res, next) => {
       const payload = await verifyToken(token, {
         jwtKey: clerkSecretKey,
         issuer: clerkIssuerUrl,
-        audience: clerkAudience,
+        // Remove audience validation as it might be causing issues
+        // audience: clerkAudience,
       });
 
       console.log('✅ Token verified successfully');

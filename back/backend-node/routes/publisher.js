@@ -63,6 +63,39 @@ router.post('/twitter/publish', async (req, res) => {
   }
 });
 
+// LinkedIn-specific publish endpoint - uses LinkedIn token (no Clerk)
+router.post('/linkedin/publish', async (req, res) => {
+  try {
+    const { content } = req.body;
+    
+    if (!content) {
+      return res.status(400).json({ success: false, message: 'Content required' });
+    }
+
+    console.log(`🚀 Publishing to LinkedIn with separated flow...`);
+    
+    try {
+      const result = await platformPublisher.publishToPlatform('linkedin', content);
+      return res.json({
+        success: true,
+        platform: 'linkedin',
+        result
+      });
+    } catch (error) {
+      console.error(`❌ Failed to publish to LinkedIn:`, error.message);
+      return res.status(500).json({ 
+        success: false, 
+        platform: 'linkedin',
+        error: error.message 
+      });
+    }
+
+  } catch (error) {
+    console.error('Error publishing to LinkedIn:', error);
+    return res.status(500).json({ success: false, message: 'Failed to publish to LinkedIn', error: error.message });
+  }
+});
+
 // General publish endpoint - requires Clerk authentication
 router.post('/publish', clerkAuthMiddleware, publishNow);
 
