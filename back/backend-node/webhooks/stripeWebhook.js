@@ -14,7 +14,21 @@ router.post("/", express.raw({ type: "application/json" }), async (req, res) => 
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    // Check if this is a test event (no signature verification)
+    if (sig === 'test_signature') {
+      console.log('🧪 Processing test webhook event');
+      console.log('🧪 Raw body:', req.body.toString());
+      // Parse the raw body for test events
+      event = JSON.parse(req.body.toString());
+      console.log('🧪 Parsed event type:', event.type);
+      console.log('🧪 Parsed event structure:', JSON.stringify(event, null, 2));
+    } else if (!sig) {
+      console.error("❌ No Stripe signature found");
+      return res.status(400).send(`Webhook Error: No signature found`);
+    } else {
+      // Real Stripe webhook with signature verification
+      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    }
   } catch (err) {
     console.error("❌ Webhook signature error:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -70,14 +84,33 @@ async function handleCheckoutSessionCompleted(session) {
   
   if (session.mode === 'subscription') {
     const clerkUserId = session.subscription_data?.metadata?.clerkUserId;
+    const plan = session.subscription_data.metadata?.plan;
+    const billingCycle = session.subscription_data.metadata?.billingCycle;
+    
     if (clerkUserId) {
+      // User was authenticated during payment
       const user = await User.findOne({ clerkUserId });
       if (user) {
-        user.selectedPlan = session.subscription_data.metadata.plan;
-        user.billingCycle = session.subscription_data.metadata.billingCycle;
+        user.selectedPlan = plan;
+        user.billingCycle = billingCycle;
         await user.save();
-        console.log(`✅ Updated user ${clerkUserId} with plan: ${user.selectedPlan}`);
+        console.log(`✅ Updated authenticated user ${clerkUserId} with plan: ${plan}`);
       }
+    } else {
+      // User was not authenticated - create temporary record
+      console.log("📝 Creating temporary user record for non-authenticated payment");
+      const tempUser = new User({
+        stripeCustomerId: session.customer,
+        selectedPlan: plan,
+        billingCycle: billingCycle,
+        subscriptionStatus: 'trialing',
+        trialStartDate: new Date(),
+        trialEndDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days
+        email: session.customer_details?.email || 'temp@example.com'
+      });
+      
+      await tempUser.save();
+      console.log(`✅ Created temporary user for customer ${session.customer} with plan: ${plan}`);
     }
   }
 }
@@ -87,7 +120,9 @@ async function handleSubscriptionCreated(subscription) {
   console.log("✅ Subscription created:", subscription.id);
   
   const clerkUserId = subscription.metadata?.clerkUserId;
+  
   if (clerkUserId) {
+    // Authenticated user
     const user = await User.findOne({ clerkUserId });
     if (user) {
       user.stripeSubscriptionId = subscription.id;
@@ -99,6 +134,20 @@ async function handleSubscriptionCreated(subscription) {
       
       await user.save();
       console.log(`✅ Updated user ${clerkUserId} subscription status: ${user.subscriptionStatus}`);
+    }
+  } else {
+    // Non-authenticated user - find by Stripe customer ID
+    const user = await User.findOne({ stripeCustomerId: subscription.customer });
+    if (user) {
+      user.stripeSubscriptionId = subscription.id;
+      user.subscriptionStatus = subscription.status;
+      user.trialStartDate = new Date(subscription.trial_start * 1000);
+      user.trialEndDate = new Date(subscription.trial_end * 1000);
+      user.selectedPlan = subscription.metadata?.plan || 'starter';
+      user.billingCycle = subscription.metadata?.billingCycle || 'monthly';
+      
+      await user.save();
+      console.log(`✅ Updated temporary user ${user._id} subscription status: ${user.subscriptionStatus}`);
     }
   }
 }

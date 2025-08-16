@@ -65,7 +65,8 @@ router.post("/create-subscription-session", async (req, res) => {
         trial_period_days: 3, // 3-day free trial
         metadata: {
           plan: plan,
-          billingCycle: billingCycle
+          billingCycle: billingCycle,
+          clerkUserId: req.user?.userId || null // Include Clerk user ID if available
         }
       },
       success_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/app?session_id={CHECKOUT_SESSION_ID}`,
@@ -85,7 +86,7 @@ router.post("/create-subscription-session", async (req, res) => {
   }
 });
 
-// ✅ Get user subscription status
+// ✅ Get user subscription status (authenticated)
 router.get("/subscription", clerkAuthMiddleware, async (req, res) => {
   try {
     const clerkUserId = req.user.userId;
@@ -116,12 +117,43 @@ router.get("/subscription", clerkAuthMiddleware, async (req, res) => {
       stripeSubscription: subscription,
       canCreatePosts: user.canCreatePosts(),
       accountsConnected: user.accountsConnected,
-      postsCreated: user.postsCreated
+      postsCreated: user.postsCreated,
+      hasActiveSubscription: user.canCreatePosts()
     });
 
   } catch (error) {
     console.error("❌ Error getting subscription:", error);
     res.status(500).json({ error: "Failed to get subscription status" });
+  }
+});
+
+// ✅ Check subscription status by session ID (no auth required)
+router.get("/subscription-by-session/:sessionId", async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    
+    // Find user by session ID (from webhook)
+    const user = await User.findOne({ 
+      $or: [
+        { stripeSubscriptionId: { $exists: true, $ne: null } },
+        { 'subscriptionData.sessionId': sessionId }
+      ]
+    });
+
+    if (!user) {
+      return res.json({ hasActiveSubscription: false });
+    }
+
+    res.json({
+      hasActiveSubscription: user.canCreatePosts(),
+      subscriptionStatus: user.subscriptionStatus,
+      selectedPlan: user.selectedPlan,
+      billingCycle: user.billingCycle
+    });
+
+  } catch (error) {
+    console.error("❌ Error checking subscription by session:", error);
+    res.status(500).json({ error: "Failed to check subscription status" });
   }
 });
 

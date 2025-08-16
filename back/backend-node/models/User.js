@@ -4,8 +4,9 @@ const userSchema = new mongoose.Schema({
   // Clerk Integration
   clerkUserId: {
     type: String,
-    required: true,
+    required: false, // Make optional for temporary users
     unique: true,
+    sparse: true, // Allow multiple null values
     index: true
   },
   email: {

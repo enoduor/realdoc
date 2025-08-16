@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { clerkAuthMiddleware } = require("../middleware/clerkAuth");
 
 // Register route
 router.post("/register", async (req, res) => {
@@ -74,6 +75,49 @@ router.post("/login", async (req, res) => {
   } catch (error) {
     console.error("❌ Login error:", error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ✅ Link temporary user with Clerk user
+router.post("/link-temp-user", clerkAuthMiddleware, async (req, res) => {
+  try {
+    const { email } = req.body;
+    const clerkUserId = req.user.userId;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    // Find temporary user by email
+    const tempUser = await User.findOne({ 
+      email: email,
+      clerkUserId: { $exists: false } // Only find users without clerkUserId
+    });
+
+    if (!tempUser) {
+      return res.status(404).json({ error: "No temporary user found with this email" });
+    }
+
+    // Link the temporary user to the Clerk user
+    tempUser.clerkUserId = clerkUserId;
+    await tempUser.save();
+
+    console.log(`✅ Linked temporary user ${tempUser._id} to Clerk user ${clerkUserId}`);
+
+    res.json({
+      success: true,
+      message: "Temporary user linked successfully",
+      user: {
+        subscriptionStatus: tempUser.subscriptionStatus,
+        selectedPlan: tempUser.selectedPlan,
+        billingCycle: tempUser.billingCycle,
+        hasActiveSubscription: tempUser.canCreatePosts()
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error linking temporary user:", error);
+    res.status(500).json({ error: "Failed to link temporary user" });
   }
 });
 
