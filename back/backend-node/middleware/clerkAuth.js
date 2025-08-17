@@ -17,11 +17,13 @@ const clerkAuthMiddleware = async (req, res, next) => {
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
     console.log('Token length:', token.length);
     console.log('Token preview:', token.substring(0, 20) + '...');
+    console.log('Full token:', token);
     
     // Check for required environment variables
     const clerkSecretKey = process.env.CLERK_SECRET_KEY || process.env.CLERK_JWT_KEY;
     const clerkIssuerUrl = process.env.CLERK_ISSUER_URL;
-    const clerkAudience = process.env.CLERK_AUDIENCE || 'http://localhost:3000';
+    // Don't enforce audience validation - use issuer + signature only
+    const clerkAudience = null;
     
     console.log('Environment variables:');
     console.log('- CLERK_SECRET_KEY:', clerkSecretKey ? 'Set' : 'Not set');
@@ -44,8 +46,7 @@ const clerkAuthMiddleware = async (req, res, next) => {
       const payload = await verifyToken(token, {
         jwtKey: clerkSecretKey,
         issuer: clerkIssuerUrl,
-        // Remove audience validation as it might be causing issues
-        // audience: clerkAudience,
+        // Don't enforce audience validation - use issuer + signature only
       });
 
       console.log('✅ Token verified successfully');

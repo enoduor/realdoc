@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const { clerkAuthMiddleware } = require("../middleware/clerkAuth");
+const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
 
 // Register route
 router.post("/register", async (req, res) => {
@@ -79,10 +79,10 @@ router.post("/login", async (req, res) => {
 });
 
 // ✅ Link temporary user with Clerk user
-router.post("/link-temp-user", clerkAuthMiddleware, async (req, res) => {
+router.post("/link-temp-user", ClerkExpressRequireAuth(), async (req, res) => {
   try {
     const { email } = req.body;
-    const clerkUserId = req.user.userId;
+    const clerkUserId = req.auth.userId;
 
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
@@ -117,6 +117,220 @@ router.post("/link-temp-user", clerkAuthMiddleware, async (req, res) => {
 
   } catch (error) {
     console.error("❌ Error linking temporary user:", error);
+    res.status(500).json({ error: "Failed to link temporary user" });
+  }
+});
+
+// ✅ Create or link Clerk user with database user
+router.post("/create-clerk-user", ClerkExpressRequireAuth(), async (req, res) => {
+  try {
+    const clerkUserId = req.auth.userId;
+    const userEmail = req.auth.email;
+    const firstName = req.auth.firstName;
+    const lastName = req.auth.lastName;
+
+    console.log(`🔗 Creating/linking Clerk user: ${clerkUserId} (${userEmail})`);
+    console.log('🔍 Full req.auth object:', JSON.stringify(req.auth, null, 2));
+
+    // Check if user already exists with this Clerk ID
+    let user = await User.findOne({ clerkUserId: clerkUserId });
+    
+    if (user) {
+      console.log(`✅ User already linked: ${user.email}`);
+      return res.json({
+        success: true,
+        message: "User already linked",
+        user: {
+          subscriptionStatus: user.subscriptionStatus,
+          selectedPlan: user.selectedPlan,
+          billingCycle: user.billingCycle,
+          hasActiveSubscription: user.canCreatePosts()
+        }
+      });
+    }
+
+    // Check if user exists by email (from Stripe)
+    console.log(`🔍 Looking for user with email: "${userEmail}"`);
+    user = await User.findOne({ email: userEmail });
+    
+    if (user) {
+      // Link existing user to Clerk
+      console.log(`🔗 Linking existing user ${user.email} to Clerk user ${clerkUserId}`);
+      console.log(`📝 Before linking - clerkUserId: ${user.clerkUserId}`);
+      user.clerkUserId = clerkUserId;
+      user.firstName = firstName;
+      user.lastName = lastName;
+      await user.save();
+      console.log(`✅ After linking - clerkUserId: ${user.clerkUserId}`);
+      
+      return res.json({
+        success: true,
+        message: "Existing user linked to Clerk",
+        user: {
+          subscriptionStatus: user.subscriptionStatus,
+          selectedPlan: user.selectedPlan,
+          billingCycle: user.billingCycle,
+          hasActiveSubscription: user.canCreatePosts()
+        }
+      });
+    }
+
+    console.log(`❌ No user found with email: "${userEmail}"`);
+
+    // Create new user for Clerk
+    console.log(`📝 Creating new user for Clerk: ${userEmail}`);
+    user = new User({
+      email: userEmail,
+      clerkUserId: clerkUserId,
+      firstName: firstName,
+      lastName: lastName,
+      subscriptionStatus: 'none',
+      selectedPlan: 'starter',
+      billingCycle: 'monthly'
+    });
+
+    await user.save();
+
+    console.log(`✅ Created new user for Clerk: ${user.email}`);
+
+    res.json({
+      success: true,
+      message: "New user created for Clerk",
+      user: {
+        subscriptionStatus: user.subscriptionStatus,
+        selectedPlan: user.selectedPlan,
+        billingCycle: user.billingCycle,
+        hasActiveSubscription: user.canCreatePosts()
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error creating/linking Clerk user:", error);
+    res.status(500).json({ error: "Failed to create/link Clerk user" });
+  }
+});
+
+// ✅ Test posting access by email (no auth required for testing)
+router.post("/test-posting-access", async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const user = await User.findOne({ email: email });
+    
+    if (!user) {
+      return res.json({
+        canPost: false,
+        reason: "User not found in database",
+        email: email
+      });
+    }
+
+    const canPost = user.canCreatePosts();
+    const hasSubscription = user.hasActiveSubscription();
+    const subscriptionStatus = user.subscriptionStatus;
+
+    res.json({
+      canPost: canPost,
+      hasActiveSubscription: hasSubscription,
+      subscriptionStatus: subscriptionStatus,
+      selectedPlan: user.selectedPlan,
+      billingCycle: user.billingCycle,
+      email: user.email,
+      reason: canPost ? "User has active subscription" : "User does not have active subscription"
+    });
+
+  } catch (error) {
+    console.error("❌ Error testing posting access:", error);
+    res.status(500).json({ error: "Failed to test posting access" });
+  }
+});
+
+// 🧪 TEST ENDPOINTS (for testing only - remove in production)
+
+// Test endpoint to find temporary user by email
+router.post("/test-find-temp-user", async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const user = await User.findOne({ email: email });
+    
+    if (!user) {
+      return res.json({
+        found: false,
+        message: "No user found with this email"
+      });
+    }
+
+    res.json({
+      found: true,
+      user: {
+        id: user._id,
+        email: user.email,
+        clerkUserId: user.clerkUserId,
+        subscriptionStatus: user.subscriptionStatus,
+        selectedPlan: user.selectedPlan,
+        billingCycle: user.billingCycle,
+        hasActiveSubscription: user.canCreatePosts(),
+        stripeCustomerId: user.stripeCustomerId,
+        stripeSubscriptionId: user.stripeSubscriptionId
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error finding temporary user:", error);
+    res.status(500).json({ error: "Failed to find temporary user" });
+  }
+});
+
+// Test endpoint to link temporary user with mock Clerk user ID
+router.post("/test-link-temp-user", async (req, res) => {
+  try {
+    const { email, clerkUserId } = req.body;
+
+    if (!email || !clerkUserId) {
+      return res.status(400).json({ error: "Email and clerkUserId are required" });
+    }
+
+    // Find temporary user by email
+    const tempUser = await User.findOne({ 
+      email: email,
+      clerkUserId: { $exists: false } // Only find users without clerkUserId
+    });
+
+    if (!tempUser) {
+      return res.status(404).json({ error: "No temporary user found with this email" });
+    }
+
+    // Link the temporary user to the mock Clerk user
+    tempUser.clerkUserId = clerkUserId;
+    await tempUser.save();
+
+    console.log(`✅ Test: Linked temporary user ${tempUser._id} to mock Clerk user ${clerkUserId}`);
+
+    res.json({
+      success: true,
+      message: "Temporary user linked successfully (test)",
+      user: {
+        id: tempUser._id,
+        email: tempUser.email,
+        clerkUserId: tempUser.clerkUserId,
+        subscriptionStatus: tempUser.subscriptionStatus,
+        selectedPlan: tempUser.selectedPlan,
+        billingCycle: tempUser.billingCycle,
+        hasActiveSubscription: tempUser.canCreatePosts()
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error linking temporary user (test):", error);
     res.status(500).json({ error: "Failed to link temporary user" });
   }
 });

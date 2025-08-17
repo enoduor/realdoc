@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { clerkAuthMiddleware } = require('../middleware/clerkAuth');
+const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
 const {
     publishNow,
     getPlatformStatus
@@ -97,9 +97,9 @@ router.post('/linkedin/publish', async (req, res) => {
 });
 
 // General publish endpoint - requires Clerk authentication
-router.post('/publish', clerkAuthMiddleware, publishNow);
+router.post('/publish', ClerkExpressRequireAuth(), publishNow);
 
 // Get platform connection status - requires Clerk authentication
-router.get('/platforms/status', clerkAuthMiddleware, getPlatformStatus);
+router.get('/platforms/status', ClerkExpressRequireAuth(), getPlatformStatus);
 
 module.exports = router;

@@ -5,8 +5,7 @@ const mongoose = require("mongoose");
 const stripeWebhook = require("./webhooks/stripeWebhook");
 const authRoutes = require("./routes/auth");
 const publisherRoutes = require("./routes/publisher");
-const { clerkAuthMiddleware } = require("./middleware/clerkAuth");
-const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
+const { ClerkExpressRequireAuth, ClerkExpressWithAuth } = require('@clerk/clerk-sdk-node');
 
 dotenv.config();
 
@@ -84,11 +83,11 @@ app.get('/auth-test', ClerkExpressRequireAuth(), (req, res) => {
 });
 
 // Protected route example using Clerk
-app.get("/api/auth/profile", clerkAuthMiddleware, async (req, res) => {
+app.get("/api/auth/profile", ClerkExpressRequireAuth(), async (req, res) => {
     try {
         const users = mongoose.connection.collection('users');
         const user = await users.findOne(
-            { _id: new mongoose.Types.ObjectId(req.user.userId) },
+            { _id: new mongoose.Types.ObjectId(req.auth.userId) },
             { projection: { password: 0 } } // Exclude password
         );
         
@@ -99,6 +98,15 @@ app.get("/api/auth/profile", clerkAuthMiddleware, async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+});
+
+// Debug route to check Clerk auth status
+app.get('/api/_debug/auth', ClerkExpressRequireAuth(), (req, res) => {
+  res.json({
+    status: req.headers['x-clerk-auth-status'] || null,
+    reason: req.headers['x-clerk-auth-reason'] || null,
+    auth: req.auth ?? null,          // shows userId if validated
+  });
 });
 
 const PORT = process.env.PORT || 4001;

@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Stripe = require("stripe");
 const User = require("../models/User");
-const { clerkAuthMiddleware } = require("../middleware/clerkAuth");
+const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
 
 // ✅ Load Stripe key from .env and verify it's loading
 console.log("✅ Stripe key loaded:", process.env.STRIPE_SECRET_KEY?.slice(0, 10) + "...");
@@ -87,9 +87,9 @@ router.post("/create-subscription-session", async (req, res) => {
 });
 
 // ✅ Get user subscription status (authenticated)
-router.get("/subscription", clerkAuthMiddleware, async (req, res) => {
+router.get("/subscription", ClerkExpressRequireAuth(), async (req, res) => {
   try {
-    const clerkUserId = req.user.userId;
+    const clerkUserId = req.auth.userId;
     const user = await User.findOne({ clerkUserId });
 
     if (!user) {
@@ -157,10 +157,36 @@ router.get("/subscription-by-session/:sessionId", async (req, res) => {
   }
 });
 
-// ✅ Cancel subscription
-router.post("/cancel-subscription", clerkAuthMiddleware, async (req, res) => {
+// ✅ Get user subscription status by email (simple approach)
+router.get("/subscription-by-email/:email", async (req, res) => {
   try {
-    const clerkUserId = req.user.userId;
+    const { email } = req.params;
+    
+    // Simple email lookup
+    const user = await User.findOne({ email: email });
+
+    if (!user) {
+      return res.json({ hasActiveSubscription: false });
+    }
+
+    res.json({
+      hasActiveSubscription: user.canCreatePosts(),
+      subscriptionStatus: user.subscriptionStatus,
+      selectedPlan: user.selectedPlan,
+      billingCycle: user.billingCycle,
+      email: user.email
+    });
+
+  } catch (error) {
+    console.error("❌ Error checking subscription by email:", error);
+    res.status(500).json({ error: "Failed to check subscription status" });
+  }
+});
+
+// ✅ Cancel subscription
+router.post("/cancel-subscription", ClerkExpressRequireAuth(), async (req, res) => {
+  try {
+    const clerkUserId = req.auth.userId;
     const user = await User.findOne({ clerkUserId });
 
     if (!user || !user.stripeSubscriptionId) {
@@ -189,9 +215,9 @@ router.post("/cancel-subscription", clerkAuthMiddleware, async (req, res) => {
 });
 
 // ✅ Reactivate subscription
-router.post("/reactivate-subscription", clerkAuthMiddleware, async (req, res) => {
+router.post("/reactivate-subscription", ClerkExpressRequireAuth(), async (req, res) => {
   try {
-    const clerkUserId = req.user.userId;
+    const clerkUserId = req.auth.userId;
     const user = await User.findOne({ clerkUserId });
 
     if (!user || !user.stripeSubscriptionId) {
@@ -220,10 +246,10 @@ router.post("/reactivate-subscription", clerkAuthMiddleware, async (req, res) =>
 });
 
 // ✅ Update payment method
-router.post("/update-payment-method", clerkAuthMiddleware, async (req, res) => {
+router.post("/update-payment-method", ClerkExpressRequireAuth(), async (req, res) => {
   try {
     const { paymentMethodId } = req.body;
-    const clerkUserId = req.user.userId;
+    const clerkUserId = req.auth.userId;
     const user = await User.findOne({ clerkUserId });
 
     if (!user || !user.stripeCustomerId) {
@@ -254,9 +280,9 @@ router.post("/update-payment-method", clerkAuthMiddleware, async (req, res) => {
 });
 
 // ✅ Get billing portal URL
-router.post("/billing-portal", clerkAuthMiddleware, async (req, res) => {
+router.post("/billing-portal", ClerkExpressRequireAuth(), async (req, res) => {
   try {
-    const clerkUserId = req.user.userId;
+    const clerkUserId = req.auth.userId;
     const user = await User.findOne({ clerkUserId });
 
     if (!user || !user.stripeCustomerId) {
