@@ -4,7 +4,7 @@ const platformPublisher = require('../services/platformPublisher');
 exports.publishNow = async (req, res) => {
     try {
         const { platforms, content } = req.body;
-        const userId = req.user.userId;
+        const userId = req.auth?.userId;
 
         // Validate required fields
         if (!platforms || platforms.length === 0) {
@@ -73,7 +73,7 @@ exports.publishNow = async (req, res) => {
 // Get platform status (for checking if platforms are connected)
 exports.getPlatformStatus = async (req, res) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.auth?.userId;
         
         // Simple platform status check
         const platforms = ['linkedin', 'twitter', 'instagram'];
@@ -90,6 +90,67 @@ exports.getPlatformStatus = async (req, res) => {
                         canPost: testResult.canPost,
                         user: testResult.user
                     };
+                } else if (platform === 'twitter') {
+                    // Test Twitter connection - look for any valid Twitter token
+                    try {
+                        // First try to find by userId (if user is authenticated)
+                        let tokenDoc = null;
+                        if (userId) {
+                            tokenDoc = await findToken({ userId });
+                        }
+                        
+                        // Production: only use user-specific tokens
+                        if (!tokenDoc) {
+                            console.log('[Platform Status] No Twitter token found for user:', userId);
+                            status[platform] = {
+                                connected: false,
+                                canPost: false,
+                                message: 'No Twitter account connected. Please connect your Twitter account first via OAuth.'
+                            };
+                            continue; // Skip to next platform
+                        }
+                        
+                        if (tokenDoc) {
+                            // Test if the token is valid by trying to get the handle
+                            try {
+                                const identifier = { userId: tokenDoc.userId };
+                                
+                                const handle = await getTwitterHandle(identifier);
+                                const accessToken = await getValidAccessToken(identifier);
+                                
+                                status[platform] = {
+                                    connected: true,
+                                    canPost: true,
+                                    user: {
+                                        twitterUserId: tokenDoc.twitterUserId,
+                                        handle: handle || tokenDoc.handle,
+                                        name: tokenDoc.name
+                                    }
+                                };
+                            } catch (tokenError) {
+                                console.warn('Twitter token validation failed:', tokenError.message);
+                                status[platform] = {
+                                    connected: false,
+                                    canPost: false,
+                                    error: 'Token validation failed',
+                                    message: 'Please reconnect your Twitter account'
+                                };
+                            }
+                        } else {
+                            status[platform] = {
+                                connected: false,
+                                canPost: false,
+                                message: 'No Twitter account connected. Please connect your Twitter account first via OAuth.'
+                            };
+                        }
+                    } catch (twitterError) {
+                        console.error('Twitter status check failed:', twitterError);
+                        status[platform] = {
+                            connected: false,
+                            canPost: false,
+                            error: twitterError.message
+                        };
+                    }
                 } else {
                     // Other platforms not implemented yet
                     status[platform] = {

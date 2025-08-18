@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
+const rateLimit = require("express-rate-limit");
 const stripeWebhook = require("./webhooks/stripeWebhook");
 const authRoutes = require("./routes/auth");
 const publisherRoutes = require("./routes/publisher");
@@ -24,6 +25,20 @@ mongoose.connect(process.env.MONGODB_URI)
 
 const app = express();
 
+// Rate limiting for production security
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: {
+    error: 'Too many requests from this IP, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to all routes
+app.use(limiter);
+
 // Important: Stripe webhook route must come BEFORE express.json middleware
 app.use("/webhook", stripeWebhook);
 
@@ -44,8 +59,7 @@ app.use((req, res, next) => {
   if (req.path === '/' || 
       req.path === '/ping' || 
       req.path.startsWith('/webhook') ||
-      req.path.startsWith('/oauth2/') ||
-      req.path.startsWith('/api/publisher/twitter/')) {
+      req.path.startsWith('/oauth2/')) {
     console.log(`✅ Skipping Clerk auth for path: ${req.path}`);
     return next();
   }
@@ -61,6 +75,10 @@ app.use(googleAuthRoutes);
 // Mount Twitter Auth routes
 const twitterAuthRoutes = require('./routes/twitterAuth');
 app.use(twitterAuthRoutes);
+
+// Mount LinkedIn Auth routes
+const linkedinAuthRoutes = require('./routes/linkedinAuth');
+app.use(linkedinAuthRoutes);
 
 // Mount auth routes
 app.use("/api/auth", authRoutes);

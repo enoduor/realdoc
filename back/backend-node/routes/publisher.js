@@ -7,17 +7,58 @@ const {
 } = require('../controllers/publisherController');
 const platformPublisher = require('../services/platformPublisher');
 
-// Test endpoint - no auth required (for development testing)
+// Test endpoint for LinkedIn status - no auth required (for direct OAuth flow)
 router.get('/test-linkedin', async (req, res) => {
     try {
-        const LinkedInService = require('../services/linkedinService');
-        const linkedinService = new LinkedInService();
-        const testResult = await linkedinService.testConnection();
+        const LinkedInToken = require('../models/LinkedInToken');
+        const { findLinkedInToken, getLinkedInProfile } = require('../services/linkedinUserService');
         
-        res.json({
-            success: true,
-            linkedin: testResult
+        // Look for any valid LinkedIn token
+        let tokenDoc = await LinkedInToken.findOne({ 
+            linkedinUserId: { $exists: true, $ne: null } 
         });
+        
+        if (tokenDoc) {
+            // Test if the token is valid
+            try {
+                const identifier = { linkedinUserId: tokenDoc.linkedinUserId };
+                const profile = await getLinkedInProfile(identifier);
+                
+                res.json({
+                    success: true,
+                    linkedin: {
+                        connected: true,
+                        canPost: true,
+                        user: {
+                            linkedinUserId: tokenDoc.linkedinUserId,
+                            firstName: tokenDoc.firstName,
+                            lastName: tokenDoc.lastName,
+                            fullName: profile.fullName
+                        }
+                    }
+                });
+            } catch (tokenError) {
+                console.warn('LinkedIn token validation failed:', tokenError.message);
+                res.json({
+                    success: false,
+                    linkedin: {
+                        connected: false,
+                        canPost: false,
+                        error: 'Token validation failed',
+                        message: 'Please reconnect your LinkedIn account'
+                    }
+                });
+            }
+        } else {
+            res.json({
+                success: false,
+                linkedin: {
+                    connected: false,
+                    canPost: false,
+                    message: 'No LinkedIn account connected. Please connect your LinkedIn account first via OAuth.'
+                }
+            });
+        }
     } catch (error) {
         console.error('LinkedIn test error:', error);
         res.status(500).json({
@@ -27,22 +68,23 @@ router.get('/test-linkedin', async (req, res) => {
     }
 });
 
-// Twitter-specific publish endpoint - uses twitterUserId authentication (no Clerk)
-router.post('/twitter/publish', async (req, res) => {
+// Twitter-specific publish endpoint - requires Clerk authentication
+router.post('/twitter/publish', ClerkExpressRequireAuth(), async (req, res) => {
   try {
-    const { content, twitterUserId } = req.body;
+    const { content } = req.body;
+    const userId = req.auth.userId;
     
     if (!content) {
       return res.status(400).json({ success: false, message: 'Content required' });
     }
-    if (!twitterUserId) {
-      return res.status(400).json({ success: false, message: 'twitterUserId required for Twitter publishing' });
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'User authentication required' });
     }
 
-    console.log(`🚀 Publishing to Twitter with separated flow (twitterUserId: ${twitterUserId})...`);
+    console.log(`🚀 Publishing to Twitter for user: ${userId}...`);
     
     try {
-      const result = await platformPublisher.publishToPlatform('twitter', { ...content, twitterUserId });
+      const result = await platformPublisher.publishToPlatform('twitter', { ...content, userId });
       return res.json({
         success: true,
         platform: 'twitter',
@@ -63,19 +105,38 @@ router.post('/twitter/publish', async (req, res) => {
   }
 });
 
-// LinkedIn-specific publish endpoint - uses LinkedIn token (no Clerk)
-router.post('/linkedin/publish', async (req, res) => {
+// LinkedIn-specific publish endpoint - requires user authentication
+router.post('/linkedin/publish', ClerkExpressRequireAuth(), async (req, res) => {
   try {
     const { content } = req.body;
+    const userId = req.auth.userId;
     
     if (!content) {
       return res.status(400).json({ success: false, message: 'Content required' });
     }
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'User authentication required' });
+    }
 
-    console.log(`🚀 Publishing to LinkedIn with separated flow...`);
+    // Find the specific user's LinkedIn token
+    const LinkedInToken = require('../models/LinkedInToken');
+    const linkedinToken = await LinkedInToken.findOne({ userId: userId });
+    
+    if (!linkedinToken) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No LinkedIn account connected for this user. Please connect your LinkedIn account first via OAuth.' 
+      });
+    }
+
+    console.log(`🚀 Publishing to LinkedIn for user: ${userId} with linkedinUserId: ${linkedinToken.linkedinUserId}...`);
     
     try {
-      const result = await platformPublisher.publishToPlatform('linkedin', content);
+      const result = await platformPublisher.publishToPlatform('linkedin', { 
+        ...content, 
+        userId: userId,
+        linkedinUserId: linkedinToken.linkedinUserId 
+      });
       return res.json({
         success: true,
         platform: 'linkedin',

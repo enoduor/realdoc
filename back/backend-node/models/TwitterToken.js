@@ -1,27 +1,29 @@
-/* back/backend-node/models/TwitterToken.js */
 const mongoose = require('mongoose');
 
 const TwitterTokenSchema = new mongoose.Schema(
   {
-    // OPTIONAL: your app user id (string if using Clerk IDs)
-    userId: { type: String, index: true },
+    userId: { type: String, default: null }, // optional app user id
+    twitterUserId: { type: String, index: true, required: true, unique: true },
 
-    // REQUIRED for publish when Clerk is separated
-    twitterUserId: { type: String, required: true, unique: true },
+    handle: String,
+    name: String,
 
-    // Nice-to-have identity fields
-    handle: { type: String, index: true }, // @handle without '@'
-    name: { type: String },
-
-    // OAuth2 tokens
     accessToken: { type: String, required: true },
-    refreshToken: { type: String, required: true }, // rotates!
+    refreshToken: { type: String, required: true },
     tokenType: { type: String, default: 'bearer' },
-    scope: { type: String }, // space-delimited
-    expiresAt: { type: Date, required: true },
+    scope: { type: String, default: 'tweet.write users.read tweet.read offline.access' },
+
     provider: { type: String, default: 'twitter' },
+
+    expiresAt: { type: Date, required: true },
   },
-  { timestamps: true }
+  {
+    timestamps: true, // creates createdAt / updatedAt automatically
+  }
 );
+
+// helpful compound index for lookups by either id
+TwitterTokenSchema.index({ twitterUserId: 1 }, { unique: true });
+TwitterTokenSchema.index({ userId: 1 });
 
 module.exports = mongoose.model('TwitterToken', TwitterTokenSchema);

@@ -3,7 +3,7 @@ const User = require('../models/User');
 // Middleware to check if user has active subscription
 const requireSubscription = async (req, res, next) => {
   try {
-    const clerkUserId = req.user.userId;
+    const clerkUserId = req.auth?.userId;
     const user = await User.findOne({ clerkUserId });
 
     if (!user) {
@@ -31,7 +31,7 @@ const requireSubscription = async (req, res, next) => {
 // Middleware to check if user can create posts
 const requirePostingAccess = async (req, res, next) => {
   try {
-    const clerkUserId = req.user.userId;
+    const clerkUserId = req.auth?.userId;
     const user = await User.findOne({ clerkUserId });
 
     if (!user) {
@@ -60,7 +60,7 @@ const requirePostingAccess = async (req, res, next) => {
 const requireFeatureAccess = (feature) => {
   return async (req, res, next) => {
     try {
-      const clerkUserId = req.user.userId;
+      const clerkUserId = req.auth?.userId;
       const user = await User.findOne({ clerkUserId });
 
       if (!user) {
@@ -98,7 +98,7 @@ const requireFeatureAccess = (feature) => {
 // Middleware to check account limits
 const checkAccountLimits = async (req, res, next) => {
   try {
-    const clerkUserId = req.user.userId;
+    const clerkUserId = req.auth?.userId;
     const user = await User.findOne({ clerkUserId });
 
     if (!user) {
@@ -128,7 +128,7 @@ const checkAccountLimits = async (req, res, next) => {
 // Middleware to check file size limits
 const checkFileSizeLimits = async (req, res, next) => {
   try {
-    const clerkUserId = req.user.userId;
+    const clerkUserId = req.auth?.userId;
     const user = await User.findOne({ clerkUserId });
 
     if (!user) {
@@ -161,7 +161,7 @@ const checkFileSizeLimits = async (req, res, next) => {
 // Middleware to get subscription info (no restrictions)
 const getSubscriptionInfo = async (req, res, next) => {
   try {
-    const clerkUserId = req.user.userId;
+    const clerkUserId = req.auth?.userId;
     const user = await User.findOne({ clerkUserId });
 
     if (!user) {

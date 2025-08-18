@@ -89,44 +89,35 @@ class PlatformPublisher {
       switch (platform) {
         // ------------ LINKEDIN ------------
         case 'linkedin': {
-          if (!this.linkedinService || !this.linkedinService.accessToken) {
-            throw new Error('LinkedIn service not configured');
+          // Accept either linkedinUserId (preferred) or userId (legacy)
+          const { linkedinUserId, userId, caption, text } = postData || {};
+          const identifier =
+            linkedinUserId ? { linkedinUserId } :
+            userId ? { userId } :
+            null;
+
+          if (!identifier) {
+            throw new Error('LinkedIn requires linkedinUserId or userId');
           }
 
-          const rawCaption = (postData?.caption ?? '').toString();
-          const captionTags = extractHashtags(rawCaption);          // tags present in caption
-          const caption = cleanCaption(stripHashtags(rawCaption));  // caption without tags, cleaned
+          const { postToLinkedIn } = require('./linkedinUserService');
 
-          const inputTags = Array.isArray(postData?.hashtags) ? postData.hashtags : [];
-          const allTags = dedupeCaseInsensitive([...captionTags, ...inputTags])
-            .map(t => t.replace(/^#+/, '')) // remove leading # for normalization
-            .map(normalizeHashtagCase);     // -> #TagFormat
+          const message = (caption || text || '').trim();
+          if (!message) throw new Error('LinkedIn post text is empty');
 
           const mediaUrl = postData?.mediaUrl || null;
+          const hashtags = Array.isArray(postData?.hashtags) ? postData.hashtags : [];
 
-          console.log('[Publisher][LinkedIn] caption.preview =', caption.slice(0, 140));
-          console.log('[Publisher][LinkedIn] hashtags =', allTags);
+          console.log('[Publisher][LinkedIn] message.preview =', message.slice(0, 140));
+          console.log('[Publisher][LinkedIn] hashtags =', hashtags);
 
-          const result = await this.linkedinService.createPost(
-            caption,   // message only (no inline hashtags)
-            mediaUrl,
-            {
-              ensureUnique: postData?.ensureUnique !== false,
-              hashtags: allTags // service formats to "#Tag" tokens in one block
-            }
-          );
-
-          if (!result.success) throw new Error(result.error);
-
-          const linkedinPermalinkFromUrn = urn =>
-            urn ? `https://www.linkedin.com/feed/update/${encodeURIComponent(urn)}` : null;
+          const result = await postToLinkedIn(identifier, message, mediaUrl, hashtags);
 
           return {
             success: true,
             platform,
             postId: result.postId,
-            url: linkedinPermalinkFromUrn(result.postId),
-            version: result.version,
+            url: result.url,
             message: result.message
           };
         }
@@ -164,16 +155,14 @@ class PlatformPublisher {
 
         // ------------ TWITTER ------------
         case 'twitter': {
-          // Accept either twitterUserId (preferred) or userId (legacy)
-          const { twitterUserId, userId, caption, text } = postData || {};
-          const identifier =
-            twitterUserId ? { twitterUserId } :
-            userId ? { userId } :
-            null;
-
-          if (!identifier) {
-            throw new Error('Twitter requires twitterUserId or userId');
+          // Production: require userId for user-specific tokens
+          const { userId, caption, text } = postData || {};
+          
+          if (!userId) {
+            throw new Error('Twitter requires authenticated userId');
           }
+
+          const identifier = { userId };
 
           const tweetText = (caption || text || '').trim();
           if (!tweetText) throw new Error('Tweet text is empty');
@@ -344,8 +333,6 @@ class PlatformPublisher {
 
   // ===== Bulk publish; also normalizes body shape =====
   async publishToMultiplePlatforms(platforms, postDataRaw) {
-    // Accept both shapes:
-    // { platforms, content:{...}, refreshToken }  OR  { caption, mediaUrl, ..., refreshToken }
     const { refreshToken, content, ...rest } = postDataRaw || {};
     const normalized = { ...(content || {}), ...rest };
     if (refreshToken && !normalized.refreshToken) normalized.refreshToken = refreshToken;

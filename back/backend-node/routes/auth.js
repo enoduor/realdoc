@@ -129,7 +129,7 @@ router.post("/create-clerk-user", ClerkExpressRequireAuth(), async (req, res) =>
     const firstName = req.auth.firstName;
     const lastName = req.auth.lastName;
 
-    console.log(`🔗 Creating/linking Clerk user: ${clerkUserId} (${userEmail})`);
+    console.log(`🔗 Creating/linking Clerk user: ${clerkUserId} (${userEmail || 'no email'})`);
     console.log('🔍 Full req.auth object:', JSON.stringify(req.auth, null, 2));
 
     // Check if user already exists with this Clerk ID

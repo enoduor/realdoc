@@ -1,104 +1,108 @@
-/* back/backend-node/services/twitterService.js */
+/* eslint-disable no-console */
 const axios = require('axios');
+const { TwitterApi } = require('twitter-api-v2');
 const TwitterToken = require('../models/TwitterToken');
 
-function isExpiringSoon(expiresAt, bufferMs = 5 * 60 * 1000) {
-  return !expiresAt || new Date(expiresAt).getTime() <= (Date.now() + bufferMs);
-}
+const {
+  TWITTER_CLIENT_ID,
+  TWITTER_CLIENT_SECRET,
+} = process.env;
 
-/** Find a token doc by either { twitterUserId } or { userId } (prefers twitterUserId). */
+/**
+ * Find a token doc by { twitterUserId } or { userId }
+ */
 async function findToken(identifier = {}) {
-  const { twitterUserId, userId } = identifier || {};
-  if (twitterUserId) return TwitterToken.findOne({ twitterUserId });
-  if (userId) return TwitterToken.findOne({ userId });
+  if (identifier.twitterUserId) {
+    return TwitterToken.findOne({ twitterUserId: identifier.twitterUserId });
+  }
+  if (identifier.userId) {
+    return TwitterToken.findOne({ userId: identifier.userId, twitterUserId: { $exists: true } });
+  }
   return null;
 }
 
-async function refreshAccessToken(identifier) {
-  const doc = await findToken(identifier);
-  if (!doc || !doc.refreshToken) throw new Error('No stored Twitter refresh token');
-
-  const clientId = process.env.TWITTER_CLIENT_ID;
-  const clientSecret = process.env.TWITTER_CLIENT_SECRET;
-  if (!clientId || !clientSecret) throw new Error('Twitter client credentials missing');
-
-  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-
-  const resp = await axios.post(
-    'https://api.x.com/2/oauth2/token',
-    new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: doc.refreshToken,
-    }),
-    {
-      headers: {
-        Authorization: `Basic ${basicAuth}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      timeout: 15000,
-    }
-  );
-
-  const { access_token, refresh_token, expires_in, token_type, scope, error } = resp.data;
-  if (error === 'invalid_grant') {
-    const err = new Error('TWITTER_REVOKED');
-    err.status = 401;
-    throw err;
-  }
-
-  // rotate + save
-  doc.accessToken = access_token;
-  doc.refreshToken = refresh_token || doc.refreshToken;
-  doc.tokenType = token_type || doc.tokenType || 'bearer';
-  doc.scope = scope || doc.scope;
-  doc.expiresAt = new Date(Date.now() + Number(expires_in || 7200) * 1000);
-  await doc.save();
-
-  return doc.accessToken;
-}
-
+/**
+ * Returns a valid access token, refreshing if expired (or within 2 minutes).
+ * Persists refreshed tokens back to Mongo in the same shape you showed.
+ */
 async function getValidAccessToken(identifier) {
   const doc = await findToken(identifier);
   if (!doc) throw new Error('Twitter not connected for this user');
 
-  if (isExpiringSoon(doc.expiresAt)) {
-    try {
-      return await refreshAccessToken(identifier);
-    } catch (e) {
-      console.error('[Twitter] refresh failed:', e.response?.data || e.message);
-      return doc.accessToken; // one-time fallback
-    }
-  }
-  return doc.accessToken;
-}
+  const now = Date.now();
+  const expiresAtMs = new Date(doc.expiresAt).getTime();
+  const needsRefresh = !expiresAtMs || (expiresAtMs - now) < 2 * 60 * 1000;
 
-async function getTwitterHandle(identifier) {
-  const doc = await findToken(identifier);
-  return doc?.handle || 'unknown';
-}
+  if (!needsRefresh) return doc.accessToken;
 
-// Post a tweet with auto-refresh + single retry on 401
-async function postTweet(identifier, text) {
-  let token = await getValidAccessToken(identifier);
-
-  const doPost = (bearer) =>
-    axios.post(
-      'https://api.x.com/2/tweets',
-      { text },
-      { headers: { Authorization: `Bearer ${bearer}` }, timeout: 15000 }
-    );
+  // Refresh using OAuth2 PKCE
+  const client = new TwitterApi({
+    clientId: TWITTER_CLIENT_ID,
+    clientSecret: TWITTER_CLIENT_SECRET,
+  });
 
   try {
-    const r = await doPost(token);
-    return r.data;
+    const { accessToken, refreshToken, expiresIn } = await client.refreshOAuth2Token(doc.refreshToken);
+    const newExpiresAt = new Date(Date.now() + expiresIn * 1000);
+
+    // Store back with identical schema/fields
+    doc.accessToken = accessToken;
+    doc.refreshToken = refreshToken || doc.refreshToken;
+    doc.expiresAt = newExpiresAt;
+    doc.tokenType = 'bearer';
+    await doc.save();
+
+    return accessToken;
   } catch (err) {
-    if (err.response?.status === 401) {
-      token = await refreshAccessToken(identifier);
-      const r2 = await doPost(token);
-      return r2.data;
-    }
-    throw err;
+    console.error('[Twitter] Token refresh failed:', err.response?.data || err.message);
+    throw new Error('Twitter token refresh failed');
   }
 }
 
-module.exports = { findToken, getValidAccessToken, refreshAccessToken, postTweet, getTwitterHandle };
+/**
+ * Resolve @handle (and cache)
+ */
+async function getTwitterHandle(identifier) {
+  const doc = await findToken(identifier);
+  if (!doc) throw new Error('Twitter not connected for this user');
+  if (doc.handle) return doc.handle;
+
+  const accessToken = await getValidAccessToken(identifier);
+  const userClient = new TwitterApi(accessToken);
+  const me = await userClient.v2.me();
+  const handle = me?.data?.username;
+
+  if (handle) {
+    doc.handle = handle;
+    doc.name = me?.data?.name || doc.name;
+    await doc.save();
+  }
+  return handle || null;
+}
+
+/**
+ * Post a tweet (X API v2)
+ */
+async function postTweet(identifier, text) {
+  const accessToken = await getValidAccessToken(identifier);
+  const url = 'https://api.twitter.com/2/tweets';
+  const payload = { text: String(text || '').trim() };
+
+  const { data } = await axios.post(url, payload, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    timeout: 15000,
+  });
+
+  // data: { data: { id, text } }
+  return data;
+}
+
+module.exports = {
+  findToken,
+  getValidAccessToken,
+  getTwitterHandle,
+  postTweet,
+};
