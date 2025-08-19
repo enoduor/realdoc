@@ -168,12 +168,21 @@ class PlatformPublisher {
           if (!tweetText) throw new Error('Tweet text is empty');
 
           const result = await postTweet(identifier, tweetText);
-          // X returns { data: { id, text } }
+          // Twitter API returns { data: { id, text } }
+          const tweetId = result?.data?.id;
+          
+          if (!tweetId) {
+            throw new Error('Failed to get tweet ID from Twitter API response');
+          }
+          
+          const twitterUrl = `https://twitter.com/i/status/${tweetId}`;
+          console.log(`[Twitter] Generated URL: ${twitterUrl}`);
+          
           return {
             success: true,
             platform,
-            postId: result?.data?.id || result?.id,
-            url: `https://twitter.com/user/status/${result?.data?.id || result?.id}`,
+            postId: tweetId,
+            url: twitterUrl,
             message: 'Successfully published to Twitter'
           };
         }

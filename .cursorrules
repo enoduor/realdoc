@@ -1,0 +1,119 @@
+# CreatorSync Cursor Rules
+
+## Project Context
+
+### CreatorSync Application Overview
+CreatorSync is a multi-platform social media publishing application that allows users to create, preview, and publish content across multiple social media platforms from a single interface.
+
+### Architecture
+- **Frontend**: React.js with Clerk authentication
+- **Backend**: Node.js with Express.js
+- **Database**: MongoDB Atlas
+- **AI Services**: Python FastAPI backend for caption/hashtag generation
+- **Authentication**: Clerk for user management
+- **File Storage**: AWS S3 for media uploads
+
+### Key Components
+- **Platform Publisher**: Multi-platform content creation and publishing
+- **OAuth Integration**: Twitter and LinkedIn authentication
+- **Content Generation**: AI-powered captions and hashtags
+- **Media Management**: Image/video upload and processing
+- **Scheduling**: Post scheduling functionality (planned)
+
+### Current Status
+- **LinkedIn**: ✅ Fully working - OAuth, publishing, URL generation
+- **Twitter**: 🔧 In development - OAuth working, publishing needs testing
+- **Other Platforms**: 📋 Planned (Instagram, Facebook, TikTok, YouTube)
+
+### File Structure
+```
+creatorsync/
+├── back/
+│   └── backend-node/
+│       ├── routes/
+│       │   ├── linkedinAuth.js     # LinkedIn OAuth (WORKING - DON'T TOUCH)
+│       │   ├── twitterAuth.js      # Twitter OAuth (SAFE TO MODIFY)
+│       │   └── publisher.js        # Publishing endpoints
+│       ├── services/
+│       │   ├── linkedinUserService.js  # LinkedIn publishing (WORKING - DON'T TOUCH)
+│       │   ├── twitterService.js       # Twitter publishing (SAFE TO MODIFY)
+│       │   └── platformPublisher.js    # Multi-platform publisher
+│       └── models/
+│           ├── LinkedInToken.js    # LinkedIn tokens (WORKING - DON'T TOUCH)
+│           └── TwitterToken.js     # Twitter tokens (SAFE TO MODIFY)
+├── frontend/
+│   └── src/
+│       ├── components/
+│       │   └── PlatformPreviewPanel.jsx  # Main publishing UI
+│       └── api/
+│           └── index.js            # API integration
+└── back/backend-python/            # AI services for captions/hashtags
+```
+
+### Development Workflow
+1. **Feature Branch**: Always work on `feature/twitter-posting` branch
+2. **Platform Focus**: Work on one platform at a time
+3. **Testing**: Test thoroughly before committing
+4. **Merge**: Merge to main only when stable
+
+## Platform Isolation Rules
+
+### CRITICAL: When working on one platform, DO NOT modify others
+
+**LinkedIn Platform - OFF LIMITS (Working Perfectly):**
+- DO NOT modify `back/backend-node/routes/linkedinAuth.js`
+- DO NOT modify `back/backend-node/services/linkedinUserService.js`
+- DO NOT modify `back/backend-node/models/LinkedInToken.js`
+- DO NOT modify LinkedIn-related parts of `platformPublisher.js`
+- DO NOT modify LinkedIn publishing routes
+- LinkedIn is working perfectly - LEAVE IT ALONE
+
+**Twitter Platform - Safe to Modify:**
+- Safe to modify `back/backend-node/routes/twitterAuth.js`
+- Safe to modify `back/backend-node/services/twitterService.js`
+- Safe to modify `back/backend-node/models/TwitterToken.js`
+- Safe to modify Twitter-related parts of `platformPublisher.js`
+
+**Frontend Components - Multi-platform Safe:**
+- Safe to modify `frontend/src/components/PlatformPreviewPanel.jsx` (UI improvements)
+- Safe to modify `frontend/src/api/index.js` (API integration)
+- Safe to modify other frontend components
+
+### General Rules
+
+1. **Always check which platform you're working on before making changes**
+2. **If a platform is working, do not touch its files**
+3. **Test thoroughly before committing changes**
+4. **Focus on one platform at a time**
+5. **Document any changes made**
+
+### File Modification Guidelines
+
+**Before modifying any file:**
+1. Identify which platform the file belongs to
+2. Check if that platform is currently working
+3. If working, DO NOT modify
+4. If not working or needs improvement, proceed carefully
+
+**When working on Twitter:**
+- Focus only on Twitter-related files
+- Do not touch LinkedIn files
+- Test Twitter functionality thoroughly
+
+**When working on LinkedIn:**
+- DO NOT touch LinkedIn files (they work perfectly)
+- Focus on other platforms or general improvements
+
+### Testing Requirements
+
+1. **Always test the platform you're modifying**
+2. **Verify other platforms still work after changes**
+3. **Run the app and test publishing functionality**
+4. **Check for any breaking changes**
+
+### Commit Guidelines
+
+1. **Clear commit messages indicating which platform was modified**
+2. **Test before committing**
+3. **Document any API changes**
+4. **Update documentation if needed**
