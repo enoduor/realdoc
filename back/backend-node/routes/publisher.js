@@ -105,6 +105,43 @@ router.post('/twitter/publish', ClerkExpressRequireAuth(), async (req, res) => {
   }
 });
 
+// YouTube-specific publish endpoint - requires Clerk authentication
+router.post('/youtube/publish', ClerkExpressRequireAuth(), async (req, res) => {
+  try {
+    const { content } = req.body;
+    const userId = req.auth.userId;
+    
+    if (!content) {
+      return res.status(400).json({ success: false, message: 'Content required' });
+    }
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'User authentication required' });
+    }
+
+    console.log(`🚀 Publishing to YouTube for user: ${userId}...`);
+    
+    try {
+      const result = await platformPublisher.publishToPlatform('youtube', { ...content, userId });
+      return res.json({
+        success: true,
+        platform: 'youtube',
+        result
+      });
+    } catch (error) {
+      console.error(`❌ Failed to publish to YouTube:`, error.message);
+      return res.status(500).json({ 
+        success: false, 
+        platform: 'youtube',
+        error: error.message 
+      });
+    }
+
+  } catch (error) {
+    console.error('Error publishing to YouTube:', error);
+    return res.status(500).json({ success: false, message: 'Failed to publish to YouTube', error: error.message });
+  }
+});
+
 // LinkedIn-specific publish endpoint - requires user authentication
 router.post('/linkedin/publish', ClerkExpressRequireAuth(), async (req, res) => {
   try {
