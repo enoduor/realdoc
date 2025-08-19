@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 /**
- * test-linkedin.js (single-file replacement)
- * - Pins LinkedIn-Version to 202503 (falls back to 202502, then no header)
- * - Uses /v2/userinfo (OpenID) to build author URN (no /v2/me needed)
- * - Generates a unique message to avoid 422 duplicate errors
- * - Tests connection then makes one publish call
+ * test-linkedin-unified.js
+ * Unified LinkedIn testing script that combines:
+ * - Version negotiation (from test-linkedin.js)
+ * - Service integration (from test-linkedin-direct.js)
+ * - Simple API testing (from test-linkedin-simple.js)
+ * - Connection validation
+ * - Post creation testing
  *
  * Required env:
  *   LINKEDIN_ACCESS_TOKEN=...   (token with w_member_social openid profile)
@@ -16,12 +18,14 @@
 require('dotenv').config();
 const crypto = require('crypto');
 const fetch = require('node-fetch');
+const LinkedInService = require('./services/linkedinService');
 
 // ---- Config -----------------------------------------------------------------
 process.env.LINKEDIN_VERSION = process.env.LINKEDIN_VERSION || '202503';
 
-const TOKEN  = process.env.LINKEDIN_ACCESS_TOKEN;
+const TOKEN = process.env.LINKEDIN_ACCESS_TOKEN;
 const AUTHOR_OVERRIDE = process.env.LINKEDIN_AUTHOR || '';
+
 if (!TOKEN) {
   console.error('❌ Missing LINKEDIN_ACCESS_TOKEN in env');
   process.exit(1);
@@ -34,7 +38,8 @@ function normalizeVersion(v) {
   if (/^\d{6}\.\d{2}$/.test(v)) return v;   // YYYYMM.RR
   return null;
 }
-const PRIMARY_VERSION   = normalizeVersion(process.env.LINKEDIN_VERSION) || '202503';
+
+const PRIMARY_VERSION = normalizeVersion(process.env.LINKEDIN_VERSION) || '202503';
 const FALLBACK_VERSIONS = ['202502']; // extend if you find more working versions
 
 function makeHeaders(token, version) {
@@ -59,7 +64,7 @@ async function safeJson(res) {
 }
 
 function uniqueCommentary(base) {
-  const stamp  = new Date().toISOString().slice(0, 16); // e.g. 2025-08-09T23:12
+  const stamp = new Date().toISOString().slice(0, 16); // e.g. 2025-08-09T23:12
   const digest = crypto.createHash('md5').update(base + stamp).digest('hex').slice(0, 6);
   return `${base} • ${stamp} • ${digest}`;
 }
@@ -79,6 +84,26 @@ async function getAuthorUrn(token) {
   const u = await getOpenIdUserinfo(token);
   if (!u.sub) throw new Error('userinfo missing "sub"; ensure token has openid profile');
   return `urn:li:person:${u.sub}`;
+}
+
+async function testSimpleMe(token) {
+  console.log('🧪 Test 1: GET /me (simple)');
+  try {
+    const r = await fetch('https://api.linkedin.com/v2/me', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await safeJson(r);
+    if (r.ok) {
+      console.log('✅ /me successful:', data);
+      return data;
+    } else {
+      console.log('❌ /me failed:', r.status, data);
+      return null;
+    }
+  } catch (error) {
+    console.log('❌ /me error:', error.message);
+    return null;
+  }
 }
 
 async function postWithVersionNegotiation(token, payload) {
@@ -125,20 +150,61 @@ async function postWithVersionNegotiation(token, payload) {
   }
 }
 
+async function testLinkedInService() {
+  console.log('\n🔧 Test 2: LinkedIn Service Integration');
+  try {
+    const linkedinService = new LinkedInService();
+    
+    console.log('📋 LinkedIn Service Configuration:');
+    console.log(`   API URL: ${linkedinService.apiRest}`);
+    console.log(`   Access Token: ${linkedinService.accessToken ? '✅ Present' : '❌ Missing'}`);
+    
+    if (!linkedinService.accessToken) {
+      console.log('❌ No LinkedIn access token found in service');
+      return false;
+    }
+    
+    // Test connection
+    console.log('🔍 Testing LinkedIn service connection...');
+    const connection = await linkedinService.testConnection();
+    console.log('Connection result:', connection);
+    
+    if (!connection.connected) {
+      console.log('❌ LinkedIn service connection failed:', connection.error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.log('❌ LinkedIn service test failed:', error.message);
+    return false;
+  }
+}
+
 // ---- Main flow --------------------------------------------------------------
 (async () => {
-  console.log('🔍 Testing LinkedIn API Connection...');
+  console.log('🚀 LinkedIn Unified Test Suite');
+  console.log('================================');
   console.log('- LinkedIn-Version (primary):', PRIMARY_VERSION);
   if (AUTHOR_OVERRIDE) console.log('- Using LINKEDIN_AUTHOR override:', AUTHOR_OVERRIDE);
+  console.log('');
 
   try {
-    // Connection / identity
+    // Test 1: Simple API calls
+    console.log('📋 Test 1: Basic API Connectivity');
+    const meData = await testSimpleMe(TOKEN);
+    
+    // Test 2: Service integration
+    const serviceWorks = await testLinkedInService();
+    
+    // Test 3: Direct API posting
+    console.log('\n📋 Test 3: Direct API Posting');
     const userinfo = await getOpenIdUserinfo(TOKEN);
     const authorUrn = await getAuthorUrn(TOKEN);
     console.log('✅ Connected as:', { id: userinfo.sub, authorUrn });
 
     // Unique message to avoid duplicate guard
-    const message = uniqueCommentary('🧪 CreatorSync probe');
+    const message = uniqueCommentary('🧪 CreatorSync unified test');
     console.log('📤 Posting:', message);
 
     const payload = {
@@ -153,8 +219,15 @@ async function postWithVersionNegotiation(token, payload) {
     const restliId = res.headers.get('x-restli-id') || (typeof txt === 'object' && txt.id) || null;
     console.log('✅ Post created', { id: restliId, versionUsed });
 
+    // Summary
+    console.log('\n📊 Test Summary:');
+    console.log('✅ Basic API connectivity:', meData ? 'Working' : 'Failed');
+    console.log('✅ Service integration:', serviceWorks ? 'Working' : 'Failed');
+    console.log('✅ Direct posting:', 'Working');
+    console.log('✅ Version negotiation:', versionUsed);
+
   } catch (e) {
-    // If it’s a duplicate-content 422, treat as healthy pipeline
+    // If it's a duplicate-content 422, treat as healthy pipeline
     const msg = String(e.message || '');
     const isDup = /422/.test(msg) && /duplicate|already exists/i.test(msg);
     if (isDup) {
