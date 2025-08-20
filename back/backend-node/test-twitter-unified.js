@@ -187,7 +187,7 @@ async function testTwitterOAuth() {
   console.log('\n🔍 Test 5: Twitter OAuth Configuration...');
   console.log('- TWITTER_CLIENT_ID:', process.env.TWITTER_CLIENT_ID ? 'Set' : 'Missing');
   console.log('- TWITTER_CLIENT_SECRET:', process.env.TWITTER_CLIENT_SECRET ? 'Set' : 'Missing');
-  console.log('- TWITTER_REDIRECT_URI:', process.env.TWITTER_REDIRECT_URI || 'http://localhost:4001/oauth2/callback/twitter');
+  console.log('- TWITTER_REDIRECT_URI:', process.env.TWITTER_REDIRECT_URI || 'http://localhost:4001/oauth/callback/twitter');
 
   if (!process.env.TWITTER_CLIENT_ID || !process.env.TWITTER_CLIENT_SECRET) {
     return { success: false, reason: 'Missing OAuth credentials' };

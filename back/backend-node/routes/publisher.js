@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 const router = express.Router();
 const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
 const {
@@ -6,6 +7,10 @@ const {
     getPlatformStatus
 } = require('../controllers/publisherController');
 const platformPublisher = require('../services/platformPublisher');
+const { uploadVideo, publishVideo } = require('../services/tiktokService');
+
+// Configure multer for memory storage
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Test endpoint for LinkedIn status - no auth required (for direct OAuth flow)
 router.get('/test-linkedin', async (req, res) => {
@@ -194,8 +199,102 @@ router.post('/linkedin/publish', ClerkExpressRequireAuth(), async (req, res) => 
   }
 });
 
+// Test TikTok route - no auth required
+router.post('/tiktok/test', async (req, res) => {
+  res.json({ success: true, message: 'TikTok test route working' });
+});
+
+// TikTok-specific publish endpoint - requires Clerk authentication
+router.post('/tiktok/publish', ClerkExpressRequireAuth(), async (req, res) => {
+  try {
+    const { content } = req.body;
+    const userId = req.auth.userId;
+    
+    if (!content) {
+      return res.status(400).json({ success: false, message: 'Content required' });
+    }
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'User authentication required' });
+    }
+
+    console.log(`🚀 Publishing to TikTok for user: ${userId}...`);
+    
+    try {
+      const result = await platformPublisher.publishToPlatform('tiktok', { ...content, userId });
+      return res.json({
+        success: true,
+        platform: 'tiktok',
+        result
+      });
+    } catch (error) {
+      console.error(`❌ Failed to publish to TikTok:`, error.message);
+      return res.status(500).json({ 
+        success: false, 
+        platform: 'tiktok',
+        error: error.message 
+      });
+    }
+
+  } catch (error) {
+    console.error('Error publishing to TikTok:', error);
+    return res.status(500).json({ success: false, message: 'Failed to publish to TikTok', error: error.message });
+  }
+});
+
 // General publish endpoint - requires Clerk authentication
 router.post('/publish', ClerkExpressRequireAuth(), publishNow);
+
+// Twitter-specific publish endpoint - requires user authentication
+router.post('/twitter/publish', ClerkExpressRequireAuth(), async (req, res) => {
+  try {
+    const { content } = req.body;
+    const userId = req.auth.userId;
+    
+    if (!content) {
+      return res.status(400).json({ success: false, message: 'Content required' });
+    }
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'User authentication required' });
+    }
+
+    // Find the specific user's Twitter token (like LinkedIn does)
+    const TwitterToken = require('../models/TwitterToken');
+    const twitterToken = await TwitterToken.findOne({ userId: userId });
+    
+    if (!twitterToken) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No Twitter account connected for this user. Please connect your Twitter account first via OAuth.' 
+      });
+    }
+
+    console.log(`🚀 Publishing to Twitter for user: ${userId} with twitterUserId: ${twitterToken.twitterUserId}...`);
+    
+    try {
+      const result = await platformPublisher.publishToPlatform('twitter', { 
+        ...content, 
+        userId: userId,
+        twitterUserId: twitterToken.twitterUserId 
+      });
+      return res.json({
+        success: true,
+        platform: 'twitter',
+        result
+      });
+    } catch (error) {
+      console.error(`❌ Failed to publish to Twitter:`, error.message);
+      return res.status(500).json({ 
+        success: false, 
+        platform: 'twitter',
+        error: error.message 
+      });
+    }
+
+  } catch (error) {
+    console.error('Error publishing to Twitter:', error);
+    return res.status(500).json({ success: false, message: 'Failed to publish to Twitter', error: error.message });
+  }
+});
 
 // Get platform connection status - requires Clerk authentication
 router.get('/platforms/status', ClerkExpressRequireAuth(), getPlatformStatus);

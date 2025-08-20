@@ -58,12 +58,51 @@ async function postToLinkedIn(identifier, message, mediaUrl = null, hashtags = [
   // Format hashtags
   const hashtagString = hashtags.length > 0 ? '\n\n' + hashtags.map(tag => `#${tag.replace(/^#/, '')}`).join(' ') : '';
   
-  // Combine message and hashtags
-  const fullMessage = mediaUrl ? `${message}\n\nMedia: ${mediaUrl}${hashtagString}` : `${message}${hashtagString}`;
+  // Add timestamp to prevent duplicate posts
+  const timestamp = new Date().toISOString();
+  const timestampString = `\n\n🕐 Posted at ${new Date().toLocaleString()}`;
+  
+  // Combine message, hashtags, and timestamp
+  const fullMessage = `${message}${hashtagString}${timestampString}`;
+
+  // Detect media type from URL or file extension
+  const getMediaType = (url) => {
+    if (!url) return null;
+    const lowerUrl = url.toLowerCase();
+    
+    // Video formats - comprehensive list
+    const videoExtensions = [
+      '.mp4', '.mov', '.avi', '.webm', '.mkv', '.flv', '.wmv', '.m4v', 
+      '.3gp', '.ogv', '.ts', '.mts', '.m2ts', '.vob', '.asf', '.rm', 
+      '.rmvb', '.divx', '.xvid', '.h264', '.h265', '.hevc', '.vp8', '.vp9'
+    ];
+    
+    // Image formats
+    const imageExtensions = [
+      '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.svg', 
+      '.ico', '.raw', '.cr2', '.nef', '.arw', '.dng'
+    ];
+    
+    // Check for video extensions
+    if (videoExtensions.some(ext => lowerUrl.includes(ext))) {
+      return 'VIDEO';
+    }
+    
+    // Check for image extensions
+    if (imageExtensions.some(ext => lowerUrl.includes(ext))) {
+      return 'IMAGE';
+    }
+    
+    // Default to VIDEO for unknown types (most social media URLs are videos)
+    return 'VIDEO';
+  };
+
+  const mediaType = getMediaType(mediaUrl);
 
   // LinkedIn API endpoint
   const url = 'https://api.linkedin.com/v2/ugcPosts';
   
+  // Base payload - always includes text content
   const payload = {
     author: `urn:li:person:${profile.linkedinUserId}`,
     lifecycleState: 'PUBLISHED',
@@ -72,7 +111,7 @@ async function postToLinkedIn(identifier, message, mediaUrl = null, hashtags = [
         shareCommentary: {
           text: fullMessage
         },
-        shareMediaCategory: mediaUrl ? 'IMAGE' : 'NONE'
+        shareMediaCategory: mediaUrl ? mediaType : 'NONE'
       }
     },
     visibility: {
@@ -80,17 +119,73 @@ async function postToLinkedIn(identifier, message, mediaUrl = null, hashtags = [
     }
   };
 
+  // Only add media if mediaUrl is provided
   if (mediaUrl) {
-    payload.specificContent['com.linkedin.ugc.ShareContent'].media = [{
-      status: 'READY',
-      description: {
-        text: 'Media content'
-      },
-      media: mediaUrl,
-      title: {
-        text: 'LinkedIn Post'
+    try {
+      // LinkedIn requires asset registration first
+      console.log(`[LinkedIn] Uploading ${mediaType} asset: ${mediaUrl}`);
+      
+      // Step 1: Register the asset
+      const assetResponse = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Restli-Protocol-Version': '2.0.0',
+          'LinkedIn-Version': '202503'
+        },
+        body: JSON.stringify({
+          registerUploadRequest: {
+            recipes: [mediaType === 'VIDEO' ? 'urn:li:digitalmediaRecipe:feedshare-video' : 'urn:li:digitalmediaRecipe:feedshare-image'],
+            owner: `urn:li:person:${profile.linkedinUserId}`,
+            serviceRelationships: [{
+              relationshipType: 'OWNER',
+              identifier: 'urn:li:userGeneratedContent'
+            }]
+          }
+        })
+      });
+
+      if (!assetResponse.ok) {
+        throw new Error(`Asset registration failed: ${assetResponse.status}`);
       }
-    }];
+
+      const assetData = await assetResponse.json();
+      const uploadUrl = assetData.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl;
+      const asset = assetData.value.asset;
+
+      // Step 2: Upload the media file
+      const mediaResponse = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/octet-stream'
+        },
+        body: await fetch(mediaUrl).then(res => res.arrayBuffer())
+      });
+
+      if (!mediaResponse.ok) {
+        throw new Error(`Media upload failed: ${mediaResponse.status}`);
+      }
+
+      console.log(`[LinkedIn] ${mediaType} uploaded successfully, asset: ${asset}`);
+
+      // Step 3: Add media to post payload
+      payload.specificContent['com.linkedin.ugc.ShareContent'].media = [{
+        status: 'READY',
+        description: {
+          text: 'Media content'
+        },
+        media: asset,
+        title: {
+          text: 'LinkedIn Post'
+        }
+      }];
+
+    } catch (error) {
+      console.error(`[LinkedIn] Media upload failed: ${error.message}, falling back to text-only post`);
+      payload.specificContent['com.linkedin.ugc.ShareContent'].shareMediaCategory = 'NONE';
+    }
   }
 
   const response = await fetch(url, {

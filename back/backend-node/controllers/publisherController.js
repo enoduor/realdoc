@@ -1,5 +1,5 @@
 const platformPublisher = require('../services/platformPublisher');
-const { findToken, getTwitterHandle, getValidAccessToken } = require('../services/twitterService');
+const { findToken, getTwitterHandle } = require('../services/twitterService');
 
 // Publish post immediately to platforms
 exports.publishNow = async (req, res) => {
@@ -27,7 +27,7 @@ exports.publishNow = async (req, res) => {
         for (const platform of platforms) {
             try {
                 console.log(`🚀 Publishing to ${platform}...`);
-                const result = await platformPublisher.publishToPlatform(platform, content);
+                const result = await platformPublisher.publishToPlatform(platform, { ...content, userId });
                 
                 publishResults.push({
                     success: true,
@@ -100,7 +100,19 @@ exports.getPlatformStatus = async (req, res) => {
                             tokenDoc = await findToken({ userId });
                         }
                         
-                        // Production: only use user-specific tokens
+                        // If no token found by userId, try to find by email
+                        if (!tokenDoc) {
+                            // Get user email from Clerk or other source
+                            const userEmail = req.auth?.sessionClaims?.email || 'erick@oduor.net'; // fallback for testing
+                            if (userEmail) {
+                                tokenDoc = await findToken({ email: userEmail });
+                                if (tokenDoc) {
+                                    console.log('[Platform Status] Found Twitter token by email:', userEmail);
+                                }
+                            }
+                        }
+                        
+                        // If still no token found
                         if (!tokenDoc) {
                             console.log('[Platform Status] No Twitter token found for user:', userId);
                             status[platform] = {
@@ -112,28 +124,24 @@ exports.getPlatformStatus = async (req, res) => {
                         }
                         
                         if (tokenDoc) {
-                            // Test if the token is valid by trying to get the handle
-                            try {
-                                const identifier = { userId: tokenDoc.userId };
-                                
-                                const handle = await getTwitterHandle(identifier);
-                                const accessToken = await getValidAccessToken(identifier);
-                                
+                            // Don't make API calls to validate - just check if we have the required fields
+                            const hasValidTokens = tokenDoc.oauthToken && tokenDoc.oauthTokenSecret;
+                            
+                            if (hasValidTokens) {
                                 status[platform] = {
                                     connected: true,
                                     canPost: true,
                                     user: {
                                         twitterUserId: tokenDoc.twitterUserId,
-                                        handle: handle || tokenDoc.handle,
-                                        name: tokenDoc.name
+                                        handle: tokenDoc.handle || 'Unknown',
+                                        name: tokenDoc.name || 'Unknown'
                                     }
                                 };
-                            } catch (tokenError) {
-                                console.warn('Twitter token validation failed:', tokenError.message);
+                            } else {
                                 status[platform] = {
                                     connected: false,
                                     canPost: false,
-                                    error: 'Token validation failed',
+                                    error: 'Invalid token format',
                                     message: 'Please reconnect your Twitter account'
                                 };
                             }

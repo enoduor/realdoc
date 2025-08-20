@@ -80,6 +80,9 @@ app.use(twitterAuthRoutes);
 const linkedinAuthRoutes = require('./routes/linkedinAuth');
 app.use(linkedinAuthRoutes);
 
+// Mount TikTok Auth routes
+app.use('/api/auth/tiktok', require('./routes/tiktokAuth'));
+
 // Mount auth routes
 app.use("/api/auth", authRoutes);
 
@@ -88,7 +91,7 @@ const stripeRoutes = require("./routes/stripe");
 app.use("/api/stripe", stripeRoutes);
 
 // Mount publisher routes (Clerk auth is applied in the routes file)
-app.use("/api/publisher", publisherRoutes);
+app.use('/api/publisher', require('./routes/publisher'));
 
 // Simple test route
 app.get("/", (req, res) => {

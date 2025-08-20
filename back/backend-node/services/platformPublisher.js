@@ -156,7 +156,13 @@ class PlatformPublisher {
         // ------------ TWITTER ------------
         case 'twitter': {
           // Production: require userId for user-specific tokens
-          const { userId, caption, text } = postData || {};
+          const { userId, caption, text, mediaUrl } = postData || {};
+          
+          console.log('[Publisher][Twitter] Debug - postData:', JSON.stringify(postData, null, 2));
+          console.log('[Publisher][Twitter] Debug - userId:', userId);
+          console.log('[Publisher][Twitter] Debug - caption:', caption);
+          console.log('[Publisher][Twitter] Debug - text:', text);
+          console.log('[Publisher][Twitter] Debug - mediaUrl:', mediaUrl);
           
           if (!userId) {
             throw new Error('Twitter requires authenticated userId');
@@ -165,9 +171,11 @@ class PlatformPublisher {
           const identifier = { userId };
 
           const tweetText = (caption || text || '').trim();
+          console.log('[Publisher][Twitter] Debug - tweetText:', tweetText);
           if (!tweetText) throw new Error('Tweet text is empty');
 
-          const result = await postTweet(identifier, tweetText);
+          // Pass mediaUrl directly to postTweet - Twitter service handles URL/Buffer conversion
+          const result = await postTweet(identifier, tweetText, mediaUrl);
           // Twitter API returns { data: { id, text } }
           const tweetId = result?.data?.id;
           
@@ -184,6 +192,49 @@ class PlatformPublisher {
             postId: tweetId,
             url: twitterUrl,
             message: 'Successfully published to Twitter'
+          };
+        }
+
+        // ------------ TIKTOK ------------
+        case 'tiktok': {
+          const { userId, caption, text, mediaUrl } = postData || {};
+          
+          if (!userId) {
+            throw new Error('TikTok requires authenticated userId');
+          }
+          if (!mediaUrl) {
+            throw new Error('TikTok requires video content: mediaUrl (HTTPS URL or stream)');
+          }
+
+          const { text: formattedText, video_url } =
+            this.formatContentForPlatform('tiktok', postData);
+
+          console.log('[Publisher][TikTok] text =', formattedText);
+          console.log('[Publisher][TikTok] video_url =', video_url);
+
+          // Use the TikTok service for video upload and publishing
+          const { uploadVideo, publishVideo } = require('./tiktokService');
+          
+          // 1) Upload video
+          const { video_id } = await uploadVideo({
+            userId: userId,
+            fileBuffer: video_url, // This should be a buffer or URL
+            mimeType: 'video/mp4',
+          });
+
+          // 2) Publish video
+          const publishResp = await publishVideo({
+            userId: userId,
+            videoId: video_id,
+            title: formattedText,
+          });
+
+          return {
+            success: true,
+            platform,
+            postId: video_id,
+            url: publishResp?.share_url || `https://www.tiktok.com/@user/video/${video_id}`,
+            message: 'Successfully published to TikTok'
           };
         }
 
