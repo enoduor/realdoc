@@ -238,6 +238,43 @@ class PlatformPublisher {
           };
         }
 
+        // ------------ FACEBOOK ------------
+        case 'facebook': {
+          const { userId, caption, text, mediaUrl } = postData || {};
+          
+          if (!userId) {
+            throw new Error('Facebook requires authenticated userId');
+          }
+
+          const identifier = { userId };
+
+          const { postToFacebook } = require('./facebookService');
+
+          const message = (caption || text || '').trim();
+          if (!message) throw new Error('Facebook post text is empty');
+
+          console.log('[Publisher][Facebook] message.preview =', message.slice(0, 140));
+          console.log('[Publisher][Facebook] mediaUrl =', mediaUrl);
+
+          const result = await postToFacebook(identifier, message, mediaUrl);
+
+          // Prefer service-provided permalink, fallback if missing
+          const fallbackUrl = result?.id
+            ? `https://www.facebook.com/${String(result.id).includes('_')
+                ? String(result.id).split('_').join('/posts/')
+                : result.id}`
+            : undefined;
+          const finalUrl = result?.url || fallbackUrl;
+
+          return {
+            success: true,
+            platform,
+            postId: result?.id,
+            url: finalUrl,
+            message: 'Successfully published to Facebook'
+          };
+        }
+
         // ------------ DEFAULT (simulated for others) ------------
         default: {
           const formattedContent = this.formatContentForPlatform(platform, postData);
