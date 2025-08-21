@@ -21,8 +21,11 @@ I've created a comprehensive setup script that will guide you through the entire
 
 ### **Instagram & Facebook:**
 - **App ID** (from Facebook Developers → Settings → Basic)
-- **Access Token** (from Graph API Explorer)
+- **App Secret**
 - **API URL** (default: https://graph.facebook.com/v18.0)
+- For Facebook OAuth in dev, set:
+  - `FACEBOOK_REDIRECT_URI=http://localhost:4001/api/facebook/oauth/callback/facebook`
+  - `STATE_HMAC_SECRET=<random_long_secret>`
 
 ### **TikTok:**
 - **App ID** (from TikTok for Developers dashboard)
@@ -91,10 +94,12 @@ INSTAGRAM_API_URL=https://graph.facebook.com/v18.0
 INSTAGRAM_ACCESS_TOKEN=your_instagram_access_token_here
 INSTAGRAM_APP_ID=your_facebook_app_id_here
 
-# Facebook API
+# Facebook API (OAuth)
 FACEBOOK_API_URL=https://graph.facebook.com/v18.0
-FACEBOOK_ACCESS_TOKEN=your_facebook_access_token_here
 FACEBOOK_APP_ID=your_facebook_app_id_here
+FACEBOOK_APP_SECRET=your_facebook_app_secret_here
+FACEBOOK_REDIRECT_URI=http://localhost:4001/api/facebook/oauth/callback/facebook
+STATE_HMAC_SECRET=replace_with_random_long_secret
 
 # TikTok API
 TIKTOK_API_URL=https://open.tiktokapis.com/v2

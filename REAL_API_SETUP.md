@@ -130,23 +130,44 @@
 
 ## 📘 **6. Facebook API**
 
-### **Setup Steps:**
-1. **Use Same Facebook App:**
-   - Same app as Instagram
-   - Add Facebook Login
+### **Setup Steps (Final):**
+1. **Facebook App & Roles:**
+   - Use your Facebook App (same as Instagram ok)
+   - Add Facebook Login product
+   - In Dev mode, add your FB profile as Administrator/Developer/Tester
 
-2. **Get Access Token:**
+2. **Redirect URI (Dev):**
+   - `http://localhost:4001/api/facebook/oauth/callback/facebook`
+   - Note: localhost redirects are auto-allowed in Dev mode
+
+3. **Environment (.env):**
    ```bash
-   # Add to back/backend-node/.env
+   # Facebook API
    FACEBOOK_API_URL=https://graph.facebook.com/v18.0
-   FACEBOOK_ACCESS_TOKEN=your_facebook_token
    FACEBOOK_APP_ID=your_app_id
    FACEBOOK_APP_SECRET=your_app_secret
+   FACEBOOK_REDIRECT_URI=http://localhost:4001/api/facebook/oauth/callback/facebook
+   STATE_HMAC_SECRET=replace_with_random_long_secret
    ```
 
-3. **Permissions Needed:**
+4. **Scopes Requested:**
+   - `public_profile`
+   - `email`
    - `pages_manage_posts`
    - `pages_read_engagement`
+   - `pages_show_list`
+
+5. **How to Run OAuth (Dev):**
+   - Ensure you’re logged in at `http://localhost:3000` (Clerk session)
+   - Start: `http://localhost:4001/api/facebook/oauth/start/facebook` (Clerk-secured)
+   - Optional test route (no Clerk): `/api/facebook/oauth/start/facebook/test?userId=...&email=...`
+
+6. **What Gets Stored (MongoDB):**
+   - `FacebookToken`: `userId`, `email`, `facebookUserId`, `accessToken` (long-lived), `name`, `isActive`, optional `pageId/pageName/pageAccessToken`, timestamps
+
+7. **Publishing Notes:**
+   - Publisher uses `facebookService` permalink from Graph API (`permalink_url`) when available
+   - Fallback URL is built safely if permalink is missing
 
 ---
 
