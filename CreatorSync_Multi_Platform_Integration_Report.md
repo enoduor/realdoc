@@ -9,11 +9,12 @@
 
 ## Executive Summary
 
-This report documents the successful implementation and integration of multiple social media platforms in the CreatorSync application, a comprehensive multi-platform social media publishing system. The project involved extensive development, debugging, code refactoring, and architectural improvements to achieve fully functional publishing systems for Twitter, LinkedIn, and YouTube platforms.
+This report documents the successful implementation and integration of multiple social media platforms in the CreatorSync application, a comprehensive multi-platform social media publishing system. The project involved extensive development, debugging, code refactoring, and architectural improvements to achieve fully functional publishing systems for Twitter, LinkedIn, Facebook, and YouTube platforms.
 
 ### Key Achievements
 - ✅ **Twitter OAuth 1.0a Integration**: Fully implemented and working
 - ✅ **LinkedIn OAuth 2.0 Integration**: Fully implemented and working
+- ✅ **Facebook OAuth 2.0 Integration**: Fully implemented and working (with Clerk-secured start route, HMAC state, and page support)
 - ✅ **YouTube OAuth 2.0 Integration**: Fully implemented and working
 - ✅ **Multi-Platform Media Support**: Images and videos across all platforms
 - ✅ **Multi-User Support**: User-specific token management
@@ -35,11 +36,11 @@ This report documents the successful implementation and integration of multiple 
 
 ### Supported Platforms
 1. **LinkedIn** - ✅ Fully Working
-2. **Twitter** - ✅ Fully Working (This Report)
-3. **YouTube** - ✅ Ready for Implementation
-4. **TikTok** - 🔧 In Development
-5. **Instagram** - 📋 Planned
-6. **Facebook** - 📋 Planned
+2. **Twitter** - ✅ Fully Working
+3. **Facebook** - ✅ Fully Working
+4. **YouTube** - ✅ Fully Working
+5. **TikTok** - 🔧 In Development
+6. **Instagram** - 📋 Planned
 
 ---
 
@@ -113,7 +114,34 @@ const shouldBackoff = (headers) => {
 };
 ```
 
-### Issue 4: Media Upload Failures
+### Issue 4: Facebook permalink returned as 404 from UI
+**Problem**: The UI “open” link sometimes 404’d because a hardcoded permalink was built in the shared publisher instead of using the real Graph API permalink.
+
+**Root Cause**:
+- `platformPublisher.js` constructed a generic permalink, ignoring the service-provided URL.
+
+**Solution**:
+```javascript
+// platformPublisher.js (facebook)
+const result = await postToFacebook(identifier, message, mediaUrl);
+// Prefer service-provided permalink, fallback if missing
+const fallbackUrl = result?.id
+  ? `https://www.facebook.com/${String(result.id).includes('_')
+      ? String(result.id).split('_').join('/posts/')
+      : result.id}`
+  : undefined;
+const finalUrl = result?.url || fallbackUrl;
+```
+And in `facebookService.js`, we now fetch the canonical `permalink_url` after creating the object:
+```javascript
+const linkResp = await axios.get(`${FACEBOOK_API_URL}/${response.data.id}`, {
+  params: { access_token: tokenForPost, fields: 'permalink_url,link' },
+});
+const url = linkResp.data?.permalink_url || linkResp.data?.link || null;
+return { id: response.data.id, url };
+```
+
+### Issue 5: Media Upload Failures
 **Problem**: "You must specify type if file is a file handle or Buffer" errors during media uploads.
 
 **Root Cause**:
@@ -144,7 +172,7 @@ const uploadMedia = async (identifier, mediaUrlOrBuffer, explicitType) => {
 };
 ```
 
-### Issue 5: Data Structure Mismatch
+### Issue 6: Data Structure Mismatch
 **Problem**: "Tweet text is empty" after fixing media uploads.
 
 **Root Cause**: Frontend sending flat structure but backend expecting nested `postData.content`.
@@ -176,12 +204,17 @@ back/backend-node/
 │   ├── linkedinUserService.js  # ✅ OAuth 2.0 implementation
 │   ├── youtubeService.js       # ✅ OAuth 2.0 implementation
 │   ├── tiktokService.js        # 🔧 New TikTok service
+│   ├── facebookService.js      # ✅ Facebook Graph API publisher (permalink aware)
 │   └── platformPublisher.js    # ✅ Multi-platform orchestration
 ├── models/
 │   ├── TwitterToken.js         # ✅ OAuth 1.0a schema
 │   ├── LinkedInToken.js        # ✅ OAuth 2.0 schema
 │   ├── TikTokToken.js          # 🔧 New TikTok model
 │   └── User.js                 # ✅ User management
+├── routes/
+│   └── facebookAuth.js         # ✅ Facebook OAuth2 start/test/callback routes (Clerk-secured)
+├── models/
+│   └── FacebookToken.js        # ✅ Facebook token model (user/page tokens)
 └── scripts/
     └── link-twitter-token.js   # 🔧 Token linking utility
 ```
@@ -225,6 +258,16 @@ const findYouTubeToken = async (userId) => {
   return token?.youtubeTokens?.[0];
 };
 ```
+
+// Facebook: OAuth 2.0 token lookup (by Clerk user)
+const findFacebookToken = async (userId) => {
+  const token = await FacebookToken.findOne({
+    userId: userId,
+    accessToken: { $exists: true },
+    isActive: true
+  }).sort({ updatedAt: -1 });
+  return token;
+};
 
 #### 2. Platform-Specific Caching Implementation
 ```javascript
@@ -406,6 +449,50 @@ const youtubeService = {
 };
 ```
 
+**Facebook Integration (OAuth 2.0):**
+```javascript
+// Secure start route (Clerk required) - facebookAuth.js
+router.get('/oauth/start/facebook', ClerkExpressRequireAuth(), async (req, res) => {
+  const userId = req.auth.userId;
+  // Fallback to DB for email if not in Clerk token
+  const userDoc = await User.findOne({ clerkId: userId });
+  const email = req.auth.email || userDoc?.email || null;
+
+  // HMAC-sign state { userId, email, ts }
+  const state = signState({ userId, email, ts: Date.now() });
+
+  const redirectUri = getFacebookRedirectUri();
+  const authUrl = `https://www.facebook.com/v18.0/dialog/oauth` +
+    `?client_id=${FACEBOOK_APP_ID}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&state=${encodeURIComponent(state)}` +
+    `&scope=${encodeURIComponent('public_profile,email,pages_manage_posts,pages_read_engagement,pages_show_list')}`;
+  return res.redirect(authUrl);
+});
+
+// Test start route (no Clerk) for dev
+router.get('/oauth/start/facebook/test', async (req, res) => {
+  const userId = req.query.userId || 'test_user_123';
+  const email = req.query.email || 'test@example.com';
+  const state = signState({ userId, email, ts: Date.now() });
+  // ...build and redirect to authUrl like above
+});
+
+// Callback - verify state HMAC, exchange code for tokens, fetch /me & pages
+router.get('/oauth/callback/facebook', async (req, res) => {
+  const { code, state } = req.query;
+  const decoded = verifyState(state); // throws if invalid/tampered
+  // 1) Exchange code -> short-lived token
+  // 2) Exchange short-lived -> long-lived token
+  // 3) Fetch /me?fields=id,name,email
+  // 4) Optionally fetch /me/accounts for first page tokens
+  // 5) Upsert FacebookToken with userId, email, facebookUserId, accessToken, pageAccessToken...
+  // 6) Redirect to APP_URL/app?connected=facebook
+});
+
+// facebookService.js - publishing returns canonical permalink_url when possible
+```
+
 #### 5. Multi-Platform Orchestration
 ```javascript
 // Centralized platform publisher
@@ -449,8 +536,9 @@ const platformPublisher = {
 5. ✅ **LinkedIn Image Posts**: PNG, JPEG uploads with captions and hashtags
 6. ✅ **LinkedIn Video Posts**: MP4 uploads with captions and hashtags
 7. ✅ **YouTube Video Uploads**: MP4 uploads with titles, descriptions, and privacy settings
-8. ✅ **Multi-User Testing**: Different users posting to their accounts across platforms
-9. ✅ **OAuth Flow**: Complete authentication cycle for all platforms
+8. ✅ **Facebook Text/Image/Video Posts**: Page/user posting with canonical permalink
+9. ✅ **Multi-User Testing**: Different users posting to their accounts across platforms
+10. ✅ **OAuth Flow**: Complete authentication cycle for all platforms (including HMAC state verification for Facebook)
 10. ✅ **Rate Limit Handling**: Proper backoff and error messages
 11. ✅ **Error Recovery**: Graceful handling of API failures
 12. ✅ **Cross-Platform Publishing**: Simultaneous posting to multiple platforms
@@ -479,7 +567,7 @@ const platformPublisher = {
 - **Token Isolation**: User-specific OAuth tokens
 - **Secure Storage**: MongoDB with encrypted connections
 - **Authentication**: Clerk-based user management
-- **API Security**: Proper OAuth 1.0a implementation
+- **API Security**: Proper OAuth 1.0a/2.0 implementations; HMAC-signed state for Facebook; Clerk-protected start route
 
 ### Deployment Checklist
 - ✅ **Code Review**: All changes tested and validated
@@ -503,7 +591,7 @@ const platformPublisher = {
 ### Platform Expansion
 1. **TikTok Integration**: Currently in development
 2. **Instagram Integration**: Planned for Q2 2025
-3. **Facebook Integration**: Planned for Q2 2025
+3. **Facebook Integration**: Completed
 4. **Pinterest Integration**: Future consideration
 
 ---

@@ -80,6 +80,10 @@ app.use(twitterAuthRoutes);
 const linkedinAuthRoutes = require('./routes/linkedinAuth');
 app.use(linkedinAuthRoutes);
 
+// Mount Facebook Auth routes
+const facebookAuthRoutes = require('./routes/facebookAuth');
+app.use('/api/facebook', facebookAuthRoutes);
+
 // Mount TikTok Auth routes
 app.use('/api/auth/tiktok', require('./routes/tiktokAuth'));
 
