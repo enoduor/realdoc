@@ -35,11 +35,11 @@ Application Architecture:
 
 Supported Platforms:
 1. LinkedIn - Fully Working
-2. Twitter - Fully Working (This Report)
-3. YouTube - Ready for Implementation
-4. TikTok - In Development
-5. Instagram - Planned
-6. Facebook - Planned
+2. Twitter - Fully Working
+3. Facebook - Fully Working
+4. YouTube - Fully Working
+5. Instagram - Fully Working (Graph API via Facebook)
+6. TikTok - In Development
 
 ================================================================================
 

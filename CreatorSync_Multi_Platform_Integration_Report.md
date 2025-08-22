@@ -16,6 +16,7 @@ This report documents the successful implementation and integration of multiple 
 - ✅ **LinkedIn OAuth 2.0 Integration**: Fully implemented and working
 - ✅ **Facebook OAuth 2.0 Integration**: Fully implemented and working (with Clerk-secured start route, HMAC state, and page support)
 - ✅ **YouTube OAuth 2.0 Integration**: Fully implemented and working
+- ✅ **Instagram Publishing (Graph API)**: Fully implemented and working (image and Reels via container → publish, canonical permalink)
 - ✅ **Multi-Platform Media Support**: Images and videos across all platforms
 - ✅ **Multi-User Support**: User-specific token management
 - ✅ **Cross-Platform Publishing**: Simultaneous posting to multiple platforms
@@ -39,8 +40,8 @@ This report documents the successful implementation and integration of multiple 
 2. **Twitter** - ✅ Fully Working
 3. **Facebook** - ✅ Fully Working
 4. **YouTube** - ✅ Fully Working
-5. **TikTok** - 🔧 In Development
-6. **Instagram** - 📋 Planned
+5. **Instagram** - ✅ Fully Working (Graph API via Facebook)
+6. **TikTok** - 🔧 In Development
 
 ---
 
@@ -197,18 +198,21 @@ back/backend-node/
 ├── routes/
 │   ├── twitterAuth.js          # ✅ OAuth 1.0a implementation
 │   ├── linkedinAuth.js         # ✅ OAuth 2.0 implementation
+│   ├── instagramAuth.js        # ✅ Instagram auth/mount points
 │   ├── tiktokAuth.js           # 🔧 New TikTok OAuth
 │   └── publisher.js            # ✅ Enhanced publishing routes
 ├── services/
 │   ├── twitterService.js       # ✅ Complete rewrite
 │   ├── linkedinUserService.js  # ✅ OAuth 2.0 implementation
 │   ├── youtubeService.js       # ✅ OAuth 2.0 implementation
+│   ├── instagramService.js     # ✅ Instagram Graph API publishing (image/Reels)
 │   ├── tiktokService.js        # 🔧 New TikTok service
 │   ├── facebookService.js      # ✅ Facebook Graph API publisher (permalink aware)
 │   └── platformPublisher.js    # ✅ Multi-platform orchestration
 ├── models/
 │   ├── TwitterToken.js         # ✅ OAuth 1.0a schema
 │   ├── LinkedInToken.js        # ✅ OAuth 2.0 schema
+│   ├── InstagramToken.js       # ✅ Instagram token (igUserId/accessToken)
 │   ├── TikTokToken.js          # 🔧 New TikTok model
 │   └── User.js                 # ✅ User management
 ├── routes/
@@ -216,7 +220,8 @@ back/backend-node/
 ├── models/
 │   └── FacebookToken.js        # ✅ Facebook token model (user/page tokens)
 └── scripts/
-    └── link-twitter-token.js   # 🔧 Token linking utility
+    ├── link-twitter-token.js   # 🔧 Token linking utility
+    └── test-instagram-direct.js# ✅ CLI Instagram test (no UI)
 ```
 
 ### Key Code Improvements
@@ -411,6 +416,24 @@ const linkedinUserService = {
 };
 ```
 
+**Instagram Integration (Graph API via Facebook):**
+```javascript
+// instagramService.js
+// 1) Lookup active token by { userId | email | igUserId }
+const doc = await findToken(identifier); // requires { accessToken, igUserId }
+
+// 2) Create container (image or REELS video); auto-rehost to S3 if Meta cannot fetch the source URL
+const creation = isVideo
+  ? await createContainerVideo(accessToken, igUserId, videoUrl, caption)
+  : await createContainerImage(accessToken, igUserId, imageUrl, caption);
+
+// 3) For videos, poll status until FINISHED
+// 4) Publish media and fetch canonical permalink
+const published = await publishMedia(accessToken, igUserId, creation.id);
+const permalink = await getPermalink(accessToken, published.id);
+return { id: published.id, url: permalink };
+```
+
 **YouTube Integration (OAuth 2.0):**
 ```javascript
 // YouTube OAuth 2.0 flow
@@ -537,11 +560,12 @@ const platformPublisher = {
 6. ✅ **LinkedIn Video Posts**: MP4 uploads with captions and hashtags
 7. ✅ **YouTube Video Uploads**: MP4 uploads with titles, descriptions, and privacy settings
 8. ✅ **Facebook Text/Image/Video Posts**: Page/user posting with canonical permalink
-9. ✅ **Multi-User Testing**: Different users posting to their accounts across platforms
-10. ✅ **OAuth Flow**: Complete authentication cycle for all platforms (including HMAC state verification for Facebook)
-10. ✅ **Rate Limit Handling**: Proper backoff and error messages
-11. ✅ **Error Recovery**: Graceful handling of API failures
-12. ✅ **Cross-Platform Publishing**: Simultaneous posting to multiple platforms
+9. ✅ **Instagram Image/Reels Posts**: Container → publish flow, canonical permalink; auto S3 rehost fallback
+10. ✅ **Multi-User Testing**: Different users posting to their accounts across platforms
+11. ✅ **OAuth Flow**: Complete authentication cycle for all platforms (including HMAC state verification for Facebook)
+12. ✅ **Rate Limit Handling**: Proper backoff and error messages
+13. ✅ **Error Recovery**: Graceful handling of API failures
+14. ✅ **Cross-Platform Publishing**: Simultaneous posting to multiple platforms
 
 ### Performance Metrics
 - **Twitter Media Upload Success Rate**: 100% (after fixes)
@@ -590,7 +614,7 @@ const platformPublisher = {
 
 ### Platform Expansion
 1. **TikTok Integration**: Currently in development
-2. **Instagram Integration**: Planned for Q2 2025
+2. **Instagram Integration**: Completed
 3. **Facebook Integration**: Completed
 4. **Pinterest Integration**: Future consideration
 
