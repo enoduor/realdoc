@@ -238,6 +238,38 @@ class PlatformPublisher {
           };
         }
 
+        // ------------ INSTAGRAM ------------
+        case 'instagram': {
+          const { userId, caption, text, mediaUrl, mediaType, hashtags } = postData || {};
+          if (!userId) {
+            throw new Error('Instagram requires authenticated userId');
+          }
+
+          // Build caption + hashtags like other platforms
+          const safeCaption = (caption || text || '').toString().trim();
+          const tagString = Array.isArray(hashtags) && hashtags.length
+            ? hashtags.map(t => `#${(t ?? '').toString().replace(/^#+/, '')}`).join(' ')
+            : '';
+          const message = [safeCaption, tagString].filter(Boolean).join(' ').trim();
+
+          if (!message) throw new Error('Instagram post text is empty');
+          if (!mediaUrl) throw new Error('Instagram requires mediaUrl (publicly reachable)');
+
+          const { postToInstagram } = require('./instagramService');
+          const identifier = { userId };
+          const isVideo = String(mediaType || '').toLowerCase() === 'video' || /\.(mp4|mov|m4v)(\?|$)/i.test(mediaUrl);
+
+          const result = await postToInstagram(identifier, message, mediaUrl, isVideo);
+
+          return {
+            success: true,
+            platform,
+            postId: result.id,
+            url: result.url,
+            message: 'Successfully published to Instagram'
+          };
+        }
+
         // ------------ FACEBOOK ------------
         case 'facebook': {
           const { userId, caption, text, mediaUrl } = postData || {};

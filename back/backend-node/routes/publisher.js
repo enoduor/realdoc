@@ -250,6 +250,57 @@ router.post('/facebook/publish', ClerkExpressRequireAuth(), async (req, res) => 
   }
 });
 
+// Instagram-specific publish endpoint - requires Clerk authentication
+router.post('/instagram/publish', ClerkExpressRequireAuth(), async (req, res) => {
+  try {
+    const { content } = req.body;
+    const userId = req.auth.userId;
+    
+    if (!content) {
+      return res.status(400).json({ success: false, message: 'Content required' });
+    }
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'User authentication required' });
+    }
+
+    // Find the specific user's Instagram token
+    const InstagramToken = require('../models/InstagramToken');
+    const instagramToken = await InstagramToken.findOne({ userId: userId, isActive: true });
+    
+    if (!instagramToken) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No Instagram account connected for this user. Please connect your Instagram account first via OAuth.' 
+      });
+    }
+
+    console.log(`🚀 Publishing to Instagram for user: ${userId} with igUserId: ${instagramToken.igUserId}...`);
+    
+    try {
+      const result = await platformPublisher.publishToPlatform('instagram', { 
+        ...content, 
+        userId: userId
+      });
+      return res.json({
+        success: true,
+        platform: 'instagram',
+        result
+      });
+    } catch (error) {
+      console.error(`❌ Failed to publish to Instagram:`, error.message);
+      return res.status(500).json({ 
+        success: false, 
+        platform: 'instagram',
+        error: error.message 
+      });
+    }
+
+  } catch (error) {
+    console.error('Error publishing to Instagram:', error);
+    return res.status(500).json({ success: false, message: 'Failed to publish to Instagram', error: error.message });
+  }
+});
+
 // Test TikTok route - no auth required
 router.post('/tiktok/test', async (req, res) => {
   res.json({ success: true, message: 'TikTok test route working' });
