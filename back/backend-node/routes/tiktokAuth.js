@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const TikTokToken = require('../models/TikTokToken');
 const { exchangeCodeForToken } = require('../services/tiktokService');
 const { requireAuth } = require('@clerk/express'); // ✅ use Clerk like the rest
+const User = require('../models/User');
 
 // Simple HMAC signer to protect `state`
 function signState(payload) {
@@ -28,7 +29,7 @@ router.get('/connect', async (req, res) => {
   const userId = 'test-user-id';
 
   const state = signState({
-    userId,
+    userId, // legacy
     ts: Date.now()
   });
 
@@ -53,15 +54,23 @@ router.get('/callback', async (req, res) => {
 
     // Verify state & recover userId set in /connect
     const decoded = verifyState(state);
-    if (!decoded?.userId) throw new Error('Invalid state');
+    if (!decoded) throw new Error('Invalid state');
 
     // Exchange authorization code for tokens
     const tokenResp = await exchangeCodeForToken(code);
 
     // Persist tokens for this user
+    // Prefer Clerk user ID if available from session linkage
+    let clerkUserId = null;
+    try {
+      const user = await User.findOne({ _id: decoded.userId });
+      clerkUserId = user?.clerkUserId || null;
+    } catch {}
+
     await TikTokToken.findOneAndUpdate(
-      { userId: decoded.userId, provider: 'tiktok' },
+      { $or: [ { clerkUserId }, { userId: decoded.userId } ], provider: 'tiktok' },
       {
+        clerkUserId,
         accessToken: tokenResp.access_token,
         refreshToken: tokenResp.refresh_token,
         tokenType: tokenResp.token_type || 'Bearer',
@@ -80,3 +89,40 @@ router.get('/callback', async (req, res) => {
 });
 
 module.exports = router;
+
+// --- Uniform platform management endpoints ---
+
+// Status: is TikTok connected for this user?
+router.get('/status', requireAuth(), async (req, res) => {
+  try {
+    const clerkUserId = req.auth.userId;
+    const user = await User.findOne({ clerkUserId });
+    if (!user) return res.json({ connected: false });
+    const token = await TikTokToken.findOne({ userId: user._id });
+    if (!token || !token.accessToken) return res.json({ connected: false });
+    return res.json({
+      connected: true,
+      tiktokUserOpenId: token.tiktokUserOpenId || null,
+      username: token.username || null,
+    });
+  } catch (e) {
+    console.error('[TikTok] Status error:', e.message);
+    res.status(500).json({ error: 'Failed to get TikTok status' });
+  }
+});
+
+// Disconnect: remove stored TikTok tokens for this user
+router.delete('/disconnect', requireAuth(), async (req, res) => {
+  try {
+    const clerkUserId = req.auth.userId;
+    const user = await User.findOne({ clerkUserId });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const existing = await TikTokToken.findOne({ userId: user._id });
+    if (!existing) return res.status(404).json({ error: 'TikTok account not found' });
+    await TikTokToken.deleteOne({ _id: existing._id });
+    return res.json({ success: true, message: 'TikTok account disconnected successfully' });
+  } catch (e) {
+    console.error('[TikTok] Disconnect error:', e.message);
+    res.status(500).json({ error: 'Failed to disconnect TikTok account' });
+  }
+});

@@ -60,8 +60,8 @@ async function refreshAccessToken(doc) {
   return doc.accessToken;
 }
 
-async function getValidAccessToken(userId) {
-  const doc = await TikTokToken.findOne({ userId, provider: 'tiktok' });
+async function getValidAccessTokenByClerk(clerkUserId) {
+  const doc = await TikTokToken.findOne({ clerkUserId, provider: 'tiktok' });
   if (!doc) throw new Error('TikTok not connected for this user');
   if (isExpiringSoon(doc.expiresAt)) {
     try {
@@ -78,8 +78,8 @@ async function getValidAccessToken(userId) {
  * Upload a video file buffer to TikTok.
  * Returns { video_id }
  */
-async function uploadVideo({ userId, fileBuffer, mimeType = 'video/mp4' }) {
-  const accessToken = await getValidAccessToken(userId);
+async function uploadVideo({ clerkUserId, fileBuffer, mimeType = 'video/mp4' }) {
+  const accessToken = await getValidAccessTokenByClerk(clerkUserId);
   const url = `${TIKTOK_API_BASE}/video/upload/`;
 
   const { data } = await axios.post(url, fileBuffer, {
@@ -107,8 +107,8 @@ async function uploadVideo({ userId, fileBuffer, mimeType = 'video/mp4' }) {
 /**
  * Publish a previously uploaded video by video_id with a title/caption
  */
-async function publishVideo({ userId, videoId, title }) {
-  const accessToken = await getValidAccessToken(userId);
+async function publishVideo({ clerkUserId, videoId, title }) {
+  const accessToken = await getValidAccessTokenByClerk(clerkUserId);
   const url = `${TIKTOK_API_BASE}/video/publish/`;
 
   const payload = {
@@ -130,7 +130,8 @@ async function publishVideo({ userId, videoId, title }) {
 module.exports = {
   exchangeCodeForToken,
   refreshAccessToken,
-  getValidAccessToken,
+  // Back-compat export name
+  getValidAccessToken: getValidAccessTokenByClerk,
   uploadVideo,
   publishVideo,
 };

@@ -4,7 +4,11 @@ const mongoose = require('mongoose');
 
 const TikTokTokenSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    // Standard primary key across platforms: Clerk user ID
+    clerkUserId: { type: String, index: true, required: false },
+
+    // Back-compat reference to User document (may be absent going forward)
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
 
     // TikTok account info (fill after first fetch)
     tiktokUserOpenId: { type: String, index: true }, // TikTok's user identifier
@@ -22,7 +26,8 @@ const TikTokTokenSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// helpful index
+// helpful indexes
+TikTokTokenSchema.index({ clerkUserId: 1, provider: 1 });
 TikTokTokenSchema.index({ userId: 1, provider: 1 });
 
 module.exports = mongoose.model('TikTokToken', TikTokTokenSchema);

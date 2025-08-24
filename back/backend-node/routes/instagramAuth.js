@@ -2,7 +2,7 @@
 const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto');
-const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
+const { requireAuth } = require('@clerk/express');
 const InstagramToken = require('../models/InstagramToken');
 const User = require('../models/User');
 
@@ -34,7 +34,7 @@ function getInstagramRedirectUri() {
 }
 
 // Secure start
-router.get('/oauth/start/instagram', ClerkExpressRequireAuth(), async (req, res) => {
+router.get('/oauth/start/instagram', requireAuth(), async (req, res) => {
   try {
     const userId = req.auth.userId;
     const userDoc = await User.findOne({ clerkUserId: userId });
@@ -150,5 +150,42 @@ router.get('/oauth/callback/instagram', async (req, res) => {
 });
 
 module.exports = router;
+
+// --- Uniform platform management endpoints ---
+
+// Status: is Instagram connected for this user?
+router.get('/status', requireAuth(), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const token = await InstagramToken.findOne({ userId, isActive: true });
+    if (!token) return res.json({ connected: false });
+    return res.json({
+      connected: true,
+      name: token.name || token.pageName || null,
+      igUserId: token.igUserId || null,
+      pageId: token.pageId || null
+    });
+  } catch (e) {
+    console.error('[Instagram] Status error:', e.message);
+    res.status(500).json({ error: 'Failed to get Instagram status' });
+  }
+});
+
+// Disconnect: mark Instagram token inactive
+router.delete('/disconnect', requireAuth(), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const result = await InstagramToken.findOneAndUpdate(
+      { userId, isActive: true },
+      { isActive: false },
+      { new: true }
+    );
+    if (!result) return res.status(404).json({ error: 'Instagram account not found' });
+    return res.json({ success: true, message: 'Instagram account disconnected successfully' });
+  } catch (e) {
+    console.error('[Instagram] Disconnect error:', e.message);
+    res.status(500).json({ error: 'Failed to disconnect Instagram account' });
+  }
+});
 
 

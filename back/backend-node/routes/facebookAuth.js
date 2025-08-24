@@ -2,8 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto');
 const FacebookToken = require('../models/FacebookToken');
-const { authenticateToken } = require('../middleware/auth');
-const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
+const { requireAuth } = require('@clerk/express');
 
 const router = express.Router();
 
@@ -47,7 +46,7 @@ function verifyState(signed) {
  * - Kicks off OAuth by redirecting to Facebook's authorization page.
  * - Requires Clerk authentication for production security.
  */
-router.get('/oauth/start/facebook', ClerkExpressRequireAuth(), async (req, res) => {
+router.get('/oauth/start/facebook', requireAuth(), async (req, res) => {
   try {
     // Get user info from Clerk token (more secure than query params)
     const userId = req.auth.userId;
@@ -264,9 +263,9 @@ router.get('/oauth/callback/facebook', async (req, res) => {
 /**
  * Disconnect Facebook account
  */
-router.delete('/disconnect', authenticateToken, async (req, res) => {
+router.delete('/disconnect', requireAuth(), async (req, res) => {
   try {
-    const { userId } = req.user;
+    const userId = req.auth.userId;
 
     const result = await FacebookToken.findOneAndUpdate(
       { userId: userId, isActive: true },
@@ -290,9 +289,9 @@ router.delete('/disconnect', authenticateToken, async (req, res) => {
 /**
  * Get Facebook connection status
  */
-router.get('/status', authenticateToken, async (req, res) => {
+router.get('/status', requireAuth(), async (req, res) => {
   try {
-    const { userId } = req.user;
+    const userId = req.auth.userId;
 
     const token = await FacebookToken.findOne({
       userId: userId,

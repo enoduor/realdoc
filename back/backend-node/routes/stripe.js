@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Stripe = require("stripe");
 const User = require("../models/User");
-const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
+const { requireAuth } = require('@clerk/express');
 
 // ✅ Load Stripe key from .env and verify it's loading
 console.log("✅ Stripe key loaded:", process.env.STRIPE_SECRET_KEY?.slice(0, 10) + "...");
@@ -87,7 +87,7 @@ router.post("/create-subscription-session", async (req, res) => {
 });
 
 // ✅ Get user subscription status (authenticated)
-router.get("/subscription", ClerkExpressRequireAuth(), async (req, res) => {
+router.get("/subscription", requireAuth(), async (req, res) => {
   try {
     const clerkUserId = req.auth.userId;
     const user = await User.findOne({ clerkUserId });
@@ -184,7 +184,7 @@ router.get("/subscription-by-email/:email", async (req, res) => {
 });
 
 // ✅ Cancel subscription
-router.post("/cancel-subscription", ClerkExpressRequireAuth(), async (req, res) => {
+router.post("/cancel-subscription", requireAuth(), async (req, res) => {
   try {
     const clerkUserId = req.auth.userId;
     const user = await User.findOne({ clerkUserId });
@@ -215,7 +215,7 @@ router.post("/cancel-subscription", ClerkExpressRequireAuth(), async (req, res) 
 });
 
 // ✅ Reactivate subscription
-router.post("/reactivate-subscription", ClerkExpressRequireAuth(), async (req, res) => {
+router.post("/reactivate-subscription", requireAuth(), async (req, res) => {
   try {
     const clerkUserId = req.auth.userId;
     const user = await User.findOne({ clerkUserId });
@@ -246,7 +246,7 @@ router.post("/reactivate-subscription", ClerkExpressRequireAuth(), async (req, r
 });
 
 // ✅ Update payment method
-router.post("/update-payment-method", ClerkExpressRequireAuth(), async (req, res) => {
+router.post("/update-payment-method", requireAuth(), async (req, res) => {
   try {
     const { paymentMethodId } = req.body;
     const clerkUserId = req.auth.userId;
@@ -280,7 +280,7 @@ router.post("/update-payment-method", ClerkExpressRequireAuth(), async (req, res
 });
 
 // ✅ Get billing portal URL
-router.post("/billing-portal", ClerkExpressRequireAuth(), async (req, res) => {
+router.post("/billing-portal", requireAuth(), async (req, res) => {
   try {
     const clerkUserId = req.auth.userId;
     const user = await User.findOne({ clerkUserId });

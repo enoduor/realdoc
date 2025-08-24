@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { TwitterApi } = require('twitter-api-v2');
 const { requireAuth } = require('@clerk/express');
+const TwitterToken = require('../models/TwitterToken');
 
 const CALLBACK_URL = 'http://localhost:4001/oauth/callback/twitter';
 
@@ -67,9 +68,9 @@ router.get('/oauth/callback/twitter', async (req, res) => {
     // Save per your schema
     const TwitterToken = require('../models/TwitterToken');
     await TwitterToken.findOneAndUpdate(
-      { twitterUserId: userId }, // Use twitterUserId as primary key since it's unique
+      { twitterUserId: userId },
       {
-        userId: storedData.userId,
+        userId: storedData.userId, // Clerk userId
         twitterUserId: userId,
         handle: screenName,
         oauthToken: accessToken,
@@ -89,3 +90,41 @@ router.get('/oauth/callback/twitter', async (req, res) => {
 });
 
 module.exports = router;
+
+// --- Uniform platform management endpoints ---
+
+// Status: is Twitter connected for this user?
+router.get('/api/twitter/status', requireAuth(), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const token = await TwitterToken.findOne({ userId });
+    if (!token || !token.oauthToken || !token.oauthTokenSecret) {
+      return res.json({ connected: false });
+    }
+    return res.json({
+      connected: true,
+      handle: token.handle || null,
+      name: token.name || null,
+      twitterUserId: token.twitterUserId
+    });
+  } catch (e) {
+    console.error('[Twitter] Status error:', e.message);
+    res.status(500).json({ error: 'Failed to get Twitter status' });
+  }
+});
+
+// Disconnect: remove stored Twitter tokens for this user
+router.delete('/api/twitter/disconnect', requireAuth(), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const existing = await TwitterToken.findOne({ userId });
+    if (!existing) {
+      return res.status(404).json({ error: 'Twitter account not found' });
+    }
+    await TwitterToken.deleteOne({ _id: existing._id });
+    return res.json({ success: true, message: 'Twitter account disconnected successfully' });
+  } catch (e) {
+    console.error('[Twitter] Disconnect error:', e.message);
+    res.status(500).json({ error: 'Failed to disconnect Twitter account' });
+  }
+});

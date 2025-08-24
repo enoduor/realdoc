@@ -6,7 +6,7 @@ const rateLimit = require("express-rate-limit");
 const stripeWebhook = require("./webhooks/stripeWebhook");
 const authRoutes = require("./routes/auth");
 const publisherRoutes = require("./routes/publisher");
-const { ClerkExpressRequireAuth, ClerkExpressWithAuth } = require('@clerk/clerk-sdk-node');
+const { requireAuth, clerkMiddleware } = require('@clerk/express');
 
 dotenv.config();
 
@@ -91,6 +91,14 @@ app.use('/api/instagram', instagramAuthRoutes);
 // Mount TikTok Auth routes
 app.use('/api/auth/tiktok', require('./routes/tiktokAuth'));
 
+// Mount uniform status/disconnect routes per platform
+app.use('/api/twitter', require('./routes/twitterAuth'));
+app.use('/api/instagram', require('./routes/instagramAuth'));
+app.use('/api/linkedin', require('./routes/linkedinAuth'));
+// YouTube status/disconnect from service router
+const { youtubeRouter } = require('./services/youtubeService');
+app.use('/api/youtube', youtubeRouter);
+
 // Mount auth routes
 app.use("/api/auth", authRoutes);
 
@@ -107,17 +115,17 @@ app.get("/", (req, res) => {
 });
 
 // Protected route to test Clerk auth
-app.get('/auth-test', ClerkExpressRequireAuth(), (req, res) => {
+app.get('/auth-test', requireAuth(), (req, res) => {
   res.json({ ok: true, userId: req.auth.userId });
 });
 
 // Protected route example using Clerk
-app.get("/api/auth/profile", ClerkExpressRequireAuth(), async (req, res) => {
+app.get("/api/auth/profile", requireAuth(), async (req, res) => {
     try {
         const users = mongoose.connection.collection('users');
         const user = await users.findOne(
-            { _id: new mongoose.Types.ObjectId(req.auth.userId) },
-            { projection: { password: 0 } } // Exclude password
+            { clerkUserId: req.auth.userId },
+            { projection: { password: 0 } }
         );
         
         res.json({ 
@@ -130,7 +138,7 @@ app.get("/api/auth/profile", ClerkExpressRequireAuth(), async (req, res) => {
 });
 
 // Debug route to check Clerk auth status
-app.get('/api/_debug/auth', ClerkExpressRequireAuth(), (req, res) => {
+app.get('/api/_debug/auth', requireAuth(), (req, res) => {
   res.json({
     status: req.headers['x-clerk-auth-status'] || null,
     reason: req.headers['x-clerk-auth-reason'] || null,

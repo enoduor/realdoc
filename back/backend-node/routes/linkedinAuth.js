@@ -148,7 +148,7 @@ router.get('/oauth2/callback/linkedin', async (req, res) => {
 
     // Save/upsert tokens in DB
     const tokenInfo = {
-      userId: userId || null,
+      userId: userId || null, // Clerk userId when provided
       linkedinUserId: linkedinUserId,
       firstName: profileData.firstName || profileData.given_name,
       lastName: profileData.lastName || profileData.family_name,
@@ -223,3 +223,37 @@ router.get('/oauth2/callback/linkedin', async (req, res) => {
 });
 
 module.exports = router;
+
+// --- Uniform platform management endpoints ---
+const { requireAuth } = require('@clerk/express');
+
+// Status: is LinkedIn connected for this user?
+router.get('/status', requireAuth(), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const token = await LinkedInToken.findOne({ userId });
+    if (!token || !token.accessToken) return res.json({ connected: false });
+    return res.json({
+      connected: true,
+      linkedinUserId: token.linkedinUserId,
+      name: [token.firstName, token.lastName].filter(Boolean).join(' ') || null
+    });
+  } catch (e) {
+    console.error('[LinkedIn] Status error:', e.message);
+    res.status(500).json({ error: 'Failed to get LinkedIn status' });
+  }
+});
+
+// Disconnect: remove LinkedIn linkage for this user (preserve by linkedinUserId if you prefer)
+router.delete('/disconnect', requireAuth(), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const existing = await LinkedInToken.findOne({ userId });
+    if (!existing) return res.status(404).json({ error: 'LinkedIn account not found' });
+    await LinkedInToken.deleteOne({ _id: existing._id });
+    return res.json({ success: true, message: 'LinkedIn account disconnected successfully' });
+  } catch (e) {
+    console.error('[LinkedIn] Disconnect error:', e.message);
+    res.status(500).json({ error: 'Failed to disconnect LinkedIn account' });
+  }
+});

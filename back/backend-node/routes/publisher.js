@@ -1,7 +1,8 @@
 const express = require('express');
 const multer = require('multer');
 const router = express.Router();
-const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
+const { requireAuth } = require('@clerk/express');
+const { requireSubscription } = require('../middleware/subscriptionAuth');
 const {
     publishNow,
     getPlatformStatus
@@ -74,7 +75,7 @@ router.get('/test-linkedin', async (req, res) => {
 });
 
 // Twitter-specific publish endpoint - requires Clerk authentication
-router.post('/twitter/publish', ClerkExpressRequireAuth(), async (req, res) => {
+router.post('/twitter/publish', requireAuth(), requireSubscription, async (req, res) => {
   try {
     const { content } = req.body;
     const userId = req.auth.userId;
@@ -111,7 +112,7 @@ router.post('/twitter/publish', ClerkExpressRequireAuth(), async (req, res) => {
 });
 
 // YouTube-specific publish endpoint - requires Clerk authentication
-router.post('/youtube/publish', ClerkExpressRequireAuth(), async (req, res) => {
+router.post('/youtube/publish', requireAuth(), requireSubscription, async (req, res) => {
   try {
     const { content } = req.body;
     const userId = req.auth.userId;
@@ -148,7 +149,7 @@ router.post('/youtube/publish', ClerkExpressRequireAuth(), async (req, res) => {
 });
 
 // LinkedIn-specific publish endpoint - requires user authentication
-router.post('/linkedin/publish', ClerkExpressRequireAuth(), async (req, res) => {
+router.post('/linkedin/publish', requireAuth(), requireSubscription, async (req, res) => {
   try {
     const { content } = req.body;
     const userId = req.auth.userId;
@@ -200,7 +201,7 @@ router.post('/linkedin/publish', ClerkExpressRequireAuth(), async (req, res) => 
 });
 
 // Facebook-specific publish endpoint - requires Clerk authentication
-router.post('/facebook/publish', ClerkExpressRequireAuth(), async (req, res) => {
+router.post('/facebook/publish', requireAuth(), requireSubscription, async (req, res) => {
   try {
     const { content } = req.body;
     const userId = req.auth.userId;
@@ -251,7 +252,7 @@ router.post('/facebook/publish', ClerkExpressRequireAuth(), async (req, res) => 
 });
 
 // Instagram-specific publish endpoint - requires Clerk authentication
-router.post('/instagram/publish', ClerkExpressRequireAuth(), async (req, res) => {
+router.post('/instagram/publish', requireAuth(), requireSubscription, async (req, res) => {
   try {
     const { content } = req.body;
     const userId = req.auth.userId;
@@ -307,7 +308,7 @@ router.post('/tiktok/test', async (req, res) => {
 });
 
 // TikTok-specific publish endpoint - requires Clerk authentication
-router.post('/tiktok/publish', ClerkExpressRequireAuth(), async (req, res) => {
+router.post('/tiktok/publish', requireAuth(), requireSubscription, async (req, res) => {
   try {
     const { content } = req.body;
     const userId = req.auth.userId;
@@ -344,10 +345,10 @@ router.post('/tiktok/publish', ClerkExpressRequireAuth(), async (req, res) => {
 });
 
 // General publish endpoint - requires Clerk authentication
-router.post('/publish', ClerkExpressRequireAuth(), publishNow);
+router.post('/publish', requireAuth(), requireSubscription, publishNow);
 
 // Twitter-specific publish endpoint - requires user authentication
-router.post('/twitter/publish', ClerkExpressRequireAuth(), async (req, res) => {
+router.post('/twitter/publish', requireAuth(), requireSubscription, async (req, res) => {
   try {
     const { content } = req.body;
     const userId = req.auth.userId;
@@ -399,6 +400,6 @@ router.post('/twitter/publish', ClerkExpressRequireAuth(), async (req, res) => {
 });
 
 // Get platform connection status - requires Clerk authentication
-router.get('/platforms/status', ClerkExpressRequireAuth(), getPlatformStatus);
+router.get('/platforms/status', requireAuth(), getPlatformStatus);
 
 module.exports = router;

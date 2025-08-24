@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
+const { requireAuth } = require('@clerk/express');
 
 // Register route
 router.post("/register", async (req, res) => {
@@ -79,7 +79,7 @@ router.post("/login", async (req, res) => {
 });
 
 // ✅ Link temporary user with Clerk user
-router.post("/link-temp-user", ClerkExpressRequireAuth(), async (req, res) => {
+router.post("/link-temp-user", requireAuth(), async (req, res) => {
   try {
     const { email } = req.body;
     const clerkUserId = req.auth.userId;
@@ -122,7 +122,7 @@ router.post("/link-temp-user", ClerkExpressRequireAuth(), async (req, res) => {
 });
 
 // ✅ Create or link Clerk user with database user
-router.post("/create-clerk-user", ClerkExpressRequireAuth(), async (req, res) => {
+router.post("/create-clerk-user", requireAuth(), async (req, res) => {
   try {
     const clerkUserId = req.auth.userId;
     const userEmail = req.auth.email;
@@ -132,7 +132,7 @@ router.post("/create-clerk-user", ClerkExpressRequireAuth(), async (req, res) =>
     console.log(`🔗 Creating/linking Clerk user: ${clerkUserId} (${userEmail || 'no email'})`);
     console.log('🔍 Full req.auth object:', JSON.stringify(req.auth, null, 2));
 
-    // Check if user already exists with this Clerk ID
+    // 1) Check if user already exists with this Clerk ID
     let user = await User.findOne({ clerkUserId: clerkUserId });
     
     if (user) {
@@ -149,9 +149,9 @@ router.post("/create-clerk-user", ClerkExpressRequireAuth(), async (req, res) =>
       });
     }
 
-    // Check if user exists by email (from Stripe)
+    // 2) If a user exists by email, link it
     console.log(`🔍 Looking for user with email: "${userEmail}"`);
-    user = await User.findOne({ email: userEmail });
+    user = userEmail ? await User.findOne({ email: userEmail }) : null;
     
     if (user) {
       // Link existing user to Clerk
@@ -175,9 +175,17 @@ router.post("/create-clerk-user", ClerkExpressRequireAuth(), async (req, res) =>
       });
     }
 
-    console.log(`❌ No user found with email: "${userEmail}"`);
+    // 3) If no email available from Clerk, do not create a user (avoid 500)
+    if (!userEmail) {
+      console.log('❌ No email present in Clerk auth; cannot create user record');
+      return res.status(400).json({
+        success: false,
+        error: 'Email not available from Clerk. Link a temporary user first or ensure email is present.'
+      });
+    }
 
-    // Create new user for Clerk
+    console.log(`❌ No user found with email: "${userEmail}"`);
+    // Create new user for Clerk (email present)
     console.log(`📝 Creating new user for Clerk: ${userEmail}`);
     user = new User({
       email: userEmail,
