@@ -125,6 +125,9 @@ class PlatformPublisher {
         // ------------ YOUTUBE ------------
         case 'youtube': {
           const refreshToken = postData?.refreshToken || process.env.YT_TEST_REFRESH_TOKEN;
+          try {
+            console.log('[Publisher][YouTube] usingProvidedRefreshToken =', Boolean(postData?.refreshToken));
+          } catch (_) {}
           if (!refreshToken) {
             throw new Error('YouTube refreshToken missing (provide in body.refreshToken or set YT_TEST_REFRESH_TOKEN)');
           }

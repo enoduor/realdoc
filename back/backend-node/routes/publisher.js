@@ -114,7 +114,7 @@ router.post('/twitter/publish', requireAuth(), requireSubscription, async (req, 
 // YouTube-specific publish endpoint - requires Clerk authentication
 router.post('/youtube/publish', requireAuth(), requireSubscription, async (req, res) => {
   try {
-    const { content } = req.body;
+    const { content, refreshToken } = req.body;
     const userId = req.auth.userId;
     
     if (!content) {
@@ -125,9 +125,13 @@ router.post('/youtube/publish', requireAuth(), requireSubscription, async (req, 
     }
 
     console.log(`🚀 Publishing to YouTube for user: ${userId}...`);
+    try {
+      console.log('[YouTube Route] content.mediaUrl =', content?.mediaUrl);
+      console.log('[YouTube Route] refreshToken present =', Boolean(refreshToken));
+    } catch (_) {}
     
     try {
-      const result = await platformPublisher.publishToPlatform('youtube', { ...content, userId });
+      const result = await platformPublisher.publishToPlatform('youtube', { ...content, userId, refreshToken });
       return res.json({
         success: true,
         platform: 'youtube',
