@@ -1,11 +1,13 @@
-const platformPublisher = require('../services/platformPublisher');
+const PlatformPublisher = require('../services/platformPublisher');
+const platformPublisher = new PlatformPublisher();
 const { findToken, getTwitterHandle } = require('../services/twitterService');
+const { getPlatformConnectionStatus, getUserSubscriptionStatus } = require('../utils/tokenUtils');
 
 // Publish post immediately to platforms
 exports.publishNow = async (req, res) => {
     try {
         const { platforms, content } = req.body;
-        const userId = req.auth?.userId;
+        const clerkUserId = (typeof req.auth === 'function' ? req.auth().userId : req.auth?.userId);
 
         // Validate required fields
         if (!platforms || platforms.length === 0) {
@@ -27,7 +29,7 @@ exports.publishNow = async (req, res) => {
         for (const platform of platforms) {
             try {
                 console.log(`🚀 Publishing to ${platform}...`);
-                const result = await platformPublisher.publishToPlatform(platform, { ...content, userId });
+                const result = await platformPublisher.publishToPlatform(platform, { ...content, clerkUserId });
                 
                 publishResults.push({
                     success: true,
@@ -74,112 +76,25 @@ exports.publishNow = async (req, res) => {
 // Get platform status (for checking if platforms are connected)
 exports.getPlatformStatus = async (req, res) => {
     try {
-        const userId = req.auth?.userId;
+        const clerkUserId = (typeof req.auth === 'function' ? req.auth().userId : req.auth?.userId);
         
-        // Simple platform status check
-        const platforms = ['linkedin', 'twitter', 'instagram'];
-        const status = {};
-        
-        for (const platform of platforms) {
-            try {
-                if (platform === 'linkedin') {
-                    // Test LinkedIn connection
-                    const linkedinService = require('../services/linkedinService');
-                    const testResult = await linkedinService.testConnection();
-                    status[platform] = {
-                        connected: testResult.connected,
-                        canPost: testResult.canPost,
-                        user: testResult.user
-                    };
-                } else if (platform === 'twitter') {
-                    // Test Twitter connection - look for any valid Twitter token
-                    try {
-                        // First try to find by userId (if user is authenticated)
-                        let tokenDoc = null;
-                        if (userId) {
-                            tokenDoc = await findToken({ userId });
-                        }
-                        
-                        // If no token found by userId, try to find by email
-                        if (!tokenDoc) {
-                            // Get user email from Clerk or other source
-                            const userEmail = req.auth?.sessionClaims?.email || 'erick@oduor.net'; // fallback for testing
-                            if (userEmail) {
-                                tokenDoc = await findToken({ email: userEmail });
-                                if (tokenDoc) {
-                                    console.log('[Platform Status] Found Twitter token by email:', userEmail);
-                                }
-                            }
-                        }
-                        
-                        // If still no token found
-                        if (!tokenDoc) {
-                            console.log('[Platform Status] No Twitter token found for user:', userId);
-                            status[platform] = {
-                                connected: false,
-                                canPost: false,
-                                message: 'No Twitter account connected. Please connect your Twitter account first via OAuth.'
-                            };
-                            continue; // Skip to next platform
-                        }
-                        
-                        if (tokenDoc) {
-                            // Don't make API calls to validate - just check if we have the required fields
-                            const hasValidTokens = tokenDoc.oauthToken && tokenDoc.oauthTokenSecret;
-                            
-                            if (hasValidTokens) {
-                                status[platform] = {
-                                    connected: true,
-                                    canPost: true,
-                                    user: {
-                                        twitterUserId: tokenDoc.twitterUserId,
-                                        handle: tokenDoc.handle || 'Unknown',
-                                        name: tokenDoc.name || 'Unknown'
-                                    }
-                                };
-                            } else {
-                                status[platform] = {
-                                    connected: false,
-                                    canPost: false,
-                                    error: 'Invalid token format',
-                                    message: 'Please reconnect your Twitter account'
-                                };
-                            }
-                        } else {
-                            status[platform] = {
-                                connected: false,
-                                canPost: false,
-                                message: 'No Twitter account connected. Please connect your Twitter account first via OAuth.'
-                            };
-                        }
-                    } catch (twitterError) {
-                        console.error('Twitter status check failed:', twitterError);
-                        status[platform] = {
-                            connected: false,
-                            canPost: false,
-                            error: twitterError.message
-                        };
-                    }
-                } else {
-                    // Other platforms not implemented yet
-                    status[platform] = {
-                        connected: false,
-                        canPost: false,
-                        message: 'Not implemented yet'
-                    };
-                }
-            } catch (error) {
-                status[platform] = {
-                    connected: false,
-                    canPost: false,
-                    error: error.message
-                };
-            }
+        if (!clerkUserId) {
+            return res.status(401).json({
+                success: false,
+                message: 'User not authenticated'
+            });
         }
+
+        // Get platform connection status using standardized utility
+        const platformStatus = await getPlatformConnectionStatus(clerkUserId);
+        
+        // Get user subscription status
+        const subscriptionStatus = await getUserSubscriptionStatus(clerkUserId);
 
         res.json({
             success: true,
-            platforms: status
+            platforms: platformStatus,
+            subscription: subscriptionStatus
         });
 
     } catch (error) {

@@ -50,8 +50,24 @@ def generate_caption(platform: str, topic: str, tone: str = "professional", lang
             caption = caption[:max_chars]
         return caption
     except Exception as e:
-        print(f"Error generating caption: {str(e)}")
-        return "Error generating caption. Please try again."
+        print(f"Error generating caption: Error code: {getattr(e, 'code', 'unknown')} - {str(e)}")
+        
+        # Handle specific OpenAI errors
+        if hasattr(e, 'code') and e.code == 'insufficient_quota':
+            return f"OpenAI quota exceeded. Please check your billing. For now, here's a basic caption: '{topic}' - Share your thoughts below! 💬"
+        elif hasattr(e, 'code') and e.code == 'rate_limit_exceeded':
+            return f"Rate limit exceeded. Please wait a moment. For now, here's a basic caption: '{topic}' - What do you think? 🤔"
+        else:
+            # Generate a basic fallback caption
+            fallback_captions = [
+                f"Check out this amazing content about {topic}! 🔥",
+                f"Excited to share this with you: {topic} ✨",
+                f"Here's something interesting about {topic} - thoughts? 💭",
+                f"Sharing this awesome {topic} content with you! 🚀",
+                f"Take a look at this: {topic} - what's your take? 👀"
+            ]
+            import random
+            return random.choice(fallback_captions)
 
 def generate_hashtags(topic: str, platform: str, count: int = 5) -> list:
     """
@@ -94,5 +110,23 @@ def generate_hashtags(topic: str, platform: str, count: int = 5) -> list:
         cleaned_hashtags = [tag.strip() for tag in hashtags if tag.strip()]
         return cleaned_hashtags[:max_hashtags]
     except Exception as e:
-        print(f"Error generating hashtags: {str(e)}")
-        return ["Error generating hashtags. Please try again."] 
+        print(f"Error generating hashtags: Error code: {getattr(e, 'code', 'unknown')} - {str(e)}")
+        
+        # Handle specific OpenAI errors
+        if hasattr(e, 'code') and e.code == 'insufficient_quota':
+            return [f"#{topic.replace(' ', '')}", f"#{platform.lower()}", "content", "socialmedia", "post"]
+        elif hasattr(e, 'code') and e.code == 'rate_limit_exceeded':
+            return [f"#{topic.replace(' ', '')}", f"#{platform.lower()}", "content", "socialmedia", "post"]
+        else:
+            # Generate basic fallback hashtags
+            fallback_hashtags = [
+                f"#{topic.replace(' ', '')}",
+                f"#{platform.lower()}",
+                "content",
+                "socialmedia",
+                "post",
+                "share",
+                "trending",
+                "viral"
+            ]
+            return fallback_hashtags[:max_hashtags] 

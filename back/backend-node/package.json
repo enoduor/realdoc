@@ -4,6 +4,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "start:prod": "NODE_ENV=production node index.js",
+    "dev": "nodemon index.js",
+    "build": "echo 'Node.js backend is ready for production'",
+    "optimize": "echo 'Optimizing Node.js backend...' && npm audit fix && echo 'Optimization complete'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

@@ -7,11 +7,40 @@ const {
     publishNow,
     getPlatformStatus
 } = require('../controllers/publisherController');
-const platformPublisher = require('../services/platformPublisher');
+const PlatformPublisher = require('../services/platformPublisher');
+const platformPublisher = new PlatformPublisher();
 const { uploadVideo, publishVideo } = require('../services/tiktokService');
 
 // Configure multer for memory storage
 const upload = multer({ storage: multer.memoryStorage() });
+
+// Helper: unify success semantics and ensure media posts include a URL
+function buildPublishResponse(platform, content, result) {
+  const expectsMedia = Boolean(content && content.mediaUrl);
+  const hasUrl = Boolean(result && result.url);
+  const backendReportedSuccess = result && (result.success !== false);
+
+  // If media was requested, require a URL in the result for success
+  const ok = backendReportedSuccess && (!expectsMedia || hasUrl);
+
+  const normalized = {
+    platform,
+    // Always provide url and postId keys for the frontend
+    url: hasUrl ? result.url : null,
+    postId: result && (result.postId || result.id) ? (result.postId || result.id) : null,
+    // Preserve provider message or synthesize a high-signal one
+    message: (result && result.message)
+      ? result.message
+      : ok
+        ? `Successfully published to ${platform}`
+        : `Missing media URL from ${platform} response`,
+  };
+
+  // Include raw provider result under result for debugging/visibility
+  normalized.result = result || null;
+
+  return { success: ok, platform, result: normalized };
+}
 
 // Test endpoint for LinkedIn status - no auth required (for direct OAuth flow)
 router.get('/test-linkedin', async (req, res) => {
@@ -74,11 +103,11 @@ router.get('/test-linkedin', async (req, res) => {
     }
 });
 
-// Twitter-specific publish endpoint - requires Clerk authentication
+// Twitter-specific publish endpoint - requires Clerk authentication and active subscription
 router.post('/twitter/publish', requireAuth(), requireSubscription, async (req, res) => {
   try {
     const { content } = req.body;
-    const userId = req.auth.userId;
+    const userId = req.auth().userId;
     
     if (!content) {
       return res.status(400).json({ success: false, message: 'Content required' });
@@ -90,12 +119,9 @@ router.post('/twitter/publish', requireAuth(), requireSubscription, async (req, 
     console.log(`🚀 Publishing to Twitter for user: ${userId}...`);
     
     try {
-      const result = await platformPublisher.publishToPlatform('twitter', { ...content, userId });
-      return res.json({
-        success: true,
-        platform: 'twitter',
-        result
-      });
+      const result = await platformPublisher.publishToPlatform('twitter', { ...content, clerkUserId: userId });
+      const payload = buildPublishResponse('twitter', content, result);
+      return res.json(payload);
     } catch (error) {
       console.error(`❌ Failed to publish to Twitter:`, error.message);
       return res.status(500).json({ 
@@ -111,11 +137,13 @@ router.post('/twitter/publish', requireAuth(), requireSubscription, async (req, 
   }
 });
 
-// YouTube-specific publish endpoint - requires Clerk authentication
+// YouTube-specific publish endpoint - requires Clerk authentication and active subscription
 router.post('/youtube/publish', requireAuth(), requireSubscription, async (req, res) => {
   try {
     const { content, refreshToken } = req.body;
-    const userId = req.auth.userId;
+    const userId = req.auth().userId;
+    const claimsRefresh = req.auth().sessionClaims?.public_metadata?.youtubeRefreshToken || null;
+    const effectiveRefreshToken = refreshToken || claimsRefresh || process.env.YT_TEST_REFRESH_TOKEN || null;
     
     if (!content) {
       return res.status(400).json({ success: false, message: 'Content required' });
@@ -127,16 +155,13 @@ router.post('/youtube/publish', requireAuth(), requireSubscription, async (req, 
     console.log(`🚀 Publishing to YouTube for user: ${userId}...`);
     try {
       console.log('[YouTube Route] content.mediaUrl =', content?.mediaUrl);
-      console.log('[YouTube Route] refreshToken present =', Boolean(refreshToken));
+      console.log('[YouTube Route] refreshToken present =', Boolean(effectiveRefreshToken));
     } catch (_) {}
     
     try {
-      const result = await platformPublisher.publishToPlatform('youtube', { ...content, userId, refreshToken });
-      return res.json({
-        success: true,
-        platform: 'youtube',
-        result
-      });
+      const result = await platformPublisher.publishToPlatform('youtube', { ...content, clerkUserId: userId, refreshToken: effectiveRefreshToken });
+      const payload = buildPublishResponse('youtube', content, result);
+      return res.json(payload);
     } catch (error) {
       console.error(`❌ Failed to publish to YouTube:`, error.message);
       return res.status(500).json({ 
@@ -152,11 +177,11 @@ router.post('/youtube/publish', requireAuth(), requireSubscription, async (req, 
   }
 });
 
-// LinkedIn-specific publish endpoint - requires user authentication
+// LinkedIn-specific publish endpoint - requires user authentication and active subscription
 router.post('/linkedin/publish', requireAuth(), requireSubscription, async (req, res) => {
   try {
     const { content } = req.body;
-    const userId = req.auth.userId;
+    const userId = req.auth().userId;
     
     if (!content) {
       return res.status(400).json({ success: false, message: 'Content required' });
@@ -181,14 +206,11 @@ router.post('/linkedin/publish', requireAuth(), requireSubscription, async (req,
     try {
       const result = await platformPublisher.publishToPlatform('linkedin', { 
         ...content, 
-        userId: userId,
+        clerkUserId: userId,
         linkedinUserId: linkedinToken.linkedinUserId 
       });
-      return res.json({
-        success: true,
-        platform: 'linkedin',
-        result
-      });
+      const payload = buildPublishResponse('linkedin', content, result);
+      return res.json(payload);
     } catch (error) {
       console.error(`❌ Failed to publish to LinkedIn:`, error.message);
       return res.status(500).json({ 
@@ -204,11 +226,11 @@ router.post('/linkedin/publish', requireAuth(), requireSubscription, async (req,
   }
 });
 
-// Facebook-specific publish endpoint - requires Clerk authentication
+// Facebook-specific publish endpoint - requires Clerk authentication and active subscription
 router.post('/facebook/publish', requireAuth(), requireSubscription, async (req, res) => {
   try {
     const { content } = req.body;
-    const userId = req.auth.userId;
+    const userId = req.auth().userId;
     
     if (!content) {
       return res.status(400).json({ success: false, message: 'Content required' });
@@ -233,13 +255,10 @@ router.post('/facebook/publish', requireAuth(), requireSubscription, async (req,
     try {
       const result = await platformPublisher.publishToPlatform('facebook', { 
         ...content, 
-        userId: userId
+        clerkUserId: userId
       });
-      return res.json({
-        success: true,
-        platform: 'facebook',
-        result
-      });
+      const payload = buildPublishResponse('facebook', content, result);
+      return res.json(payload);
     } catch (error) {
       console.error(`❌ Failed to publish to Facebook:`, error.message);
       return res.status(500).json({ 
@@ -255,11 +274,11 @@ router.post('/facebook/publish', requireAuth(), requireSubscription, async (req,
   }
 });
 
-// Instagram-specific publish endpoint - requires Clerk authentication
+// Instagram-specific publish endpoint - requires Clerk authentication and active subscription
 router.post('/instagram/publish', requireAuth(), requireSubscription, async (req, res) => {
   try {
     const { content } = req.body;
-    const userId = req.auth.userId;
+    const userId = req.auth().userId;
     
     if (!content) {
       return res.status(400).json({ success: false, message: 'Content required' });
@@ -284,13 +303,10 @@ router.post('/instagram/publish', requireAuth(), requireSubscription, async (req
     try {
       const result = await platformPublisher.publishToPlatform('instagram', { 
         ...content, 
-        userId: userId
+        clerkUserId: userId
       });
-      return res.json({
-        success: true,
-        platform: 'instagram',
-        result
-      });
+      const payload = buildPublishResponse('instagram', content, result);
+      return res.json(payload);
     } catch (error) {
       console.error(`❌ Failed to publish to Instagram:`, error.message);
       return res.status(500).json({ 
@@ -311,11 +327,11 @@ router.post('/tiktok/test', async (req, res) => {
   res.json({ success: true, message: 'TikTok test route working' });
 });
 
-// TikTok-specific publish endpoint - requires Clerk authentication
+// TikTok-specific publish endpoint - requires Clerk authentication and active subscription
 router.post('/tiktok/publish', requireAuth(), requireSubscription, async (req, res) => {
   try {
     const { content } = req.body;
-    const userId = req.auth.userId;
+    const userId = req.auth().userId;
     
     if (!content) {
       return res.status(400).json({ success: false, message: 'Content required' });
@@ -327,12 +343,9 @@ router.post('/tiktok/publish', requireAuth(), requireSubscription, async (req, r
     console.log(`🚀 Publishing to TikTok for user: ${userId}...`);
     
     try {
-      const result = await platformPublisher.publishToPlatform('tiktok', { ...content, userId });
-      return res.json({
-        success: true,
-        platform: 'tiktok',
-        result
-      });
+      const result = await platformPublisher.publishToPlatform('tiktok', { ...content, clerkUserId: userId });
+      const payload = buildPublishResponse('tiktok', content, result);
+      return res.json(payload);
     } catch (error) {
       console.error(`❌ Failed to publish to TikTok:`, error.message);
       return res.status(500).json({ 
@@ -351,57 +364,7 @@ router.post('/tiktok/publish', requireAuth(), requireSubscription, async (req, r
 // General publish endpoint - requires Clerk authentication
 router.post('/publish', requireAuth(), requireSubscription, publishNow);
 
-// Twitter-specific publish endpoint - requires user authentication
-router.post('/twitter/publish', requireAuth(), requireSubscription, async (req, res) => {
-  try {
-    const { content } = req.body;
-    const userId = req.auth.userId;
-    
-    if (!content) {
-      return res.status(400).json({ success: false, message: 'Content required' });
-    }
-    if (!userId) {
-      return res.status(401).json({ success: false, message: 'User authentication required' });
-    }
 
-    // Find the specific user's Twitter token (like LinkedIn does)
-    const TwitterToken = require('../models/TwitterToken');
-    const twitterToken = await TwitterToken.findOne({ userId: userId });
-    
-    if (!twitterToken) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No Twitter account connected for this user. Please connect your Twitter account first via OAuth.' 
-      });
-    }
-
-    console.log(`🚀 Publishing to Twitter for user: ${userId} with twitterUserId: ${twitterToken.twitterUserId}...`);
-    
-    try {
-      const result = await platformPublisher.publishToPlatform('twitter', { 
-        ...content, 
-        userId: userId,
-        twitterUserId: twitterToken.twitterUserId 
-      });
-      return res.json({
-        success: true,
-        platform: 'twitter',
-        result
-      });
-    } catch (error) {
-      console.error(`❌ Failed to publish to Twitter:`, error.message);
-      return res.status(500).json({ 
-        success: false, 
-        platform: 'twitter',
-        error: error.message 
-      });
-    }
-
-  } catch (error) {
-    console.error('Error publishing to Twitter:', error);
-    return res.status(500).json({ success: false, message: 'Failed to publish to Twitter', error: error.message });
-  }
-});
 
 // Get platform connection status - requires Clerk authentication
 router.get('/platforms/status', requireAuth(), getPlatformStatus);

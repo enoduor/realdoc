@@ -49,8 +49,8 @@ function verifyState(signed) {
 router.get('/oauth/start/facebook', requireAuth(), async (req, res) => {
   try {
     // Get user info from Clerk token (more secure than query params)
-    const userId = req.auth.userId;
-    let email = req.auth.email;
+    const userId = req.auth().userId;
+    let email = req.auth().email;
     
     console.log('[Facebook OAuth] Secure route - Clerk auth data:', {
       userId: userId,
@@ -265,7 +265,7 @@ router.get('/oauth/callback/facebook', async (req, res) => {
  */
 router.delete('/disconnect', requireAuth(), async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const userId = req.auth().userId;
 
     const result = await FacebookToken.findOneAndUpdate(
       { userId: userId, isActive: true },
@@ -291,7 +291,7 @@ router.delete('/disconnect', requireAuth(), async (req, res) => {
  */
 router.get('/status', requireAuth(), async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const userId = req.auth().userId;
 
     const token = await FacebookToken.findOne({
       userId: userId,

@@ -2,10 +2,15 @@ const mongoose = require('mongoose');
 
 const TwitterTokenSchema = new mongoose.Schema(
   {
-    userId: { type: String, default: null }, // optional app user id
-    email: { type: String, default: null }, // optional email for linking
-    twitterUserId: { type: String, index: true, required: true, unique: true },
+    // Standard primary key across platforms: Clerk user ID
+    clerkUserId: { type: String, index: true, required: false },
+    email: { type: String, default: null },
 
+    // Back-compat reference to User document (may be absent going forward)
+    userId: { type: String, default: null }, // optional app user id
+
+    // Twitter account info
+    twitterUserId: { type: String, required: true },
     handle: String,
     name: String,
 
@@ -20,9 +25,10 @@ const TwitterTokenSchema = new mongoose.Schema(
   }
 );
 
-// helpful compound index for lookups by either id
+// helpful indexes
+TwitterTokenSchema.index({ clerkUserId: 1, provider: 1 });
+TwitterTokenSchema.index({ userId: 1, provider: 1 });
 TwitterTokenSchema.index({ twitterUserId: 1 }, { unique: true });
-TwitterTokenSchema.index({ userId: 1 });
 TwitterTokenSchema.index({ email: 1 });
 
 module.exports = mongoose.model('TwitterToken', TwitterTokenSchema);

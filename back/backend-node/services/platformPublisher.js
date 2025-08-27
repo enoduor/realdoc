@@ -3,6 +3,7 @@ const axios = require('axios');
 const LinkedInService = require('./linkedinService');
 const youtubeService = require('./youtubeService'); // real YouTube API
 const { postTweet } = require('./twitterService'); // real Twitter API
+const { getUserPlatformTokens } = require('../utils/tokenUtils');
 
 // ---- hashtag helpers ----
 function extractHashtags(str = '') {
@@ -69,12 +70,20 @@ class PlatformPublisher {
       }
     };
 
-    // Real LinkedIn API
-    this.linkedinService = new LinkedInService({
-      accessToken: process.env.LINKEDIN_ACCESS_TOKEN
-    });
+    // Real LinkedIn API - lazy initialization
+    this.linkedinService = null;
 
     // Real Twitter API - using function-based approach with token persistence
+  }
+
+  // Get LinkedIn service lazily
+  getLinkedInService() {
+    if (!this.linkedinService) {
+      this.linkedinService = new LinkedInService({
+        accessToken: process.env.LINKEDIN_ACCESS_TOKEN
+      });
+    }
+    return this.linkedinService;
   }
 
   // ===== Main publish switch =====
@@ -86,10 +95,28 @@ class PlatformPublisher {
 
       this.validatePlatformRequirements(platform, postData);
 
+      // Get user's platform tokens using standardized utility
+      const clerkUserId = postData.clerkUserId;
+      if (!clerkUserId) {
+        throw new Error('clerkUserId is required for platform publishing');
+      }
+
+      const userTokens = await getUserPlatformTokens(clerkUserId);
+      const platformToken = userTokens[platform];
+
+      // Special handling for YouTube (tokens stored in Clerk metadata)
+      if (platform === 'youtube') {
+        // YouTube tokens are handled separately in the YouTube case
+        console.log('[Publisher] YouTube uses refreshToken from Clerk metadata');
+      } else if (!platformToken) {
+        throw new Error(`No ${platform} token found for user ${clerkUserId}`);
+      }
+
       switch (platform) {
         // ------------ LINKEDIN ------------
         case 'linkedin': {
           // Accept either linkedinUserId (preferred) or userId (legacy)
+            // Extract from postData (which is the content object)
           const { linkedinUserId, userId, caption, text } = postData || {};
           const identifier =
             linkedinUserId ? { linkedinUserId } :
@@ -102,17 +129,21 @@ class PlatformPublisher {
 
           const { postToLinkedIn } = require('./linkedinUserService');
 
+          // Convert caption/text to message
           const message = (caption || text || '').trim();
           if (!message) throw new Error('LinkedIn post text is empty');
 
+           // Extract mediaUrl and hashtags
           const mediaUrl = postData?.mediaUrl || null;
           const hashtags = Array.isArray(postData?.hashtags) ? postData.hashtags : [];
 
           console.log('[Publisher][LinkedIn] message.preview =', message.slice(0, 140));
           console.log('[Publisher][LinkedIn] hashtags =', hashtags);
-
+          
+          // Call LinkedIn service
           const result = await postToLinkedIn(identifier, message, mediaUrl, hashtags);
 
+           // Return standardized format
           return {
             success: true,
             platform,
@@ -147,31 +178,33 @@ class PlatformPublisher {
             { title, description, tags, privacyStatus }
           );
 
+          // YouTube service now returns structured object like other platforms
           return {
             success: true,
             platform,
-            postId: data.id,
-            url: `https://youtu.be/${data.id}`,
-            message: 'Successfully published to YouTube'
+            postId: data.postId,
+            url: data.url,
+            message: data.message
           };
         }
 
         // ------------ TWITTER ------------
         case 'twitter': {
-          // Production: require userId for user-specific tokens
-          const { userId, caption, text, mediaUrl } = postData || {};
+          // Extract from postData (which is the content object)
+          const { clerkUserId, caption, text, mediaUrl } = postData || {};
           
           console.log('[Publisher][Twitter] Debug - postData:', JSON.stringify(postData, null, 2));
-          console.log('[Publisher][Twitter] Debug - userId:', userId);
+          console.log('[Publisher][Twitter] Debug - clerkUserId:', clerkUserId);
           console.log('[Publisher][Twitter] Debug - caption:', caption);
           console.log('[Publisher][Twitter] Debug - text:', text);
           console.log('[Publisher][Twitter] Debug - mediaUrl:', mediaUrl);
           
-          if (!userId) {
-            throw new Error('Twitter requires authenticated userId');
+          if (!clerkUserId) {
+            throw new Error('Twitter requires authenticated clerkUserId');
           }
 
-          const identifier = { userId };
+          // Use the platform token we already retrieved (same as other platforms)
+          const identifier = { userId: platformToken.userId };
 
           const tweetText = (caption || text || '').trim();
           console.log('[Publisher][Twitter] Debug - tweetText:', tweetText);
@@ -179,74 +212,70 @@ class PlatformPublisher {
 
           // Pass mediaUrl directly to postTweet - Twitter service handles URL/Buffer conversion
           const result = await postTweet(identifier, tweetText, mediaUrl);
-          // Twitter API returns { data: { id, text } }
-          const tweetId = result?.data?.id;
           
-          if (!tweetId) {
-            throw new Error('Failed to get tweet ID from Twitter API response');
-          }
-          
-          const twitterUrl = `https://twitter.com/i/status/${tweetId}`;
-          console.log(`[Twitter] Generated URL: ${twitterUrl}`);
-          
+          // Twitter service now returns structured object like LinkedIn
           return {
             success: true,
             platform,
-            postId: tweetId,
-            url: twitterUrl,
-            message: 'Successfully published to Twitter'
+            postId: result.postId,
+            url: result.url,
+            message: result.message
           };
         }
 
         // ------------ TIKTOK ------------
         case 'tiktok': {
-          const { userId, caption, text, mediaUrl } = postData || {};
+          const { caption, text, mediaUrl, mediaType } = postData || {};
           
-          if (!userId) {
-            throw new Error('TikTok requires authenticated userId');
-          }
+          // Use the platform token we already retrieved
+          const identifier = { userId: platformToken.userId };
           if (!mediaUrl) {
-            throw new Error('TikTok requires video content: mediaUrl (HTTPS URL or stream)');
+            throw new Error('TikTok requires media content: mediaUrl (HTTPS URL or stream)');
           }
 
-          const { text: formattedText, video_url } =
-            this.formatContentForPlatform('tiktok', postData);
-
-          console.log('[Publisher][TikTok] text =', formattedText);
-          console.log('[Publisher][TikTok] video_url =', video_url);
-
-          // Use the TikTok service for video upload and publishing
           const { uploadVideo, publishVideo } = require('./tiktokService');
-          
-          // 1) Upload video
+
+          const formattedText = (caption || text || '').trim();
+          if (!formattedText) throw new Error('TikTok post text is empty');
+
+          // Determine MIME type based on mediaType
+          let mimeType = 'video/mp4'; // default
+          if (mediaType === 'image') {
+            mimeType = 'image/jpeg'; // TikTok will handle different image formats
+          } else if (mediaType === 'video') {
+            mimeType = 'video/mp4';
+          }
+
+          // 1) Upload media (image or video) - TikTok service will download from URL
           const { video_id } = await uploadVideo({
-            userId: userId,
-            fileBuffer: video_url, // This should be a buffer or URL
-            mimeType: 'video/mp4',
+            userId: identifier.userId,
+            fileBuffer: mediaUrl, // S3 URL - TikTok service will download it
+            mimeType: mimeType,
           });
 
-          // 2) Publish video
+          // 2) Publish media
           const publishResp = await publishVideo({
-            userId: userId,
+            userId: identifier.userId,
             videoId: video_id,
             title: formattedText,
           });
 
+          // TikTok service now returns structured object like other platforms
           return {
             success: true,
             platform,
-            postId: video_id,
-            url: publishResp?.share_url || `https://www.tiktok.com/@user/video/${video_id}`,
-            message: 'Successfully published to TikTok'
+            postId: publishResp.postId,
+            url: publishResp.url,
+            message: publishResp.message
           };
         }
 
         // ------------ INSTAGRAM ------------
         case 'instagram': {
-          const { userId, caption, text, mediaUrl, mediaType, hashtags } = postData || {};
-          if (!userId) {
-            throw new Error('Instagram requires authenticated userId');
-          }
+          const { caption, text, mediaUrl, mediaType, hashtags } = postData || {};
+          
+          // Use the platform token we already retrieved
+          const identifier = { userId: platformToken.userId };
 
           // Build caption + hashtags like other platforms
           const safeCaption = (caption || text || '').toString().trim();
@@ -259,29 +288,26 @@ class PlatformPublisher {
           if (!mediaUrl) throw new Error('Instagram requires mediaUrl (publicly reachable)');
 
           const { postToInstagram } = require('./instagramService');
-          const identifier = { userId };
           const isVideo = String(mediaType || '').toLowerCase() === 'video' || /\.(mp4|mov|m4v)(\?|$)/i.test(mediaUrl);
 
           const result = await postToInstagram(identifier, message, mediaUrl, isVideo);
 
+          // Instagram service now returns structured object like LinkedIn and Twitter
           return {
             success: true,
             platform,
-            postId: result.id,
+            postId: result.postId,
             url: result.url,
-            message: 'Successfully published to Instagram'
+            message: result.message
           };
         }
 
         // ------------ FACEBOOK ------------
         case 'facebook': {
-          const { userId, caption, text, mediaUrl } = postData || {};
+          const { caption, text, mediaUrl } = postData || {};
           
-          if (!userId) {
-            throw new Error('Facebook requires authenticated userId');
-          }
-
-          const identifier = { userId };
+          // Use the platform token we already retrieved
+          const identifier = { userId: platformToken.userId };
 
           const { postToFacebook } = require('./facebookService');
 
@@ -293,20 +319,13 @@ class PlatformPublisher {
 
           const result = await postToFacebook(identifier, message, mediaUrl);
 
-          // Prefer service-provided permalink, fallback if missing
-          const fallbackUrl = result?.id
-            ? `https://www.facebook.com/${String(result.id).includes('_')
-                ? String(result.id).split('_').join('/posts/')
-                : result.id}`
-            : undefined;
-          const finalUrl = result?.url || fallbackUrl;
-
+          // Facebook service now returns structured object like other platforms
           return {
             success: true,
             platform,
-            postId: result?.id,
-            url: finalUrl,
-            message: 'Successfully published to Facebook'
+            postId: result.postId,
+            url: result.url,
+            message: result.message
           };
         }
 
@@ -347,7 +366,7 @@ class PlatformPublisher {
         break;
 
       case 'tiktok':
-        if (!mediaUrl) throw new Error('TikTok requires video content');
+        if (!mediaUrl) throw new Error('TikTok requires media content');
         if (caption && caption.length > 150) throw new Error('TikTok caption exceeds 150 character limit');
         if (hashtags && hashtags.length > 20) throw new Error('TikTok allows maximum 20 hashtags');
         break;
@@ -491,4 +510,4 @@ class PlatformPublisher {
   }
 }
 
-module.exports = new PlatformPublisher();
+module.exports = PlatformPublisher;

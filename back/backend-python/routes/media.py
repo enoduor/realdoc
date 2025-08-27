@@ -110,9 +110,12 @@ async def upload_media(
                 if platform and platform in PLATFORM_DIMENSIONS:
                     img = resize_image(img, platform, 'image')
                 
-                # Convert to bytes for uploading
+                # Convert to bytes for uploading (ensure a valid format)
                 img_byte_arr = io.BytesIO()
-                img.save(img_byte_arr, format=img.format, quality=95)
+                # Fallback format if PIL did not detect one
+                fallback_format = 'JPEG' if ext in ['.jpg', '.jpeg'] else 'PNG'
+                save_format = img.format or fallback_format
+                img.save(img_byte_arr, format=save_format, quality=95)
                 content = img_byte_arr.getvalue()
             except Exception as e:
                 print(f"Image processing error: {str(e)}")

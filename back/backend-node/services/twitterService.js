@@ -184,11 +184,32 @@ async function postTweet(identifier, text, mediaUrlOrBuffer = null) {
       console.log('[TW] v2.tweet (with media) success');
 
       console.log('[Twitter] Tweet with media posted successfully');
-      return resp;
+      
+      // Return structured object like LinkedIn
+      const tweetId = resp?.data?.id;
+      const twitterUrl = `https://twitter.com/i/status/${tweetId}`;
+      
+      return {
+        success: true,
+        postId: tweetId,
+        url: twitterUrl,
+        message: 'Successfully published to Twitter'
+      };
     } catch (error) {
       console.error('[TW ERR] v2.tweet (with media) failed:', error.code, error.message);
       console.log('[Twitter] Attempting text-only tweet as fallback...');
-      return await client.v2.tweet(payload);
+      const resp = await client.v2.tweet(payload);
+      
+      // Return structured object for fallback too
+      const tweetId = resp?.data?.id;
+      const twitterUrl = `https://twitter.com/i/status/${tweetId}`;
+      
+      return {
+        success: true,
+        postId: tweetId,
+        url: twitterUrl,
+        message: 'Successfully published to Twitter (text-only)'
+      };
     }
   }
 
@@ -196,7 +217,17 @@ async function postTweet(identifier, text, mediaUrlOrBuffer = null) {
   try {
     const resp = await client.v2.tweet(payload);
     console.log('[TW] v2.tweet (text-only) success');
-    return resp;
+    
+    // Return structured object like LinkedIn
+    const tweetId = resp?.data?.id;
+    const twitterUrl = `https://twitter.com/i/status/${tweetId}`;
+    
+    return {
+      success: true,
+      postId: tweetId,
+      url: twitterUrl,
+      message: 'Successfully published to Twitter'
+    };
   } catch (error) {
     console.error('[TW ERR] v2.tweet (text-only) failed:', error.code, error.message);
     throw error;

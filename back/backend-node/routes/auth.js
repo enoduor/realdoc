@@ -82,7 +82,7 @@ router.post("/login", async (req, res) => {
 router.post("/link-temp-user", requireAuth(), async (req, res) => {
   try {
     const { email } = req.body;
-    const clerkUserId = req.auth.userId;
+    const clerkUserId = req.auth().userId;
 
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
@@ -124,13 +124,13 @@ router.post("/link-temp-user", requireAuth(), async (req, res) => {
 // ✅ Create or link Clerk user with database user
 router.post("/create-clerk-user", requireAuth(), async (req, res) => {
   try {
-    const clerkUserId = req.auth.userId;
-    const userEmail = req.auth.email;
-    const firstName = req.auth.firstName;
-    const lastName = req.auth.lastName;
+    const clerkUserId = req.auth().userId;
+    const userEmail = req.auth().email;
+    const firstName = req.auth().firstName;
+    const lastName = req.auth().lastName;
 
     console.log(`🔗 Creating/linking Clerk user: ${clerkUserId} (${userEmail || 'no email'})`);
-    console.log('🔍 Full req.auth object:', JSON.stringify(req.auth, null, 2));
+    console.log('🔍 Full req.auth object:', JSON.stringify(req.auth(), null, 2));
 
     // 1) Check if user already exists with this Clerk ID
     let user = await User.findOne({ clerkUserId: clerkUserId });

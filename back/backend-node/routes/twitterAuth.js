@@ -23,10 +23,10 @@ router.get('/oauth/start/twitter', requireAuth(), async (req, res) => {
     // Store the secret with the user ID for later retrieval
     reqSecrets.set(oauth_token, {
       secret: oauth_token_secret,
-      userId: req.auth.userId
+      userId: req.auth().userId
     });
     
-    console.log('[Twitter OAuth] Generated auth link for userId:', req.auth.userId);
+    console.log('[Twitter OAuth] Generated auth link for userId:', req.auth().userId);
     console.log('[Twitter OAuth] Redirecting to:', url);
     
     return res.redirect(url);
@@ -96,7 +96,7 @@ module.exports = router;
 // Status: is Twitter connected for this user?
 router.get('/api/twitter/status', requireAuth(), async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const userId = req.auth().userId;
     const token = await TwitterToken.findOne({ userId });
     if (!token || !token.oauthToken || !token.oauthTokenSecret) {
       return res.json({ connected: false });

@@ -116,7 +116,7 @@ app.get("/", (req, res) => {
 
 // Protected route to test Clerk auth
 app.get('/auth-test', requireAuth(), (req, res) => {
-  res.json({ ok: true, userId: req.auth.userId });
+  res.json({ ok: true, userId: req.auth().userId });
 });
 
 // Protected route example using Clerk
@@ -124,7 +124,7 @@ app.get("/api/auth/profile", requireAuth(), async (req, res) => {
     try {
         const users = mongoose.connection.collection('users');
         const user = await users.findOne(
-            { clerkUserId: req.auth.userId },
+            { clerkUserId: req.auth().userId },
             { projection: { password: 0 } }
         );
         
@@ -142,7 +142,7 @@ app.get('/api/_debug/auth', requireAuth(), (req, res) => {
   res.json({
     status: req.headers['x-clerk-auth-status'] || null,
     reason: req.headers['x-clerk-auth-reason'] || null,
-    auth: req.auth ?? null,          // shows userId if validated
+    auth: (typeof req.auth === 'function') ? req.auth() : req.auth ?? null,          // shows userId if validated
   });
 });
 

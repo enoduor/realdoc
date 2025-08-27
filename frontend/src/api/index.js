@@ -114,6 +114,7 @@ const normalizeReturn = (data, platformsFallback, singlePlatform) => {
           platform: p,
           success,
           result: data?.result || data,
+          // Handle new backend structure: fields are nested under result
           url: data?.result?.url || data?.url,
           postId: data?.result?.postId || data?.postId,
           message: data?.result?.message || data?.message,
@@ -127,43 +128,82 @@ const normalizeReturn = (data, platformsFallback, singlePlatform) => {
 // Ensure per-platform URL/message fallbacks so UI shows "View Post" correctly
 const enrichPlatformItem = (item) => {
   const platformId = (item.platform || '').toLowerCase();
-  if (platformId === 'linkedin') {
-    if (!item.message || item.message === 'Published') {
-      item.message = 'Successfully posted to LinkedIn';
-    }
-    if (!item.url && item.postId) {
-      item.url = `https://www.linkedin.com/feed/update/${item.postId}`;
-    }
-    if (!item.url) {
-      item.url = 'https://www.linkedin.com/feed/';
-    }
-  } else if (platformId === 'youtube') {
-    if (!item.message || item.message === 'Published') {
-      item.message = 'Successfully published to YouTube';
-    }
-    if (!item.url && item.postId) {
-      item.url = `https://youtu.be/${item.postId}`;
-    }
-    if (!item.url) {
-      item.url = 'https://www.youtube.com/';
-    }
-  } else if (platformId === 'facebook') {
-    if (!item.message || item.message === 'Published') {
-      item.message = 'Successfully published to Facebook';
-    }
-    const fbId = item.postId || item.result?.id;
-    if (!item.url && fbId) {
-      if (String(fbId).includes('_')) {
-        const [pageId, postId] = String(fbId).split('_');
-        item.url = `https://www.facebook.com/${pageId}/posts/${postId}`;
+  
+  // First, check if we have a URL from the backend result
+  const backendUrl = item.result?.url || item.url;
+  const backendPostId = item.result?.postId || item.postId;
+  
+  // Only use fallback URLs if backend didn't provide a proper URL
+  if (!backendUrl) {
+    if (platformId === 'linkedin') {
+      if (!item.message || item.message === 'Published') {
+        item.message = 'Successfully posted to LinkedIn';
+      }
+      if (backendPostId) {
+        item.url = `https://www.linkedin.com/feed/update/${backendPostId}`;
       } else {
-        item.url = `https://www.facebook.com/${fbId}`;
+        item.url = 'https://www.linkedin.com/feed/';
+      }
+    } else if (platformId === 'twitter') {
+      if (!item.message || item.message === 'Published') {
+        item.message = 'Successfully published to Twitter';
+      }
+      if (backendPostId) {
+        item.url = `https://twitter.com/i/status/${backendPostId}`;
+      } else {
+        item.url = 'https://twitter.com/';
+      }
+    } else if (platformId === 'instagram') {
+      if (!item.message || item.message === 'Published') {
+        item.message = 'Successfully published to Instagram';
+      }
+      if (backendPostId) {
+        item.url = `https://www.instagram.com/p/${backendPostId}/`;
+      } else {
+        item.url = 'https://www.instagram.com/';
+      }
+    } else if (platformId === 'facebook') {
+      if (!item.message || item.message === 'Published') {
+        item.message = 'Successfully published to Facebook';
+      }
+      // Handle new backend structure: postId might be in result
+      const fbId = backendPostId || item.result?.id;
+      if (fbId) {
+        if (String(fbId).includes('_')) {
+          const [pageId, postId] = String(fbId).split('_');
+          item.url = `https://www.facebook.com/${pageId}/posts/${postId}`;
+        } else {
+          item.url = `https://www.facebook.com/${fbId}`;
+        }
+      } else {
+        item.url = 'https://www.facebook.com/';
+      }
+    } else if (platformId === 'tiktok') {
+      if (!item.message || item.message === 'Published') {
+        item.message = 'Successfully published to TikTok';
+      }
+      if (backendPostId) {
+        item.url = `https://www.tiktok.com/@user/video/${backendPostId}`;
+      } else {
+        item.url = 'https://www.tiktok.com/';
+      }
+    } else if (platformId === 'youtube') {
+      if (!item.message || item.message === 'Published') {
+        item.message = 'Successfully published to YouTube';
+      }
+      // Prefer canonical watch URL; do not fall back to homepage
+      if (backendPostId) {
+        item.url = `https://www.youtube.com/watch?v=${backendPostId}`;
       }
     }
-    if (!item.url) {
-      item.url = 'https://www.facebook.com/';
+  } else {
+    // Use the backend-provided URL and message
+    item.url = backendUrl;
+    if (item.result?.message) {
+      item.message = item.result.message;
     }
   }
+  
   return item;
 };
 
@@ -253,9 +293,10 @@ const publishSinglePlatform = async (platform, postData, token) => {
         platform,
         success: data?.success ?? true,
         result: data,
-        url: data?.url,
-        postId: data?.postId,
-        message: data?.message,
+        // Handle new backend structure: fields are nested under result
+        url: data?.result?.url || data?.url,
+        postId: data?.result?.postId || data?.postId,
+        message: data?.result?.message || data?.message,
       };
       item.platform = platform;
       return enrichPlatformItem(item);

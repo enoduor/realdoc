@@ -155,7 +155,14 @@ async function postToInstagram(identifier, message, mediaUrl, isVideo = false) {
   console.log('[IG] Publishing media...');
   const published = await publishMedia(accessToken, igUserId, creation.id);
   const permalink = await getPermalink(accessToken, published.id);
-  return { id: published.id, url: permalink };
+  
+  // Return structured object like LinkedIn and Twitter
+  return {
+    success: true,
+    postId: published.id,
+    url: permalink,
+    message: 'Successfully published to Instagram'
+  };
 }
 
 module.exports = { postToInstagram };

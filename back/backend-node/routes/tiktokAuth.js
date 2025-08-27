@@ -95,7 +95,7 @@ module.exports = router;
 // Status: is TikTok connected for this user?
 router.get('/status', requireAuth(), async (req, res) => {
   try {
-    const clerkUserId = req.auth.userId;
+    const clerkUserId = req.auth().userId;
     const user = await User.findOne({ clerkUserId });
     if (!user) return res.json({ connected: false });
     const token = await TikTokToken.findOne({ userId: user._id });
@@ -114,7 +114,7 @@ router.get('/status', requireAuth(), async (req, res) => {
 // Disconnect: remove stored TikTok tokens for this user
 router.delete('/disconnect', requireAuth(), async (req, res) => {
   try {
-    const clerkUserId = req.auth.userId;
+    const clerkUserId = req.auth().userId;
     const user = await User.findOne({ clerkUserId });
     if (!user) return res.status(404).json({ error: 'User not found' });
     const existing = await TikTokToken.findOne({ userId: user._id });

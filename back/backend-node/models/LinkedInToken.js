@@ -2,9 +2,15 @@ const mongoose = require('mongoose');
 
 const LinkedInTokenSchema = new mongoose.Schema(
   {
-    userId: { type: String, default: null }, // optional app user id
-    linkedinUserId: { type: String, index: true, required: true, unique: true },
+    // Standard primary key across platforms: Clerk user ID
+    clerkUserId: { type: String, index: true, required: false },
+    email: { type: String, default: null },
 
+    // Back-compat reference to User document (may be absent going forward)
+    userId: { type: String, default: null }, // optional app user id
+
+    // LinkedIn account info
+    linkedinUserId: { type: String, required: true },
     firstName: String,
     lastName: String,
 
@@ -19,8 +25,10 @@ const LinkedInTokenSchema = new mongoose.Schema(
   }
 );
 
-// helpful compound index for lookups by either id
+// helpful indexes
+LinkedInTokenSchema.index({ clerkUserId: 1, provider: 1 });
+LinkedInTokenSchema.index({ userId: 1, provider: 1 });
 LinkedInTokenSchema.index({ linkedinUserId: 1 }, { unique: true });
-LinkedInTokenSchema.index({ userId: 1 });
+LinkedInTokenSchema.index({ email: 1 });
 
 module.exports = mongoose.model('LinkedInToken', LinkedInTokenSchema);

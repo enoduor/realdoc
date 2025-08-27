@@ -36,9 +36,9 @@ function getInstagramRedirectUri() {
 // Secure start
 router.get('/oauth/start/instagram', requireAuth(), async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const userId = req.auth().userId;
     const userDoc = await User.findOne({ clerkUserId: userId });
-    const email = req.auth.email || userDoc?.email || null;
+    const email = req.auth().email || userDoc?.email || null;
     const state = signState({ userId, email, ts: Date.now() });
 
     const scopes = [
@@ -156,7 +156,7 @@ module.exports = router;
 // Status: is Instagram connected for this user?
 router.get('/status', requireAuth(), async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const userId = req.auth().userId;
     const token = await InstagramToken.findOne({ userId, isActive: true });
     if (!token) return res.json({ connected: false });
     return res.json({
@@ -174,7 +174,7 @@ router.get('/status', requireAuth(), async (req, res) => {
 // Disconnect: mark Instagram token inactive
 router.delete('/disconnect', requireAuth(), async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const userId = req.auth().userId;
     const result = await InstagramToken.findOneAndUpdate(
       { userId, isActive: true },
       { isActive: false },

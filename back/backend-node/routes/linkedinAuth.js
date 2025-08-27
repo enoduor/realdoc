@@ -230,7 +230,7 @@ const { requireAuth } = require('@clerk/express');
 // Status: is LinkedIn connected for this user?
 router.get('/status', requireAuth(), async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const userId = req.auth().userId;
     const token = await LinkedInToken.findOne({ userId });
     if (!token || !token.accessToken) return res.json({ connected: false });
     return res.json({
@@ -247,7 +247,7 @@ router.get('/status', requireAuth(), async (req, res) => {
 // Disconnect: remove LinkedIn linkage for this user (preserve by linkedinUserId if you prefer)
 router.delete('/disconnect', requireAuth(), async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const userId = req.auth().userId;
     const existing = await LinkedInToken.findOne({ userId });
     if (!existing) return res.status(404).json({ error: 'LinkedIn account not found' });
     await LinkedInToken.deleteOne({ _id: existing._id });

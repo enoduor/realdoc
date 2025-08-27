@@ -6,6 +6,7 @@ const TikTokTokenSchema = new mongoose.Schema(
   {
     // Standard primary key across platforms: Clerk user ID
     clerkUserId: { type: String, index: true, required: false },
+    email: { type: String, default: null },
 
     // Back-compat reference to User document (may be absent going forward)
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
@@ -29,5 +30,6 @@ const TikTokTokenSchema = new mongoose.Schema(
 // helpful indexes
 TikTokTokenSchema.index({ clerkUserId: 1, provider: 1 });
 TikTokTokenSchema.index({ userId: 1, provider: 1 });
+TikTokTokenSchema.index({ email: 1 });
 
 module.exports = mongoose.model('TikTokToken', TikTokTokenSchema);

@@ -75,14 +75,41 @@ async function getValidAccessTokenByClerk(clerkUserId) {
 }
 
 /**
- * Upload a video file buffer to TikTok.
- * Returns { video_id }
+ * Upload a media file buffer to TikTok (supports both images and videos).
+ * Returns { video_id } or { image_id }
  */
 async function uploadVideo({ clerkUserId, fileBuffer, mimeType = 'video/mp4' }) {
   const accessToken = await getValidAccessTokenByClerk(clerkUserId);
   const url = `${TIKTOK_API_BASE}/video/upload/`;
 
-  const { data } = await axios.post(url, fileBuffer, {
+  // Detect if this is an image or video based on MIME type
+  const isImage = mimeType.startsWith('image/');
+  const isVideo = mimeType.startsWith('video/');
+  
+  if (!isImage && !isVideo) {
+    throw new Error(`Unsupported media type: ${mimeType}. TikTok supports images and videos.`);
+  }
+
+  let input;
+  
+  // Handle URL string by downloading to Buffer
+  if (typeof fileBuffer === 'string') {
+    console.log('[TikTok] Downloading media from URL:', fileBuffer);
+    try {
+      const response = await axios.get(fileBuffer, { responseType: 'arraybuffer' });
+      input = Buffer.from(response.data);
+      console.log('[TikTok] Downloaded media, size:', input.length, 'bytes');
+    } catch (error) {
+      console.error('[TikTok] Failed to download media from URL:', error.message);
+      throw new Error('Failed to download media from URL');
+    }
+  } else if (Buffer.isBuffer(fileBuffer)) {
+    input = fileBuffer;
+  } else {
+    throw new Error('uploadVideo requires a Buffer or URL string input.');
+  }
+
+  const { data } = await axios.post(url, input, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': mimeType,
@@ -91,17 +118,22 @@ async function uploadVideo({ clerkUserId, fileBuffer, mimeType = 'video/mp4' }) 
     maxContentLength: Infinity,
   });
 
-  // Expected: { data: { video: { video_id } } } OR { video_id }
-  const videoId =
+  // Expected: { data: { video: { video_id } } } OR { video_id } OR { image_id }
+  const mediaId =
     data?.data?.video?.video_id ??
     data?.video_id ??
+    data?.image_id ??
+    data?.data?.image?.image_id ??
     null;
 
-  if (!videoId) {
-    throw new Error(`TikTok upload response missing video_id: ${JSON.stringify(data)}`);
+  if (!mediaId) {
+    throw new Error(`TikTok upload response missing media ID: ${JSON.stringify(data)}`);
   }
 
-  return { video_id: videoId };
+  return { 
+    video_id: mediaId,
+    mediaType: isImage ? 'image' : 'video'
+  };
 }
 
 /**
@@ -124,7 +156,15 @@ async function publishVideo({ clerkUserId, videoId, title }) {
   });
 
   // Expected: publish status + share_url or id
-  return data;
+  const shareUrl = data?.share_url || `https://www.tiktok.com/@user/video/${videoId}`;
+  
+  // Return structured object like other platforms
+  return {
+    success: true,
+    postId: videoId,
+    url: shareUrl,
+    message: 'Successfully published to TikTok'
+  };
 }
 
 module.exports = {

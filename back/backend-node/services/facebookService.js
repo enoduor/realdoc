@@ -199,7 +199,12 @@ async function uploadMediaWithText(identifier, mediaUrlOrBuffer, text, explicitT
         // Fallback for photos
         url = `https://www.facebook.com/${response.data.id}`;
       }
-      return { id: response.data.id, url };
+      return {
+        success: true,
+        postId: response.data.id,
+        url: url,
+        message: 'Successfully published to Facebook'
+      };
     } else {
       console.log('[Facebook] Posting video with text...');
 
@@ -230,7 +235,12 @@ async function uploadMediaWithText(identifier, mediaUrlOrBuffer, text, explicitT
         // Fallback for videos
         url = `https://www.facebook.com/watch?v=${response.data.id}`;
       }
-      return { id: response.data.id, url };
+      return {
+        success: true,
+        postId: response.data.id,
+        url: url,
+        message: 'Successfully published to Facebook'
+      };
     }
   } catch (e) {
     console.error('[FB ERR] media post failed:', e.response?.data || e.message);
@@ -260,7 +270,14 @@ async function postToFacebook(identifier, text, mediaUrlOrBuffer = null) {
       console.log('[Facebook] Posting media with text...');
       const result = await uploadMediaWithText(identifier, mediaUrlOrBuffer, message);
       console.log('[Facebook] Media post successful');
-      return result;
+      
+      // Return structured object like other platforms
+      return {
+        success: true,
+        postId: result.id,
+        url: result.url,
+        message: 'Successfully published to Facebook'
+      };
     } catch (error) {
       console.error('[FB ERR] media post failed:', error.response?.data || error.message);
       const fbErr = error.response?.data;
@@ -297,7 +314,14 @@ async function postToFacebook(identifier, text, mediaUrlOrBuffer = null) {
           url = `https://www.facebook.com/${idStr}`;
         }
       }
-      return { id: response.data.id, url };
+      
+      // Return structured object for fallback too
+      return {
+        success: true,
+        postId: response.data.id,
+        url: url,
+        message: 'Successfully published to Facebook (text-only)'
+      };
     }
   }
 
@@ -329,7 +353,14 @@ async function postToFacebook(identifier, text, mediaUrlOrBuffer = null) {
         url = `https://www.facebook.com/${idStr}`;
       }
     }
-    return { id: response.data.id, url };
+    
+    // Return structured object like other platforms
+    return {
+      success: true,
+      postId: response.data.id,
+      url: url,
+      message: 'Successfully published to Facebook'
+    };
   } catch (error) {
     console.error('[FB ERR] feed post (text-only) failed:', error.response?.data || error.message);
     const fbErr = error.response?.data;

@@ -56,7 +56,16 @@ async function uploadVideo(refreshToken, fileInput, meta = {}) {
     // Optional: onUploadProgress available if using googleapis resumable; simple insert suffices for now.
   });
 
-  return res.data; // includes id, snippet, status
+  // Return structured object like other platforms
+  const videoId = res.data.id;
+  const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  
+  return {
+    success: true,
+    postId: videoId,
+    url: youtubeUrl,
+    message: 'Successfully published to YouTube'
+  };
 }
 
 module.exports = { getYouTubeClient, whoAmI, uploadVideo };

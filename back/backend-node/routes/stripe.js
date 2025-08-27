@@ -89,7 +89,7 @@ router.post("/create-subscription-session", async (req, res) => {
 // ✅ Get user subscription status (authenticated)
 router.get("/subscription", requireAuth(), async (req, res) => {
   try {
-    const clerkUserId = req.auth.userId;
+    const clerkUserId = req.auth().userId;
     const user = await User.findOne({ clerkUserId });
 
     if (!user) {
@@ -186,7 +186,7 @@ router.get("/subscription-by-email/:email", async (req, res) => {
 // ✅ Cancel subscription
 router.post("/cancel-subscription", requireAuth(), async (req, res) => {
   try {
-    const clerkUserId = req.auth.userId;
+    const clerkUserId = req.auth().userId;
     const user = await User.findOne({ clerkUserId });
 
     if (!user || !user.stripeSubscriptionId) {
@@ -217,7 +217,7 @@ router.post("/cancel-subscription", requireAuth(), async (req, res) => {
 // ✅ Reactivate subscription
 router.post("/reactivate-subscription", requireAuth(), async (req, res) => {
   try {
-    const clerkUserId = req.auth.userId;
+    const clerkUserId = req.auth().userId;
     const user = await User.findOne({ clerkUserId });
 
     if (!user || !user.stripeSubscriptionId) {
@@ -249,7 +249,7 @@ router.post("/reactivate-subscription", requireAuth(), async (req, res) => {
 router.post("/update-payment-method", requireAuth(), async (req, res) => {
   try {
     const { paymentMethodId } = req.body;
-    const clerkUserId = req.auth.userId;
+    const clerkUserId = req.auth().userId;
     const user = await User.findOne({ clerkUserId });
 
     if (!user || !user.stripeCustomerId) {
@@ -282,7 +282,7 @@ router.post("/update-payment-method", requireAuth(), async (req, res) => {
 // ✅ Get billing portal URL
 router.post("/billing-portal", requireAuth(), async (req, res) => {
   try {
-    const clerkUserId = req.auth.userId;
+    const clerkUserId = req.auth().userId;
     const user = await User.findOne({ clerkUserId });
 
     if (!user || !user.stripeCustomerId) {
