@@ -232,7 +232,8 @@ router.get('/oauth/callback/facebook', async (req, res) => {
 
     // Save or update token in database
     const tokenData = {
-      userId: userId,
+      clerkUserId: userId, // Clerk userId (primary key)
+      userId: userId, // Keep for backward compatibility
       email: email,
       facebookUserId: facebookUser.id,
       accessToken: longLived,
@@ -265,10 +266,10 @@ router.get('/oauth/callback/facebook', async (req, res) => {
  */
 router.delete('/disconnect', requireAuth(), async (req, res) => {
   try {
-    const userId = req.auth().userId;
+    const clerkUserId = req.auth().userId;
 
     const result = await FacebookToken.findOneAndUpdate(
-      { userId: userId, isActive: true },
+      { clerkUserId: clerkUserId, isActive: true },
       { isActive: false },
       { new: true }
     );
@@ -277,7 +278,7 @@ router.delete('/disconnect', requireAuth(), async (req, res) => {
       return res.status(404).json({ error: 'Facebook account not found' });
     }
 
-    console.log('[Facebook] Disconnected user:', userId);
+    console.log('[Facebook] Disconnected user:', clerkUserId);
     res.json({ message: 'Facebook account disconnected successfully' });
 
   } catch (error) {
@@ -291,10 +292,10 @@ router.delete('/disconnect', requireAuth(), async (req, res) => {
  */
 router.get('/status', requireAuth(), async (req, res) => {
   try {
-    const userId = req.auth().userId;
+    const clerkUserId = req.auth().userId;
 
     const token = await FacebookToken.findOne({
-      userId: userId,
+      clerkUserId: clerkUserId,
       isActive: true
     });
 

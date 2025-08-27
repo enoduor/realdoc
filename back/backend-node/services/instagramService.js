@@ -49,6 +49,9 @@ async function findToken(identifier = {}) {
   if (identifier.igUserId) {
     return InstagramToken.findOne({ igUserId: identifier.igUserId, isActive: true }).sort({ updatedAt: -1 });
   }
+  if (identifier.clerkUserId) {
+    return InstagramToken.findOne({ clerkUserId: identifier.clerkUserId, isActive: true }).sort({ updatedAt: -1 });
+  }
   if (identifier.userId) {
     return InstagramToken.findOne({ userId: identifier.userId, isActive: true }).sort({ updatedAt: -1 });
   }
@@ -85,7 +88,7 @@ async function getContainerStatus(accessToken, creationId) {
 async function publishMedia(accessToken, igUserId, creationId) {
   const resp = await axios.post(`${FACEBOOK_API_URL}/${igUserId}/media_publish`, null, {
     params: { creation_id: creationId, access_token: accessToken },
-    timeout: 15000,
+    timeout: 60000, // Increased from 15s to 60s for video processing
   });
   return resp.data; // { id: ig_media_id }
 }
@@ -93,7 +96,7 @@ async function publishMedia(accessToken, igUserId, creationId) {
 async function getPermalink(accessToken, mediaId) {
   const resp = await axios.get(`${FACEBOOK_API_URL}/${mediaId}`, {
     params: { fields: 'permalink', access_token: accessToken },
-    timeout: 15000,
+    timeout: 30000, // Increased from 15s to 30s
   });
   return resp.data?.permalink || null;
 }

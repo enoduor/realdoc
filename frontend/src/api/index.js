@@ -134,71 +134,96 @@ const normalizeReturn = (data, platformsFallback, singlePlatform) => {
 const enrichPlatformItem = (item) => {
   const platformId = (item.platform || '').toLowerCase();
   
-  // First, check if we have a URL from the backend result
+  // Debug logging for YouTube
+  if (platformId === 'youtube') {
+    console.log('[Frontend][YouTube] enrichPlatformItem input:', JSON.stringify(item, null, 2));
+    console.log('[Frontend][YouTube] item.result?.url:', item.result?.url);
+    console.log('[Frontend][YouTube] item.url:', item.url);
+  }
+  
+  // Check for backend-provided URL and message (from structured response)
   const backendUrl = item.result?.url || item.url;
   const backendPostId = item.result?.postId || item.postId;
+  const backendMessage = item.result?.message || item.message;
+  
+  // Debug logging for YouTube
+  if (platformId === 'youtube') {
+    console.log('[Frontend][YouTube] backendUrl:', backendUrl);
+    console.log('[Frontend][YouTube] backendPostId:', backendPostId);
+    console.log('[Frontend][YouTube] backendMessage:', backendMessage);
+  }
+  
+  // If backend provided a URL, use it (this is the correct behavior)
+  if (backendUrl) {
+    item.url = backendUrl;
+    if (backendMessage) {
+      item.message = backendMessage;
+    }
+    if (platformId === 'youtube') {
+      console.log('[Frontend][YouTube] Using backend URL:', backendUrl);
+    }
+    return item;
+  }
   
   // Only use fallback URLs if backend didn't provide a proper URL
-  if (!backendUrl) {
-    if (platformId === 'linkedin') {
-      if (!item.message || item.message === 'Published') {
-        item.message = 'Successfully posted to LinkedIn';
-      }
-      if (backendPostId) {
-        item.url = `https://www.linkedin.com/feed/update/${backendPostId}`;
-      } else {
-        item.url = 'https://www.linkedin.com/feed/';
-      }
-    } else if (platformId === 'twitter') {
-      if (!item.message || item.message === 'Published') {
-        item.message = 'Successfully published to Twitter';
-      }
-      if (backendPostId) {
-        item.url = `https://twitter.com/i/status/${backendPostId}`;
-      } else {
-        item.url = 'https://twitter.com/';
-      }
-    } else if (platformId === 'instagram') {
-      if (!item.message || item.message === 'Published') {
-        item.message = 'Successfully published to Instagram';
-      }
-      if (backendPostId) {
-        item.url = `https://www.instagram.com/p/${backendPostId}/`;
-      } else {
-        item.url = 'https://www.instagram.com/';
-      }
-    } else if (platformId === 'facebook') {
-      if (!item.message || item.message === 'Published') {
-        item.message = 'Successfully published to Facebook';
-      }
-      if (backendPostId) {
-        item.url = `https://www.facebook.com/${backendPostId}`;
-      } else {
-        item.url = 'https://www.facebook.com/';
-      }
-    } else if (platformId === 'tiktok') {
-      if (!item.message || item.message === 'Published') {
-        item.message = 'Successfully published to TikTok';
-      }
-      if (backendPostId) {
-        item.url = `https://www.tiktok.com/@user/video/${backendPostId}`;
-      } else {
-        item.url = 'https://www.tiktok.com/';
-      }
-    } else if (platformId === 'youtube') {
-      if (!item.message || item.message === 'Published') {
-        item.message = 'Successfully published to YouTube';
-      }
-      if (backendPostId) {
-        item.url = `https://www.youtube.com/watch?v=${backendPostId}`;
-      }
+  if (platformId === 'linkedin') {
+    if (!item.message || item.message === 'Published') {
+      item.message = 'Successfully posted to LinkedIn';
     }
-  } else {
-    // Use the backend-provided URL and message
-    item.url = backendUrl;
-    if (item.result?.message) {
-      item.message = item.result.message;
+    if (backendPostId) {
+      item.url = `https://www.linkedin.com/feed/update/${backendPostId}`;
+    } else {
+      item.url = 'https://www.linkedin.com/feed/';
     }
+  } else if (platformId === 'twitter') {
+    if (!item.message || item.message === 'Published') {
+      item.message = 'Successfully published to Twitter';
+    }
+    if (backendPostId) {
+      item.url = `https://twitter.com/i/status/${backendPostId}`;
+    } else {
+      item.url = 'https://twitter.com/';
+    }
+  } else if (platformId === 'instagram') {
+    if (!item.message || item.message === 'Published') {
+      item.message = 'Successfully published to Instagram';
+    }
+    if (backendPostId) {
+      item.url = `https://www.instagram.com/p/${backendPostId}/`;
+    } else {
+      item.url = 'https://www.instagram.com/';
+    }
+  } else if (platformId === 'facebook') {
+    if (!item.message || item.message === 'Published') {
+      item.message = 'Successfully published to Facebook';
+    }
+    if (backendPostId) {
+      item.url = `https://www.facebook.com/${backendPostId}`;
+    } else {
+      item.url = 'https://www.facebook.com/';
+    }
+  } else if (platformId === 'tiktok') {
+    if (!item.message || item.message === 'Published') {
+      item.message = 'Successfully published to TikTok';
+    }
+    if (backendPostId) {
+      item.url = `https://www.tiktok.com/@user/video/${backendPostId}`;
+    } else {
+      item.url = 'https://www.tiktok.com/';
+    }
+  } else if (platformId === 'youtube') {
+    if (!item.message || item.message === 'Published') {
+      item.message = 'Successfully published to YouTube';
+    }
+    // Only create fallback URL if we have a postId and no backend URL
+    if (backendPostId && !backendUrl) {
+      console.log('[Frontend][YouTube] Creating fallback URL with postId:', backendPostId);
+      item.url = `https://www.youtube.com/watch?v=${backendPostId}`;
+    } else if (!backendUrl) {
+      console.log('[Frontend][YouTube] Creating generic fallback URL');
+      item.url = 'https://www.youtube.com/';
+    }
+    console.log('[Frontend][YouTube] Final item.url:', item.url);
   }
   
   return item;

@@ -3,11 +3,14 @@ const fetch = require('node-fetch');
 const LinkedInToken = require('../models/LinkedInToken');
 
 /**
- * Find a LinkedIn token doc by { linkedinUserId } or { userId }
+ * Find a LinkedIn token doc by { linkedinUserId }, { clerkUserId }, or { userId }
  */
 async function findLinkedInToken(identifier = {}) {
   if (identifier.linkedinUserId) {
     return LinkedInToken.findOne({ linkedinUserId: identifier.linkedinUserId });
+  }
+  if (identifier.clerkUserId) {
+    return LinkedInToken.findOne({ clerkUserId: identifier.clerkUserId, linkedinUserId: { $exists: true } });
   }
   if (identifier.userId) {
     return LinkedInToken.findOne({ userId: identifier.userId, linkedinUserId: { $exists: true } });

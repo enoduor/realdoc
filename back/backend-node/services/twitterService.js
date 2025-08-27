@@ -10,11 +10,18 @@ const {
 // Rate limit management removed for testing
 
 /**
- * Find a token doc by { twitterUserId }, { userId }, or { email }
+ * Find a token doc by { twitterUserId }, { clerkUserId }, { userId }, or { email }
  */
 async function findToken(identifier = {}) {
   if (identifier.twitterUserId) {
     return TwitterToken.findOne({ twitterUserId: identifier.twitterUserId });
+  }
+  if (identifier.clerkUserId) {
+    return TwitterToken.findOne({
+      clerkUserId: identifier.clerkUserId,
+      oauthToken: { $exists: true },
+      oauthTokenSecret: { $exists: true }
+    }).sort({ updatedAt: -1 });
   }
   if (identifier.userId) {
     return TwitterToken.findOne({

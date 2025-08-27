@@ -115,16 +115,12 @@ class PlatformPublisher {
       switch (platform) {
         // ------------ LINKEDIN ------------
         case 'linkedin': {
-          // Accept either linkedinUserId (preferred) or userId (legacy)
-            // Extract from postData (which is the content object)
-          const { linkedinUserId, userId, caption, text } = postData || {};
-          const identifier =
-            linkedinUserId ? { linkedinUserId } :
-            userId ? { userId } :
-            null;
+          // Extract from postData (which is the content object)
+          const { linkedinUserId, caption, text } = postData || {};
+          const identifier = { clerkUserId: clerkUserId };
 
-          if (!identifier) {
-            throw new Error('LinkedIn requires linkedinUserId or userId');
+          if (!clerkUserId) {
+            throw new Error('LinkedIn requires authenticated clerkUserId');
           }
 
           const { postToLinkedIn } = require('./linkedinUserService');
@@ -206,7 +202,7 @@ class PlatformPublisher {
           }
 
           // Use the platform token we already retrieved (same as other platforms)
-          const identifier = { userId: platformToken.userId };
+          const identifier = { clerkUserId: clerkUserId };
 
           const tweetText = (caption || text || '').trim();
           console.log('[Publisher][Twitter] Debug - tweetText:', tweetText);
@@ -277,7 +273,7 @@ class PlatformPublisher {
           const { caption, text, mediaUrl, mediaType, hashtags } = postData || {};
           
           // Use the platform token we already retrieved
-          const identifier = { userId: platformToken.userId };
+          const identifier = { clerkUserId: clerkUserId };
 
           // Build caption + hashtags like other platforms
           const safeCaption = (caption || text || '').toString().trim();
@@ -309,7 +305,7 @@ class PlatformPublisher {
           const { caption, text, mediaUrl } = postData || {};
           
           // Use the platform token we already retrieved
-          const identifier = { userId: platformToken.userId };
+          const identifier = { clerkUserId: clerkUserId };
 
           const { postToFacebook } = require('./facebookService');
 

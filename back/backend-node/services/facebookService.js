@@ -10,11 +10,17 @@ const {
 } = process.env;
 
 /**
- * Find a token doc by { facebookUserId }, { userId }, or { email }
+ * Find a token doc by { facebookUserId }, { clerkUserId }, { userId }, or { email }
  */
 async function findToken(identifier = {}) {
   if (identifier.facebookUserId) {
     return FacebookToken.findOne({ facebookUserId: identifier.facebookUserId });
+  }
+  if (identifier.clerkUserId) {
+    return FacebookToken.findOne({
+      clerkUserId: identifier.clerkUserId,
+      isActive: true
+    }).sort({ updatedAt: -1 });
   }
   if (identifier.userId) {
     return FacebookToken.findOne({

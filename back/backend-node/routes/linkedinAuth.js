@@ -148,7 +148,8 @@ router.get('/oauth2/callback/linkedin', async (req, res) => {
 
     // Save/upsert tokens in DB
     const tokenInfo = {
-      userId: userId || null, // Clerk userId when provided
+      clerkUserId: userId || null, // Clerk userId (primary key)
+      userId: userId || null, // Keep for backward compatibility
       linkedinUserId: linkedinUserId,
       firstName: profileData.firstName || profileData.given_name,
       lastName: profileData.lastName || profileData.family_name,
@@ -230,8 +231,8 @@ const { requireAuth } = require('@clerk/express');
 // Status: is LinkedIn connected for this user?
 router.get('/status', requireAuth(), async (req, res) => {
   try {
-    const userId = req.auth().userId;
-    const token = await LinkedInToken.findOne({ userId });
+    const clerkUserId = req.auth().userId;
+    const token = await LinkedInToken.findOne({ clerkUserId });
     if (!token || !token.accessToken) return res.json({ connected: false });
     return res.json({
       connected: true,

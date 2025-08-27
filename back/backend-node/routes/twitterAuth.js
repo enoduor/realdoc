@@ -70,7 +70,8 @@ router.get('/oauth/callback/twitter', async (req, res) => {
     await TwitterToken.findOneAndUpdate(
       { twitterUserId: userId },
       {
-        userId: storedData.userId, // Clerk userId
+        clerkUserId: storedData.userId, // Clerk userId (primary key)
+        userId: storedData.userId, // Keep for backward compatibility
         twitterUserId: userId,
         handle: screenName,
         oauthToken: accessToken,
@@ -96,8 +97,8 @@ module.exports = router;
 // Status: is Twitter connected for this user?
 router.get('/api/twitter/status', requireAuth(), async (req, res) => {
   try {
-    const userId = req.auth().userId;
-    const token = await TwitterToken.findOne({ userId });
+    const clerkUserId = req.auth().userId;
+    const token = await TwitterToken.findOne({ clerkUserId });
     if (!token || !token.oauthToken || !token.oauthTokenSecret) {
       return res.json({ connected: false });
     }
@@ -116,8 +117,8 @@ router.get('/api/twitter/status', requireAuth(), async (req, res) => {
 // Disconnect: remove stored Twitter tokens for this user
 router.delete('/api/twitter/disconnect', requireAuth(), async (req, res) => {
   try {
-    const userId = req.auth.userId;
-    const existing = await TwitterToken.findOne({ userId });
+    const clerkUserId = req.auth().userId;
+    const existing = await TwitterToken.findOne({ clerkUserId });
     if (!existing) {
       return res.status(404).json({ error: 'Twitter account not found' });
     }

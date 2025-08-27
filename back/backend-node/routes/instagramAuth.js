@@ -128,7 +128,8 @@ router.get('/oauth/callback/instagram', async (req, res) => {
     }
 
     const tokenData = {
-      userId: userId || null,
+      clerkUserId: userId || null, // Clerk userId (primary key)
+      userId: userId || null, // Keep for backward compatibility
       email: email || null,
       accessToken: longLived,
       isActive: true,
@@ -136,7 +137,7 @@ router.get('/oauth/callback/instagram', async (req, res) => {
     };
 
     await InstagramToken.findOneAndUpdate(
-      { userId: userId },
+      { clerkUserId: userId },
       { $set: tokenData },
       { upsert: true, new: true }
     );
@@ -156,8 +157,8 @@ module.exports = router;
 // Status: is Instagram connected for this user?
 router.get('/status', requireAuth(), async (req, res) => {
   try {
-    const userId = req.auth().userId;
-    const token = await InstagramToken.findOne({ userId, isActive: true });
+    const clerkUserId = req.auth().userId;
+    const token = await InstagramToken.findOne({ clerkUserId, isActive: true });
     if (!token) return res.json({ connected: false });
     return res.json({
       connected: true,
@@ -174,9 +175,9 @@ router.get('/status', requireAuth(), async (req, res) => {
 // Disconnect: mark Instagram token inactive
 router.delete('/disconnect', requireAuth(), async (req, res) => {
   try {
-    const userId = req.auth().userId;
+    const clerkUserId = req.auth().userId;
     const result = await InstagramToken.findOneAndUpdate(
-      { userId, isActive: true },
+      { clerkUserId, isActive: true },
       { isActive: false },
       { new: true }
     );
