@@ -5,6 +5,28 @@ import { PLATFORMS } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
 import { publishNow } from '../api';
 
+// --- helpers (same as PostStatusTracker) -------------------------------------------------------------
+const toPlatformId = (p) => {
+  if (!p) return '';
+  if (typeof p === 'string') return p.toLowerCase();
+  if (typeof p === 'object') {
+    const id = p.platform || p.id || p.name || '';
+    return (id || '').toString().toLowerCase();
+  }
+  return '';
+};
+
+const normalizePlatforms = (platforms) =>
+  (platforms || []).map(toPlatformId).filter(Boolean);
+
+const getPlatformNames = (platforms) => {
+  const ids = normalizePlatforms(platforms);
+  return ids.map((id) => {
+    const meta = PLATFORMS?.[id.toUpperCase()];
+    return meta?.name || id;
+  });
+};
+
 const PlatformPreviewPanel = ({ onPublishNow }) => {
     const { user } = useUser();
     const { updateContent, content } = useContent();
@@ -205,12 +227,11 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                     mediaType: content.mediaType,
                     privacyStatus: 'unlisted'
                 },
+                // For now, use backend test token. In production, get from user's profile/db
+                refreshToken: user?.publicMetadata?.youtubeRefreshToken || null
             };
-            const ytRefresh = user?.publicMetadata?.youtubeRefreshToken || null;
-            if (ytRefresh) publishData.refreshToken = ytRefresh;
 
-            const doPublish = onPublishNow || publishNow;
-            const result = await doPublish(publishData);
+            const result = await onPublishNow(publishData);
             // Debug: log normalized response and expose globally (match Scheduler behavior)
             try {
                 console.log('🧪 [PlatformPreview] response:', JSON.parse(JSON.stringify(result)));
@@ -902,44 +923,71 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
 
                         {/* Publishing Status Display */}
                         {publishStatus && (
-                            <div className={`p-4 rounded-lg ${
-                                publishStatus.type === 'success' 
-                                    ? 'bg-green-100 border border-green-400 text-green-700' 
-                                    : 'bg-red-100 border border-red-400 text-red-700'
-                            }`}>
-                                <div className="flex items-center">
-                                    <span className="mr-2">{publishStatus.type === 'success' ? '✅' : '❌'}</span>
-                                    <span className="font-medium">{publishStatus.message}</span>
-                                </div>
-                                {publishStatus.postId && (
-                                    <div className="mt-2 text-sm">
-                                        Post ID: {publishStatus.postId}
+                            <div className="p-4 rounded-lg bg-white border border-gray-300">
+                                {/* Platform Icons */}
+                                {publishStatus.platforms && publishStatus.platforms.length > 0 && (
+                                    <div className="flex items-center flex-wrap mb-3">
+                                        {publishStatus.platforms.map((platform, index) => {
+                                            const platformData = PLATFORMS[platform.platform?.toUpperCase()];
+                                            return (
+                                                <span key={index} className="inline-flex items-center mr-2">
+                                                    <span className="mr-1">{platformData?.icon || '🔗'}</span>
+                                                    <span className="text-xs text-gray-600">{platformData?.name || platform.platform}</span>
+                                                </span>
+                                            );
+                                        })}
                                     </div>
                                 )}
+
+                                {/* Timestamp */}
+                                <div className="text-xs text-gray-500 mb-3">
+                                    {publishStatus.postId ? new Date(publishStatus.postId).toLocaleString() : ''}
+                                </div>
+
+                                {/* Caption */}
+                                {content.caption && (
+                                    <p className="mt-2 text-sm text-gray-800 mb-3">
+                                        {content.caption}
+                                    </p>
+                                )}
+
+                                {/* Platform Names */}
+                                {publishStatus.platforms && publishStatus.platforms.length > 0 && (
+                                    <div className="mt-2 text-xs text-gray-600 mb-3">
+                                        Platforms: {getPlatformNames(publishStatus.platforms).join(', ')}
+                                    </div>
+                                )}
+
+                                {/* Per-Platform Results */}
                                 {publishStatus.platforms && publishStatus.platforms.length > 0 && (
                                     <div className="mt-3 space-y-2">
-                                        <div className="text-sm font-medium">Platform Results:</div>
-                                        {publishStatus.platforms.map((platform, index) => (
-                                            <div key={index} className="text-sm">
-                                                <span className={platform.success ? 'text-green-700' : 'text-red-700'}>
-                                                    {platform.success ? '✅' : '❌'} {PLATFORMS[platform.platform?.toUpperCase()]?.name || platform.platform}
-                                                </span>
-                                                {platform.url && (
-                                                    <>
-                                                        {' • '}
-                                                        <a 
-                                                            href={platform.url} 
-                                                            target="_blank" 
-                                                            rel="noopener noreferrer"
-                                                            className="text-blue-600 hover:underline"
-                                                        >
-                                                            View Post
-                                                        </a>
-                                                    </>
-                                                )}
-                                                {platform.message && <> • <span className="text-gray-600">{platform.message}</span></>}
-                                            </div>
-                                        ))}
+                                        {publishStatus.platforms.map((r, i) => {
+                                            const pid = toPlatformId(r?.platform || r?.id);
+                                            const name = PLATFORMS?.[pid.toUpperCase()]?.name || pid || 'platform';
+                                            return (
+                                                <div key={r.postId || i} className="text-sm">
+                                                    <span className={r.success ? 'text-green-700' : 'text-red-700'}>
+                                                        {r.success ? '✅' : '❌'} {name}
+                                                    </span>
+                                                    {r.url && (
+                                                        <>
+                                                            {' • '}
+                                                            <a 
+                                                                href={r.url} 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer"
+                                                                className="text-blue-600 hover:underline"
+                                                            >
+                                                                open
+                                                            </a>
+                                                        </>
+                                                    )}
+                                                    {r.message && <> • <span className="text-gray-600">{r.message}</span></>}
+                                                    {r.postId && <> • <span className="text-gray-500">ID: {r.postId}</span></>}
+                                                    {r.error && <> • <span className="text-red-600">{r.error}</span></>}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>

@@ -78,8 +78,13 @@ export const getHashtags = async ({ platform, topic, count }) => {
 
 // ---- Internal helpers ------------------------------------------------------
 const ENDPOINTS = [
-  // Kept for legacy single-endpoint fallback paths
+  // Individual platform endpoints for legacy flow
   '/api/publisher/linkedin/publish',
+  '/api/publisher/facebook/publish',
+  '/api/publisher/instagram/publish',
+  '/api/publisher/twitter/publish',
+  '/api/publisher/youtube/publish',
+  '/api/publisher/tiktok/publish',
 ];
 
 const asArray = (v) => (Array.isArray(v) ? v : []);
@@ -166,15 +171,8 @@ const enrichPlatformItem = (item) => {
       if (!item.message || item.message === 'Published') {
         item.message = 'Successfully published to Facebook';
       }
-      // Handle new backend structure: postId might be in result
-      const fbId = backendPostId || item.result?.id;
-      if (fbId) {
-        if (String(fbId).includes('_')) {
-          const [pageId, postId] = String(fbId).split('_');
-          item.url = `https://www.facebook.com/${pageId}/posts/${postId}`;
-        } else {
-          item.url = `https://www.facebook.com/${fbId}`;
-        }
+      if (backendPostId) {
+        item.url = `https://www.facebook.com/${backendPostId}`;
       } else {
         item.url = 'https://www.facebook.com/';
       }
@@ -191,7 +189,6 @@ const enrichPlatformItem = (item) => {
       if (!item.message || item.message === 'Published') {
         item.message = 'Successfully published to YouTube';
       }
-      // Prefer canonical watch URL; do not fall back to homepage
       if (backendPostId) {
         item.url = `https://www.youtube.com/watch?v=${backendPostId}`;
       }
@@ -330,13 +327,20 @@ export async function publishNow(postData) {
   // Guard platforms to avoid undefined
   const platforms = Array.isArray(postData.platforms) ? postData.platforms : [];
 
-  // Your single-platform flags (kept)
-  const isTwitterOnly = platforms.length === 1 && platforms[0] === 'twitter';
-  const isLinkedInOnly = platforms.length === 1 && platforms[0] === 'linkedin';
-  const isInstagramOnly = platforms.length === 1 && platforms[0] === 'instagram';
-  const isFacebookOnly = platforms.length === 1 && platforms[0] === 'facebook';
-  const isTikTokOnly = platforms.length === 1 && platforms[0] === 'tiktok';
-  const isYouTubeOnly = platforms.length === 1 && platforms[0] === 'youtube';
+  // Use same logic for both Platform Preview and Scheduler
+  const isFromPlatformPreview = false; // Disable URL detection
+  
+  if (isFromPlatformPreview) {
+    console.log('🧪 [Platform Preview] Using legacy flow for consistency');
+    // Skip to legacy flow
+  } else {
+    // Your single-platform flags (kept for Scheduler)
+    const isTwitterOnly = platforms.length === 1 && platforms[0] === 'twitter';
+    const isLinkedInOnly = platforms.length === 1 && platforms[0] === 'linkedin';
+    const isInstagramOnly = platforms.length === 1 && platforms[0] === 'instagram';
+    const isFacebookOnly = platforms.length === 1 && platforms[0] === 'facebook';
+    const isTikTokOnly = platforms.length === 1 && platforms[0] === 'tiktok';
+    const isYouTubeOnly = platforms.length === 1 && platforms[0] === 'youtube';
 
   // ---- LinkedIn separated flow (user-specific tokens) ----------------------
   if (isLinkedInOnly) {
@@ -434,41 +438,33 @@ export async function publishNow(postData) {
     };
   }
 
-  // ---- Legacy original flow (non-Twitter or unknown/multi via fallbacks) ---
-  const postDataWithUserId = {
-    ...postData,
-    userId: userId || 'temp-user-id', // fallback for development
-  };
+  } // Close the else block for Scheduler flows
 
-  let lastErr = 'Failed to fetch';
-  for (const path of ENDPOINTS) {
+  // ---- Legacy flow for Platform Preview (uses publishSinglePlatform like Scheduler) ---
+  const results = [];
+  
+  for (const platform of platforms) {
     try {
-      const headers = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`; // JWT for backend auth
-
-      const res = await fetch(`${API_BASE_URL}${path}`, {
-        method: 'POST',
-        headers,
-        credentials: 'include', // important if you use Clerk/auth cookies
-        body: JSON.stringify(postDataWithUserId),
+      const item = await publishSinglePlatform(platform, postData, token);
+      results.push(item);
+    } catch (error) {
+      results.push({
+        platform,
+        success: false,
+        url: null,
+        postId: null,
+        message: error.message || 'Failed to publish',
+        error: error.message || 'Failed to publish'
       });
-
-      let data = null;
-      try {
-        data = await res.json();
-      } catch {}
-
-      if (res.ok && data) {
-        return normalizeReturn(data, platforms);
-      }
-
-      lastErr = data?.error || data?.message || `HTTP ${res.status} ${res.statusText}`;
-      if (res.status >= 500) break; // server error — bail early
-    } catch (e) {
-      lastErr = e.message || lastErr;
     }
   }
-  throw new Error(lastErr);
+
+  const success = results.some((r) => r.success);
+  return {
+    success,
+    post: { id: Date.now(), platforms: results },
+    message: success ? 'Published to one or more platforms' : 'Failed to publish',
+  };
 }
 
 // --- Platform status (unchanged) -------------------------------------------

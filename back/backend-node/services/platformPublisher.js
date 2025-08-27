@@ -178,6 +178,8 @@ class PlatformPublisher {
             { title, description, tags, privacyStatus }
           );
 
+          console.log('[Publisher][YouTube] Response from uploadVideo:', JSON.stringify(data, null, 2));
+
           // YouTube service now returns structured object like other platforms
           return {
             success: true,

@@ -257,7 +257,9 @@ router.post('/facebook/publish', requireAuth(), requireSubscription, async (req,
         ...content, 
         clerkUserId: userId
       });
+      console.log('🔍 [Facebook Route] Raw result:', JSON.stringify(result, null, 2));
       const payload = buildPublishResponse('facebook', content, result);
+      console.log('🔍 [Facebook Route] Final payload:', JSON.stringify(payload, null, 2));
       return res.json(payload);
     } catch (error) {
       console.error(`❌ Failed to publish to Facebook:`, error.message);

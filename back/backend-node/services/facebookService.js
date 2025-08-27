@@ -274,7 +274,7 @@ async function postToFacebook(identifier, text, mediaUrlOrBuffer = null) {
       // Return structured object like other platforms
       return {
         success: true,
-        postId: result.id,
+        postId: result.postId,
         url: result.url,
         message: 'Successfully published to Facebook'
       };
