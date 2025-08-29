@@ -192,7 +192,7 @@ router.post('/linkedin/publish', requireAuth(), requireSubscription, async (req,
 
     // Find the specific user's LinkedIn token
     const LinkedInToken = require('../models/LinkedInToken');
-    const linkedinToken = await LinkedInToken.findOne({ userId: userId });
+    const linkedinToken = await LinkedInToken.findOne({ clerkUserId: userId });
     
     if (!linkedinToken) {
       return res.status(400).json({ 
@@ -241,7 +241,7 @@ router.post('/facebook/publish', requireAuth(), requireSubscription, async (req,
 
     // Find the specific user's Facebook token
     const FacebookToken = require('../models/FacebookToken');
-    const facebookToken = await FacebookToken.findOne({ userId: userId, isActive: true });
+    const facebookToken = await FacebookToken.findOne({ clerkUserId: userId, isActive: true });
     
     if (!facebookToken) {
       return res.status(400).json({ 
@@ -291,7 +291,7 @@ router.post('/instagram/publish', requireAuth(), requireSubscription, async (req
 
     // Find the specific user's Instagram token
     const InstagramToken = require('../models/InstagramToken');
-    const instagramToken = await InstagramToken.findOne({ userId: userId, isActive: true });
+    const instagramToken = await InstagramToken.findOne({ clerkUserId: userId, isActive: true });
     
     if (!instagramToken) {
       return res.status(400).json({ 

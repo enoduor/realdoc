@@ -1,25 +1,50 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import PricingSection from './PricingSection';
+import PlatformIcons from './PlatformIcons';
 import './LandingPage.css';
 
 const LandingPage = () => {
   return (
     <div className="landing-page">
+      {/* Navigation Bar */}
+      <nav className="landing-nav">
+        <div className="nav-container">
+          <div className="nav-logo">
+            <Link to="/" className="logo-link">
+              CreatorSync
+            </Link>
+          </div>
+          <div className="nav-links">
+            <a href="#features" className="nav-link">Features</a>
+            <a href="#pricing" className="nav-link">Pricing</a>
+            <Link to="/about" className="nav-link">About</Link>
+            <a 
+              href="http://videograb-alb-1069883284.us-west-2.elb.amazonaws.com" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="nav-link"
+            >
+              VideoGrab
+            </a>
+          </div>
+          <div className="nav-actions">
+            <Link to="/login" className="nav-btn nav-btn-secondary">Sign In</Link>
+            <Link to="/register" className="nav-btn nav-btn-primary">Post Free Video</Link>
+          </div>
+        </div>
+      </nav>
+
       {/* Hero Section */}
       <section className="hero-section">
         <div className="hero-container">
           <div className="hero-content">
-            <h1 className="hero-title">
-              Supercharge Your Social Media Presence
-            </h1>
+            <h1 className="hero-title">Create Once, Publish Everywhere</h1>
             <p className="hero-subtitle">
-              Create, schedule, and publish content across all your social media platforms with AI-powered tools. 
-              Save time and grow your audience faster than ever before.
-            </p>
+            Save hours, skip juggling tools. Repurpose a single video, auto-caption it, and publish across Instagram, TikTok, YouTube, Facebook, LinkedIn, and X in seconds</p>
             <div className="hero-cta">
               <Link to="/register" className="cta-primary">
-                Start Free Trial
+                Post Free Video
               </Link>
               <Link to="/login" className="cta-secondary">
                 Sign In
@@ -42,59 +67,67 @@ const LandingPage = () => {
           </div>
           <div className="hero-image">
             <div className="hero-visual">
-              <div className="platform-icons">
-                <div className="platform-icon linkedin">💼</div>
-                <div className="platform-icon twitter">🐦</div>
-                <div className="platform-icon instagram">📸</div>
-                <div className="platform-icon youtube">▶️</div>
-                <div className="platform-icon tiktok">🎵</div>
-              </div>
+              <PlatformIcons />
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="features-section">
+      <section id="features" className="features-section">
         <div className="features-container">
           <h2 className="section-title">Everything You Need to Succeed</h2>
           <div className="features-grid">
             <div className="feature-card">
               <div className="feature-icon">🤖</div>
               <h3>AI-Powered Content</h3>
-              <p>Generate engaging captions and hashtags with our advanced AI technology</p>
+              <p>Generate engaging captions and hashtags with AI technology</p>
             </div>
             <div className="feature-card">
-              <div className="feature-icon">📅</div>
-              <h3>Smart Scheduling</h3>
-              <p>Schedule posts across multiple platforms with optimal timing</p>
+              <div className="feature-icon">🔄</div>
+              <h3>Seamless Repurposing</h3>
+              <p>instantly convert and share your post to TikTok, Reels, Shorts, and more.</p>
             </div>
             <div className="feature-card">
               <div className="feature-icon">📊</div>
-              <h3>Analytics & Insights</h3>
-              <p>Track performance and optimize your content strategy</p>
+              <h3> 1-Click Publishing</h3>
+              <p>Go live across five socual media accounts directly from one workspace.</p>
             </div>
             <div className="feature-card">
               <div className="feature-icon">🔄</div>
               <h3>Multi-Platform Sync</h3>
-              <p>Manage all your social accounts from one dashboard</p>
+              <p>Track all your social accounts posts from a single platform</p>
             </div>
             <div className="feature-card">
               <div className="feature-icon">🎨</div>
-              <h3>Content Studio</h3>
-              <p>Create and edit visual content with our built-in tools</p>
+              <h3>Customize Posts</h3>
+              <p>Create and edit your posts with our built-in Content and Hashtag Editor</p>
             </div>
             <div className="feature-card">
-              <div className="feature-icon">🚀</div>
-              <h3>Growth Consulting</h3>
-              <p>Get expert advice to scale your social media presence</p>
+              <div className="feature-icon">📥</div>
+              <h3>Download free videos</h3>
+              <p>Download Publicly available videos instantly then repurpose and publish</p>
             </div>
+          </div>
+          
+          {/* VideoGrab Platform Button */}
+          <div className="videograb-platform-section">
+            <a 
+              href="http://videograb-alb-1069883284.us-west-2.elb.amazonaws.com" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="cta-button-large videograb-platform-btn"
+            >
+              🚀 Grab Videos Instantly and Repurpose
+            </a>
           </div>
         </div>
       </section>
 
       {/* Pricing Section */}
-      <PricingSection />
+      <section id="pricing">
+        <PricingSection />
+      </section>
 
       {/* CTA Section */}
       <section className="cta-section">
@@ -102,7 +135,7 @@ const LandingPage = () => {
           <h2>Ready to Transform Your Social Media?</h2>
           <p>Join thousands of creators who are already growing their audience with CreatorSync</p>
           <Link to="/register" className="cta-button-large">
-            Start Your Free Trial Today
+            Post Free Video Today
           </Link>
           <p className="cta-note">No credit card required • Cancel anytime</p>
         </div>
@@ -114,21 +147,34 @@ const LandingPage = () => {
           <div className="footer-content">
             <div className="footer-section">
               <h4>CreatorSync</h4>
-              <p>Empowering creators to build meaningful connections through social media.</p>
+              <p>Made for solo creators, startups, small businesses.<br/>
+              <strong>Create once, publish everywhere.</strong></p>
             </div>
             <div className="footer-section">
               <h4>Product</h4>
               <ul>
-                <li><Link to="/features">Features</Link></li>
-                <li><Link to="/pricing">Pricing</Link></li>
-                <li><Link to="/integrations">Integrations</Link></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#pricing">Pricing</a></li>
+                <li><a 
+                  href="http://videograb-alb-1069883284.us-west-2.elb.amazonaws.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  VideoGrab
+                </a></li>
               </ul>
             </div>
             <div className="footer-section">
               <h4>Support</h4>
               <ul>
                 <li><Link to="/help">Help Center</Link></li>
-                <li><Link to="/contact">Contact Us</Link></li>
+                <li><a 
+                  href="http://videograb-alb-1069883284.us-west-2.elb.amazonaws.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  VideoGrab
+                </a></li>
                 <li><Link to="/status">Status</Link></li>
               </ul>
             </div>

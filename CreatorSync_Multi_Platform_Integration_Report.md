@@ -115,148 +115,435 @@ case 'twitter': {
 
 ---
 
-## Multi-Platform Integration Issues & Solutions
+## Token Management & Credential Validation Documentation
 
-### Issue 1: Twitter OAuth Authentication Flow
-**Problem**: "Missing oauth_token / oauth_verifier / state" errors during Twitter OAuth callback.
+### Overview
 
-**Root Cause**: 
-- Incorrect route naming (`/oauth/connect/twitter` vs `/oauth/start/twitter`)
-- Complex state signing mechanism causing callback failures
-- OAuth 1.0a vs OAuth 2.0 field mismatches
+CreatorSync implements a sophisticated token management system that handles different OAuth protocols and authentication mechanisms across six major social media platforms. Each platform has unique credential requirements and validation patterns, but all follow a consistent "fail-fast" validation approach.
 
-**Solution**:
+### Authentication Architecture
+
+#### 1. **Clerk Integration (Primary Authentication)**
 ```javascript
-// Simplified OAuth flow in twitterAuth.js
-const reqSecrets = new Map(); // In-memory storage for oauth_token_secret
+// All platform tokens are linked to Clerk user ID
+const clerkUserId = req.auth().userId; // From Clerk JWT token
 
-app.get('/oauth/start/twitter', async (req, res) => {
-  const { oauth_token, oauth_token_secret } = await client.generateAuthLink(
-    'http://localhost:4001/oauth/callback/twitter'
+// Token lookup pattern across all platforms
+const token = await PlatformToken.findOne({ clerkUserId });
+```
+
+#### 2. **Multi-Platform Token Storage**
+```javascript
+// MongoDB Schema Pattern (example: LinkedInToken)
+{
+  clerkUserId: String,        // Primary key (Clerk user ID)
+  userId: ObjectId,           // Legacy reference (optional)
+  email: String,              // User email
+  accessToken: String,        // Platform access token
+  refreshToken: String,       // Platform refresh token (if applicable)
+  expiresAt: Date,           // Token expiration
+  platformUserId: String,    // Platform-specific user ID
+  isActive: Boolean,         // Token status
+  provider: String           // Platform identifier
+}
+```
+
+### Platform-Specific Token Implementations
+
+#### 1. **LinkedIn (OAuth 2.0)**
+**Protocol**: OAuth 2.0 with manual expiration checking
+**Token Type**: Access Token with expiration
+**Validation Pattern**: Find → Validate → Get Profile
+
+```javascript
+// Token Finding
+async function findLinkedInToken(identifier = {}) {
+  if (identifier.clerkUserId) {
+    return LinkedInToken.findOne({ 
+      clerkUserId: identifier.clerkUserId, 
+      linkedinUserId: { $exists: true } 
+    });
+  }
+  // ... other identifier types
+}
+
+// Token Validation
+async function getValidLinkedInToken(identifier) {
+  const doc = await findLinkedInToken(identifier);
+  if (!doc) throw new Error('LinkedIn not connected for this user');
+
+  const now = Date.now();
+  const expiresAtMs = new Date(doc.expiresAt).getTime();
+  const isExpired = expiresAtMs && (expiresAtMs - now) < 0;
+
+  if (isExpired) {
+    throw new Error('LinkedIn token has expired. Please reconnect your LinkedIn account.');
+  }
+
+  return doc.accessToken;
+}
+
+// Profile Retrieval
+async function getLinkedInProfile(identifier) {
+  const doc = await findLinkedInToken(identifier);
+  if (!doc) throw new Error('LinkedIn not connected for this user');
+
+  return {
+    linkedinUserId: doc.linkedinUserId,
+    firstName: doc.firstName,
+    lastName: doc.lastName,
+    fullName: `${doc.firstName} ${doc.lastName}`.trim()
+  };
+}
+```
+
+#### 2. **Twitter (OAuth 1.0a)**
+**Protocol**: OAuth 1.0a (most complex)
+**Token Type**: Access Token + Access Secret (dual tokens)
+**Validation Pattern**: Find → Build Client → Get Client
+
+```javascript
+// Token Finding
+async function findToken(identifier = {}) {
+  if (identifier.clerkUserId) {
+    return TwitterToken.findOne({
+      clerkUserId: identifier.clerkUserId,
+      oauthToken: { $exists: true },
+      oauthTokenSecret: { $exists: true }
+    }).sort({ updatedAt: -1 });
+  }
+  // ... other identifier types
+}
+
+// Client Building
+function getUserClientFromDoc(doc) {
+  const oauthToken = doc.oauthToken;
+  const oauthTokenSecret = doc.oauthTokenSecret;
+
+  if (!oauthToken || !oauthTokenSecret) {
+    throw new Error('Twitter OAuth1 tokens missing (required for media upload and tweeting)');
+  }
+
+  return new TwitterApi({
+    appKey: TWITTER_API_KEY,
+    appSecret: TWITTER_API_SECRET,
+    accessToken: oauthToken,
+    accessSecret: oauthTokenSecret,
+  });
+}
+
+// Client Retrieval
+async function getUserClient(identifier) {
+  const doc = await findToken(identifier);
+  if (!doc) throw new Error('Twitter not connected for this user');
+  return getUserClientFromDoc(doc);
+}
+```
+
+#### 3. **TikTok (OAuth 2.0 with Auto-Refresh)**
+**Protocol**: OAuth 2.0 with automatic token refresh
+**Token Type**: Access Token with auto-refresh capability
+**Validation Pattern**: Find → Validate → Auto-Refresh (if needed)
+
+```javascript
+// Token Validation with Auto-Refresh
+async function getValidAccessTokenByClerk(clerkUserId) {
+  const doc = await TikTokToken.findOne({ clerkUserId, provider: 'tiktok' });
+  if (!doc) throw new Error('TikTok not connected for this user');
+  
+  if (isExpiringSoon(doc.expiresAt)) {
+    try {
+      return await refreshAccessToken(doc);  // AUTO-REFRESH
+    } catch (e) {
+      throw new Error(`TikTok token refresh failed: ${e.message}`);
+    }
+  }
+  return doc.accessToken;
+}
+
+// Automatic Token Refresh
+async function refreshAccessToken(doc) {
+  const url = `${TIKTOK_API_BASE}/oauth/token/`;
+  const payload = {
+    client_key: CLIENT_KEY,
+    client_secret: CLIENT_SECRET,
+    grant_type: 'refresh_token',
+    refresh_token: doc.refreshToken,
+  };
+
+  const { data } = await axios.post(url, payload, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  // TikTok rotates refresh_token!
+  const expiresAt = dayjs().add(data.expires_in, 'second').toDate();
+
+  doc.accessToken = data.access_token;
+  if (data.refresh_token) doc.refreshToken = data.refresh_token;
+  doc.expiresAt = expiresAt;
+
+  await doc.save();
+  return doc.accessToken;
+}
+```
+
+#### 4. **Instagram (OAuth 2.0 - Meta)**
+**Protocol**: OAuth 2.0 via Meta Graph API
+**Token Type**: Access Token + Instagram User ID
+**Validation Pattern**: Find → Inline Validation
+
+```javascript
+// Token Finding
+async function findToken(identifier = {}) {
+  if (identifier.clerkUserId) {
+    return InstagramToken.findOne({ 
+      clerkUserId: identifier.clerkUserId, 
+      isActive: true 
+    }).sort({ updatedAt: -1 });
+  }
+  // ... other identifier types
+}
+
+// Inline Validation in Post Function
+async function postToInstagram(identifier, message, mediaUrl, isVideo = false) {
+  const doc = await findToken(identifier);
+  if (!doc || !doc.accessToken || !doc.igUserId) {
+    throw new Error('Instagram not connected for this user');
+  }
+  const accessToken = doc.accessToken;
+  const igUserId = doc.igUserId;
+  // ... rest of function
+}
+```
+
+#### 5. **Facebook (OAuth 2.0 - Meta)**
+**Protocol**: OAuth 2.0 via Meta Graph API
+**Token Type**: Access Token
+**Validation Pattern**: Find → Inline Validation
+
+```javascript
+// Token Finding
+async function findToken(identifier = {}) {
+  if (identifier.clerkUserId) {
+    return FacebookToken.findOne({
+      clerkUserId: identifier.clerkUserId,
+      isActive: true
+    }).sort({ updatedAt: -1 });
+  }
+  // ... other identifier types
+}
+
+// Inline Validation in Post Function
+async function postToFacebook(identifier, text, mediaUrl = null) {
+  const doc = await findToken(identifier);
+  if (!doc || !doc.accessToken) {
+    throw new Error('Facebook not connected for this user');
+  }
+  // ... rest of function
+}
+```
+
+#### 6. **YouTube (OAuth 2.0 - Google)**
+**Protocol**: OAuth 2.0 via Google APIs
+**Token Type**: Refresh Token (no access token storage)
+**Validation Pattern**: Validate Refresh Token → Build OAuth Client
+
+```javascript
+// OAuth Client Building
+function getOAuthClient() {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
+    throw new Error('Missing Google OAuth env (GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI)');
+  }
+  return new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI
   );
-  reqSecrets.set(oauth_token, { oauth_token_secret, userId: req.auth.userId });
-  res.redirect(`https://api.twitter.com/oauth/authorize?oauth_token=${oauth_token}`);
-});
+}
+
+// YouTube Client Creation
+async function getYouTubeClient(refreshToken) {
+  if (!refreshToken) throw new Error('Missing user refresh token');
+  const auth = getOAuthClient();
+  auth.setCredentials({ refresh_token: refreshToken });
+  return google.youtube({ version: 'v3', auth });
+}
 ```
 
-**Files Modified**:
-- `back/backend-node/routes/twitterAuth.js` - Complete OAuth flow rewrite
-- `back/backend-node/models/TwitterToken.js` - Schema updates for OAuth 1.0a
+### Credential Validation Patterns
 
-### Issue 2: MongoDB Document Structure Mismatch
-**Problem**: Database stored OAuth 2.0 fields (`accessToken`, `refreshToken`) but code expected OAuth 1.0a fields (`oauthToken`, `oauthTokenSecret`).
+#### **Consistent "Fail-Fast" Approach**
+All platforms now validate credentials immediately at the start of their publishing functions:
 
-**Solution**:
 ```javascript
-// Updated TwitterToken schema
-const twitterTokenSchema = new mongoose.Schema({
-  userId: { type: String, required: true },
-  twitterUserId: { type: String, required: true },
-  oauthToken: { type: String, required: true },
-  oauthTokenSecret: { type: String, required: true },
-  handle: { type: String, required: true },
-  name: { type: String, required: true },
-  provider: { type: String, default: 'twitter' },
-  tokenType: { type: String, default: 'oauth1' }
-});
+// LinkedIn Pattern
+async function postToLinkedIn(identifier, message, mediaUrl = null, hashtags = []) {
+  // ✅ CREDENTIAL CHECK AT THE START
+  const accessToken = await getValidLinkedInToken(identifier);
+  const profile = await getLinkedInProfile(identifier);
+  // ... business logic continues
+}
+
+// Twitter Pattern
+async function postTweet(identifier, text, mediaUrl = null) {
+  // ✅ CREDENTIAL CHECK AT THE START
+  const client = await getUserClient(identifier);
+  // ... business logic continues
+}
+
+// TikTok Pattern
+async function uploadVideo({ clerkUserId, fileBuffer, mimeType }) {
+  // ✅ CREDENTIAL CHECK AT THE START
+  const accessToken = await getValidAccessTokenByClerk(clerkUserId);
+  // ... business logic continues
+}
 ```
 
-### Issue 3: Twitter API Rate Limiting
-**Problem**: 429 errors even for simple text posts, confusing rate limit reporting.
+### Token Management Utilities
 
-**Root Cause**: 
-- Twitter API v2 library only checking 15-minute limits
-- 24-hour rate limits not being properly detected
-- Inconsistent rate limit header parsing
-
-**Solution**:
+#### **Centralized Token Utilities**
 ```javascript
-// Enhanced rate limit detection in twitterService.js
-const shouldBackoff = (headers) => {
-  const limit15min = headers['x-rate-limit-remaining'];
-  const limit24hour = headers['x-app-limit-24hour-remaining'];
+// back/backend-node/utils/tokenUtils.js
+const getPlatformConnectionStatus = async (clerkUserId) => {
+  const platforms = ['twitter', 'linkedin', 'instagram', 'facebook', 'tiktok'];
+  const status = {};
   
-  // Prioritize 24-hour limit
-  if (limit24hour !== undefined && parseInt(limit24hour) <= 0) {
-    return true;
+  for (const platform of platforms) {
+    try {
+      const token = await getPlatformToken(platform, clerkUserId);
+      status[platform] = { connected: !!token };
+    } catch (error) {
+      status[platform] = { connected: false, error: error.message };
+    }
   }
   
-  return limit15min !== undefined && parseInt(limit15min) <= 0;
+  return status;
 };
-```
 
-### Issue 4: Facebook permalink returned as 404 from UI
-**Problem**: The UI "open" link sometimes 404'd because a hardcoded permalink was built in the shared publisher instead of using the real Graph API permalink.
-
-**Root Cause**:
-- `platformPublisher.js` constructed a generic permalink, ignoring the service-provided URL.
-
-**Solution**:
-```javascript
-// platformPublisher.js (facebook)
-const result = await postToFacebook(identifier, message, mediaUrl);
-// Prefer service-provided permalink, fallback if missing
-const fallbackUrl = result?.id
-  ? `https://www.facebook.com/${String(result.id).includes('_')
-      ? String(result.id).split('_').join('/posts/')
-      : result.id}`
-  : undefined;
-const finalUrl = result?.url || fallbackUrl;
-```
-And in `facebookService.js`, we now fetch the canonical `permalink_url` after creating the object:
-```javascript
-const linkResp = await axios.get(`${FACEBOOK_API_URL}/${response.data.id}`, {
-  params: { access_token: tokenForPost, fields: 'permalink_url,link' },
-});
-const url = linkResp.data?.permalink_url || linkResp.data?.link || null;
-return { id: response.data.id, url };
-```
-
-### Issue 5: Media Upload Failures
-**Problem**: "You must specify type if file is a file handle or Buffer" errors during media uploads.
-
-**Root Cause**:
-- Incorrect parameter usage for Twitter API v1.1 media upload
-- Missing `mimeType` for videos vs `type` for images
-- URL-to-Buffer conversion not properly implemented
-
-**Solution**:
-```javascript
-// Fixed media upload in twitterService.js
-const uploadMedia = async (identifier, mediaUrlOrBuffer, explicitType) => {
-  let input = mediaUrlOrBuffer;
+const createOrUpdatePlatformToken = async (platform, clerkUserId, tokenData) => {
+  const TokenModel = getTokenModel(platform);
+  const dataWithClerkId = { ...tokenData, clerkUserId };
   
-  // Convert URL to Buffer if needed
-  if (typeof mediaUrlOrBuffer === 'string') {
-    const response = await axios.get(mediaUrlOrBuffer, { responseType: 'arraybuffer' });
-    input = Buffer.from(response.data);
-  }
+  const existingToken = await TokenModel.findOne({ clerkUserId });
   
-  // Determine media type and upload parameters
-  const isVideo = explicitType === 'video' || input.length > 5000000;
-  
-  if (isVideo) {
-    return await client.v1.uploadMedia(input, { mimeType: 'video/mp4' });
+  if (existingToken) {
+    Object.assign(existingToken, dataWithClerkId);
+    await existingToken.save();
+    return existingToken;
   } else {
-    return await client.v1.uploadMedia(input, { type: 'png' });
+    const newToken = new TokenModel(dataWithClerkId);
+    await newToken.save();
+    return newToken;
   }
 };
 ```
 
-### Issue 6: Data Structure Mismatch
-**Problem**: "Tweet text is empty" after fixing media uploads.
+### Error Handling & Token Refresh
 
-**Root Cause**: Frontend sending flat structure but backend expecting nested `postData.content`.
+#### **Token Expiration Strategies**
+| Platform | Expiration Handling | Refresh Strategy |
+|----------|-------------------|------------------|
+| **LinkedIn** | Manual expiration check | Manual re-authentication |
+| **Twitter** | OAuth 1.0a (no expiration) | No refresh needed |
+| **TikTok** | Automatic expiration check | Automatic refresh |
+| **Instagram** | No expiration check | Manual re-authentication |
+| **Facebook** | No expiration check | Manual re-authentication |
+| **YouTube** | Refresh token-based | Automatic via Google APIs |
 
-**Solution**:
+#### **Error Handling Patterns**
 ```javascript
-// Fixed data extraction in platformPublisher.js
-case 'twitter':
-  const caption = postData.caption || postData.text || '';
-  const text = postData.text || postData.caption || '';
-  const mediaUrl = postData.mediaUrl;
-  break;
+// Standard Error Pattern
+try {
+  const accessToken = await getValidAccessToken(identifier);
+  // ... API call
+} catch (error) {
+  if (error.message.includes('expired') || error.message.includes('invalid')) {
+    // Redirect to re-authentication
+    throw new Error('Token expired. Please reconnect your account.');
+  }
+  throw error;
+}
 ```
+
+### Security Considerations
+
+#### **Token Storage Security**
+- **Encryption**: All tokens stored encrypted in MongoDB
+- **Access Control**: Tokens only accessible via authenticated requests
+- **Clerk Integration**: All tokens linked to Clerk user ID for security
+- **Token Rotation**: TikTok implements automatic refresh token rotation
+
+#### **Token Validation Security**
+- **Fail-Fast**: All platforms validate credentials before processing
+- **Expiration Checking**: LinkedIn and TikTok check token expiration
+- **Scope Validation**: Tokens validated for required permissions
+- **User Isolation**: Each user's tokens are completely isolated
+
+### Performance Optimizations
+
+#### **Token Caching**
+- **Handle Caching**: Twitter and Facebook cache user handles for 24 hours
+- **Profile Caching**: LinkedIn caches user profile information
+- **Connection Status**: Platform connection status cached to reduce database queries
+
+#### **Database Optimization**
+- **Indexed Queries**: All token lookups use indexed `clerkUserId` field
+- **Compound Indexes**: Platform-specific indexes for efficient queries
+- **Sorting**: Recent tokens prioritized with `sort({ updatedAt: -1 })`
+
+### Monitoring & Debugging
+
+#### **Token Health Monitoring**
+```javascript
+// Token Health Check
+const checkTokenHealth = async (clerkUserId) => {
+  const platforms = ['twitter', 'linkedin', 'instagram', 'facebook', 'tiktok'];
+  const health = {};
+  
+  for (const platform of platforms) {
+    try {
+      const token = await getPlatformToken(platform, clerkUserId);
+      if (token) {
+        const isValid = await validateToken(platform, token);
+        health[platform] = { connected: true, valid: isValid };
+      } else {
+        health[platform] = { connected: false, valid: false };
+      }
+    } catch (error) {
+      health[platform] = { connected: false, valid: false, error: error.message };
+    }
+  }
+  
+  return health;
+};
+```
+
+#### **Debug Logging**
+```javascript
+// Standardized Debug Logging
+console.log(`[${platform.toUpperCase()}] Token validation for user: ${clerkUserId}`);
+console.log(`[${platform.toUpperCase()}] Token found: ${!!token}`);
+console.log(`[${platform.toUpperCase()}] Token valid: ${isValid}`);
+```
+
+### Best Practices
+
+#### **Token Management Best Practices**
+1. **Always validate credentials at function start**
+2. **Use consistent error messages across platforms**
+3. **Implement proper token expiration handling**
+4. **Cache frequently accessed token data**
+5. **Log token operations for debugging**
+6. **Isolate user tokens completely**
+7. **Use secure token storage and transmission**
+
+#### **Credential Validation Best Practices**
+1. **Fail-fast validation pattern**
+2. **Consistent error handling**
+3. **Platform-specific validation logic**
+4. **Proper token refresh mechanisms**
+5. **Security-first approach**
+6. **Performance optimization through caching**
 
 ---
 

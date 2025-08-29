@@ -2,11 +2,112 @@
 .landing-page {
   min-height: 100vh;
   background: #ffffff;
+  scroll-behavior: smooth;
+}
+
+/* Navigation Bar */
+.landing-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  padding: 1rem 0;
+}
+
+.nav-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-logo .logo-link {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #667eea;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.nav-logo .logo-link:hover {
+  color: #764ba2;
+}
+
+.nav-links {
+  display: flex;
+  gap: 2rem;
+}
+
+.nav-link {
+  color: #4a5568;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.nav-link:hover {
+  color: #667eea;
+}
+
+.nav-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.nav-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.nav-btn-secondary {
+  color: #4a5568;
+  border: 1px solid #e2e8f0;
+}
+
+.nav-btn-secondary:hover {
+  background: #f7fafc;
+  border-color: #cbd5e0;
+}
+
+.nav-btn-primary {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.nav-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* Responsive Navigation */
+@media (max-width: 768px) {
+  .nav-links {
+    display: none;
+  }
+  
+  .nav-actions {
+    gap: 0.5rem;
+  }
+  
+  .nav-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+  }
 }
 
 /* Hero Section */
 .hero-section {
-  padding: 100px 0 80px;
+  padding: 120px 0 80px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   position: relative;
@@ -212,6 +313,38 @@
   color: #718096;
   line-height: 1.6;
   font-size: 1rem;
+}
+
+/* VideoGrab Platform Button Section */
+.videograb-platform-section {
+  text-align: center;
+  margin-top: 60px;
+  padding: 40px 0;
+}
+
+.videograb-platform-btn {
+  background: linear-gradient(135deg, #ff6b35, #f7931e) !important;
+  box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4) !important;
+  animation: pulse 2s infinite;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.videograb-platform-btn:hover {
+  box-shadow: 0 12px 35px rgba(255, 107, 53, 0.6) !important;
+  transform: translateY(-3px) scale(1.05);
+  animation: none;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
+  }
+  50% {
+    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.7);
+  }
+  100% {
+    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
+  }
 }
 
 /* CTA Section */

@@ -266,7 +266,7 @@ const publishSinglePlatform = async (platform, postData, token) => {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  // Special guard for Twitter: ensure connection (frontend-only check)
+
   if (platform === 'twitter') {
     try {
       const accountsRes = await fetch(`${API_BASE_URL}/api/publisher/platforms/status`, {

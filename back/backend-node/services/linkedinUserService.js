@@ -55,6 +55,7 @@ async function getLinkedInProfile(identifier) {
  * Post to LinkedIn using user-specific token
  */
 async function postToLinkedIn(identifier, message, mediaUrl = null, hashtags = []) {
+  // ✅ CREDENTIAL CHECK AT THE START (consistent with other platforms)
   const accessToken = await getValidLinkedInToken(identifier);
   const profile = await getLinkedInProfile(identifier);
 

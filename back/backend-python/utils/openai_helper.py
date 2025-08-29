@@ -54,7 +54,7 @@ def generate_caption(platform: str, topic: str, tone: str = "professional", lang
         
         # Handle specific OpenAI errors
         if hasattr(e, 'code') and e.code == 'insufficient_quota':
-            return f"OpenAI quota exceeded. Please check your billing. For now, here's a basic caption: '{topic}' - Share your thoughts below! 💬"
+            return f"OpenAI API quota exceeded. Please check your billing. For now, here's a basic caption: '{topic}' - Share your thoughts below! 💬"
         elif hasattr(e, 'code') and e.code == 'rate_limit_exceeded':
             return f"Rate limit exceeded. Please wait a moment. For now, here's a basic caption: '{topic}' - What do you think? 🤔"
         else:
