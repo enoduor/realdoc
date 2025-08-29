@@ -151,6 +151,7 @@ class PlatformPublisher {
 
         // ------------ YOUTUBE ------------
         case 'youtube': {
+          // ✅ CREDENTIAL CHECK AT THE START (consistent with other platforms)
           const refreshToken = postData?.refreshToken || process.env.YT_TEST_REFRESH_TOKEN;
           try {
             console.log('[Publisher][YouTube] usingProvidedRefreshToken =', Boolean(postData?.refreshToken));

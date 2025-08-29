@@ -20,6 +20,31 @@ async function getYouTubeClient(refreshToken) {
   return google.youtube({ version: 'v3', auth });
 }
 
+/**
+ * Validate YouTube credentials and get client
+ * Follows the same pattern as other platforms: validate credentials at start
+ */
+async function validateYouTubeCredentials(refreshToken) {
+  if (!refreshToken) {
+    throw new Error('YouTube not connected for this user - missing refresh token');
+  }
+  
+  try {
+    const yt = await getYouTubeClient(refreshToken);
+    // Test the credentials by making a light API call
+    await yt.channels.list({
+      part: ['snippet'],
+      mine: true
+    });
+    return yt;
+  } catch (error) {
+    if (error.message.includes('invalid_grant') || error.message.includes('invalid_token')) {
+      throw new Error('YouTube token has expired. Please reconnect your YouTube account.');
+    }
+    throw new Error(`YouTube authentication failed: ${error.message}`);
+  }
+}
+
 async function whoAmI(refreshToken) {
   const yt = await getYouTubeClient(refreshToken);
   const res = await yt.channels.list({
@@ -36,8 +61,10 @@ async function whoAmI(refreshToken) {
  * @param {Object} meta  { title, description, tags?, privacyStatus? }
  */
 async function uploadVideo(refreshToken, fileInput, meta = {}) {
+  // ✅ CREDENTIAL CHECK AT THE START (consistent with other platforms)
+  const yt = await validateYouTubeCredentials(refreshToken);
+  
   const { title, description, tags = [], privacyStatus = 'unlisted' } = meta;
-  const yt = await getYouTubeClient(refreshToken);
 
   // Support passing a URL (we stream it) or a Node stream
   let mediaBody = fileInput;
@@ -68,7 +95,7 @@ async function uploadVideo(refreshToken, fileInput, meta = {}) {
   };
 }
 
-module.exports = { getYouTubeClient, whoAmI, uploadVideo };
+module.exports = { getYouTubeClient, validateYouTubeCredentials, whoAmI, uploadVideo };
 
 // --- Uniform platform management endpoints (mounted via publisher or a new router if desired) ---
 // For uniformity, we expose status/disconnect via a tiny router here to avoid duplicating clients.
@@ -107,3 +134,4 @@ youtubeRouter.delete('/disconnect', requireAuth(), async (req, res) => {
 });
 
 module.exports.youtubeRouter = youtubeRouter;
+
