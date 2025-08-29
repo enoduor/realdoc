@@ -104,11 +104,7 @@ class PlatformPublisher {
       const userTokens = await getUserPlatformTokens(clerkUserId);
       const platformToken = userTokens[platform];
 
-      // Special handling for YouTube (tokens stored in Clerk metadata)
-      if (platform === 'youtube') {
-        // YouTube tokens are handled separately in the YouTube case
-        console.log('[Publisher] YouTube uses refreshToken from Clerk metadata');
-      } else if (!platformToken) {
+      if (!platformToken) {
         throw new Error(`No ${platform} token found for user ${clerkUserId}`);
       }
 
@@ -152,12 +148,8 @@ class PlatformPublisher {
         // ------------ YOUTUBE ------------
         case 'youtube': {
           // ✅ CREDENTIAL CHECK AT THE START (consistent with other platforms)
-          const refreshToken = postData?.refreshToken || process.env.YT_TEST_REFRESH_TOKEN;
-          try {
-            console.log('[Publisher][YouTube] usingProvidedRefreshToken =', Boolean(postData?.refreshToken));
-          } catch (_) {}
-          if (!refreshToken) {
-            throw new Error('YouTube refreshToken missing (provide in body.refreshToken or set YT_TEST_REFRESH_TOKEN)');
+          if (!platformToken) {
+            throw new Error('No YouTube token found for user. Please connect your YouTube account first via OAuth.');
           }
           if (!postData?.mediaUrl) {
             throw new Error('YouTube requires video content: content.mediaUrl (HTTPS URL or stream)');
@@ -170,7 +162,7 @@ class PlatformPublisher {
           console.log('[Publisher][YouTube] video_url =', video_url);
 
           const data = await youtubeService.uploadVideo(
-            refreshToken,
+            platformToken.refreshToken,
             video_url, // URL is streamed by youtubeService
             { title, description, tags, privacyStatus }
           );

@@ -51,7 +51,10 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Clerk authentication middleware (optional - only for protected routes)
+// Apply Clerk middleware globally (required for requireAuth to work)
+app.use(clerkMiddleware());
+
+// Custom middleware to skip auth for public routes
 app.use((req, res, next) => {
   console.log(`🔍 Clerk middleware checking path: ${req.path}`);
   
@@ -95,6 +98,7 @@ app.use('/api/auth/tiktok', require('./routes/tiktokAuth'));
 app.use('/api/twitter', require('./routes/twitterAuth'));
 app.use('/api/instagram', require('./routes/instagramAuth'));
 app.use('/api/linkedin', require('./routes/linkedinAuth'));
+app.use('/api/youtube', require('./routes/googleAuth')); // YouTube OAuth routes
 // YouTube status/disconnect from service router
 const { youtubeRouter } = require('./services/youtubeService');
 app.use('/api/youtube', youtubeRouter);

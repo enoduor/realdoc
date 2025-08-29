@@ -226,9 +226,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                     hashtags: content.hashtags,
                     mediaType: content.mediaType,
                     privacyStatus: 'unlisted'
-                },
-                // For now, use backend test token. In production, get from user's profile/db
-                refreshToken: user?.publicMetadata?.youtubeRefreshToken || null
+                }
             };
 
             const result = await onPublishNow(publishData);

@@ -232,12 +232,6 @@ const enrichPlatformItem = (item) => {
 // Build the request payload for a given platform from the UI postData
 const buildPlatformBody = (platform, postData) => {
   // All separated endpoints accept { content: { caption, hashtags, mediaUrl, mediaType } }
-  // YouTube additionally needs refreshToken at the top-level body (backend expects it outside content)
-  if (platform === 'youtube') {
-    const body = { content: postData.content };
-    if (postData.refreshToken) body.refreshToken = postData.refreshToken;
-    return body;
-  }
   return { content: postData.content };
 };
 
@@ -266,23 +260,23 @@ const publishSinglePlatform = async (platform, postData, token) => {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-
-  if (platform === 'twitter') {
-    try {
-      const accountsRes = await fetch(`${API_BASE_URL}/api/publisher/platforms/status`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        credentials: 'include',
-      });
-      if (!accountsRes.ok) throw new Error('Failed to check Twitter connection status');
-      const accountsData = await accountsRes.json();
-      if (!accountsData.platforms?.twitter?.connected) {
-        throw new Error('No Twitter account connected. Please connect your Twitter account first via OAuth.');
-      }
-    } catch (e) {
-      // Surface the “connect account” message to UI
-      throw new Error('No Twitter account connected. Please connect your Twitter account first via OAuth.');
-    }
-  }
+  // REMOVED: Twitter special guard that was causing authentication issues
+  // if (platform === 'twitter') {
+  //   try {
+  //     const accountsRes = await fetch(`${API_BASE_URL}/api/publisher/platforms/status`, {
+  //       headers: token ? { Authorization: `Bearer ${token}` } : {},
+  //       credentials: 'include',
+  //     });
+  //     if (!accountsRes.ok) throw new Error('Failed to check Twitter connection status');
+  //     const accountsData = await accountsRes.json();
+  //     if (!accountsData.platforms?.twitter?.connected) {
+  //       throw new Error('No Twitter account connected. Please connect your Twitter account first via OAuth.');
+  //     }
+  //   } catch (e) {
+  //     // Surface the "connect account" message to UI
+  //     throw new Error('No Twitter account connected. Please connect your Twitter account first via OAuth.');
+  //   }
+  // }
 
   const path = platformPath(platform);
   if (!path) throw new Error(`Unsupported platform: ${platform}`);

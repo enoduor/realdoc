@@ -140,10 +140,8 @@ router.post('/twitter/publish', requireAuth(), requireSubscription, async (req, 
 // YouTube-specific publish endpoint - requires Clerk authentication and active subscription
 router.post('/youtube/publish', requireAuth(), requireSubscription, async (req, res) => {
   try {
-    const { content, refreshToken } = req.body;
+    const { content } = req.body;
     const userId = req.auth().userId;
-    const claimsRefresh = req.auth().sessionClaims?.public_metadata?.youtubeRefreshToken || null;
-    const effectiveRefreshToken = refreshToken || claimsRefresh || process.env.YT_TEST_REFRESH_TOKEN || null;
     
     if (!content) {
       return res.status(400).json({ success: false, message: 'Content required' });
@@ -153,13 +151,9 @@ router.post('/youtube/publish', requireAuth(), requireSubscription, async (req, 
     }
 
     console.log(`🚀 Publishing to YouTube for user: ${userId}...`);
-    try {
-      console.log('[YouTube Route] content.mediaUrl =', content?.mediaUrl);
-      console.log('[YouTube Route] refreshToken present =', Boolean(effectiveRefreshToken));
-    } catch (_) {}
     
     try {
-      const result = await platformPublisher.publishToPlatform('youtube', { ...content, clerkUserId: userId, refreshToken: effectiveRefreshToken });
+      const result = await platformPublisher.publishToPlatform('youtube', { ...content, clerkUserId: userId });
       const payload = buildPublishResponse('youtube', content, result);
       return res.json(payload);
     } catch (error) {

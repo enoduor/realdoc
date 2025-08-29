@@ -3,6 +3,7 @@ const LinkedInToken = require('../models/LinkedInToken');
 const InstagramToken = require('../models/InstagramToken');
 const FacebookToken = require('../models/FacebookToken');
 const TikTokToken = require('../models/TikTokToken');
+const YouTubeToken = require('../models/YouTubeToken');
 const User = require('../models/User');
 
 /**
@@ -53,17 +54,14 @@ const getUserSubscriptionStatus = async (clerkUserId) => {
  */
 const getUserPlatformTokens = async (clerkUserId) => {
   try {
-    const [twitterToken, linkedinToken, instagramToken, facebookToken, tiktokToken] = await Promise.all([
+    const [twitterToken, linkedinToken, instagramToken, facebookToken, tiktokToken, youtubeToken] = await Promise.all([
       TwitterToken.findOne({ clerkUserId }),
       LinkedInToken.findOne({ clerkUserId }),
       InstagramToken.findOne({ clerkUserId, isActive: true }),
       FacebookToken.findOne({ clerkUserId, isActive: true }),
-      TikTokToken.findOne({ clerkUserId })
+      TikTokToken.findOne({ clerkUserId }),
+      YouTubeToken.findOne({ clerkUserId, isActive: true })
     ]);
-
-    // YouTube tokens are stored in Clerk's public_metadata, not in database
-    // We'll handle YouTube tokens separately in the platform publisher
-    const youtubeToken = null; // YouTube uses refreshToken from Clerk metadata
 
     return {
       twitter: twitterToken,
@@ -71,7 +69,7 @@ const getUserPlatformTokens = async (clerkUserId) => {
       instagram: instagramToken,
       facebook: facebookToken,
       tiktok: tiktokToken,
-      youtube: youtubeToken // Always null, handled separately
+      youtube: youtubeToken
     };
   } catch (error) {
     console.error('Error getting user platform tokens:', error);
@@ -120,6 +118,11 @@ const getPlatformConnectionStatus = async (clerkUserId) => {
         connected: !!tokens.tiktok,
         userId: tokens.tiktok?.tiktokUserOpenId,
         username: tokens.tiktok?.username
+      },
+      youtube: {
+        connected: !!tokens.youtube,
+        userId: tokens.youtube?.channelId,
+        name: tokens.youtube?.channelTitle
       }
     };
   } catch (error) {
@@ -129,7 +132,8 @@ const getPlatformConnectionStatus = async (clerkUserId) => {
       linkedin: { connected: false },
       instagram: { connected: false },
       facebook: { connected: false },
-      tiktok: { connected: false }
+      tiktok: { connected: false },
+      youtube: { connected: false }
     };
   }
 };
@@ -160,6 +164,9 @@ const createOrUpdatePlatformToken = async (platform, clerkUserId, tokenData) => 
         break;
       case 'tiktok':
         TokenModel = TikTokToken;
+        break;
+      case 'youtube':
+        TokenModel = YouTubeToken;
         break;
       default:
         throw new Error(`Unsupported platform: ${platform}`);
@@ -214,6 +221,9 @@ const deletePlatformToken = async (platform, clerkUserId) => {
         break;
       case 'tiktok':
         TokenModel = TikTokToken;
+        break;
+      case 'youtube':
+        TokenModel = YouTubeToken;
         break;
       default:
         throw new Error(`Unsupported platform: ${platform}`);

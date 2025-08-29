@@ -114,9 +114,16 @@ async function postToInstagram(identifier, message, mediaUrl, isVideo = false) {
 
   const attemptCreate = async () => {
     console.log('[IG] Creating container...');
-    return isVideo
-      ? await createContainerVideo(accessToken, igUserId, effectiveUrl, message)
-      : await createContainerImage(accessToken, igUserId, effectiveUrl, message);
+    try {
+      const result = isVideo
+        ? await createContainerVideo(accessToken, igUserId, effectiveUrl, message)
+        : await createContainerImage(accessToken, igUserId, effectiveUrl, message);
+      console.log(`[IG] Container created successfully:`, result);
+      return result;
+    } catch (error) {
+      console.error(`[IG] Container creation failed:`, error.response?.data || error.message);
+      throw error;
+    }
   };
 
   let creation;
@@ -147,10 +154,19 @@ async function postToInstagram(identifier, message, mediaUrl, isVideo = false) {
   if (isVideo) {
     // Poll for FINISHED
     const start = Date.now();
+    console.log(`[IG] Starting video processing for container: ${creation.id}`);
     while (Date.now() - start < 120000) { // up to 2 minutes
       const status = await getContainerStatus(accessToken, creation.id);
-      if (status === 'FINISHED') break;
-      if (status === 'ERROR') throw new Error('Instagram video processing failed');
+      console.log(`[IG] Container ${creation.id} status: ${status}`);
+      if (status === 'FINISHED') {
+        console.log(`[IG] Video processing completed successfully`);
+        break;
+      }
+      if (status === 'ERROR') {
+        console.error(`[IG] Video processing failed for container: ${creation.id}`);
+        throw new Error('Instagram video processing failed');
+      }
+      console.log(`[IG] Waiting 3 seconds before next status check...`);
       await new Promise((r) => setTimeout(r, 3000));
     }
   }
