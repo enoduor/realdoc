@@ -8,59 +8,57 @@ const PricingSection = () => {
   const plans = [
     {
       name: 'Starter',
-      description: 'Best for beginner creators',
+      description: 'Perfect for solo creators',
       monthlyPrice: 9,
       yearlyPrice: 5.33,
       yearlyTotal: 64,
       yearlySavings: 44,
       features: [
-        '5 connected social accounts',
-        'Multiple accounts per platform',
-        'Unlimited posts',
-        'Schedule posts',
-        'Carousel posts',
-        '250MB file uploads'
+        'Free TikTok downloads',
+        '6 connected social accounts',
+        '1 Post → 6 platform posts',
+        'AI captions & hashtags',
+        'Referral discounts',
+        '30 platform posts per day'
+        
       ],
       popular: false,
       bestDeal: false
     },
     {
       name: 'Creator',
-      description: 'Best for growing creators',
+      description: 'For growing creators & startups',
       monthlyPrice: 18,
       yearlyPrice: 10.75,
       yearlyTotal: 129,
       yearlySavings: 87,
       features: [
-        '15 connected social accounts',
-        'Multiple accounts per platform',
-        'Unlimited posts',
-        'Schedule posts',
-        'Carousel posts',
-        '500MB file uploads',
-        'Bulk video scheduling',
-        'Content studio access'
+        'TikTok & Instagram downloads',
+        '6 connected social accounts',
+        '1 Post → 6 platform posts',
+        'AI captions & hashtags',
+        'Content studio access',
+        'Referral discounts',
+        '150 platform posts per day'
       ],
       popular: true,
       bestDeal: false
     },
     {
       name: 'Pro',
-      description: 'Best for scaling brands',
+      description: 'For agencies & scaling brands',
       monthlyPrice: 27,
       yearlyPrice: 16.17,
       yearlyTotal: 194,
       yearlySavings: 130,
       features: [
-        'Unlimited connected accounts',
-        'Multiple accounts per platform',
-        'Unlimited posts',
-        'Schedule posts',
-        'Carousel posts',
-        '500MB file uploads',
-        'Bulk video scheduling',
+        'Downloads from 5 platforms',
+        '1 Post → 6 platform posts',
+        'AI captions & hashtags',
         'Content studio access',
-        'Viral growth consulting'
+        'Viral growth consulting',
+        'Priority support',
+        'Unlimited posts per day'
       ],
       popular: false,
       bestDeal: true
@@ -107,8 +105,8 @@ const PricingSection = () => {
       <div className="pricing-container">
         {/* Header */}
         <div className="pricing-header">
-          <h2 className="pricing-title">Choose Your Plan</h2>
-          <p className="pricing-subtitle">Start your 3-day free trial. No credit card required.</p>
+          <h2 className="pricing-title">Eliminate Platform Fragmentation</h2>
+          <p className="pricing-subtitle">Start your 3-day free trial. No credit card required. Includes free BigVideoGrab access.</p>
           
           {/* Billing Toggle */}
           <div className="billing-toggle">
@@ -180,7 +178,7 @@ const PricingSection = () => {
 
               {/* CTA */}
               <div className="plan-cta">
-                <p className="trial-info">$0.00 due today, cancel anytime</p>
+                <p className="trial-info">Start your 3-day free trial with a credit card <span className="text-green-600 font-bold">(not charged)</span> and cancel anytime.</p>
                 <button 
                   className={`cta-button ${plan.popular ? 'popular' : ''} ${plan.bestDeal ? 'best-deal' : ''}`}
                   onClick={() => handleStartTrial(plan.name)}

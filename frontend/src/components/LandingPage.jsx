@@ -30,7 +30,7 @@ const LandingPage = () => {
           </div>
           <div className="nav-actions">
             <Link to="/login" className="nav-btn nav-btn-secondary">Sign In</Link>
-            <Link to="/register" className="nav-btn nav-btn-primary">Post Free Video</Link>
+            <Link to="/register" className="nav-btn nav-btn-primary">1 Post × 6 Platforms</Link>
           </div>
         </div>
       </nav>
@@ -44,7 +44,7 @@ const LandingPage = () => {
             Save hours, skip juggling tools. Repurpose a single video, auto-caption it, and publish across Instagram, TikTok, YouTube, Facebook, LinkedIn, and X in seconds</p>
             <div className="hero-cta">
               <Link to="/register" className="cta-primary">
-                Post Free Video
+                1 Post × 6 Platforms
               </Link>
               <Link to="/login" className="cta-secondary">
                 Sign In
@@ -52,16 +52,16 @@ const LandingPage = () => {
             </div>
             <div className="hero-stats">
               <div className="stat">
-                <span className="stat-number">10K+</span>
-                <span className="stat-label">Active Creators</span>
+                <span className="stat-number">1000+</span>
+                <span className="stat-label">Get Discount</span>
               </div>
               <div className="stat">
-                <span className="stat-number">1M+</span>
-                <span className="stat-label">Posts Published</span>
+                <span className="stat-number">Referrals</span>
+                <span className="stat-label">Get Discount</span>
               </div>
               <div className="stat">
-                <span className="stat-number">50+</span>
-                <span className="stat-label">Countries</span>
+                <span className="stat-number">25</span>
+                <span className="stat-label">Languages</span>
               </div>
             </div>
           </div>
@@ -118,7 +118,7 @@ const LandingPage = () => {
               rel="noopener noreferrer" 
               className="cta-button-large videograb-platform-btn"
             >
-              🚀 Grab Videos Instantly and Repurpose
+              Grab Videos from 5 platforms
             </a>
           </div>
         </div>
@@ -135,7 +135,7 @@ const LandingPage = () => {
           <h2>Ready to Transform Your Social Media?</h2>
           <p>Join thousands of creators who are already growing their audience with CreatorSync</p>
           <Link to="/register" className="cta-button-large">
-            Post Free Video Today
+            1 Post × 6 Platforms
           </Link>
           <p className="cta-note">No credit card required • Cancel anytime</p>
         </div>
