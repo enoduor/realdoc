@@ -90,6 +90,7 @@ class PlatformPublisher {
   async publishToPlatform(platform, postData) {
     try {
       console.log(`📤 Publishing to ${platform}...`);
+      console.log(`[Publisher] Platform name: "${platform}"`);
       const platformConfig = this.platforms[platform];
       if (!platformConfig) throw new Error(`Platform ${platform} not configured`);
 
@@ -111,6 +112,7 @@ class PlatformPublisher {
       switch (platform) {
         // ------------ LINKEDIN ------------
         case 'linkedin': {
+          console.log('[Publisher] Executing LinkedIn case');
           // Extract from postData (which is the content object)
           const { linkedinUserId, caption, text } = postData || {};
           const identifier = { clerkUserId: clerkUserId };
@@ -147,6 +149,7 @@ class PlatformPublisher {
 
         // ------------ YOUTUBE ------------
         case 'youtube': {
+          console.log('[Publisher] Executing YouTube case');
           // ✅ CREDENTIAL CHECK AT THE START (consistent with other platforms)
           if (!platformToken) {
             throw new Error('No YouTube token found for user. Please connect your YouTube account first via OAuth.');
@@ -295,6 +298,7 @@ class PlatformPublisher {
 
         // ------------ FACEBOOK ------------
         case 'facebook': {
+          console.log('[Publisher] Executing Facebook case');
           const { caption, text, mediaUrl } = postData || {};
           
           // Use the platform token we already retrieved
@@ -309,6 +313,7 @@ class PlatformPublisher {
           console.log('[Publisher][Facebook] mediaUrl =', mediaUrl);
 
           const result = await postToFacebook(identifier, message, mediaUrl);
+          console.log('[Publisher][Facebook] Raw result:', JSON.stringify(result, null, 2));
 
           // Facebook service now returns structured object like other platforms
           return {
@@ -322,6 +327,7 @@ class PlatformPublisher {
 
         // ------------ DEFAULT (simulated for others) ------------
         default: {
+          console.log(`[Publisher] Executing DEFAULT case for platform: "${platform}"`);
           const formattedContent = this.formatContentForPlatform(platform, postData);
           const result = await this.publishContent(platform, formattedContent);
           console.log(`✅ Successfully published to ${platform}`);

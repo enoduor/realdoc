@@ -116,11 +116,24 @@ router.post('/twitter/publish', requireAuth(), requireSubscription, async (req, 
       return res.status(401).json({ success: false, message: 'User authentication required' });
     }
 
-    console.log(`🚀 Publishing to Twitter for user: ${userId}...`);
+    // Find the specific user's Twitter token
+    const TwitterToken = require('../models/TwitterToken');
+    const twitterToken = await TwitterToken.findOne({ clerkUserId: userId });
+    
+    if (!twitterToken) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No Twitter account connected for this user. Please connect your Twitter account first via OAuth.' 
+      });
+    }
+
+    console.log(`🚀 Publishing to Twitter for user: ${userId} with twitterUserId: ${twitterToken.twitterUserId}...`);
     
     try {
       const result = await platformPublisher.publishToPlatform('twitter', { ...content, clerkUserId: userId });
+      console.log('🔍 [Twitter Route] Raw result:', JSON.stringify(result, null, 2));
       const payload = buildPublishResponse('twitter', content, result);
+      console.log('🔍 [Twitter Route] Final payload:', JSON.stringify(payload, null, 2));
       return res.json(payload);
     } catch (error) {
       console.error(`❌ Failed to publish to Twitter:`, error.message);
@@ -150,11 +163,24 @@ router.post('/youtube/publish', requireAuth(), requireSubscription, async (req, 
       return res.status(401).json({ success: false, message: 'User authentication required' });
     }
 
-    console.log(`🚀 Publishing to YouTube for user: ${userId}...`);
+    // Find the specific user's YouTube token
+    const YouTubeToken = require('../models/YouTubeToken');
+    const youtubeToken = await YouTubeToken.findOne({ clerkUserId: userId, isActive: true });
+    
+    if (!youtubeToken) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No YouTube account connected for this user. Please connect your YouTube account first via OAuth.' 
+      });
+    }
+
+    console.log(`🚀 Publishing to YouTube for user: ${userId} with channelId: ${youtubeToken.channelId}...`);
     
     try {
       const result = await platformPublisher.publishToPlatform('youtube', { ...content, clerkUserId: userId });
+      console.log('🔍 [YouTube Route] Raw result:', JSON.stringify(result, null, 2));
       const payload = buildPublishResponse('youtube', content, result);
+      console.log('🔍 [YouTube Route] Final payload:', JSON.stringify(payload, null, 2));
       return res.json(payload);
     } catch (error) {
       console.error(`❌ Failed to publish to YouTube:`, error.message);
