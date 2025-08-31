@@ -18,7 +18,7 @@ const oauth2 = new google.auth.OAuth2(
 );
 
 // Kick off OAuth
-router.get('/oauth2/start/google', (req, res) => {
+router.get('oauth2/start/google', (req, res) => {
   const { userId } = req.query;
   
   if (!userId) {
@@ -43,7 +43,7 @@ router.get('/oauth2/start/google', (req, res) => {
 });
 
 // Handle callback & exchange code → tokens
-router.get('/oauth2/callback/google', async (req, res) => {
+router.get('oauth2/callback/google', async (req, res) => {
   try {
     const { code, state } = req.query;
     
@@ -113,7 +113,7 @@ router.get('/oauth2/callback/google', async (req, res) => {
 });
 
 // Simple test page to connect YouTube account
-router.get('/test-connect', (req, res) => {
+router.get('test-connect', (req, res) => {
   res.send(`
     <!DOCTYPE html>
     <html>
@@ -163,7 +163,7 @@ router.get('/test-connect', (req, res) => {
 });
 
 // YouTube OAuth start (requires authentication)
-router.get('/oauth/start/youtube', requireAuth(), async (req, res) => {
+router.get('oauth/start/youtube', requireAuth(), async (req, res) => {
   try {
     const userId = req.auth().userId;
     const url = `${req.protocol}://${req.get('host')}/oauth2/start/google?userId=${userId}`;
@@ -175,7 +175,7 @@ router.get('/oauth/start/youtube', requireAuth(), async (req, res) => {
 });
 
 // YouTube connection status
-router.get('/status', requireAuth(), async (req, res) => {
+router.get('status', requireAuth(), async (req, res) => {
   try {
     const userId = req.auth().userId;
     const { getUserPlatformTokens } = require('../utils/tokenUtils');
@@ -193,7 +193,7 @@ router.get('/status', requireAuth(), async (req, res) => {
 });
 
 // YouTube disconnect
-router.delete('/disconnect', requireAuth(), async (req, res) => {
+router.delete('disconnect', requireAuth(), async (req, res) => {
   try {
     const userId = req.auth().userId;
     const { deletePlatformToken } = require('../utils/tokenUtils');

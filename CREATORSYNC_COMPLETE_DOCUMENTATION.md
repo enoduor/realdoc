@@ -1066,6 +1066,82 @@ app.include_router(media_router, prefix="/api/v1", tags=["media"])
 - **AWS S3**: Media file storage
 - **OpenAI**: AI-powered content generation
 
+### 🔄 Request Flow Architecture
+
+Here's a clear end-to-end map of how requests flow through your stack, split into the common journeys you'll actually see in logs:
+
+#### 1) Public Health/Landing (No Auth)
+```
+1. Browser → GET /
+2. Express → hits rate-limit → CORS → custom public-skip → no Clerk auth required
+3. Route returns "✅ Node backend is running"
+```
+
+#### 2) Protected API Call (Clerk Session Present)
+```
+1. Browser/Frontend attaches Clerk session (cookie/header) → GET /api/auth/profile
+2. Express → rate-limit → CORS → clerkMiddleware() populates req.auth
+3. Route guard requireAuth() checks session; if valid → next()
+4. Handler queries MongoDB (users collection) by clerkUserId = req.auth().userId
+5. MongoDB returns user doc (projection excludes password)
+6. Express responds { success: true, profile: ... }
+```
+
+#### 3) Social OAuth Connect (e.g., Twitter/YouTube/LinkedIn)
+```
+1. Browser → GET /api/auth/twitter (or /google, /youtube, etc.)
+2. Express route redirects to provider's OAuth consent screen
+3. Provider redirects back to your callback (public path under /api/auth/...)
+4. Route exchanges code ↔ tokens, stores tokens in MongoDB (scoped to clerkUserId)
+5. Express responds/redirects to frontend → "Account connected"
+```
+
+#### 4) Stripe Webhook (Billing Events)
+```
+1. Stripe → POST /webhook (raw body)
+2. Express hits /webhook BEFORE express.json() (important)
+3. stripeWebhook verifies signature, parses event (invoice.paid, customer.subscription.updated, etc.)
+4. Handler updates user's subscription status in MongoDB
+5. Respond 200 to Stripe
+```
+
+#### 5) Publishing Flow (e.g., Twitter Post)
+```
+1. Browser → POST /api/publisher/twitter/publish + payload
+2. Express → rate-limit → CORS → clerkMiddleware() → requireAuth()
+3. Route handler loads user by clerkUserId, pulls provider tokens from DB
+4. Publisher service validates payload (caption/media), uploads media if needed, calls platform API
+5. Platform API returns post ID/URL → service normalizes result
+6. Express responds { success, postId, url, message }
+```
+
+#### 6) Debugging Auth (Handy During Dev)
+```
+1. Browser → GET /api/_debug/auth
+2. requireAuth() ensures session
+3. Response includes Clerk auth headers + parsed req.auth to confirm who you are
+```
+
+### 🏛️ Layer Architecture
+
+**Where each layer sits:**
+- **Edge**: Browser/Stripe/Webhooks
+- **Gateway**: Express (rate-limit, CORS)
+- **Auth**: Clerk (clerkMiddleware globally, requireAuth() per route)
+- **Business**: Routes (/api/auth, /api/publisher, social OAuth routes)
+- **Integrations**: Stripe webhook, social APIs
+- **Data**: MongoDB via Mongoose
+
+### ⚠️ Gotchas Checklist
+
+**Critical Configuration Points:**
+- ✅ Stripe webhooks must be mounted before express.json() (you did this)
+- ✅ Public paths (/, /ping, /webhook, /oauth2/*) correctly skip Clerk auth
+- ✅ All protected routes should use requireAuth() (you did on profile/auth-test/debug)
+- ✅ Ensure CORS origin includes your real frontends in prod
+- ✅ Mongo connection failures should process.exit(1) (you did)
+- ✅ Rate limit tuned for prod (500/15m is generous; tighten in production)
+
 ### File Structure
 ```
 creatorsync/

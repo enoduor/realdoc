@@ -72,7 +72,7 @@ app.use((req, res, next) => {
 });
 
 // Mount OAuth routes with consistent naming pattern: /api/auth/[platform]
-const googleAuthRoutes = require('./routes/googleAuth');
+const youtubeAuthRoutes = require('./routes/googleAuth'); // rename file if you want
 const twitterAuthRoutes = require('./routes/twitterAuth');
 const linkedinAuthRoutes = require('./routes/linkedinAuth');
 const facebookAuthRoutes = require('./routes/facebookAuth');
@@ -80,8 +80,7 @@ const instagramAuthRoutes = require('./routes/instagramAuth');
 const tiktokAuthRoutes = require('./routes/tiktokAuth');
 
 // Standardized OAuth route mountings
-app.use('/api/auth/google', googleAuthRoutes);      // Google OAuth (general)
-app.use('/api/auth/youtube', googleAuthRoutes);     // YouTube OAuth (uses Google)
+app.use('/api/auth/youtube', youtubeAuthRoutes);    // YouTube OAuth (uses Google)
 app.use('/api/auth/twitter', twitterAuthRoutes);    // Twitter OAuth
 app.use('/api/auth/linkedin', linkedinAuthRoutes);  // LinkedIn OAuth
 app.use('/api/auth/facebook', facebookAuthRoutes);  // Facebook OAuth
