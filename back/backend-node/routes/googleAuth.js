@@ -207,22 +207,23 @@ router.delete('/disconnect', requireAuth(), async (req, res) => {
 });
 
 // Optional: quick "who am I" test using an access token you paste as ?access=...
-router.get('/youtube/me', async (req, res) => {
-  try {
-    const access = req.query.access;
-    if (!access) return res.status(400).json({ error: 'Pass ?access=ACCESS_TOKEN' });
+// REMOVED - causing authentication conflicts with YouTube publisher routes
+// router.get('/youtube/me', async (req, res) => {
+//   try {
+//     const access = req.query.access;
+//     if (!access) return res.status(400).json({ error: 'Pass ?access=ACCESS_TOKEN' });
 
-    const auth = new google.auth.OAuth2(
-      GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI
-    );
-    auth.setCredentials({ access_token: access });
-    const yt = google.youtube({ version: 'v3', auth });
-    const me = await yt.channels.list({ part: 'snippet,contentDetails,statistics', mine: true });
-    res.json(me.data);
-  } catch (e) {
-    console.error(e.response?.data || e.message);
-    res.status(500).json({ error: 'YouTube whoami failed' });
-  }
-});
+//     const auth = new google.auth.OAuth2(
+//       GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI
+//     );
+//     auth.setCredentials({ access_token: access });
+//     const yt = google.youtube({ version: 'v3', auth });
+//     const me = await yt.channels.list({ part: 'snippet,contentDetails,statistics', mine: true });
+//     res.json(me.data);
+//   } catch (e) {
+//     console.error(e.response?.data || e.message);
+//     res.status(500).json({ error: 'YouTube whoami failed' });
+//   }
+// });
 
 module.exports = router;

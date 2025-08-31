@@ -71,37 +71,22 @@ app.use((req, res, next) => {
   next();
 });
 
-// Mount Google Auth routes
+// Mount OAuth routes with consistent naming pattern: /api/auth/[platform]
 const googleAuthRoutes = require('./routes/googleAuth');
-app.use(googleAuthRoutes);
-
-// Mount Twitter Auth routes
 const twitterAuthRoutes = require('./routes/twitterAuth');
-app.use(twitterAuthRoutes);
-
-// Mount LinkedIn Auth routes
 const linkedinAuthRoutes = require('./routes/linkedinAuth');
-app.use(linkedinAuthRoutes);
-
-// Mount Facebook Auth routes
 const facebookAuthRoutes = require('./routes/facebookAuth');
-app.use('/api/facebook', facebookAuthRoutes);
-
-// Mount Instagram Auth routes
 const instagramAuthRoutes = require('./routes/instagramAuth');
-app.use('/api/instagram', instagramAuthRoutes);
+const tiktokAuthRoutes = require('./routes/tiktokAuth');
 
-// Mount TikTok Auth routes
-app.use('/api/auth/tiktok', require('./routes/tiktokAuth'));
-
-// Mount uniform status/disconnect routes per platform
-app.use('/api/twitter', require('./routes/twitterAuth'));
-app.use('/api/instagram', require('./routes/instagramAuth'));
-app.use('/api/linkedin', require('./routes/linkedinAuth'));
-app.use('/api/youtube', require('./routes/googleAuth')); // YouTube OAuth routes
-// YouTube status/disconnect from service router
-const { youtubeRouter } = require('./services/youtubeService');
-app.use('/api/youtube', youtubeRouter);
+// Standardized OAuth route mountings
+app.use('/api/auth/google', googleAuthRoutes);      // Google OAuth (general)
+app.use('/api/auth/youtube', googleAuthRoutes);     // YouTube OAuth (uses Google)
+app.use('/api/auth/twitter', twitterAuthRoutes);    // Twitter OAuth
+app.use('/api/auth/linkedin', linkedinAuthRoutes);  // LinkedIn OAuth
+app.use('/api/auth/facebook', facebookAuthRoutes);  // Facebook OAuth
+app.use('/api/auth/instagram', instagramAuthRoutes); // Instagram OAuth
+app.use('/api/auth/tiktok', tiktokAuthRoutes); // TikTok OAuth
 
 // Mount auth routes
 app.use("/api/auth", authRoutes);

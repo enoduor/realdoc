@@ -152,9 +152,11 @@ router.post('/twitter/publish', requireAuth(), requireSubscription, async (req, 
 
 // YouTube-specific publish endpoint - requires Clerk authentication and active subscription
 router.post('/youtube/publish', requireAuth(), requireSubscription, async (req, res) => {
+  console.log('🎯 YouTube route handler reached!');
   try {
     const { content } = req.body;
     const userId = req.auth().userId;
+    console.log('🔍 User ID from Clerk:', userId);
     
     if (!content) {
       return res.status(400).json({ success: false, message: 'Content required' });
