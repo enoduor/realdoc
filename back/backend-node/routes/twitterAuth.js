@@ -104,9 +104,12 @@ router.get('/api/twitter/status', requireAuth(), async (req, res) => {
     }
     return res.json({
       connected: true,
+      oauthToken: token.oauthToken,
+      twitterUserId: token.twitterUserId,
+      firstName: token.firstName || null,
+      lastName: token.lastName || null,
       handle: token.handle || null,
-      name: token.name || null,
-      twitterUserId: token.twitterUserId
+      isActive: token.isActive || true
     });
   } catch (e) {
     console.error('[Twitter] Status error:', e.message);

@@ -96,14 +96,16 @@ module.exports = router;
 router.get('/status', requireAuth(), async (req, res) => {
   try {
     const clerkUserId = req.auth().userId;
-    const user = await User.findOne({ clerkUserId });
-    if (!user) return res.json({ connected: false });
-    const token = await TikTokToken.findOne({ userId: user._id });
+    const token = await TikTokToken.findOne({ clerkUserId });
     if (!token || !token.accessToken) return res.json({ connected: false });
     return res.json({
       connected: true,
-      tiktokUserOpenId: token.tiktokUserOpenId || null,
-      username: token.username || null,
+      oauthToken: token.accessToken,
+      tiktokUserId: token.tiktokUserOpenId || null,
+      firstName: token.firstName || null,
+      lastName: token.lastName || null,
+      handle: token.username || null,
+      isActive: token.isActive || true
     });
   } catch (e) {
     console.error('[TikTok] Status error:', e.message);

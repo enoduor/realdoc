@@ -236,8 +236,12 @@ router.get('/status', requireAuth(), async (req, res) => {
     if (!token || !token.accessToken) return res.json({ connected: false });
     return res.json({
       connected: true,
+      oauthToken: token.accessToken,
       linkedinUserId: token.linkedinUserId,
-      name: [token.firstName, token.lastName].filter(Boolean).join(' ') || null
+      firstName: token.firstName || null,
+      lastName: token.lastName || null,
+      handle: token.handle || null,
+      isActive: token.isActive || true
     });
   } catch (e) {
     console.error('[LinkedIn] Status error:', e.message);

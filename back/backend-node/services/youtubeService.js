@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 const { google } = require('googleapis');
 const axios = require('axios');
+const YouTubeToken = require('../models/YouTubeToken');
 
 function getOAuthClient() {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
@@ -11,6 +12,28 @@ function getOAuthClient() {
     process.env.GOOGLE_CLIENT_SECRET,
     process.env.GOOGLE_REDIRECT_URI
   );
+}
+
+/**
+ * Find a token doc by { clerkUserId } - same pattern as other platforms
+ */
+async function findToken(identifier = {}) {
+  if (identifier.clerkUserId) {
+    return YouTubeToken.findOne({ 
+      clerkUserId: identifier.clerkUserId, 
+      isActive: true 
+    });
+  }
+  return null;
+}
+
+/**
+ * Get refresh token from identifier - same pattern as other platforms
+ */
+async function getRefreshTokenFromIdentifier(identifier) {
+  const doc = await findToken(identifier);
+  if (!doc) throw new Error('YouTube not connected for this user');
+  return doc.refreshToken;
 }
 
 async function getYouTubeClient(refreshToken) {
@@ -55,13 +78,14 @@ async function whoAmI(refreshToken) {
 }
 
 /**
- * Uploads a video to YouTube.
- * @param {string} refreshToken  User's stored refresh token
+ * Posts a video to YouTube.
+ * @param {Object} identifier  { clerkUserId } - same pattern as other platforms
  * @param {Readable|String} fileInput  Node Readable stream, or HTTPS URL to stream
  * @param {Object} meta  { title, description, tags?, privacyStatus? }
  */
-async function uploadVideo(refreshToken, fileInput, meta = {}) {
+async function postToYouTube(identifier, fileInput, meta = {}) {
   // ✅ CREDENTIAL CHECK AT THE START (consistent with other platforms)
+  const refreshToken = await getRefreshTokenFromIdentifier(identifier);
   const yt = await validateYouTubeCredentials(refreshToken);
   
   const { title, description, tags = [], privacyStatus = 'unlisted' } = meta;
@@ -95,7 +119,7 @@ async function uploadVideo(refreshToken, fileInput, meta = {}) {
   };
 }
 
-module.exports = { getYouTubeClient, validateYouTubeCredentials, whoAmI, uploadVideo };
+module.exports = { getYouTubeClient, validateYouTubeCredentials, whoAmI, postToYouTube, findToken, getRefreshTokenFromIdentifier };
 
 // --- Uniform platform management endpoints (mounted via publisher or a new router if desired) ---
 // For uniformity, we expose status/disconnect via a tiny router here to avoid duplicating clients.

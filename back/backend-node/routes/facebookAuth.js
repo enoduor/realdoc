@@ -305,9 +305,12 @@ router.get('/status', requireAuth(), async (req, res) => {
 
     res.json({
       connected: true,
-      name: token.name,
-      handle: token.handle,
-      facebookUserId: token.facebookUserId
+      oauthToken: token.accessToken,
+      facebookUserId: token.facebookUserId,
+      firstName: token.firstName || null,
+      lastName: token.lastName || null,
+      handle: token.handle || null,
+      isActive: token.isActive || true
     });
 
   } catch (error) {

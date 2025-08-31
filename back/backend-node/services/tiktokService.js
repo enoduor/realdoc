@@ -167,6 +167,54 @@ async function publishVideo({ clerkUserId, videoId, title }) {
   };
 }
 
+/**
+ * Posts content to TikTok (combines upload + publish steps).
+ * Same pattern as other platforms: postTo[Platform]
+ * @param {Object} identifier  { clerkUserId } - same pattern as other platforms
+ * @param {string} message  Caption/text for the post
+ * @param {string} mediaUrl  URL to media file
+ * @param {string} mediaType  'video' or 'image'
+ */
+async function postToTikTok(identifier, message, mediaUrl, mediaType = 'video') {
+  const { clerkUserId } = identifier;
+  
+  if (!clerkUserId) {
+    throw new Error('TikTok requires authenticated clerkUserId');
+  }
+
+  if (!mediaUrl) {
+    throw new Error('TikTok requires media content: mediaUrl (HTTPS URL)');
+  }
+
+  if (!message) {
+    throw new Error('TikTok post text is empty');
+  }
+
+  // Determine MIME type based on mediaType
+  let mimeType = 'video/mp4'; // default
+  if (mediaType === 'image') {
+    mimeType = 'image/jpeg'; // TikTok will handle different image formats
+  } else if (mediaType === 'video') {
+    mimeType = 'video/mp4';
+  }
+
+  // 1) Upload media (image or video) - TikTok service will download from URL
+  const { video_id } = await uploadVideo({
+    clerkUserId: clerkUserId,
+    fileBuffer: mediaUrl, // S3 URL - TikTok service will download it
+    mimeType: mimeType,
+  });
+
+  // 2) Publish media
+  const result = await publishVideo({
+    clerkUserId: clerkUserId,
+    videoId: video_id,
+    title: message,
+  });
+
+  return result;
+}
+
 module.exports = {
   exchangeCodeForToken,
   refreshAccessToken,
@@ -174,4 +222,5 @@ module.exports = {
   getValidAccessToken: getValidAccessTokenByClerk,
   uploadVideo,
   publishVideo,
+  postToTikTok,
 };

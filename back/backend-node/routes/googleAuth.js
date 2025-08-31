@@ -177,14 +177,22 @@ router.get('oauth/start/youtube', requireAuth(), async (req, res) => {
 // YouTube connection status
 router.get('status', requireAuth(), async (req, res) => {
   try {
-    const userId = req.auth().userId;
-    const { getUserPlatformTokens } = require('../utils/tokenUtils');
-    const tokens = await getUserPlatformTokens(userId);
+    const clerkUserId = req.auth().userId;
+    const YouTubeToken = require('../models/YouTubeToken');
+    const token = await YouTubeToken.findOne({ clerkUserId });
     
-    res.json({
-      connected: !!tokens.youtube,
-      channelId: tokens.youtube?.channelId,
-      channelTitle: tokens.youtube?.channelTitle
+    if (!token || !token.accessToken) {
+      return res.json({ connected: false });
+    }
+    
+    return res.json({
+      connected: true,
+      oauthToken: token.accessToken,
+      youtubeUserId: token.channelId || null,
+      firstName: token.firstName || null,
+      lastName: token.lastName || null,
+      handle: token.channelTitle || null,
+      isActive: token.isActive || true
     });
   } catch (error) {
     console.error('YouTube status error:', error);

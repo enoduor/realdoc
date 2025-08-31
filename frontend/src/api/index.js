@@ -346,20 +346,13 @@ export async function publishNow(postData) {
   // Guard platforms to avoid undefined
   const platforms = Array.isArray(postData.platforms) ? postData.platforms : [];
 
-  // Use same logic for both Platform Preview and Scheduler
-  const isFromPlatformPreview = false; // Disable URL detection
-  
-  if (isFromPlatformPreview) {
-    console.log('🧪 [Platform Preview] Using legacy flow for consistency');
-    // Skip to legacy flow
-  } else {
-    // Your single-platform flags (kept for Scheduler)
-    const isTwitterOnly = platforms.length === 1 && platforms[0] === 'twitter';
-    const isLinkedInOnly = platforms.length === 1 && platforms[0] === 'linkedin';
-    const isInstagramOnly = platforms.length === 1 && platforms[0] === 'instagram';
-    const isFacebookOnly = platforms.length === 1 && platforms[0] === 'facebook';
-    const isTikTokOnly = platforms.length === 1 && platforms[0] === 'tiktok';
-    const isYouTubeOnly = platforms.length === 1 && platforms[0] === 'youtube';
+  // Single platform flags
+  const isTwitterOnly = platforms.length === 1 && platforms[0] === 'twitter';
+  const isLinkedInOnly = platforms.length === 1 && platforms[0] === 'linkedin';
+  const isInstagramOnly = platforms.length === 1 && platforms[0] === 'instagram';
+  const isFacebookOnly = platforms.length === 1 && platforms[0] === 'facebook';
+  const isTikTokOnly = platforms.length === 1 && platforms[0] === 'tiktok';
+  const isYouTubeOnly = platforms.length === 1 && platforms[0] === 'youtube';
 
   // ---- LinkedIn separated flow (user-specific tokens) ----------------------
   if (isLinkedInOnly) {
@@ -456,34 +449,6 @@ export async function publishNow(postData) {
       message: success ? 'Published to one or more platforms' : 'Failed to publish',
     };
   }
-
-  } // Close the else block for Scheduler flows
-
-  // ---- Legacy flow for Platform Preview (uses publishSinglePlatform like Scheduler) ---
-  const results = [];
-  
-  for (const platform of platforms) {
-    try {
-      const item = await publishSinglePlatform(platform, postData, token);
-      results.push(item);
-    } catch (error) {
-      results.push({
-        platform,
-        success: false,
-        url: null,
-        postId: null,
-        message: error.message || 'Failed to publish',
-        error: error.message || 'Failed to publish'
-      });
-    }
-  }
-
-  const success = results.some((r) => r.success);
-  return {
-    success,
-    post: { id: Date.now(), platforms: results },
-    message: success ? 'Published to one or more platforms' : 'Failed to publish',
-  };
 }
 
 // --- Platform status (unchanged) -------------------------------------------

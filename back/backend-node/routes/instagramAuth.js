@@ -162,9 +162,12 @@ router.get('/status', requireAuth(), async (req, res) => {
     if (!token) return res.json({ connected: false });
     return res.json({
       connected: true,
-      name: token.name || token.pageName || null,
-      igUserId: token.igUserId || null,
-      pageId: token.pageId || null
+      oauthToken: token.accessToken,
+      instagramUserId: token.igUserId || null,
+      firstName: token.firstName || null,
+      lastName: token.lastName || null,
+      handle: token.handle || null,
+      isActive: token.isActive || true
     });
   } catch (e) {
     console.error('[Instagram] Status error:', e.message);

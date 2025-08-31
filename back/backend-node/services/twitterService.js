@@ -171,10 +171,10 @@ async function uploadMedia(identifier, mediaUrlOrBuffer, explicitType = null) {
 }
 
 /**
- * Post a Tweet (v2), with optional media (Buffer or URL).
+ * Post content to Twitter (v2), with optional media (Buffer or URL).
  * Trims text to 280 characters.
  */
-async function postTweet(identifier, text, mediaUrlOrBuffer = null) {
+async function postToTwitter(identifier, text, mediaUrlOrBuffer = null) {
   const client = await getUserClient(identifier);
   const payload = { text: String(text || '').trim().slice(0, 280) };
 
@@ -245,5 +245,5 @@ module.exports = {
   findToken,
   getTwitterHandle,
   uploadMedia,
-  postTweet,
+  postToTwitter,
 };

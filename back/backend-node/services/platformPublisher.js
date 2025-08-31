@@ -1,8 +1,8 @@
 /* eslint-disable no-console */
 const axios = require('axios');
 const LinkedInService = require('./linkedinService');
-const youtubeService = require('./youtubeService'); // real YouTube API
-const { postTweet } = require('./twitterService'); // real Twitter API
+
+const { postToTwitter } = require('./twitterService'); // real Twitter API
 const { getUserPlatformTokens } = require('../utils/tokenUtils');
 
 // ---- hashtag helpers ----
@@ -149,36 +149,32 @@ class PlatformPublisher {
 
         // ------------ YOUTUBE ------------
         case 'youtube': {
-          console.log('[Publisher] Executing YouTube case');
-          // ✅ CREDENTIAL CHECK AT THE START (consistent with other platforms)
-          if (!platformToken) {
-            throw new Error('No YouTube token found for user. Please connect your YouTube account first via OAuth.');
-          }
-          if (!postData?.mediaUrl) {
-            throw new Error('YouTube requires video content: content.mediaUrl (HTTPS URL or stream)');
+          const { caption, text, mediaUrl, mediaType, hashtags } = postData || {};
+          
+          // Use the platform token we already retrieved
+          const identifier = { clerkUserId: clerkUserId };
+
+          if (!mediaUrl) {
+            throw new Error('YouTube requires video content: mediaUrl (HTTPS URL or stream)');
           }
 
-          const { title, description, video_url, tags, privacyStatus } =
+          const { postToYouTube } = require('./youtubeService');
+
+          const { title, description, mediaUrl: formattedMediaUrl, tags, privacyStatus } =
             this.formatContentForPlatform('youtube', postData);
 
           console.log('[Publisher][YouTube] title =', title);
-          console.log('[Publisher][YouTube] video_url =', video_url);
+          console.log('[Publisher][YouTube] mediaUrl =', formattedMediaUrl);
 
-          const data = await youtubeService.uploadVideo(
-            platformToken.refreshToken,
-            video_url, // URL is streamed by youtubeService
-            { title, description, tags, privacyStatus }
-          );
-
-          console.log('[Publisher][YouTube] Response from uploadVideo:', JSON.stringify(data, null, 2));
+          const result = await postToYouTube(identifier, formattedMediaUrl, { title, description, tags, privacyStatus });
 
           // YouTube service now returns structured object like other platforms
           return {
             success: true,
             platform,
-            postId: data.postId,
-            url: data.url,
-            message: data.message
+            postId: result.postId,
+            url: result.url,
+            message: result.message
           };
         }
 
@@ -204,8 +200,8 @@ class PlatformPublisher {
           console.log('[Publisher][Twitter] Debug - tweetText:', tweetText);
           if (!tweetText) throw new Error('Tweet text is empty');
 
-          // Pass mediaUrl directly to postTweet - Twitter service handles URL/Buffer conversion
-          const result = await postTweet(identifier, tweetText, mediaUrl);
+          // Pass mediaUrl directly to postToTwitter - Twitter service handles URL/Buffer conversion
+          const result = await postToTwitter(identifier, tweetText, mediaUrl);
           
           // Twitter service now returns structured object like LinkedIn
           return {
@@ -222,45 +218,22 @@ class PlatformPublisher {
           const { caption, text, mediaUrl, mediaType } = postData || {};
           
           // Use the platform token we already retrieved
-          const identifier = { userId: platformToken.userId };
-          if (!mediaUrl) {
-            throw new Error('TikTok requires media content: mediaUrl (HTTPS URL or stream)');
-          }
+          const identifier = { clerkUserId: clerkUserId };
 
-          const { uploadVideo, publishVideo } = require('./tiktokService');
+          const { postToTikTok } = require('./tiktokService');
 
-          const formattedText = (caption || text || '').trim();
-          if (!formattedText) throw new Error('TikTok post text is empty');
+          const message = (caption || text || '').trim();
+          if (!message) throw new Error('TikTok post text is empty');
 
-          // Determine MIME type based on mediaType
-          let mimeType = 'video/mp4'; // default
-          if (mediaType === 'image') {
-            mimeType = 'image/jpeg'; // TikTok will handle different image formats
-          } else if (mediaType === 'video') {
-            mimeType = 'video/mp4';
-          }
-
-          // 1) Upload media (image or video) - TikTok service will download from URL
-          const { video_id } = await uploadVideo({
-            userId: identifier.userId,
-            fileBuffer: mediaUrl, // S3 URL - TikTok service will download it
-            mimeType: mimeType,
-          });
-
-          // 2) Publish media
-          const publishResp = await publishVideo({
-            userId: identifier.userId,
-            videoId: video_id,
-            title: formattedText,
-          });
+          const result = await postToTikTok(identifier, message, mediaUrl, mediaType);
 
           // TikTok service now returns structured object like other platforms
           return {
             success: true,
             platform,
-            postId: publishResp.postId,
-            url: publishResp.url,
-            message: publishResp.message
+            postId: result.postId,
+            url: result.url,
+            message: result.message
           };
         }
 
@@ -435,11 +408,11 @@ class PlatformPublisher {
       case 'youtube': {
         const titleBase = safeCaption.trim() || 'New Video';
         const title = titleBase.slice(0, 80); // concise title
-        const desc = [safeCaption.trim(), tagString].filter(Boolean).join('\n\n').trim();
+        const message = [safeCaption.trim(), tagString].filter(Boolean).join(' ').trim();
         return {
           title,
-          description: desc,
-          video_url: mediaUrl,
+          description: message,
+          mediaUrl: mediaUrl,
           tags: Array.isArray(hashtags)
             ? hashtags.map(t => t.toString().replace(/^#+/, ''))
             : [],
