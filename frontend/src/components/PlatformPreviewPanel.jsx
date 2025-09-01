@@ -1009,7 +1009,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                         Publishing...
                                     </>
                                 ) : (
-                                    '🚀 Publish Now'
+                                    '✅ Confirm and Publish'
                                 )}
                             </button>
                         </div>

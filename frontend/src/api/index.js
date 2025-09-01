@@ -453,7 +453,7 @@ export async function publishNow(postData) {
 
 // --- Platform status (unchanged) -------------------------------------------
 export const getPlatformStatus = async () => {
-  return makeAuthenticatedRequest(`${API_BASE_URL}/scheduler/platforms/status`);
+  return makeAuthenticatedRequest(`${API_BASE_URL}/api/publisher/platforms/status`);
 };
 
 // --- Stripe Services --------------------------------------------------------

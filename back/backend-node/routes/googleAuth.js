@@ -163,7 +163,7 @@ router.get('test-connect', (req, res) => {
 });
 
 // YouTube OAuth start (requires authentication)
-router.get('oauth/start/youtube', requireAuth(), async (req, res) => {
+router.get('/oauth/start/youtube', requireAuth(), async (req, res) => {
   try {
     const userId = req.auth().userId;
     const url = `${req.protocol}://${req.get('host')}/oauth2/start/google?userId=${userId}`;
@@ -175,7 +175,7 @@ router.get('oauth/start/youtube', requireAuth(), async (req, res) => {
 });
 
 // YouTube connection status
-router.get('status', requireAuth(), async (req, res) => {
+router.get('/status', requireAuth(), async (req, res) => {
   try {
     const clerkUserId = req.auth().userId;
     const YouTubeToken = require('../models/YouTubeToken');

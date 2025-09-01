@@ -134,6 +134,37 @@ app.get('/api/_debug/auth', requireAuth(), (req, res) => {
   });
 });
 
+// Simple user verification check (no auth required)
+app.get('/api/user/verify/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Check if user exists in database
+    const users = mongoose.connection.collection('users');
+    const user = await users.findOne({ clerkUserId: userId });
+    
+    if (!user) {
+      return res.json({
+        verified: false,
+        message: 'User not found in database'
+      });
+    }
+    
+    res.json({
+      verified: true,
+      userId: userId,
+      email: user.email,
+      subscriptionStatus: user.subscriptionStatus || 'none'
+    });
+  } catch (error) {
+    console.error('Error verifying user:', error);
+    res.status(500).json({
+      verified: false,
+      error: error.message
+    });
+  }
+});
+
 const PORT = process.env.PORT || 4001;
 app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);

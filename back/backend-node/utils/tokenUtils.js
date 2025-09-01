@@ -96,33 +96,39 @@ const getPlatformConnectionStatus = async (clerkUserId) => {
     return {
       twitter: {
         connected: !!tokens.twitter,
+        clerkUserId: clerkUserId,
         userId: tokens.twitter?.twitterUserId,
         handle: tokens.twitter?.handle
       },
       linkedin: {
         connected: !!tokens.linkedin,
+        clerkUserId: clerkUserId,
         userId: tokens.linkedin?.linkedinUserId,
-        name: tokens.linkedin ? `${tokens.linkedin.firstName} ${tokens.linkedin.lastName}`.trim() : null
+        handle: tokens.linkedin?.handle
       },
       instagram: {
         connected: !!tokens.instagram,
+        clerkUserId: clerkUserId,
         userId: tokens.instagram?.igUserId,
-        name: tokens.instagram?.name
+        handle: tokens.instagram?.handle
       },
       facebook: {
         connected: !!tokens.facebook,
+        clerkUserId: clerkUserId,
         userId: tokens.facebook?.facebookUserId,
-        name: tokens.facebook?.name
+        handle: tokens.facebook?.handle
       },
       tiktok: {
         connected: !!tokens.tiktok,
+        clerkUserId: clerkUserId,
         userId: tokens.tiktok?.tiktokUserOpenId,
-        username: tokens.tiktok?.username
+        handle: tokens.tiktok?.handle
       },
       youtube: {
         connected: !!tokens.youtube,
-        userId: tokens.youtube?.channelId,
-        name: tokens.youtube?.channelTitle
+        clerkUserId: clerkUserId,
+        userId: tokens.youtube?.youtubeUserId,
+        handle: tokens.youtube?.handle
       }
     };
   } catch (error) {
