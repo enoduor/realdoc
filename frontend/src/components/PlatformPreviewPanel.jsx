@@ -960,7 +960,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
 
                                 {/* Per-Platform Results */}
                                 {publishStatus.platforms && publishStatus.platforms.length > 0 && (
-                                    <div className="mt-3 space-y-2">
+                                    <div className="mt-3 grid gap-2">
                                         {publishStatus.platforms.map((r, i) => {
                                             const pid = toPlatformId(r?.platform || r?.id);
                                             const name = PLATFORMS?.[pid.toUpperCase()]?.name || pid || 'platform';
@@ -972,19 +972,12 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                                     {r.url && (
                                                         <>
                                                             {' • '}
-                                                            <a 
-                                                                href={r.url} 
-                                                                target="_blank" 
-                                                                rel="noopener noreferrer"
-                                                                className="text-blue-600 hover:underline"
-                                                            >
+                                                            <a className="text-blue-600 hover:underline" href={r.url} target="_blank" rel="noreferrer">
                                                                 open
                                                             </a>
                                                         </>
                                                     )}
                                                     {r.message && <> • <span className="text-gray-600">{r.message}</span></>}
-                                                    {r.postId && <> • <span className="text-gray-500">ID: {r.postId}</span></>}
-                                                    {r.error && <> • <span className="text-red-600">{r.error}</span></>}
                                                 </div>
                                             );
                                         })}

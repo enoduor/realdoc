@@ -10,7 +10,7 @@ import HashtagGenerator from './components/HashtagGenerator';
 import Dashboard from './components/Dashboard';
 import MediaUploader from './components/MediaUploader';
 import PlatformPreviewPage from './components/PlatformPreviewPage';
-import Scheduler from './components/Scheduler';
+import SchedulerPage from './components/SchedulerPage';
 import LandingPage from './components/LandingPage';
 import PricingPage from './components/PricingPage';
 import './App.css';
@@ -78,7 +78,7 @@ function App() {
               path="/app/scheduler"
               element={
                 <ClerkProtectedRoute>
-                  <Scheduler />
+                  <SchedulerPage />
                 </ClerkProtectedRoute>
               }
             />
