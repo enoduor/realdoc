@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { PLATFORMS } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
 import { publishNow } from '../api';
+import axios from 'axios';
 
 // --- helpers (same as PostStatusTracker) -------------------------------------------------------------
 const toPlatformId = (p) => {
@@ -206,6 +207,23 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
             return;
         }
 
+        // Check if any platform requires media but no media is provided (EXACT same as Scheduler)
+        const platformsRequiringMedia = platforms.filter(platformId => {
+            const platform = PLATFORMS[platformId.toUpperCase()];
+            return platform.requiresMedia && !content.mediaUrl;
+        });
+
+        if (platformsRequiringMedia.length > 0) {
+            const platformNames = platformsRequiringMedia.map(platformId => 
+                PLATFORMS[platformId.toUpperCase()].name
+            ).join(', ');
+            setPublishStatus({
+                type: 'error',
+                message: `${platformNames} require media to be uploaded`
+            });
+            return;
+        }
+
         if (!editableContent.caption && editableContent.hashtags.filter(tag => tag.trim() !== '').length === 0 && !content.mediaUrl) {
             setPublishStatus({
                 type: 'error',
@@ -269,8 +287,8 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                 updateContent({
                     caption: '',
                     hashtags: [],
-                    mediaUrl: '',
-                    mediaType: ''
+                    mediaUrl: null,
+                    mediaType: null
                 });
                 setPlatforms([]);
             } else {
@@ -288,6 +306,131 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
         } finally {
             setIsPublishing(false);
         }
+    };
+
+    // Media upload handler - EXACT same as MediaUploader
+    const handleFileSelect = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        try {
+            // Same validation as MediaUploader
+            const fileType = file.type.split('/')[0];
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            
+            // Determine media type based on file extension and MIME type
+            let mediaType = fileType;
+            if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) mediaType = 'image';
+            if (['mp4', 'mov', 'avi'].includes(fileExtension)) mediaType = 'video';
+            
+            // Create preview URL immediately (same as MediaUploader)
+            const previewUrl = URL.createObjectURL(file);
+            
+            // Update content with preview URL immediately (EXACT same as MediaUploader)
+            updateContent({ 
+                mediaUrl: previewUrl,
+                mediaType: mediaType,
+                mediaFile: file,
+                mediaDimensions: null // Will be set after upload
+            });
+
+            // Now upload to backend (same as MediaUploader)
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('platform', formData.platform);
+
+            const response = await axios.post('http://localhost:5001/api/v1/upload', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                },
+                timeout: 30000,
+                maxContentLength: Infinity,
+                maxBodyLength: Infinity
+            });
+
+            if (response.data && response.data.url) {
+                // Update content based on media type (EXACT same as MediaUploader)
+                const updatedContent = {
+                    mediaUrl: response.data.url,
+                    mediaType: response.data.type || mediaType,
+                    mediaDimensions: response.data.dimensions || null,
+                    mediaFile: null,
+                    mediaFilename: response.data.filename
+                };
+                
+                // For images and videos, verify URL accessibility (same as MediaUploader)
+                if (updatedContent.mediaType === 'image') {
+                    const img = new Image();
+                    img.onload = () => {
+                        updatedContent.mediaDimensions = {
+                            width: img.naturalWidth,
+                            height: img.naturalHeight
+                        };
+                        updateContent(updatedContent);
+                    };
+                    img.onerror = () => {
+                        console.error('Image URL not accessible:', response.data.url);
+                        setPublishStatus({
+                            type: 'error',
+                            message: 'Image URL not accessible - Please try uploading again'
+                        });
+                    };
+                    img.src = response.data.url;
+                } else if (updatedContent.mediaType === 'video') {
+                    const video = document.createElement('video');
+                    video.onloadedmetadata = () => {
+                        updatedContent.mediaDimensions = {
+                            width: video.videoWidth,
+                            height: video.videoHeight
+                        };
+                        updateContent(updatedContent);
+                    };
+                    video.onerror = () => {
+                        console.error('Video URL not accessible:', response.data.url);
+                        setPublishStatus({
+                            type: 'error',
+                            message: 'Video URL not accessible - Please try uploading again'
+                        });
+                    };
+                    video.src = response.data.url;
+                } else {
+                    // For other types, just update content directly
+                    updateContent(updatedContent);
+                }
+
+                setPublishStatus({
+                    type: 'success',
+                    message: `✅ Media uploaded successfully: ${file.name}`
+                });
+            } else {
+                setPublishStatus({
+                    type: 'error',
+                    message: `❌ Failed to upload media: Invalid server response`
+                });
+            }
+        } catch (error) {
+            console.error('Error uploading media:', error);
+            const errorMessage = error.response?.data?.detail || error.message;
+            setPublishStatus({
+                type: 'error',
+                message: `❌ Error uploading media: ${errorMessage}`
+            });
+        } finally {
+            event.target.value = null; // Clear the file input
+        }
+    };
+
+    // Remove media handler - EXACT same as MediaUploader
+    const removeMedia = () => {
+        updateContent({
+            mediaUrl: null,
+            mediaType: null,
+            mediaDimensions: null
+        });
+        setPublishStatus({
+            type: 'info',
+            message: 'Media removed.'
+        });
     };
 
     // Platform-specific preview styles
@@ -912,9 +1055,74 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                         )}
                     </div>
 
+                    {/* Media Upload Section */}
+                    <div className="mb-6 bg-white p-4 rounded-lg shadow-sm">
+                        <h3 className="text-lg font-medium mb-3">Upload Media</h3>
+                        <div className="flex items-center space-x-3">
+                            <label htmlFor="media-upload" className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition-colors">
+                                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                Select File
+                            </label>
+                            <input
+                                type="file"
+                                id="media-upload"
+                                accept="image/*,video/*"
+                                onChange={handleFileSelect}
+                                className="hidden"
+                                disabled={isPublishing}
+                            />
+                            {content.mediaUrl && (
+                                <button
+                                    onClick={removeMedia}
+                                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                    disabled={isPublishing}
+                                >
+                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    Remove Media
+                                </button>
+                            )}
+                        </div>
+                        {publishStatus && (
+                            <div className="mt-3 text-sm text-gray-600">
+                                {publishStatus.message}
+                            </div>
+                        )}
+                    </div>
+
                     {/* Platform-Specific Preview */}
                     <div className="space-y-6">
                         <h3 className="text-lg font-medium mb-4">Preview & Publish on {platformLimits.name}</h3>
+                        
+                        {/* Media Preview Section */}
+                        {content.mediaUrl && (
+                            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                                <h4 className="text-sm font-medium mb-2">📁 Media Preview:</h4>
+                                <div className="flex items-center space-x-4">
+                                    {content.mediaType === 'image' ? (
+                                        <img 
+                                            src={content.mediaUrl} 
+                                            alt="Media Preview" 
+                                            className="w-24 h-24 object-cover rounded-lg border"
+                                        />
+                                    ) : content.mediaType === 'video' ? (
+                                        <video 
+                                            src={content.mediaUrl} 
+                                            className="w-24 h-24 object-cover rounded-lg border"
+                                            muted
+                                        />
+                                    ) : (
+                                        <div className="w-24 h-24 bg-gray-200 rounded-lg border flex items-center justify-center">
+                                            <span className="text-gray-500 text-xs">File</span>
+                                        </div>
+                                    )}
+                                    
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium">Type: {content.mediaType || 'Unknown'}</p>
+                                        <p className="text-xs text-gray-600">Media ready for publishing</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         
                         {/* Platform-specific preview container */}
                         <div className={`mx-auto ${getPlatformPreviewStyles()}`}>
