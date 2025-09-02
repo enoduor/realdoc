@@ -101,58 +101,42 @@ async function getPermalink(accessToken, mediaId) {
   return resp.data?.permalink || null;
 }
 
+// NEW: LinkedIn-style Instagram posting - always download and rehost to S3 for reliability
 async function postToInstagram(identifier, message, mediaUrl, isVideo = false) {
   const doc = await findToken(identifier);
   if (!doc || !doc.accessToken || !doc.igUserId) {
     throw new Error('Instagram not connected for this user');
   }
+  
   const accessToken = doc.accessToken;
   const igUserId = doc.igUserId;
 
-  let effectiveUrl = mediaUrl;
-  let triedRehost = false;
-
-  const attemptCreate = async () => {
-    console.log('[IG] Creating container...');
-    try {
-      const result = isVideo
-        ? await createContainerVideo(accessToken, igUserId, effectiveUrl, message)
-        : await createContainerImage(accessToken, igUserId, effectiveUrl, message);
-      console.log(`[IG] Container created successfully:`, result);
-      return result;
-    } catch (error) {
-      console.error(`[IG] Container creation failed:`, error.response?.data || error.message);
-      throw error;
-    }
-  };
-
+  // 🔑 NEW: Always download external media first (LinkedIn-style approach)
+  console.log('[IG] Downloading media from external URL:', mediaUrl);
+  const { buffer, contentType, filename } = await downloadToBuffer(mediaUrl);
+  
+  // 🔑 NEW: Always rehost to S3 for reliability (LinkedIn-style approach)
+  console.log('[IG] Rehosting media to S3 for reliable Instagram access...');
+  const s3Url = await rehostToS3(buffer, filename, contentType);
+  console.log('[IG] Media rehosted to S3:', s3Url);
+  
+  // 🔑 NEW: Create container with S3 URL (always accessible to Instagram)
+  console.log('[IG] Creating container with S3 URL...');
   let creation;
   try {
-    creation = await attemptCreate();
-  } catch (e) {
-    const httpStatus = e.response?.status;
-    const fbErr = e.response?.data;
-    console.warn('[IG] Container create failed:', httpStatus, fbErr || e.message);
-    // Fallback: rehost to S3 if URL might be inaccessible to Meta
-    if (!triedRehost && typeof mediaUrl === 'string' && mediaUrl.startsWith('http')) {
-      try {
-        console.log('[IG] Rehosting media to S3 via Python service...');
-        const { buffer, contentType, filename } = await downloadToBuffer(mediaUrl);
-        effectiveUrl = await rehostToS3(buffer, filename, contentType);
-        triedRehost = true;
-        console.log('[IG] Rehosted URL:', effectiveUrl);
-        creation = await attemptCreate();
-      } catch (rhErr) {
-        console.error('[IG] Rehost attempt failed:', rhErr.response?.data || rhErr.message);
-        throw e; // original error
-      }
+    if (isVideo) {
+      creation = await createContainerVideo(accessToken, igUserId, s3Url, message);
     } else {
-      throw e;
+      creation = await createContainerImage(accessToken, igUserId, s3Url, message);
     }
+    console.log(`[IG] Container created successfully with S3 URL:`, creation);
+  } catch (error) {
+    console.error(`[IG] Container creation failed:`, error.response?.data || error.message);
+    throw error;
   }
 
   if (isVideo) {
-    // Poll for FINISHED
+    // Poll for video processing
     const start = Date.now();
     console.log(`[IG] Starting video processing for container: ${creation.id}`);
     while (Date.now() - start < 120000) { // up to 2 minutes
@@ -175,7 +159,7 @@ async function postToInstagram(identifier, message, mediaUrl, isVideo = false) {
   const published = await publishMedia(accessToken, igUserId, creation.id);
   const permalink = await getPermalink(accessToken, published.id);
   
-  // Return structured object like LinkedIn and Twitter
+  // Return structured object like LinkedIn
   return {
     success: true,
     postId: published.id,
