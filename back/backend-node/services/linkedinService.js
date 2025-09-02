@@ -1,244 +1,296 @@
 /* eslint-disable no-console */
 const fetch = require('node-fetch');
 const axios = require('axios');
-const crypto = require('crypto');
+const LinkedInToken = require('../models/LinkedInToken');
+const FormData = require('form-data');
+const path = require('path');
 
-// ---------- Config ----------
-const PRIMARY_VERSION = '202503';
-const FALLBACK_VERSIONS = ['202502'];
-
-// ---------- Helpers ----------
-function normalizeVersion(v) {
-  if (!v) return null;
-  if (/^\d{6}$/.test(v)) return v;          // YYYYMM
-  if (/^\d{6}\.\d{2}$/.test(v)) return v;   // YYYYMM.RR
-  return null;
-}
-
-function looksLikeVersionError(status, text = '') {
-  if (status === 400 || status === 426) {
-    return /NONEXISTENT_VERSION|INVALID_VERSION|VERSION_MISSING|not active|date format/i.test(text);
-  }
-  return false;
-}
-
-// Invisible uniqueness: append a random number (1–6) of zero-width joiners.
-// Keeps UI identical while changing the string to avoid 422 duplicate errors.
-function uniqueCommentary(baseText) {
-  const text = (baseText ?? '').toString().trim();
-  const count = (crypto.randomBytes(1)[0] % 6) + 1; // 1..6
-  const ZWJ = '\u200D'; // zero-width joiner
-  return text + ZWJ.repeat(count);
-}
-
-// Normalize an array/string of hashtags into "#Tag" tokens separated by single spaces.
-function formatHashtags(input) {
-  if (!input) return '';
-  const parts = Array.isArray(input) ? input : String(input).split(/[,\s]+/);
-
-  const cleaned = parts
-    .map(h => String(h || '').trim())
-    .filter(Boolean)
-    .map(h => (h.startsWith('#') ? h : `#${h}`))
-    // remove internal spaces and punctuation around hashtags
-    .map(h => '#' + h.slice(1).replace(/[^\p{L}\p{N}_]+/gu, ''))
-    .filter(h => h.length > 1);
-
-  // Dedup, preserve order
-  const seen = new Set();
-  const uniq = [];
-  for (const h of cleaned) {
-    if (!seen.has(h.toLowerCase())) {
-      seen.add(h.toLowerCase());
-      uniq.push(h);
-    }
-  }
-  return uniq.join(' ');
-}
-
-async function safeJson(res) {
-  try { return await res.json(); } catch { return await res.text(); }
-}
-
-// ---------- LinkedIn API ----------
-async function getOpenIdUserinfo(token, apiV2) {
-  const r = await fetch(`${apiV2}/userinfo`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const body = await safeJson(r);
-  if (!r.ok) throw new Error(`userinfo failed: ${r.status} ${JSON.stringify(body)}`);
-  return body; // { sub, ... }
-}
-
-async function postWithVersionNegotiation(token, apiRest, payload) {
-  const attempt = async (version) => {
-    const headers = {
-      Authorization: `Bearer ${token}`,
-      'X-Restli-Protocol-Version': '2.0.0',
-      'Content-Type': 'application/json',
-    };
-    if (version) headers['LinkedIn-Version'] = version;
-
-    const res = await axios.post(`${apiRest}/posts`, payload, {
-      headers,
-      validateStatus: () => true,
-    });
-
-    const ok = res.status >= 200 && res.status < 300;
-    const body = res.data;
-    return { ok, status: res.status, body, headers: res.headers, version };
-  };
-
-  // Primary
-  {
-    const r = await attempt(PRIMARY_VERSION);
-    if (r.ok) return r;
-    const msg = typeof r.body === 'string' ? r.body : JSON.stringify(r.body);
-    if (!looksLikeVersionError(r.status, msg)) {
-      throw new Error(`POST /rest/posts ${r.status}: ${msg}`);
-    }
-  }
-  // Fallbacks
-  for (const v of FALLBACK_VERSIONS) {
-    const r = await attempt(v);
-    const msg = typeof r.body === 'string' ? r.body : JSON.stringify(r.body);
-    if (r.ok) return r;
-    if (!looksLikeVersionError(r.status, msg)) {
-      throw new Error(`POST /rest/posts ${r.status}: ${msg}`);
-    }
-  }
-
-  throw new Error(
-    `POST /rest/posts failed: no active LinkedIn-Version among [${PRIMARY_VERSION}, ${FALLBACK_VERSIONS.join(', ')}]`
-  );
-}
+const PYTHON_API_BASE_URL = process.env.PYTHON_API_BASE_URL || 'http://localhost:5001';
 
 class LinkedInService {
-  constructor(opts = {}) {
-    this.apiV2   = process.env.LINKEDIN_V2_URL   || 'https://api.linkedin.com/v2';
-    this.apiRest = process.env.LINKEDIN_REST_URL || 'https://api.linkedin.com/rest';
-    this.accessToken   = opts.accessToken || process.env.LINKEDIN_ACCESS_TOKEN;
-    this.authorOverride = opts.author     || process.env.LINKEDIN_AUTHOR || null;
-
-    if (!this.accessToken) throw new Error('LINKEDIN_ACCESS_TOKEN not set');
-
-    const envVersion = normalizeVersion(process.env.LINKEDIN_VERSION);
-    this.primaryVersion   = envVersion || PRIMARY_VERSION;
-    this.fallbackVersions = FALLBACK_VERSIONS.slice();
-  }
-
-  async getAuthorUrn() {
-    if (this.authorOverride) return this.authorOverride;
-    const userInfo = await getOpenIdUserinfo(this.accessToken, this.apiV2);
-    if (!userInfo.sub) throw new Error('userinfo missing "sub"; ensure token has openid profile');
-    return `urn:li:person:${userInfo.sub}`;
-  }
-
-  async testConnection() {
-    try {
-      const userInfo  = await getOpenIdUserinfo(this.accessToken, this.apiV2);
-      const authorUrn = await this.getAuthorUrn();
-
-      // Probe with invisible uniqueness
-      const message = uniqueCommentary('🧪 CreatorSync probe');
-      const payload = {
-        author: authorUrn,
-        commentary: message,
-        visibility: 'PUBLIC',
-        lifecycleState: 'PUBLISHED',
-        distribution: { feedDistribution: 'MAIN_FEED' }
-      };
-
-      try {
-        const r = await postWithVersionNegotiation(this.accessToken, this.apiRest, payload);
-        const restliId = r.headers['x-restli-id'] || (typeof r.body === 'object' && r.body.id) || null;
-
-        return {
-          connected: true,
-          user: { id: userInfo.sub, authorUrn },
-          permissions: [],
-          canPost: true,
-          details: { versionUsed: r.version, restliId }
-        };
-      } catch (e) {
-        const msg = String(e.message || '');
-        const isDup = /422/.test(msg) && /duplicate|already exists/i.test(msg);
-        if (isDup) {
-          return {
-            connected: true,
-            user: { id: userInfo.sub, authorUrn },
-            permissions: [],
-            canPost: true,
-            details: { versionUsed: this.primaryVersion, note: 'Duplicate content detected' }
-          };
-        }
-        return {
-          connected: true,
-          user: { id: userInfo.sub, authorUrn },
-          permissions: [],
-          canPost: false,
-          details: { error: e.message }
-        };
-      }
-    } catch (err) {
-      return { connected: false, error: err.message };
-    }
-  }
-
-  async postText(message) {
-    const authorUrn = await this.getAuthorUrn();
-    const payload = {
-      author: authorUrn,
-      commentary: message,
-      visibility: 'PUBLIC',
-      lifecycleState: 'PUBLISHED',
-      distribution: { feedDistribution: 'MAIN_FEED' }
-    };
-
-    const r = await postWithVersionNegotiation(this.accessToken, this.apiRest, payload);
-    const restliId = r.headers['x-restli-id'] || (typeof r.body === 'object' && r.body.id) || null;
-    return { id: restliId, versionUsed: r.version, success: true };
+  constructor(config = {}) {
+    // Configuration can be added here if needed
   }
 
   /**
-   * Publishes content with visible hashtags (as hashtags) and an invisible uniqueness suffix.
-   * @param {string} content - main post text (message)
-   * @param {string|null} mediaUrl - optional media line (kept as text for now)
-   * @param {object} opts
-   * @param {boolean} [opts.ensureUnique=true]
-   * @param {string[]|string} [opts.hashtags=[]]
+   * Find a LinkedIn token doc by { linkedinUserId }, { clerkUserId }, or { userId }
    */
-  async createPost(content, mediaUrl = null, { ensureUnique = true, hashtags = [] } = {}) {
-    try {
-      const MAX_LEN = 3000; // LinkedIn text hard limit (approx)
-      const msg = (content ?? '').toString().trim();
-
-      if (!msg && !mediaUrl) throw new Error('No content to publish (empty caption and no media).');
-
-      let body = msg;
-      if (mediaUrl) body = [body, `Media: ${mediaUrl}`].filter(Boolean).join('\n\n');
-
-      const tags = formatHashtags(hashtags);
-      // Assemble message + hashtags with a blank line in between if tags exist.
-      let commentary = tags ? `${body}\n\n${tags}` : body;
-
-      // Enforce length (prefer keeping hashtags visible)
-      if (commentary.length > MAX_LEN) {
-        const over = commentary.length - MAX_LEN;
-        const keep = Math.max(0, body.length - over - 1);
-        body = body.slice(0, keep).trimEnd();
-        commentary = tags ? `${body}\n\n${tags}` : body;
-      }
-
-      if (ensureUnique) commentary = uniqueCommentary(commentary);
-
-      console.log('[LinkedIn] postText.preview =', commentary.slice(0, 140).replace(/\n/g, '⏎'));
-      const result = await this.postText(commentary);
-
-      return { success: true, postId: result.id, version: result.versionUsed, message: 'Post published successfully' };
-    } catch (error) {
-      return { success: false, error: error.message };
+  async findToken(identifier = {}) {
+    if (identifier.linkedinUserId) {
+      return LinkedInToken.findOne({ linkedinUserId: identifier.linkedinUserId });
     }
+    if (identifier.clerkUserId) {
+      return LinkedInToken.findOne({ clerkUserId: identifier.clerkUserId, linkedinUserId: { $exists: true } });
+    }
+    if (identifier.userId) {
+      return LinkedInToken.findOne({ userId: identifier.userId, linkedinUserId: { $exists: true } });
+    }
+    return null;
+  }
+
+  /**
+   * Returns a valid access token, checking if expired
+   */
+  async getValidLinkedInToken(identifier) {
+    const doc = await this.findToken(identifier);
+    if (!doc) throw new Error('LinkedIn not connected for this user');
+
+    const now = Date.now();
+    const expiresAtMs = new Date(doc.expiresAt).getTime();
+    const isExpired = expiresAtMs && (expiresAtMs - now) < 0;
+
+    if (isExpired) {
+      throw new Error('LinkedIn token has expired. Please reconnect your LinkedIn account.');
+    }
+
+    return doc.accessToken;
+  }
+
+  /**
+   * Get LinkedIn user profile
+   */
+  async getLinkedInProfile(identifier) {
+    const doc = await this.findToken(identifier);
+    if (!doc) throw new Error('LinkedIn not connected for this user');
+
+    return {
+      linkedinUserId: doc.linkedinUserId,
+      firstName: doc.firstName,
+      lastName: doc.lastName,
+      fullName: `${doc.firstName} ${doc.lastName}`.trim()
+    };
+  }
+
+  /**
+   * Download media from external URL to buffer
+   */
+  async downloadToBuffer(url) {
+    console.log('[LinkedIn] Downloading media from external URL:', url);
+    try {
+      const response = await axios.get(url, {
+        responseType: 'arraybuffer',
+        timeout: 30000,
+        maxContentLength: 50 * 1024 * 1024,
+        maxBodyLength: 50 * 1024 * 1024,
+        headers: { 'User-Agent': 'CreatorSync/1.0' }
+      });
+      const buffer = Buffer.from(response.data);
+      console.log('[LinkedIn] Media downloaded successfully, size:', buffer.length, 'bytes');
+      return buffer;
+    } catch (error) {
+      console.error('[LinkedIn] Failed to download media:', error.message);
+      throw new Error('Failed to download media from external URL');
+    }
+  }
+
+  /**
+   * Rehost media to S3 for reliable LinkedIn access
+   */
+  async rehostToS3(buffer, originalUrl) {
+    console.log('[LinkedIn] Rehosting media to S3 for reliable LinkedIn access...');
+    try {
+      const form = new FormData();
+      const filename = path.basename(originalUrl.split('?')[0]) || 'media';
+      const contentType = 'video/mp4'; // Will be overridden by detectMedia
+      
+      form.append('file', buffer, { filename, contentType });
+      form.append('platform', 'linkedin');
+
+      const resp = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/upload`, form, {
+        headers: form.getHeaders(),
+        timeout: 60000,
+      });
+      
+      if (!resp.data?.url) throw new Error('S3 rehost failed: no URL returned');
+      
+      console.log('[LinkedIn] Media rehosted to S3:', resp.data.url);
+      return resp.data.url;
+    } catch (error) {
+      console.error('[LinkedIn] Failed to rehost media to S3:', error.message);
+      throw new Error('Failed to rehost media to S3');
+    }
+  }
+
+  /**
+   * Post to LinkedIn using user-specific token
+   * Now uses LinkedIn-style approach: download external media, rehost to S3, then upload to LinkedIn
+   * ✅ UPDATED: Now actually implements the LinkedIn-style approach (was using old direct method)
+   */
+  async postToLinkedIn(identifier, message, mediaUrl = null, hashtags = []) {
+    // ✅ CREDENTIAL CHECK AT THE START (consistent with other platforms)
+    const accessToken = await this.getValidLinkedInToken(identifier);
+    const profile = await this.getLinkedInProfile(identifier);
+
+    // Format hashtags
+    const hashtagString = hashtags.length > 0 ? '\n\n' + hashtags.map(tag => `#${tag.replace(/^#/, '')}`).join(' ') : '';
+    
+    // Add timestamp to prevent duplicate posts
+    const timestamp = new Date().toISOString();
+    const timestampString = `\n\n🕐 Posted at ${new Date().toLocaleString()}`;
+    
+    // Combine message, hashtags, and timestamp
+    const fullMessage = `${message}${hashtagString}${timestampString}`;
+
+    // Detect media type from URL or file extension
+    const getMediaType = (url) => {
+      if (!url) return null;
+      const lowerUrl = url.toLowerCase();
+      
+      // Video formats - comprehensive list
+      const videoExtensions = [
+        '.mp4', '.mov', '.avi', '.webm', '.mkv', '.flv', '.wmv', '.m4v', 
+        '.3gp', '.ogv', '.ts', '.mts', '.m2ts', '.vob', '.asf', '.rm', 
+        '.rmvb', '.divx', '.xvid', '.h264', '.h265', '.hevc', '.vp8', '.vp9'
+      ];
+      
+      // Image formats
+      const imageExtensions = [
+        '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.svg', 
+        '.ico', '.raw', '.cr2', '.nef', '.arw', '.dng'
+      ];
+      
+      // Check for video extensions
+      if (videoExtensions.some(ext => lowerUrl.includes(ext))) {
+        return 'VIDEO';
+      }
+      
+      // Check for image extensions
+      if (imageExtensions.some(ext => lowerUrl.includes(ext))) {
+        return 'IMAGE';
+      }
+      
+      // Default to VIDEO for unknown types (most social media URLs are videos)
+      return 'VIDEO';
+    };
+
+    const mediaType = getMediaType(mediaUrl);
+
+    // LinkedIn API endpoint
+    const url = 'https://api.linkedin.com/v2/ugcPosts';
+    
+    // Base payload - always includes text content
+    const payload = {
+      author: `urn:li:person:${profile.linkedinUserId}`,
+      lifecycleState: 'PUBLISHED',
+      specificContent: {
+        'com.linkedin.ugc.ShareContent': {
+          shareCommentary: {
+            text: fullMessage
+          },
+          shareMediaCategory: mediaUrl ? mediaType : 'NONE'
+        }
+      },
+      visibility: {
+        'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC'
+      }
+    };
+
+    // Only add media if mediaUrl is provided
+    if (mediaUrl) {
+      try {
+        // LinkedIn requires asset registration first
+        console.log(`[LinkedIn] Uploading ${mediaType} asset: ${mediaUrl}`);
+        
+        // Step 1: Register the asset
+        const assetResponse = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'X-Restli-Protocol-Version': '2.0.0',
+            'LinkedIn-Version': '202503'
+          },
+          body: JSON.stringify({
+            registerUploadRequest: {
+              recipes: [mediaType === 'VIDEO' ? 'urn:li:digitalmediaRecipe:feedshare-video' : 'urn:li:digitalmediaRecipe:feedshare-image'],
+              owner: `urn:li:person:${profile.linkedinUserId}`,
+              serviceRelationships: [{
+                relationshipType: 'OWNER',
+                identifier: 'urn:li:userGeneratedContent'
+              }]
+            }
+          })
+        });
+
+        if (!assetResponse.ok) {
+          throw new Error(`Asset registration failed: ${assetResponse.status}`);
+        }
+
+        const assetData = await assetResponse.json();
+        const uploadUrl = assetData.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl;
+        const asset = assetData.value.asset;
+
+        // Step 2: Download and rehost media using LinkedIn-style approach
+        console.log('[LinkedIn] Downloading media from external URL:', mediaUrl);
+        const mediaBuffer = await this.downloadToBuffer(mediaUrl);
+        console.log('[LinkedIn] Media downloaded successfully, size:', mediaBuffer.length, 'bytes');
+        
+        console.log('[LinkedIn] Rehosting media to S3 for reliable LinkedIn access...');
+        const s3Url = await this.rehostToS3(mediaBuffer, mediaUrl);
+        console.log('[LinkedIn] Media rehosted to S3:', s3Url);
+        
+        // Step 3: Upload the rehosted media to LinkedIn using S3 URL (like Instagram)
+        console.log('[LinkedIn] Using rehosted S3 URL for LinkedIn upload:', s3Url);
+        const mediaResponse = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/octet-stream'
+          },
+          body: await fetch(s3Url).then(res => res.arrayBuffer())
+        });
+
+        if (!mediaResponse.ok) {
+          throw new Error(`Media upload failed: ${mediaResponse.status}`);
+        }
+
+        console.log(`[LinkedIn] ${mediaType} uploaded successfully, asset: ${asset}`);
+
+        // Step 3: Add media to post payload
+        payload.specificContent['com.linkedin.ugc.ShareContent'].media = [{
+          status: 'READY',
+          description: {
+            text: 'Media content'
+          },
+          media: asset,
+          title: {
+            text: 'LinkedIn Post'
+          }
+        }];
+
+      } catch (error) {
+        console.error(`[LinkedIn] Media upload failed: ${error.message}, falling back to text-only post`);
+        payload.specificContent['com.linkedin.ugc.ShareContent'].shareMediaCategory = 'NONE';
+      }
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'X-Restli-Protocol-Version': '2.0.0',
+        'LinkedIn-Version': '202503'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('LinkedIn API Error:', response.status, errorData);
+      throw new Error(`LinkedIn API error: ${response.status} ${errorData}`);
+    }
+
+    const result = await response.json();
+    const postId = result.id;
+    const linkedinUrl = `https://www.linkedin.com/feed/update/${postId}`;
+    
+    return {
+      success: true,
+      postId: postId,
+      url: linkedinUrl,
+      message: 'Successfully posted to LinkedIn'
+    };
   }
 }
 

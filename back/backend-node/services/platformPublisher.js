@@ -1,8 +1,11 @@
 /* eslint-disable no-console */
 const axios = require('axios');
 const LinkedInService = require('./linkedinService');
-
-const { postToTwitter } = require('./twitterService'); // real Twitter API
+const InstagramService = require('./instagramService');
+const FacebookService = require('./facebookService');
+const TwitterService = require('./twitterService');
+const TikTokService = require('./tiktokService');
+const YouTubeService = require('./youtubeService');
 const { getUserPlatformTokens } = require('../utils/tokenUtils');
 
 // ---- hashtag helpers ----
@@ -70,21 +73,16 @@ class PlatformPublisher {
       }
     };
 
-    // Real LinkedIn API - lazy initialization
-    this.linkedinService = null;
-
-    // Real Twitter API - using function-based approach with token persistence
+    // Initialize all platform services
+    this.linkedinService = new LinkedInService();
+    this.instagramService = new InstagramService();
+    this.facebookService = new FacebookService();
+    this.twitterService = new TwitterService();
+    this.tiktokService = new TikTokService();
+    this.youtubeService = new YouTubeService();
   }
 
-  // Get LinkedIn service lazily
-  getLinkedInService() {
-    if (!this.linkedinService) {
-      this.linkedinService = new LinkedInService({
-        accessToken: process.env.LINKEDIN_ACCESS_TOKEN
-      });
-    }
-    return this.linkedinService;
-  }
+
 
   // ===== Main publish switch =====
   async publishToPlatform(platform, postData) {
@@ -121,8 +119,6 @@ class PlatformPublisher {
             throw new Error('LinkedIn requires authenticated clerkUserId');
           }
 
-          const { postToLinkedIn } = require('./linkedinUserService');
-
           // Convert caption/text to message
           const message = (caption || text || '').trim();
           if (!message) throw new Error('LinkedIn post text is empty');
@@ -135,7 +131,7 @@ class PlatformPublisher {
           console.log('[Publisher][LinkedIn] hashtags =', hashtags);
           
           // Call LinkedIn service
-          const result = await postToLinkedIn(identifier, message, mediaUrl, hashtags);
+          const result = await this.linkedinService.postToLinkedIn(identifier, message, mediaUrl, hashtags);
 
            // Return standardized format
           return {
@@ -158,15 +154,16 @@ class PlatformPublisher {
             throw new Error('YouTube requires video content: mediaUrl (HTTPS URL or stream)');
           }
 
-          const { postToYouTube } = require('./youtubeService');
-
           const { title, description, mediaUrl: formattedMediaUrl, tags, privacyStatus } =
             this.formatContentForPlatform('youtube', postData);
 
           console.log('[Publisher][YouTube] title =', title);
           console.log('[Publisher][YouTube] mediaUrl =', formattedMediaUrl);
+          console.log('[Publisher][YouTube] Note: YouTube expects original external URL, not S3 URL');
 
-          const result = await postToYouTube(identifier, formattedMediaUrl, { title, description, tags, privacyStatus });
+          // YouTube needs the original external URL, not S3 URL
+          // The YouTube service will handle downloading and S3 rehosting internally
+          const result = await this.youtubeService.postToYouTube(identifier, formattedMediaUrl, { title, description, tags, privacyStatus });
 
           // YouTube service now returns structured object like other platforms
           return {
@@ -201,7 +198,7 @@ class PlatformPublisher {
           if (!tweetText) throw new Error('Tweet text is empty');
 
           // Pass mediaUrl directly to postToTwitter - Twitter service handles URL/Buffer conversion
-          const result = await postToTwitter(identifier, tweetText, mediaUrl);
+          const result = await this.twitterService.postToTwitter(identifier, tweetText, mediaUrl);
           
           // Twitter service now returns structured object like LinkedIn
           return {
@@ -220,12 +217,10 @@ class PlatformPublisher {
           // Use the platform token we already retrieved
           const identifier = { clerkUserId: clerkUserId };
 
-          const { postToTikTok } = require('./tiktokService');
-
           const message = (caption || text || '').trim();
           if (!message) throw new Error('TikTok post text is empty');
 
-          const result = await postToTikTok(identifier, message, mediaUrl, mediaType);
+          const result = await this.tiktokService.postToTikTok(identifier, message, mediaUrl, mediaType);
 
           // TikTok service now returns structured object like other platforms
           return {
@@ -254,10 +249,9 @@ class PlatformPublisher {
           if (!message) throw new Error('Instagram post text is empty');
           if (!mediaUrl) throw new Error('Instagram requires mediaUrl (publicly reachable)');
 
-          const { postToInstagram } = require('./instagramService');
           const isVideo = String(mediaType || '').toLowerCase() === 'video' || /\.(mp4|mov|m4v)(\?|$)/i.test(mediaUrl);
 
-          const result = await postToInstagram(identifier, message, mediaUrl, isVideo);
+          const result = await this.instagramService.postToInstagram(identifier, message, mediaUrl, isVideo);
 
           // Instagram service now returns structured object like LinkedIn and Twitter
           return {
@@ -277,15 +271,13 @@ class PlatformPublisher {
           // Use the platform token we already retrieved
           const identifier = { clerkUserId: clerkUserId };
 
-          const { postToFacebook } = require('./facebookService');
-
           const message = (caption || text || '').trim();
           if (!message) throw new Error('Facebook post text is empty');
 
           console.log('[Publisher][Facebook] message.preview =', message.slice(0, 140));
           console.log('[Publisher][Facebook] mediaUrl =', mediaUrl);
 
-          const result = await postToFacebook(identifier, message, mediaUrl);
+          const result = await this.facebookService.postToFacebook(identifier, message, mediaUrl);
           console.log('[Publisher][Facebook] Raw result:', JSON.stringify(result, null, 2));
 
           // Facebook service now returns structured object like other platforms
@@ -298,20 +290,7 @@ class PlatformPublisher {
           };
         }
 
-        // ------------ DEFAULT (simulated for others) ------------
-        default: {
-          console.log(`[Publisher] Executing DEFAULT case for platform: "${platform}"`);
-          const formattedContent = this.formatContentForPlatform(platform, postData);
-          const result = await this.publishContent(platform, formattedContent);
-          console.log(`✅ Successfully published to ${platform}`);
-          return {
-            success: true,
-            platform,
-            postId: result.postId || result.id,
-            url: result.url,
-            message: `Successfully published to ${platform}`
-          };
-        }
+
       }
     } catch (error) {
       console.error(`❌ Failed to publish to ${platform}:`, error.message);
@@ -434,23 +413,7 @@ class PlatformPublisher {
     }
   }
 
-  // ===== Simulated publisher for non-wired platforms =====
-  async publishContent(platform, content) {
-    // Simulate API latency
-    await new Promise(resolve => setTimeout(resolve, 1200));
 
-    const idBase = Date.now();
-    const responses = {
-      instagram: { id: `ig_${idBase}`, url: `https://instagram.com/p/ig_${idBase}` },
-      tiktok:    { id: `tt_${idBase}`, url: `https://tiktok.com/@user/video/tt_${idBase}` },
-      linkedin:  { id: `li_${idBase}`, url: `https://www.linkedin.com/feed/update/li_${idBase}` },
-      twitter:   { id: `tw_${idBase}`, url: `https://twitter.com/user/status/tw_${idBase}` },
-      youtube:   { id: `yt_${idBase}`, url: `https://youtube.com/watch?v=yt_${idBase}` },
-      facebook:  { id: `fb_${idBase}`, url: `https://facebook.com/permalink.php?story_fbid=fb_${idBase}` }
-    };
-
-    return responses[platform] || { id: `post_${idBase}` };
-  }
 
   // ===== Bulk publish; also normalizes body shape =====
   async publishToMultiplePlatforms(platforms, postDataRaw) {

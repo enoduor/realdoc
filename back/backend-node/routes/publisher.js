@@ -23,30 +23,20 @@ function buildPublishResponse(platform, content, result) {
   // If media was requested, require a URL in the result for success
   const ok = backendReportedSuccess && (!expectsMedia || hasUrl);
 
-  const normalized = {
-    platform,
-    // Always provide url and postId keys for the frontend
-    url: hasUrl ? result.url : null,
-    postId: result && (result.postId || result.id) ? (result.postId || result.id) : null,
-    // Preserve provider message or synthesize a high-signal one
-    message: (result && result.message)
-      ? result.message
-      : ok
-        ? `Successfully published to ${platform}`
-        : `Missing media URL from ${platform} response`,
+  // Return clean response without duplicate nesting
+  return { 
+    success: ok, 
+    platform, 
+    ...result  // Spread the service result directly
   };
-
-  // Include raw provider result under result for debugging/visibility
-  normalized.result = result || null;
-
-  return { success: ok, platform, result: normalized };
 }
 
 // Test endpoint for LinkedIn status - no auth required (for direct OAuth flow)
 router.get('/test-linkedin', async (req, res) => {
     try {
         const LinkedInToken = require('../models/LinkedInToken');
-        const { findLinkedInToken, getLinkedInProfile } = require('../services/linkedinUserService');
+        const LinkedInService = require('../services/linkedinService');
+        const linkedinService = new LinkedInService();
         
         // Look for any valid LinkedIn token
         let tokenDoc = await LinkedInToken.findOne({ 
@@ -57,7 +47,7 @@ router.get('/test-linkedin', async (req, res) => {
             // Test if the token is valid
             try {
                 const identifier = { linkedinUserId: tokenDoc.linkedinUserId };
-                const profile = await getLinkedInProfile(identifier);
+                const profile = await linkedinService.getLinkedInProfile(identifier);
                 
                 res.json({
                     success: true,
