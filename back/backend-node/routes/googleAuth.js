@@ -95,7 +95,7 @@ router.get('oauth2/callback/google', async (req, res) => {
       <p><strong>Subscribers:</strong> ${channel.statistics?.subscriberCount || 'Hidden'}</p>
       <p><strong>Videos:</strong> ${channel.statistics?.videoCount || 'Unknown'}</p>
       <br>
-      <p>You can now close this window and return to CreatorSync.</p>
+      <p>You can now close this window and return to Repostly.</p>
       <script>
         setTimeout(() => {
           window.close();
@@ -134,7 +134,7 @@ router.get('test-connect', (req, res) => {
           <li>Opens Google OAuth consent screen</li>
           <li>Requests permission to upload videos to your YouTube channel</li>
           <li>Saves your YouTube credentials securely</li>
-          <li>Enables YouTube publishing in CreatorSync</li>
+          <li>Enables YouTube publishing in Repostly</li>
         </ul>
       </div>
 
@@ -151,8 +151,8 @@ router.get('test-connect', (req, res) => {
         <li>You'll be redirected back with a success message</li>
       </ol>
 
-      <h3>Step 3: Return to CreatorSync</h3>
-      <p>After successful connection, close this tab and return to CreatorSync to test YouTube publishing.</p>
+      <h3>Step 3: Return to Repostly</h3>
+      <p>After successful connection, close this tab and return to Repostly to test YouTube publishing.</p>
 
       <div class="info">
         <strong>Note:</strong> This uses the test user ID. In production, this would use your actual Clerk user ID.

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# CreatorSync App Status Check Script
-echo "🔍 CreatorSync App Status Check..."
+# Repostly App Status Check Script
+echo "🔍 Repostly App Status Check..."
 
 # Colors for output
 RED='\033[0;31m'

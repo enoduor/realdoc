@@ -31,7 +31,7 @@ class InstagramService {
       timeout: 30000,
       maxContentLength: 50 * 1024 * 1024,
       maxBodyLength: 50 * 1024 * 1024,
-      headers: { 'User-Agent': 'CreatorSync/1.0' }
+      headers: { 'User-Agent': 'Repostly/1.0' }
     });
     const buffer = Buffer.from(resp.data);
     const contentType = resp.headers['content-type'] || 'application/octet-stream';

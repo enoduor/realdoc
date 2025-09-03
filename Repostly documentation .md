@@ -1,4 +1,4 @@
-# CreatorSync Complete Documentation
+# Repostly Complete Documentation
 
 ## Current Status
 

@@ -10,7 +10,7 @@
 ### Step 2: Create New Application
 1. Click "Add application"
 2. Choose "Web application"
-3. Name it "CreatorSync"
+3. Name it "Repostly"
 4. Select your preferred sign-in methods (Email, Google, GitHub, etc.)
 
 ### Step 3: Get Your Keys
@@ -31,7 +31,7 @@ REACT_APP_PYTHON_API_URL=http://localhost:5001
 CLERK_JWT_KEY=your_jwt_key_from_clerk_dashboard
 CLERK_ISSUER_URL=https://clerk.your-app.com
 CLERK_AUDIENCE=http://localhost:3000
-MONGODB_URI=mongodb://localhost:27017/creatorsync
+MONGODB_URI=mongodb://localhost:27017/repostly
 JWT_SECRET=your_jwt_secret_here
 STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key_here
 PORT=4001

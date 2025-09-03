@@ -28,7 +28,7 @@ const ClerkRegister = () => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
           <h2 className="text-3xl font-extrabold text-gray-900">
-            Join CreatorSync
+            Join Repostly
           </h2>
           <p className="mt-2 text-sm text-gray-600">
             Create your account to get started

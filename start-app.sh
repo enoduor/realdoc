@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# CreatorSync App Startup Script
-echo "🚀 Starting CreatorSync App with Clerk Authentication & MongoDB Atlas..."
+# Repostly App Startup Script
+echo "🚀 Starting Repostly App with Clerk Authentication & MongoDB Atlas..."
 
 # Colors for output
 RED='\033[0;31m'
@@ -199,7 +199,7 @@ else
 fi
 
 echo ""
-echo -e "${GREEN}🎉 CreatorSync App is ready!${NC}"
+echo -e "${GREEN}🎉 Repostly App is ready!${NC}"
 echo ""
 echo -e "${BLUE}📱 Frontend:     http://localhost:3000${NC}"
 echo -e "${BLUE}🔐 Auth API:     http://localhost:4001${NC}"

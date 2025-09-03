@@ -1,4 +1,4 @@
-# 🚀 CreatorSync - Real API Setup Quick Reference
+# 🚀 Repostly - Real API Setup Quick Reference
 
 ## 📋 **Ready-to-Use Setup Script**
 

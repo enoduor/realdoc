@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# CreatorSync App Stop Script
-echo "🛑 Stopping CreatorSync App..."
+# Repostly App Stop Script
+echo "🛑 Stopping Repostly App..."
 
 # Colors for output
 RED='\033[0;31m'
@@ -71,5 +71,5 @@ else
 fi
 
 echo ""
-echo -e "${GREEN}✅ All CreatorSync services stopped!${NC}"
+echo -e "${GREEN}✅ All Repostly services stopped!${NC}"
 echo -e "${YELLOW}💡 To start the app again, run: ./start-app.sh${NC}"

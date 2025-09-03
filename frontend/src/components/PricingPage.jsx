@@ -13,7 +13,7 @@ const PricingPage = () => {
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
                 <Link to="/app" className="text-xl font-bold text-gray-900">
-                  CreatorSync
+                  Repostly
                 </Link>
               </div>
             </div>
@@ -37,7 +37,7 @@ const PricingPage = () => {
         <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <p className="text-gray-500">
-              &copy; 2024 CreatorSync. All rights reserved.
+              &copy; 2024 Repostly. All rights reserved.
             </p>
           </div>
         </div>

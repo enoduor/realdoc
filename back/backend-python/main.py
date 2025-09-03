@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-app = FastAPI(title="CreatorSync AI Service")
+app = FastAPI(title="Repostly AI Service")
 
 # CORS (include both localhost forms for dev)
 app.add_middleware(

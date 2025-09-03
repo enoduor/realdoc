@@ -12,7 +12,7 @@ const LandingPage = () => {
         <div className="nav-container">
           <div className="nav-logo">
             <Link to="/" className="logo-link">
-              CreatorSync
+              Repostly
             </Link>
           </div>
           <div className="nav-links">
@@ -133,7 +133,7 @@ const LandingPage = () => {
       <section className="cta-section">
         <div className="cta-container">
           <h2>Ready to Transform Your Social Media?</h2>
-          <p>Join thousands of creators who are already growing their audience with CreatorSync</p>
+          <p>Join thousands of creators who are already growing their audience with Repostly</p>
           <Link to="/register" className="cta-button-large">
             1 Post × 6 Platforms
           </Link>
@@ -146,7 +146,7 @@ const LandingPage = () => {
         <div className="footer-container">
           <div className="footer-content">
             <div className="footer-section">
-              <h4>CreatorSync</h4>
+              <h4>Repostly</h4>
               <p>Made for solo creators, startups, small businesses.<br/>
               <strong>Create once, publish everywhere.</strong></p>
             </div>
@@ -188,7 +188,7 @@ const LandingPage = () => {
             </div>
           </div>
           <div className="footer-bottom">
-            <p>&copy; 2024 CreatorSync. All rights reserved.</p>
+            <p>&copy; 2024 Repostly. All rights reserved.</p>
             <div className="footer-links">
               <Link to="/privacy">Privacy Policy</Link>
               <Link to="/terms">Terms of Service</Link>

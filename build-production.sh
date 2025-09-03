@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Building CreatorSync for Production Optimization..."
+echo "🚀 Building Repostly for Production Optimization..."
 
 # Colors for output
 RED='\033[0;31m'
@@ -96,7 +96,7 @@ print_status "Creating production configuration files..."
 cat > build/start-production.sh << 'EOF'
 #!/bin/bash
 
-echo "🚀 Starting CreatorSync Production Build..."
+echo "🚀 Starting Repostly Production Build..."
 
 # Set production environment
 export NODE_ENV=production
@@ -136,7 +136,7 @@ chmod +x build/start-production.sh
 
 # Production Docker configuration
 cat > build/Dockerfile << 'EOF'
-# Multi-stage build for CreatorSync
+# Multi-stage build for Repostly
 FROM node:18-alpine AS node-builder
 WORKDIR /app
 COPY backend-node/package*.json ./
@@ -257,7 +257,7 @@ EOF
 
 # Create build summary
 cat > build/BUILD_SUMMARY.md << 'EOF'
-# CreatorSync Production Build Summary
+# Repostly Production Build Summary
 
 ## Build Date
 $(date)
@@ -292,8 +292,8 @@ $(date)
 ### 1. Docker Deployment
 ```bash
 cd build
-docker build -t creatorsync .
-docker run -p 3000:3000 -p 4001:4001 -p 5001:5001 creatorsync
+docker build -t repostly .
+docker run -p 3000:3000 -p 4001:4001 -p 5001:5001 repostly
 ```
 
 ### 2. Manual Deployment
@@ -323,7 +323,7 @@ EOF
 
 # Create deployment instructions
 cat > build/DEPLOYMENT.md << 'EOF'
-# CreatorSync Deployment Guide
+# Repostly Deployment Guide
 
 ## Quick Start
 

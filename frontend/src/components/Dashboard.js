@@ -234,7 +234,7 @@ const Dashboard = () => {
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <h1 className="text-xl font-bold">CreatorSync</h1>
+                <h1 className="text-xl font-bold">Repostly</h1>
               </div>
             </div>
             <div className="flex items-center">
@@ -246,7 +246,7 @@ const Dashboard = () => {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <h2 className="text-2xl font-bold mb-8">Welcome to CreatorSync</h2>
+          <h2 className="text-2xl font-bold mb-8">Welcome to Repostly</h2>
           
           {/* Payment Success Message */}
           {(searchParams.get('session_id') || localStorage.getItem('hasSubscription') === 'true') && (
