@@ -6,13 +6,14 @@ const FormData = require('form-data');
 const path = require('path');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
-const fileType = require('file-type');
 
 const PYTHON_API_BASE_URL = process.env.PYTHON_API_BASE_URL || 'http://localhost:5001';
+const MediaManagerService = require('./mediaManagerService');
 
 class YouTubeService {
   constructor(config = {}) {
     // Configuration can be added here if needed
+    this.mediaManager = MediaManagerService.getInstance();
   }
 
   getOAuthClient() {
@@ -90,27 +91,18 @@ class YouTubeService {
   }
 
   /**
-   * Detect MIME type and filename from buffer using file-type package
-   * This provides accurate detection instead of hard-coded assumptions
+   * Detect MIME type and filename from buffer using simple magic bytes
+   * Simplified approach that doesn't depend on external packages
    */
   detectMediaType(buffer) {
     try {
-      const fileInfo = fileType.fromBuffer(buffer);
-      if (fileInfo) {
-        return {
-          mimeType: fileInfo.mime,
-          extension: fileInfo.ext,
-          filename: `video.${fileInfo.ext}` // Default filename with correct extension
-        };
-      }
-      
-      // Fallback: try to detect from buffer magic bytes
+      // Simple magic bytes detection
       if (buffer.length >= 12) {
-        // MP4 magic bytes
+        // MP4 magic bytes (ftyp)
         if (buffer.slice(4, 8).toString('hex') === '66747970') {
           return { mimeType: 'video/mp4', extension: 'mp4', filename: 'video.mp4' };
         }
-        // MOV magic bytes
+        // MOV magic bytes (moov)
         if (buffer.slice(4, 8).toString('hex') === '6d6f6f76') {
           return { mimeType: 'video/quicktime', extension: 'mov', filename: 'video.mov' };
         }
@@ -120,7 +112,7 @@ class YouTubeService {
         }
       }
       
-      // Final fallback
+      // Default fallback for video
       return { mimeType: 'video/mp4', extension: 'mp4', filename: 'video.mp4' };
     } catch (error) {
       console.warn('[YouTube] MIME type detection failed, using fallback:', error.message);
@@ -277,39 +269,41 @@ class YouTubeService {
     let mediaBody = fileInput;
     let s3Url = null;
 
-    // Handle S3 URL string
+    // Handle S3 URL string - use original URL if it's already S3, otherwise get consistent URL
     if (typeof fileInput === 'string') {
-      // Check if this is an S3 URL (multiple patterns for robustness)
-      const s3Patterns = [
-        'amazonaws.com',
-        's3.amazonaws.com',
-        'bigvideograb-media.s3.amazonaws.com', // Specific bucket
-        's3://',
-        'https://s3.'
-      ];
-      const isS3Url = s3Patterns.some(pattern => fileInput.includes(pattern));
+      // Check if this is already an S3 URL
+      const isS3Url = fileInput.includes('amazonaws.com') || fileInput.includes('s3.amazonaws.com');
       
       if (isS3Url) {
-        console.log('[YouTube] Detected S3 URL, downloading media from S3:', fileInput);
+        console.log('[YouTube] Already S3 URL, using directly:', fileInput);
+        s3Url = fileInput; // Use original S3 URL
+        
+        // Download from original S3 URL to get buffer
+        const mediaBuffer = await this.downloadToBuffer(fileInput);
+        console.log('[YouTube] Media downloaded from original S3 URL, size:', mediaBuffer.length, 'bytes');
+        
+        // Use downloaded buffer for YouTube upload
+        mediaBody = mediaBuffer;
+      } else {
+        console.log('[YouTube] External URL, getting consistent S3 URL via centralized manager...');
         try {
-          // Download media from S3 URL
-          const mediaBuffer = await this.downloadToBuffer(fileInput);
-          console.log('[YouTube] Media downloaded from S3, size:', mediaBuffer.length, 'bytes');
+          // Get consistent S3 URL (or create if doesn't exist)
+          const consistentS3Url = await this.mediaManager.getConsistentMediaUrl(fileInput, 'video');
           
-          // Detect MIME type from downloaded buffer
-          const mediaInfo = this.detectMediaType(mediaBuffer);
-          console.log('[YouTube] Detected media type from S3:', mediaInfo.mimeType, 'extension:', mediaInfo.extension);
+          // Use consistent S3 URL
+          s3Url = consistentS3Url;
+          console.log('[YouTube] Using consistent S3 URL via centralized manager:', consistentS3Url);
+          
+          // Download from consistent URL to get buffer
+          const mediaBuffer = await this.downloadToBuffer(consistentS3Url);
+          console.log('[YouTube] Media downloaded from consistent S3 URL, size:', mediaBuffer.length, 'bytes');
           
           // Use downloaded buffer for YouTube upload
           mediaBody = mediaBuffer;
-          s3Url = fileInput; // Already have S3 URL
-          console.log('[YouTube] Using S3-downloaded buffer for YouTube upload');
         } catch (error) {
-          console.error('[YouTube] Failed to download from S3 URL:', error.message);
-          throw new Error('Failed to download media from S3 URL');
+          console.error('[YouTube] Failed to get consistent media URL:', error.message);
+          throw new Error('Failed to get consistent media URL via centralized manager');
         }
-      } else {
-        throw new Error('YouTube only accepts S3 URLs. Received: ' + fileInput);
       }
     } else {
       console.log('[YouTube] Using direct file input (not URL)');

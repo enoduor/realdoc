@@ -6,10 +6,12 @@ const InstagramToken = require('../models/InstagramToken');
 
 const FACEBOOK_API_URL = process.env.FACEBOOK_API_URL || 'https://graph.facebook.com/v18.0';
 const PYTHON_API_BASE_URL = process.env.PYTHON_API_BASE_URL || 'http://localhost:5001';
+const MediaManagerService = require('./mediaManagerService');
 
 class InstagramService {
   constructor(config = {}) {
     // Configuration can be added here if needed
+    this.mediaManager = MediaManagerService.getInstance();
   }
 
   inferFilenameFromUrl(url) {
@@ -116,14 +118,10 @@ class InstagramService {
     const accessToken = doc.accessToken;
     const igUserId = doc.igUserId;
 
-    // 🔑 NEW: Always download external media first (LinkedIn-style approach)
-    console.log('[IG] Downloading media from external URL:', mediaUrl);
-    const { buffer, contentType, filename } = await this.downloadToBuffer(mediaUrl);
-    
-    // 🔑 NEW: Always rehost to S3 for reliability (LinkedIn-style approach)
-    console.log('[IG] Rehosting media to S3 for reliable Instagram access...');
-    const s3Url = await this.rehostToS3(buffer, filename, contentType);
-    console.log('[IG] Media rehosted to S3:', s3Url);
+    // 🔑 NEW: Get consistent media URL via centralized manager
+    console.log('[IG] Getting consistent media URL via centralized manager...');
+    const s3Url = await this.mediaManager.getConsistentMediaUrl(mediaUrl, isVideo ? 'video' : 'image');
+    console.log('[IG] Using consistent S3 URL via centralized manager:', s3Url);
     
     // 🔑 NEW: Create container with S3 URL (always accessible to Instagram)
     console.log('[IG] Creating container with S3 URL...');

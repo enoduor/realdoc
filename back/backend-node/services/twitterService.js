@@ -11,10 +11,12 @@ const {
 } = process.env;
 
 const PYTHON_API_BASE_URL = process.env.PYTHON_API_BASE_URL || 'http://localhost:5001';
+const MediaManagerService = require('./mediaManagerService');
 
 class TwitterService {
   constructor(config = {}) {
     // No AWS SDK needed - uses Python backend for S3 uploads (like Instagram)
+    this.mediaManager = MediaManagerService.getInstance();
   }
 
   /**
@@ -202,30 +204,28 @@ class TwitterService {
 
   /**
    * Upload media to Twitter (v1.1 API required for media upload)
-   * Now uses LinkedIn-style approach: download external media, rehost to S3, then upload to Twitter
+   * Now uses centralized media manager for consistent S3 URLs
    */
   async uploadMedia(identifier, mediaUrlOrBuffer) {
     const client = await this.getUserClient(identifier);
     let input;
     let filenameHint = null;
-    let s3Url = null;
 
-    // Handle URL string by downloading to Buffer and rehosting to S3
+    // Handle URL string by using centralized media manager
     if (typeof mediaUrlOrBuffer === 'string') {
-      console.log('[Twitter] Downloading media from external URL:', mediaUrlOrBuffer);
+      console.log('[Twitter] Getting consistent media URL via centralized manager...');
       try {
-        // Download external media to buffer
-        const mediaBuffer = await this.downloadToBuffer(mediaUrlOrBuffer);
+        // Get consistent S3 URL (or create if doesn't exist)
+        const s3Url = await this.mediaManager.getConsistentMediaUrl(mediaUrlOrBuffer, 'video');
         
-        // Rehost to S3 for reliable Twitter access
-        s3Url = await this.rehostToS3(mediaBuffer, mediaUrlOrBuffer);
+        // Get media buffer for Twitter upload (Twitter API expects Buffer, not URL)
+        const mediaBuffer = await this.mediaManager.getMediaBuffer(mediaUrlOrBuffer);
         
-        // Use S3 URL for Twitter upload (like Facebook/Instagram/LinkedIn)
-        input = s3Url;
+        input = mediaBuffer;
         filenameHint = mediaUrlOrBuffer;
-        console.log('[Twitter] Media prepared with S3 URL:', s3Url);
+        console.log('[Twitter] Media prepared with buffer via centralized manager, size:', mediaBuffer.length, 'bytes');
       } catch (error) {
-        console.error('[Twitter] Failed to prepare media:', error.message);
+        console.error('[Twitter] Failed to prepare media via centralized manager:', error.message);
         throw new Error('Failed to prepare media for Twitter');
       }
     } else if (Buffer.isBuffer(mediaUrlOrBuffer)) {
@@ -250,6 +250,7 @@ class TwitterService {
         return mediaId;
       } else {
         console.log('[Twitter] Uploading as video (Buffer)...');
+        // Twitter API v1.1 expects Buffer for media upload
         const mediaId = await client.v1.uploadMedia(input, { mimeType: 'video/mp4' });
         console.log('[TW] v1.uploadMedia (video) success - mediaId:', mediaId);
         return mediaId;

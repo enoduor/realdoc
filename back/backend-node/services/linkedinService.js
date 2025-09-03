@@ -6,10 +6,12 @@ const FormData = require('form-data');
 const path = require('path');
 
 const PYTHON_API_BASE_URL = process.env.PYTHON_API_BASE_URL || 'http://localhost:5001';
+const MediaManagerService = require('./mediaManagerService');
 
 class LinkedInService {
   constructor(config = {}) {
     // Configuration can be added here if needed
+    this.mediaManager = MediaManagerService.getInstance();
   }
 
   /**
@@ -220,14 +222,10 @@ class LinkedInService {
         const uploadUrl = assetData.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl;
         const asset = assetData.value.asset;
 
-        // Step 2: Download and rehost media using LinkedIn-style approach
-        console.log('[LinkedIn] Downloading media from external URL:', mediaUrl);
-        const mediaBuffer = await this.downloadToBuffer(mediaUrl);
-        console.log('[LinkedIn] Media downloaded successfully, size:', mediaBuffer.length, 'bytes');
-        
-        console.log('[LinkedIn] Rehosting media to S3 for reliable LinkedIn access...');
-        const s3Url = await this.rehostToS3(mediaBuffer, mediaUrl);
-        console.log('[LinkedIn] Media rehosted to S3:', s3Url);
+        // Step 2: Get consistent media URL via centralized manager
+        console.log('[LinkedIn] Getting consistent media URL via centralized manager...');
+        const s3Url = await this.mediaManager.getConsistentMediaUrl(mediaUrl, 'video');
+        console.log('[LinkedIn] Using consistent S3 URL via centralized manager:', s3Url);
         
         // Step 3: Upload the rehosted media to LinkedIn using S3 URL (like Instagram)
         console.log('[LinkedIn] Using rehosted S3 URL for LinkedIn upload:', s3Url);

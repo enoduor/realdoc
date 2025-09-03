@@ -13,10 +13,12 @@ const CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET;
 const REDIRECT_URI = process.env.TIKTOK_REDIRECT_URI; // e.g., https://yourdomain.com/api/auth/tiktok/callback
 
 const PYTHON_API_BASE_URL = process.env.PYTHON_API_BASE_URL || 'http://localhost:5001';
+const MediaManagerService = require('./mediaManagerService');
 
 class TikTokService {
   constructor(config = {}) {
     // Configuration can be added here if needed
+    this.mediaManager = MediaManagerService.getInstance();
   }
 
   isExpiringSoon(expiresAt) {
@@ -102,21 +104,18 @@ class TikTokService {
     let input;
     let s3Url = null;
     
-    // Handle URL string by downloading to Buffer and rehosting to S3
+    // Handle URL string by using centralized media manager
     if (typeof fileBuffer === 'string') {
-      console.log('[TikTok] Downloading media from external URL:', fileBuffer);
+      console.log('[TikTok] Getting consistent media URL via centralized manager...');
       try {
-        // Download external media to buffer
-        const mediaBuffer = await this.downloadToBuffer(fileBuffer);
+        // Get consistent S3 URL (or create if doesn't exist)
+        const s3Url = await this.mediaManager.getConsistentMediaUrl(fileBuffer, mimeType.startsWith('image/') ? 'image' : 'video');
         
-        // Rehost to S3 for reliable TikTok access
-        s3Url = await this.rehostToS3(mediaBuffer, fileBuffer);
-        
-        // Use S3 URL for TikTok upload (like Facebook/Instagram/LinkedIn)
+        // Use S3 URL for TikTok upload (TikTok API accepts URL references)
         input = s3Url;
-        console.log('[TikTok] Using S3 URL for TikTok upload:', s3Url);
+        console.log('[TikTok] Using consistent S3 URL via centralized manager:', s3Url);
       } catch (error) {
-        console.error('[TikTok] Failed to prepare media:', error.message);
+        console.error('[TikTok] Failed to prepare media via centralized manager:', error.message);
         throw new Error('Failed to prepare media for TikTok');
       }
     } else if (Buffer.isBuffer(fileBuffer)) {

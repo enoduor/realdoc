@@ -120,9 +120,10 @@ const normalizeReturn = (data, platformsFallback, singlePlatform) => {
           success,
           result: data?.result || data,
           // Handle new backend structure: fields are nested under result
-          url: data?.result?.url || data?.url,
-          postId: data?.result?.postId || data?.postId,
-          message: data?.result?.message || data?.message,
+          // For single-platform, prioritize direct fields over nested result fields
+          url: data?.url || data?.result?.url,
+          postId: data?.postId || data?.result?.postId,
+          message: data?.message || data?.result?.message,
         }
       : p
   );
@@ -310,9 +311,10 @@ const publishSinglePlatform = async (platform, postData, token) => {
         success: data?.success ?? true,
         result: data,
         // Handle new backend structure: fields are nested under result
-        url: data?.result?.url || data?.url,
-        postId: data?.result?.postId || data?.postId,
-        message: data?.result?.message || data?.message,
+        // For single-platform, prioritize direct fields over nested result fields
+        url: data?.url || data?.result?.url,
+        postId: data?.postId || data?.result?.postId,
+        message: data?.message || data?.result?.message,
       };
       item.platform = platform;
       return enrichPlatformItem(item);

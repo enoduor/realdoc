@@ -11,10 +11,12 @@ const {
 } = process.env;
 
 const PYTHON_API_BASE_URL = process.env.PYTHON_API_BASE_URL || 'http://localhost:5001';
+const MediaManagerService = require('./mediaManagerService');
 
 class FacebookService {
   constructor(config = {}) {
     // No AWS SDK needed - uses Python backend for S3 uploads (like Instagram)
+    this.mediaManager = MediaManagerService.getInstance();
   }
 
   /**
@@ -192,22 +194,19 @@ class FacebookService {
     let filenameHint = null;
     let s3Url = null;
 
-    // Handle URL string by downloading to Buffer and rehosting to S3
+    // Handle URL string by using centralized media manager
     if (typeof mediaUrlOrBuffer === 'string') {
-      console.log('[Facebook] Downloading media from external URL:', mediaUrlOrBuffer);
+      console.log('[Facebook] Getting consistent media URL via centralized manager...');
       try {
-        // Download external media to buffer
-        const mediaBuffer = await this.downloadToBuffer(mediaUrlOrBuffer);
+        // Get consistent S3 URL (or create if doesn't exist)
+        const s3Url = await this.mediaManager.getConsistentMediaUrl(mediaUrlOrBuffer, 'video');
         
-        // Rehost to S3 for reliable Facebook access
-        s3Url = await this.rehostToS3(mediaBuffer, mediaUrlOrBuffer);
-        
-        // Use S3 URL for Facebook upload (LinkedIn/Instagram approach)
-        input = s3Url; // Use S3 URL, not buffer
+        // Use S3 URL for Facebook upload (Facebook API accepts URL references)
+        input = s3Url;
         filenameHint = mediaUrlOrBuffer;
-        console.log('[Facebook] Using S3 URL for Facebook upload:', s3Url);
+        console.log('[Facebook] Using consistent S3 URL via centralized manager:', s3Url);
       } catch (error) {
-        console.error('[Facebook] Failed to prepare media:', error.message);
+        console.error('[Facebook] Failed to prepare media via centralized manager:', error.message);
         throw new Error('Failed to prepare media for Facebook');
       }
     } else if (Buffer.isBuffer(mediaUrlOrBuffer)) {
