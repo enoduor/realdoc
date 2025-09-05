@@ -23,7 +23,10 @@ const ClerkUserProfile = () => {
       // Sign out from Clerk
       // Force the full URL with trailing slash
       const redirectUrl = 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly/';
-      await signOut({ redirectUrl });
+      
+      // Sign out without redirect, then manually redirect to ensure trailing slash
+      await signOut();
+      window.location.href = redirectUrl;
     } catch (error) {
       console.error('Error during sign out:', error);
     }
