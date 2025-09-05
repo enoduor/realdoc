@@ -21,9 +21,9 @@ const ClerkUserProfile = () => {
       }
       
       // Sign out from Clerk
-      // Production: use /repostly/, Local: use /repostly/ (both should have trailing slash)
-      const prefix = '/repostly/';
-      await signOut({ redirectUrl: prefix });
+      // Force the full URL with trailing slash
+      const redirectUrl = 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly/';
+      await signOut({ redirectUrl });
     } catch (error) {
       console.error('Error during sign out:', error);
     }

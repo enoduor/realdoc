@@ -33,7 +33,9 @@ const clerkConfig = {
   get signUpUrl() { return `${this.basePath}register`; },
   get afterSignInUrl() { return `${this.basePath}app`; },
   get afterSignUpUrl() { return `${this.basePath}app`; },
-  get afterSignOutUrl() { return `${this.basePath}`; }
+  get afterSignOutUrl() { return `${this.basePath}`; },
+  // Force the signout URL explicitly
+  afterSignOutUrl: 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly/'
 };
 
 // === Debug logging (remove in production) ===
