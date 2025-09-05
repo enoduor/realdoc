@@ -17,9 +17,9 @@ const ClerkProtectedRoute = ({ children }) => {
     );
   }
 
-  // Redirect to login if not signed in
+  // Redirect to root (landing page) if not signed in
   if (!isSignedIn) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // Render children if authenticated
