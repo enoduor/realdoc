@@ -34,7 +34,8 @@ const clerkConfig = {
   get afterSignUpUrl() { return `${this.__base()}/app`; },
   get afterSignOutUrl() { return `${this.__base()}/`; },
   __base() {
-    const base = process.env.PUBLIC_URL || '/repostly';
+    // Production: use /repostly, Local: use /repostly (both should have trailing slash for signout)
+    const base = '/repostly';
     return base && base !== '/' ? base : '';
   }
 };
