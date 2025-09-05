@@ -137,7 +137,7 @@ so what # Real Social Media API Setup Guide
    - In Dev mode, add your FB profile as Administrator/Developer/Tester
 
 2. **Redirect URI (Dev):**
-   - `http://localhost:4001/api/facebook/oauth/callback/facebook`
+   - `http://localhost:4001/api/auth/facebook/oauth/callback/facebook`
    - Note: localhost redirects are auto-allowed in Dev mode
 
 3. **Environment (.env):**
@@ -146,7 +146,7 @@ so what # Real Social Media API Setup Guide
    FACEBOOK_API_URL=https://graph.facebook.com/v18.0
    FACEBOOK_APP_ID=your_app_id
    FACEBOOK_APP_SECRET=your_app_secret
-   FACEBOOK_REDIRECT_URI=http://localhost:4001/api/facebook/oauth/callback/facebook
+   FACEBOOK_REDIRECT_URI=http://localhost:4001/api/auth/facebook/oauth/callback/facebook
    STATE_HMAC_SECRET=replace_with_random_long_secret
    ```
 
@@ -159,8 +159,8 @@ so what # Real Social Media API Setup Guide
 
 5. **How to Run OAuth (Dev):**
    - Ensure you’re logged in at `http://localhost:3000` (Clerk session)
-   - Start: `http://localhost:4001/api/facebook/oauth/start/facebook` (Clerk-secured)
-   - Optional test route (no Clerk): `/api/facebook/oauth/start/facebook/test?userId=...&email=...`
+   - Start: `http://localhost:4001/api/auth/facebook/oauth/start/facebook` (Clerk-secured)
+   - Optional test route (no Clerk): `/api/auth/facebook/oauth/start/facebook/test?userId=...&email=...`
 
 6. **What Gets Stored (MongoDB):**
    - `FacebookToken`: `userId`, `email`, `facebookUserId`, `accessToken` (long-lived), `name`, `isActive`, optional `pageId/pageName/pageAccessToken`, timestamps

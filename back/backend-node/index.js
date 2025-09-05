@@ -27,8 +27,11 @@ const app = express();
 
 // Allow running behind ALB path prefix like /repostly by stripping the prefix
 app.use((req, res, next) => {
+  console.log(`🔍 Middleware processing URL: ${req.url}`);
   if (req.url.startsWith('/repostly')) {
+    console.log(`✂️ Stripping /repostly from: ${req.url}`);
     req.url = req.url.slice('/repostly'.length) || '/';
+    console.log(`➡️ New URL: ${req.url}`);
   }
   next();
 });

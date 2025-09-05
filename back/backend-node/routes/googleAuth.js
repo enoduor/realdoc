@@ -1,64 +1,146 @@
 // npm i googleapis (if not already)
 const { google } = require('googleapis');
 const express = require('express');
-const { requireAuth } = require('@clerk/express');
+const crypto = require('crypto');
 const router = express.Router();
+const User = require('../models/User');
+
+// Use hardcoded production URLs like other platforms
+const APP_URL = 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly';
+// const APP_URL = 'http://localhost:3000'; // For local development
+
+// Helper function to get Google redirect URI
+function getGoogleRedirectUri() {
+  return 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly/api/auth/youtube/oauth2/callback/google';
+  // return 'http://localhost:4001/api/auth/youtube/oauth2/callback/google'; // For local development
+}
+
+// HMAC-signed state for security (same pattern as other platforms)
+const STATE_HMAC_SECRET = process.env.STATE_HMAC_SECRET || 'change-me';
+
+function signState(payload) {
+  const secret = process.env.STATE_HMAC_SECRET || 'change-me';
+  const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.createHmac('sha256', secret).update(data).digest('base64url');
+  return `${data}.${sig}`;
+}
+
+function verifyState(signed) {
+  const secret = process.env.STATE_HMAC_SECRET || 'change-me';
+  const [data, sig] = (signed || '').split('.');
+  if (!data || !sig) return null;
+  const expected = crypto.createHmac('sha256', secret).update(data).digest('base64url');
+  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  try { return JSON.parse(Buffer.from(data, 'base64url').toString()); } catch { return null; }
+}
 
 const {
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
-  GOOGLE_REDIRECT_URI,
   GOOGLE_SCOPES
 } = process.env;
 
 const oauth2 = new google.auth.OAuth2(
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
-  GOOGLE_REDIRECT_URI
+  getGoogleRedirectUri()
 );
 
-// Kick off OAuth
-router.get('oauth2/start/google', (req, res) => {
-  const { userId } = req.query;
-  
-  if (!userId) {
-    return res.status(400).json({ error: 'Missing userId parameter' });
-  }
+/**
+ * START: /oauth2/start/google
+ * - Kicks off OAuth by redirecting to Google's authorization page.
+ * - Does NOT require Clerk cookies (works on ALB DNS).
+ *   We carry identity via HMAC-signed `state`.
+ */
+router.get('/oauth2/start/google', async (req, res) => {
+  try {
+    // 1) Try Clerk (if available) — e.g., if Authorization: Bearer <token> was sent
+    let userId = req.auth?.().userId;
+    let email = req.auth?.().email;
 
-  const url = oauth2.generateAuthUrl({
-    access_type: 'offline',
-    prompt: 'consent',
-    scope: (GOOGLE_SCOPES || '').split(' '),
-    state: userId // Pass user ID in state parameter
-  });
-  
-  // Sanity log the URL your app generates
-  console.log('[Google OAuth] client_id:', process.env.GOOGLE_CLIENT_ID);
-  console.log('[Google OAuth] redirect_uri:', process.env.GOOGLE_REDIRECT_URI);
-  console.log('[Google OAuth] scopes:', (process.env.GOOGLE_SCOPES || '').split(' '));
-  console.log('[Google OAuth] URL:', url);
-  console.log('[Google OAuth] userId:', userId);
-  
-  res.redirect(url);
+    // 2) Fallbacks when running behind ALB DNS where Clerk cookies aren't sent:
+    //    a) Accept explicit headers if your frontend sends them
+    if (!userId && req.headers['x-clerk-user-id']) userId = String(req.headers['x-clerk-user-id']);
+    if (!email && req.headers['x-clerk-user-email']) email = String(req.headers['x-clerk-user-email']);
+    //    b) Accept query params as a last resort (only from your signed-in UI)
+    if (!userId && req.query.userId) userId = String(req.query.userId);
+    if (!email && req.query.email) email = String(req.query.email);
+
+    console.log('[Google OAuth] attempting start with identity:', { userId, hasEmail: !!email });
+
+    if (!userId) {
+      // We still allow continuing: token will be saved with googleUserId/email, and you can link later.
+      console.warn('[Google OAuth] Proceeding without userId — will link on callback if possible');
+    }
+
+    // If email not available from Clerk, try DB
+    if (!email && userId) {
+      try {
+        const userDoc = await User.findOne({ clerkUserId: userId });
+        if (userDoc?.email) email = userDoc.email;
+      } catch (e) {
+        console.warn('[Google OAuth] DB lookup for email failed:', e.message);
+      }
+    }
+
+    const state = signState({ userId: userId || null, email: email || null, ts: Date.now() });
+
+    const url = oauth2.generateAuthUrl({
+      access_type: 'offline',
+      prompt: 'consent',
+      scope: (GOOGLE_SCOPES || 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email').split(' '),
+      state: state
+    });
+    
+    console.log('[Google OAuth] Redirecting to OAuth:', url);
+    return res.redirect(url);
+  } catch (error) {
+    console.error('[Google OAuth] Auth error:', error);
+    return res.status(500).json({ error: 'Google authentication failed' });
+  }
 });
 
-// Handle callback & exchange code → tokens
-router.get('oauth2/callback/google', async (req, res) => {
+/**
+ * CALLBACK: /oauth2/callback/google
+ * - This path MUST match the Google app's "Authorized redirect URI".
+ * - Exchanges `code` -> access_token, then stores it.
+ */
+router.get('/oauth2/callback/google', async (req, res) => {
   try {
     const { code, state } = req.query;
     
-    // Get user ID from state parameter (passed from OAuth start)
-    const userId = state;
-    
-    if (!userId) {
-      return res.status(400).send('Missing user ID in OAuth callback');
+    console.log('[Google OAuth] Callback received:');
+    console.log('[Google OAuth] code:', code ? 'present' : 'missing');
+    console.log('[Google OAuth] state:', state ? 'present' : 'missing');
+
+    // Check for OAuth errors first
+    if (req.query.error) {
+      console.error('[Google OAuth] OAuth error:', req.query.error);
+      console.error('[Google OAuth] Error description:', req.query.error_description);
+      return res.redirect(`${APP_URL}/app?error=google_auth_failed`);
     }
 
+    if (!code || !state) {
+      console.error('[Google OAuth] Missing code or state');
+      return res.redirect(`${APP_URL}/app?error=google_auth_failed`);
+    }
+
+    // Verify HMAC-signed state
+    const userInfo = verifyState(state);
+    if (!userInfo) {
+      console.error('[Google OAuth] State verification failed: Invalid state');
+      return res.redirect(`${APP_URL}/app?error=google_auth_failed`);
+    }
+    console.log('[Google OAuth] Verified state:', { userId: userInfo.userId, hasEmail: !!userInfo.email });
+
+    const { userId, email } = userInfo;
+
+    console.log('[Google OAuth] Exchanging code for token...');
     const { tokens } = await oauth2.getToken(code);
 
     // Get YouTube channel info
     const auth = new google.auth.OAuth2(
-      GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI
+      GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, getGoogleRedirectUri()
     );
     auth.setCredentials({ access_token: tokens.access_token });
     const yt = google.youtube({ version: 'v3', auth });
@@ -70,45 +152,36 @@ router.get('oauth2/callback/google', async (req, res) => {
 
     const channel = channelResponse.data.items?.[0];
     if (!channel) {
-      return res.status(400).send('No YouTube channel found for this account');
+      console.error('[Google OAuth] No YouTube channel found for this account');
+      return res.redirect(`${APP_URL}/app?error=google_auth_failed`);
     }
 
-    // Save token to database using the token utilities
-    const { createOrUpdatePlatformToken } = require('../utils/tokenUtils');
-    
-    await createOrUpdatePlatformToken('youtube', userId, {
-      channelId: channel.id,
-      channelTitle: channel.snippet.title,
-      channelDescription: channel.snippet.description,
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : new Date(Date.now() + 3600000), // 1 hour from now
-      scope: tokens.scope
-    });
+    // Save token to database
+    const YouTubeToken = require('../models/YouTubeToken');
+    await YouTubeToken.findOneAndUpdate(
+      { channelId: channel.id },
+      {
+        clerkUserId: userId || null,
+        email: email || null,
+        channelId: channel.id,
+        channelTitle: channel.snippet.title,
+        channelDescription: channel.snippet.description,
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : new Date(Date.now() + 3600000),
+        scope: tokens.scope,
+        provider: 'youtube',
+        isActive: true,
+        updatedAt: new Date()
+      },
+      { upsert: true, new: true }
+    );
 
-    console.log(`✅ YouTube token saved for user: ${userId}, channel: ${channel.snippet.title}`);
-
-    res.status(200).send(`
-      <h2>✅ YouTube Connected Successfully!</h2>
-      <p><strong>Channel:</strong> ${channel.snippet.title}</p>
-      <p><strong>Channel ID:</strong> ${channel.id}</p>
-      <p><strong>Subscribers:</strong> ${channel.statistics?.subscriberCount || 'Hidden'}</p>
-      <p><strong>Videos:</strong> ${channel.statistics?.videoCount || 'Unknown'}</p>
-      <br>
-      <p>You can now close this window and return to Repostly.</p>
-      <script>
-        setTimeout(() => {
-          window.close();
-        }, 3000);
-      </script>
-    `);
+    console.log('[Google OAuth] Connected successfully:', { channelId: channel.id, channelTitle: channel.snippet.title });
+    return res.redirect(`${APP_URL}/app?connected=youtube`);
   } catch (e) {
-    console.error('YouTube OAuth callback failed:', e.response?.data || e.message);
-    res.status(500).send(`
-      <h2>❌ YouTube Connection Failed</h2>
-      <p>Error: ${e.message}</p>
-      <p>Please try again or contact support.</p>
-    `);
+    console.error('[Google OAuth] Callback error:', e.response?.data || e.message);
+    return res.redirect(`${APP_URL}/app?error=google_auth_failed`);
   }
 });
 
@@ -162,11 +235,22 @@ router.get('test-connect', (req, res) => {
   `);
 });
 
-// YouTube OAuth start (requires authentication)
-router.get('/oauth/start/youtube', requireAuth(), async (req, res) => {
+// YouTube OAuth start (does NOT require authentication - works on ALB DNS)
+router.get('/oauth/start/youtube', async (req, res) => {
   try {
-    const userId = req.auth().userId;
-    const url = `${req.protocol}://${req.get('host')}/oauth2/start/google?userId=${userId}`;
+    // 1) Try Clerk (if available) — e.g., if Authorization: Bearer <token> was sent
+    let userId = req.auth?.().userId;
+    let email = req.auth?.().email;
+
+    // 2) Fallbacks when running behind ALB DNS where Clerk cookies aren't sent:
+    //    a) Accept explicit headers if your frontend sends them
+    if (!userId && req.headers['x-clerk-user-id']) userId = String(req.headers['x-clerk-user-id']);
+    if (!email && req.headers['x-clerk-user-email']) email = String(req.headers['x-clerk-user-email']);
+    //    b) Accept query params as a last resort (only from your signed-in UI)
+    if (!userId && req.query.userId) userId = String(req.query.userId);
+    if (!email && req.query.email) email = String(req.query.email);
+
+    const url = `${APP_URL}/api/auth/google/oauth2/start/google?userId=${userId || ''}&email=${email || ''}`;
     res.json({ url });
   } catch (error) {
     console.error('YouTube OAuth start error:', error);
@@ -175,9 +259,21 @@ router.get('/oauth/start/youtube', requireAuth(), async (req, res) => {
 });
 
 // YouTube connection status
-router.get('/status', requireAuth(), async (req, res) => {
+router.get('/status', async (req, res) => {
   try {
-    const clerkUserId = req.auth().userId;
+    // 1) Try Clerk (if available) — e.g., if Authorization: Bearer <token> was sent
+    let clerkUserId = req.auth?.().userId;
+
+    // 2) Fallbacks when running behind ALB DNS where Clerk cookies aren't sent:
+    //    a) Accept explicit headers if your frontend sends them
+    if (!clerkUserId && req.headers['x-clerk-user-id']) clerkUserId = String(req.headers['x-clerk-user-id']);
+    //    b) Accept query params as a last resort (only from your signed-in UI)
+    if (!clerkUserId && req.query.userId) clerkUserId = String(req.query.userId);
+
+    if (!clerkUserId) {
+      return res.status(400).json({ error: 'Missing user ID' });
+    }
+
     const YouTubeToken = require('../models/YouTubeToken');
     const token = await YouTubeToken.findOne({ clerkUserId });
     
@@ -201,11 +297,23 @@ router.get('/status', requireAuth(), async (req, res) => {
 });
 
 // YouTube disconnect
-router.delete('disconnect', requireAuth(), async (req, res) => {
+router.delete('/disconnect', async (req, res) => {
   try {
-    const userId = req.auth().userId;
-    const { deletePlatformToken } = require('../utils/tokenUtils');
-    await deletePlatformToken('youtube', userId);
+    // 1) Try Clerk (if available) — e.g., if Authorization: Bearer <token> was sent
+    let userId = req.auth?.().userId;
+
+    // 2) Fallbacks when running behind ALB DNS where Clerk cookies aren't sent:
+    //    a) Accept explicit headers if your frontend sends them
+    if (!userId && req.headers['x-clerk-user-id']) userId = String(req.headers['x-clerk-user-id']);
+    //    b) Accept query params as a last resort (only from your signed-in UI)
+    if (!userId && req.query.userId) userId = String(req.query.userId);
+
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing user ID' });
+    }
+
+    const YouTubeToken = require('../models/YouTubeToken');
+    await YouTubeToken.findOneAndDelete({ clerkUserId: userId });
     
     res.json({ success: true, message: 'YouTube disconnected successfully' });
   } catch (error) {

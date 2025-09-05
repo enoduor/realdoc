@@ -24,7 +24,7 @@ I've created a comprehensive setup script that will guide you through the entire
 - **App Secret**
 - **API URL** (default: https://graph.facebook.com/v18.0)
 - For Facebook OAuth in dev, set:
-  - `FACEBOOK_REDIRECT_URI=http://localhost:4001/api/facebook/oauth/callback/facebook`
+  - `FACEBOOK_REDIRECT_URI=http://localhost:4001/api/auth/facebook/oauth/callback/facebook`
   - `STATE_HMAC_SECRET=<random_long_secret>`
 
 ### **TikTok:**
@@ -98,7 +98,7 @@ INSTAGRAM_APP_ID=your_facebook_app_id_here
 FACEBOOK_API_URL=https://graph.facebook.com/v18.0
 FACEBOOK_APP_ID=your_facebook_app_id_here
 FACEBOOK_APP_SECRET=your_facebook_app_secret_here
-FACEBOOK_REDIRECT_URI=http://localhost:4001/api/facebook/oauth/callback/facebook
+FACEBOOK_REDIRECT_URI=http://localhost:4001/api/auth/facebook/oauth/callback/facebook
 STATE_HMAC_SECRET=replace_with_random_long_secret
 
 # TikTok API

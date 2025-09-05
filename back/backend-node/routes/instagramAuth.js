@@ -14,7 +14,8 @@ const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
 const STATE_HMAC_SECRET = process.env.STATE_HMAC_SECRET || 'dev_state_secret';
 const INSTAGRAM_REDIRECT_URI = process.env.INSTAGRAM_REDIRECT_URI || 'http://localhost:4001/api/instagram/oauth/callback/instagram';
 
-const APP_URL = process.env.APP_URL || 'http://localhost:3000';
+const APP_URL = 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly';
+// const APP_URL = process.env.APP_URL || 'http://localhost:3000'; // For local development
 
 function signState(obj) {
   const payload = Buffer.from(JSON.stringify(obj)).toString('base64url');
@@ -30,16 +31,43 @@ function verifyState(state) {
 }
 
 function getInstagramRedirectUri() {
-  return process.env.INSTAGRAM_REDIRECT_URI || 'http://localhost:4001/api/instagram/oauth/callback/instagram';
+  return 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly/api/auth/instagram/oauth/callback/instagram';
+  // return process.env.INSTAGRAM_REDIRECT_URI || 'http://localhost:4001/api/instagram/oauth/callback/instagram'; // For local development
 }
 
-// Secure start
-router.get('/oauth/start/instagram', requireAuth(), async (req, res) => {
+// Secure start - Does NOT require Clerk cookies (works on ALB DNS)
+router.get('/oauth/start/instagram', async (req, res) => {
   try {
-    const userId = req.auth().userId;
-    const userDoc = await User.findOne({ clerkUserId: userId });
-    const email = req.auth().email || userDoc?.email || null;
-    const state = signState({ userId, email, ts: Date.now() });
+    // 1) Try Clerk (if available) — e.g., if Authorization: Bearer <token> was sent
+    let userId = req.auth?.().userId;
+    let email = req.auth?.().email;
+
+    // 2) Fallbacks when running behind ALB DNS where Clerk cookies aren't sent:
+    //    a) Accept explicit headers if your frontend sends them
+    if (!userId && req.headers['x-clerk-user-id']) userId = String(req.headers['x-clerk-user-id']);
+    if (!email && req.headers['x-clerk-user-email']) email = String(req.headers['x-clerk-user-email']);
+    //    b) Accept query params as a last resort (only from your signed-in UI)
+    if (!userId && req.query.userId) userId = String(req.query.userId);
+    if (!email && req.query.email) email = String(req.query.email);
+
+    console.log('[Instagram OAuth] attempting start with identity:', { userId, hasEmail: !!email });
+
+    if (!userId) {
+      // We still allow continuing: token will be saved with instagramUserId/email, and you can link later.
+      console.warn('[Instagram OAuth] Proceeding without userId — will link on callback if possible');
+    }
+
+    // If email not available from Clerk, try DB
+    if (!email && userId) {
+      try {
+        const userDoc = await User.findOne({ clerkUserId: userId });
+        if (userDoc?.email) email = userDoc.email;
+      } catch (e) {
+        console.warn('[Instagram OAuth] DB lookup for email failed:', e.message);
+      }
+    }
+
+    const state = signState({ userId: userId || null, email: email || null, ts: Date.now() });
 
     const scopes = [
       'public_profile',

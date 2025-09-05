@@ -1,9 +1,9 @@
 {
-    "taskDefinitionArn": "arn:aws:ecs:us-west-2:657053005765:task-definition/repostly-api:17",
+    "taskDefinitionArn": "arn:aws:ecs:us-west-2:657053005765:task-definition/repostly-api:40",
     "containerDefinitions": [
         {
             "name": "repostly-api",
-            "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-api:v20250905021923-c0dc655",
+            "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-api:v20250905143523-8a3cc11",
             "cpu": 0,
             "portMappings": [
                 {
@@ -24,6 +24,58 @@
                 {
                     "name": "CLERK_SECRET_KEY",
                     "valueFrom": "/repostly/api/CLERK_SECRET_KEY"
+                },
+                {
+                    "name": "CLERK_ISSUER_URL",
+                    "valueFrom": "/repostly/api/CLERK_ISSUER_URL"
+                },
+                {
+                    "name": "STRIPE_SECRET_KEY",
+                    "valueFrom": "/repostly/api/STRIPE_SECRET_KEY"
+                },
+                {
+                    "name": "STRIPE_STARTER_MONTHLY_PRICE_ID",
+                    "valueFrom": "/repostly/api/STRIPE_STARTER_MONTHLY_PRICE_ID"
+                },
+                {
+                    "name": "STRIPE_STARTER_YEARLY_PRICE_ID",
+                    "valueFrom": "/repostly/api/STRIPE_STARTER_YEARLY_PRICE_ID"
+                },
+                {
+                    "name": "STRIPE_CREATOR_MONTHLY_PRICE_ID",
+                    "valueFrom": "/repostly/api/STRIPE_CREATOR_MONTHLY_PRICE_ID"
+                },
+                {
+                    "name": "STRIPE_CREATOR_YEARLY_PRICE_ID",
+                    "valueFrom": "/repostly/api/STRIPE_CREATOR_YEARLY_PRICE_ID"
+                },
+                {
+                    "name": "STRIPE_PRO_MONTHLY_PRICE_ID",
+                    "valueFrom": "/repostly/api/STRIPE_PRO_MONTHLY_PRICE_ID"
+                },
+                {
+                    "name": "STRIPE_PRO_YEARLY_PRICE_ID",
+                    "valueFrom": "/repostly/api/STRIPE_PRO_YEARLY_PRICE_ID"
+                },
+                {
+                    "name": "FRONTEND_URL",
+                    "valueFrom": "/repostly/api/FRONTEND_URL"
+                },
+                {
+                    "name": "APP_URL",
+                    "valueFrom": "/repostly/api/APP_URL"
+                },
+                {
+                    "name": "FACEBOOK_APP_ID",
+                    "valueFrom": "/repostly/api/FACEBOOK_APP_ID"
+                },
+                {
+                    "name": "FACEBOOK_APP_SECRET",
+                    "valueFrom": "/repostly/api/FACEBOOK_APP_SECRET"
+                },
+                {
+                    "name": "FACEBOOK_REDIRECT_URI",
+                    "valueFrom": "/repostly/api/FACEBOOK_REDIRECT_URI"
                 }
             ],
             "logConfiguration": {
@@ -40,7 +92,7 @@
     "family": "repostly-api",
     "executionRoleArn": "arn:aws:iam::657053005765:role/ecsTaskExecutionRole",
     "networkMode": "awsvpc",
-    "revision": 17,
+    "revision": 40,
     "volumes": [],
     "status": "ACTIVE",
     "requiresAttributes": [
@@ -79,6 +131,6 @@
     ],
     "cpu": "256",
     "memory": "512",
-    "registeredAt": "2025-09-05T02:21:06.337000-04:00",
+    "registeredAt": "2025-09-05T14:37:12.312000-04:00",
     "registeredBy": "arn:aws:iam::657053005765:user/videograb-deploy"
 }

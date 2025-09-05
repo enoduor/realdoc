@@ -13,15 +13,18 @@ const {
   CLERK_FRONTEND_URL
 } = process.env;
 
-// Use APP_URL environment variable or fallback to localhost for development
-const APP_URL = process.env.APP_URL || 'http://localhost:3000';
+// Use APP_URL environment variable or fallback to production URL
+// const APP_URL = process.env.APP_URL || 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly';
+const APP_URL = 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly';
+// const APP_URL = process.env.APP_URL || 'http://localhost:3000'; // For local development
 
 // Facebook OAuth redirect URL - use environment variable like other platforms
 const FACEBOOK_REDIRECT_URI = process.env.FACEBOOK_REDIRECT_URI;
 
 // Helper function to get Facebook redirect URI
 function getFacebookRedirectUri() {
-  return FACEBOOK_REDIRECT_URI || 'http://localhost:4001/api/facebook/oauth/callback/facebook';
+  return 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly/api/auth/facebook/oauth/callback/facebook';
+  // return FACEBOOK_REDIRECT_URI || 'http://localhost:4001/api/auth/facebook/oauth/callback/facebook'; // For local development
 }
 
 // HMAC signer to protect state (same approach as TikTok)
@@ -44,46 +47,42 @@ function verifyState(signed) {
 /**
  * START: /oauth/start/facebook
  * - Kicks off OAuth by redirecting to Facebook's authorization page.
- * - Requires Clerk authentication for production security.
+ * - Does NOT require Clerk cookies (works on ALB DNS).
+ *   We carry identity via HMAC-signed `state`.
  */
-router.get('/oauth/start/facebook', requireAuth(), async (req, res) => {
+router.get('/oauth/start/facebook', async (req, res) => {
   try {
-    // Get user info from Clerk token (more secure than query params)
-    const userId = req.auth().userId;
-    let email = req.auth().email;
-    
-    console.log('[Facebook OAuth] Secure route - Clerk auth data:', {
-      userId: userId,
-      email: email,
-      hasEmail: !!email
-    });
-    
+    // 1) Try Clerk (if available) — e.g., if Authorization: Bearer <token> was sent
+    let userId = req.auth?.().userId;
+    let email  = req.auth?.().email;
+
+    // 2) Fallbacks when running behind ALB DNS where Clerk cookies aren't sent:
+    //    a) Accept explicit headers if your frontend sends them
+    if (!userId && req.headers['x-clerk-user-id']) userId = String(req.headers['x-clerk-user-id']);
+    if (!email && req.headers['x-clerk-user-email']) email = String(req.headers['x-clerk-user-email']);
+    //    b) Accept query params as a last resort (only from your signed-in UI)
+    if (!userId && req.query.userId) userId = String(req.query.userId);
+    if (!email  && req.query.email)  email  = String(req.query.email);
+
+    console.log('[Facebook OAuth] attempting start with identity:', { userId, hasEmail: !!email });
+
     if (!userId) {
-      console.warn('[Facebook OAuth] No userId from Clerk token');
-      return res.status(400).json({ error: 'User authentication required' });
+      // We still allow continuing: token will be saved with facebookUserId/email, and you can link later.
+      console.warn('[Facebook OAuth] Proceeding without userId — will link on callback if possible');
     }
 
-    // If email not available from Clerk, try to get it from database
-    if (!email) {
+    // If email not available from Clerk, try DB
+    if (!email && userId) {
       try {
         const User = require('../models/User');
-        const user = await User.findOne({ clerkUserId: userId });
-        if (user && user.email) {
-          email = user.email;
-          console.log('[Facebook OAuth] Got email from database:', email);
-        }
-      } catch (dbError) {
-        console.warn('[Facebook OAuth] Could not fetch email from database:', dbError.message);
+        const u = await User.findOne({ clerkUserId: userId });
+        if (u?.email) email = u.email;
+      } catch (e) {
+        console.warn('[Facebook OAuth] DB lookup for email failed:', e.message);
       }
     }
 
-    // Create HMAC-signed state for security
-    const state = signState({
-      userId: userId,
-      email: email || null,
-      ts: Date.now() // Add timestamp for additional security
-    });
-
+    const state = signState({ userId: userId || null, email: email || null, ts: Date.now() });
     const redirectUri = getFacebookRedirectUri();
 
     const authUrl =
@@ -94,10 +93,10 @@ router.get('/oauth/start/facebook', requireAuth(), async (req, res) => {
       `&scope=${encodeURIComponent('public_profile,email,pages_manage_posts,pages_read_engagement,pages_show_list')}`;
 
     console.log('[Facebook] Redirecting to OAuth:', authUrl);
-    res.redirect(authUrl);
+    return res.redirect(authUrl);
   } catch (error) {
     console.error('[Facebook] Auth error:', error);
-    res.status(500).json({ error: 'Facebook authentication failed' });
+    return res.status(500).json({ error: 'Facebook authentication failed' });
   }
 });
 
