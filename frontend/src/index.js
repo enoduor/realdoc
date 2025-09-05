@@ -17,7 +17,8 @@ function resolveClerkKey() {
 const clerkConfig = {
   publishableKey: resolveClerkKey(),
   get basePath() {
-    const base = process.env.PUBLIC_URL || '';
+    // Production: use /repostly, Local: use /repostly (without trailing slash for basePath)
+    const base = '/repostly';
     return base && base !== '/' ? base : '';
   },
   appearance: {
@@ -56,7 +57,7 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <ClerkProvider {...clerkConfig}>
-      <BrowserRouter basename={process.env.PUBLIC_URL || '/repostly'}>
+      <BrowserRouter basename="/repostly">
         <App />
       </BrowserRouter>
     </ClerkProvider>
