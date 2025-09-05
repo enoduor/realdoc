@@ -21,16 +21,17 @@ const ClerkUserProfile = () => {
       }
       
       // Sign out from Clerk
-      // Force the full URL with trailing slash
-      const redirectUrl = 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly/';
+      // Use the same URL building logic as the main app
+      const ORIGIN = window.location.origin;
+      const PUBLIC_BASE_RAW = process.env.PUBLIC_URL || '/repostly/';
+      const PUBLIC_BASE = PUBLIC_BASE_RAW.endsWith('/') ? PUBLIC_BASE_RAW : `${PUBLIC_BASE_RAW}/`;
+      const redirectUrl = `${ORIGIN}${PUBLIC_BASE}`;
       
-      // Sign out without redirect, then manually redirect to ensure trailing slash
-      await signOut();
-      
-      // Use a small timeout to ensure signout completes, then force redirect
-      setTimeout(() => {
-        window.location.replace(redirectUrl);
-      }, 100);
+      // Sign out with a callback that forces our redirect
+      await signOut({
+        redirectUrl: redirectUrl,
+        callbackUrl: redirectUrl
+      });
     } catch (error) {
       console.error('Error during sign out:', error);
     }

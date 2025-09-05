@@ -26,7 +26,15 @@
         { "name": "APP_URL", "valueFrom": "/repostly/api/APP_URL" },
         { "name": "FACEBOOK_APP_ID", "valueFrom": "/repostly/api/FACEBOOK_APP_ID" },
         { "name": "FACEBOOK_APP_SECRET", "valueFrom": "/repostly/api/FACEBOOK_APP_SECRET" },
-        { "name": "FACEBOOK_REDIRECT_URI", "valueFrom": "/repostly/api/FACEBOOK_REDIRECT_URI" }
+        { "name": "FACEBOOK_REDIRECT_URI", "valueFrom": "/repostly/api/FACEBOOK_REDIRECT_URI" },
+        { "name": "STATE_HMAC_SECRET", "valueFrom": "/repostly/api/STATE_HMAC_SECRET" },
+        { "name": "GOOGLE_CLIENT_ID", "valueFrom": "/repostly/api/GOOGLE_CLIENT_ID" },
+        { "name": "GOOGLE_CLIENT_SECRET", "valueFrom": "/repostly/api/GOOGLE_CLIENT_SECRET" },
+        { "name": "GOOGLE_REDIRECT_URI", "valueFrom": "/repostly/api/GOOGLE_REDIRECT_URI" },
+        { "name": "GOOGLE_SCOPES", "valueFrom": "/repostly/api/GOOGLE_SCOPES" },
+        { "name": "TIKTOK_CLIENT_KEY", "valueFrom": "/repostly/api/TIKTOK_CLIENT_KEY" },
+        { "name": "TIKTOK_CLIENT_SECRET", "valueFrom": "/repostly/api/TIKTOK_CLIENT_SECRET" },
+        { "name": "APP_BASE_URL", "valueFrom": "/repostly/api/APP_BASE_URL" }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
