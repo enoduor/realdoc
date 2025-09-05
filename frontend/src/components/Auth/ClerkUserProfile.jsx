@@ -21,9 +21,9 @@ const ClerkUserProfile = () => {
       }
       
       // Sign out from Clerk
-      // Production: use /repostly, Local: use /repostly (both should have trailing slash)
-      const prefix = '/repostly';
-      await signOut({ redirectUrl: `${prefix}/` });
+      // Production: use /repostly/, Local: use /repostly/ (both should have trailing slash)
+      const prefix = '/repostly/';
+      await signOut({ redirectUrl: prefix });
     } catch (error) {
       console.error('Error during sign out:', error);
     }

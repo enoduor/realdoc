@@ -28,14 +28,14 @@ const clerkConfig = {
       colorText: '#1f2937',
     },
   },
-  get signInUrl() { return `${this.__base()}/login`; },
-  get signUpUrl() { return `${this.__base()}/register`; },
-  get afterSignInUrl() { return `${this.__base()}/app`; },
-  get afterSignUpUrl() { return `${this.__base()}/app`; },
-  get afterSignOutUrl() { return `${this.__base()}/`; },
+  get signInUrl() { return `${this.__base()}login`; },
+  get signUpUrl() { return `${this.__base()}register`; },
+  get afterSignInUrl() { return `${this.__base()}app`; },
+  get afterSignUpUrl() { return `${this.__base()}app`; },
+  get afterSignOutUrl() { return `${this.__base()}`; },
   __base() {
-    // Production: use /repostly, Local: use /repostly (both should have trailing slash for signout)
-    const base = '/repostly';
+    // Production: use /repostly/, Local: use /repostly/ (both should have trailing slash)
+    const base = '/repostly/';
     return base && base !== '/' ? base : '';
   }
 };
