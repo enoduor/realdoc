@@ -1,12 +1,12 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5001/api/v1';
+const API_BASE_URL = process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly/ai';
 
 class ContentService {
     // Caption endpoints
     static async createCaption(data) {
         try {
-            const response = await axios.post(`${API_BASE_URL}/captions`, data);
+            const response = await axios.post(`${API_BASE_URL}/api/v1/captions/`, data);
             return response.data;
         } catch (error) {
             throw this.handleError(error);
@@ -15,7 +15,7 @@ class ContentService {
 
     static async getCaptions() {
         try {
-            const response = await axios.get(`${API_BASE_URL}/captions`);
+            const response = await axios.get(`${API_BASE_URL}/api/v1/captions/`);
             return response.data;
         } catch (error) {
             throw this.handleError(error);
@@ -24,7 +24,7 @@ class ContentService {
 
     static async getCaption(id) {
         try {
-            const response = await axios.get(`${API_BASE_URL}/captions/${id}`);
+            const response = await axios.get(`${API_BASE_URL}/api/v1/captions/${id}`);
             return response.data;
         } catch (error) {
             throw this.handleError(error);
@@ -33,7 +33,7 @@ class ContentService {
 
     static async updateCaption(id, data) {
         try {
-            const response = await axios.put(`${API_BASE_URL}/captions/${id}`, data);
+            const response = await axios.put(`${API_BASE_URL}/api/v1/captions/${id}`, data);
             return response.data;
         } catch (error) {
             throw this.handleError(error);
@@ -42,7 +42,7 @@ class ContentService {
 
     static async deleteCaption(id) {
         try {
-            const response = await axios.delete(`${API_BASE_URL}/captions/${id}`);
+            const response = await axios.delete(`${API_BASE_URL}/api/v1/captions/${id}`);
             return response.data;
         } catch (error) {
             throw this.handleError(error);
@@ -52,7 +52,7 @@ class ContentService {
     // Hashtag endpoints
     static async createHashtags(data) {
         try {
-            const response = await axios.post(`${API_BASE_URL}/hashtags`, data);
+            const response = await axios.post(`${API_BASE_URL}/api/v1/hashtags/`, data);
             return response.data;
         } catch (error) {
             throw this.handleError(error);
@@ -61,7 +61,7 @@ class ContentService {
 
     static async getHashtags() {
         try {
-            const response = await axios.get(`${API_BASE_URL}/hashtags`);
+            const response = await axios.get(`${API_BASE_URL}/api/v1/hashtags/`);
             return response.data;
         } catch (error) {
             throw this.handleError(error);
@@ -70,7 +70,7 @@ class ContentService {
 
     static async getHashtag(id) {
         try {
-            const response = await axios.get(`${API_BASE_URL}/hashtags/${id}`);
+            const response = await axios.get(`${API_BASE_URL}/api/v1/hashtags/${id}`);
             return response.data;
         } catch (error) {
             throw this.handleError(error);
@@ -79,7 +79,7 @@ class ContentService {
 
     static async updateHashtags(id, data) {
         try {
-            const response = await axios.put(`${API_BASE_URL}/hashtags/${id}`, data);
+            const response = await axios.put(`${API_BASE_URL}/api/v1/hashtags/${id}`, data);
             return response.data;
         } catch (error) {
             throw this.handleError(error);
@@ -88,7 +88,7 @@ class ContentService {
 
     static async deleteHashtags(id) {
         try {
-            const response = await axios.delete(`${API_BASE_URL}/hashtags/${id}`);
+            const response = await axios.delete(`${API_BASE_URL}/api/v1/hashtags/${id}`);
             return response.data;
         } catch (error) {
             throw this.handleError(error);

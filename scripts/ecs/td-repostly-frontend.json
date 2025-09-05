@@ -10,7 +10,15 @@
       "name": "repostly-frontend",
       "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-frontend:latest",
       "essential": true,
-      "portMappings": [ { "containerPort": 3000, "protocol": "tcp" } ]
+      "portMappings": [ { "containerPort": 3000, "protocol": "tcp" } ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/repostly-frontend",
+          "awslogs-region": "us-west-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
     }
   ]
 }

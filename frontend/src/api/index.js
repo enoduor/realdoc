@@ -1,6 +1,8 @@
 // --- Base URLs (unchanged) --------------------------------------------------
-const API_BASE_URL = process.env.REACT_APP_API_URL?.replace(/\/$/, '') || 'http://localhost:4001';
-const PYTHON_API_BASE_URL = process.env.REACT_APP_PYTHON_API_URL || 'http://localhost:5001';
+const API_BASE_URL = process.env.REACT_APP_API_URL?.replace(/\/$/, '') || 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly';
+// const API_BASE_URL = process.env.REACT_APP_API_URL?.replace(/\/$/, '') || 'http://localhost:4001';
+const PYTHON_API_BASE_URL = process.env.REACT_APP_PYTHON_API_URL || 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly/ai';
+// const PYTHON_API_BASE_URL = process.env.REACT_APP_PYTHON_API_URL || 'http://localhost:5001';
 
 // --- Auth helpers (unchanged) -----------------------------------------------
 const getAuthToken = async () => {

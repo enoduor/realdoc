@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { PLATFORMS } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
 
-const API_URL = 'http://localhost:5001';
+const API_URL = process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly/ai';
 
 const MediaUploader = () => {
   const { updateContent, content } = useContent();
@@ -44,12 +44,15 @@ const MediaUploader = () => {
       try {
         const res = await axios.get(`${API_URL}/ping`);
         console.log('Server is running:', res.data);
-      } catch (err) {
-        console.error('Server check failed:', err.message);
+        // Clear any previous errors
         setFormData(prev => ({
           ...prev,
-          error: 'Server connection failed - Please ensure the backend is running'
+          error: null
         }));
+      } catch (err) {
+        console.error('Server check failed:', err.message);
+        // Don't set error on initial load, let user try upload
+        console.log('Server check failed, but will allow upload attempts');
       }
     };
 
@@ -227,7 +230,20 @@ const MediaUploader = () => {
       }
     } catch (err) {
       console.error('Upload error:', err);
-      const errorMessage = err.response?.data?.detail || err.message;
+      let errorMessage = 'Upload failed';
+      
+      if (err.code === 'NETWORK_ERROR' || err.message.includes('Network Error')) {
+        errorMessage = 'Network error - Please check your connection and try again';
+      } else if (err.response?.status === 413) {
+        errorMessage = 'File too large - Please try a smaller file';
+      } else if (err.response?.status === 415) {
+        errorMessage = 'Unsupported file type - Please use images or videos';
+      } else if (err.response?.data?.detail) {
+        errorMessage = err.response.data.detail;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
       console.error('Detailed error:', errorMessage);
       setFormData(prev => ({
         ...prev,

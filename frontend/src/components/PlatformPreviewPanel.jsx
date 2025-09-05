@@ -337,9 +337,9 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
             // Now upload to backend (same as MediaUploader)
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('platform', formData.platform);
+            formData.append('platform', content.platform || 'instagram');
 
-            const response = await axios.post('http://localhost:5001/api/v1/upload', formData, {
+            const response = await axios.post(`${process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly/ai'}/api/v1/upload`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 },

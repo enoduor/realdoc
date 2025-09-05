@@ -1,0 +1,49 @@
+{
+  "containerDefinitions": [
+    {
+      "name": "repostly-api",
+      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-api:v20250905024018-c0dc655",
+      "cpu": 0,
+      "portMappings": [
+        {
+          "containerPort": 4001,
+          "hostPort": 4001,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "environment": [],
+      "mountPoints": [],
+      "volumesFrom": [],
+      "secrets": [
+        {
+          "name": "MONGODB_URI",
+          "valueFrom": "/repostly/api/MONGODB_URI"
+        },
+        {
+          "name": "CLERK_SECRET_KEY",
+          "valueFrom": "/repostly/api/CLERK_SECRET_KEY"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/repostly-api",
+          "awslogs-region": "us-west-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "systemControls": []
+    }
+  ],
+  "family": "repostly-api",
+  "executionRoleArn": "arn:aws:iam::657053005765:role/ecsTaskExecutionRole",
+  "networkMode": "awsvpc",
+  "volumes": [],
+  "placementConstraints": [],
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "256",
+  "memory": "512"
+}

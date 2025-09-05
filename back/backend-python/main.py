@@ -11,10 +11,18 @@ load_dotenv()
 
 app = FastAPI(title="Repostly AI Service")
 
-# CORS (include both localhost forms for dev)
+# CORS (include both localhost forms for dev and deployed frontend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://127.0.0.1:3000",
+        "https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com",
+        "https://repostly.com",
+        "https://www.repostly.com",
+        "https://bigvideograb.com",
+        "https://www.bigvideograb.com"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -23,6 +31,23 @@ app.add_middleware(
 # Ensure uploads dir always exists (prevents StaticFiles startup crash)
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+# Allow running behind ALB path prefix like /repostly/ai by stripping the prefix
+@app.middleware("http")
+async def strip_repostly_prefix(request, call_next):
+    if request.url.path.startswith("/repostly/ai"):
+        # Rebuild scope with trimmed path
+        scope = request.scope
+        original = scope["path"]
+        scope["path"] = original[len("/repostly/ai"): ] or "/"
+        request = request.__class__(scope, receive=request._receive)
+    elif request.url.path.startswith("/repostly"):
+        scope = request.scope
+        original = scope["path"]
+        scope["path"] = original[len("/repostly"): ] or "/"
+        request = request.__class__(scope, receive=request._receive)
+    response = await call_next(request)
+    return response
 
 # Routers
 app.include_router(captions_router, prefix="/api/v1/captions", tags=["captions"])

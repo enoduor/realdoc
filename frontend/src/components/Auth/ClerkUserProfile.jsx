@@ -21,7 +21,9 @@ const ClerkUserProfile = () => {
       }
       
       // Sign out from Clerk
-      await signOut();
+      const base = process.env.PUBLIC_URL || '';
+      const prefix = base && base !== '/' ? base : '';
+      await signOut({ redirectUrl: `${prefix}/` });
     } catch (error) {
       console.error('Error during sign out:', error);
     }

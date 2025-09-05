@@ -8,7 +8,7 @@ const authRoutes = require("./routes/auth");
 const publisherRoutes = require("./routes/publisher");
 const { requireAuth, clerkMiddleware } = require('@clerk/express');
 
-dotenv.config();
+dotenv.config({ override: true });
 
 console.log("📡 Attempting MongoDB connection...");
 
@@ -24,6 +24,22 @@ mongoose.connect(process.env.MONGODB_URI)
   });
 
 const app = express();
+
+// Allow running behind ALB path prefix like /repostly by stripping the prefix
+app.use((req, res, next) => {
+  if (req.url.startsWith('/repostly')) {
+    req.url = req.url.slice('/repostly'.length) || '/';
+  }
+  next();
+});
+
+app.get('/api', (_req, res) => {
+  res.status(200).send('ok');
+});
+
+app.get('/api/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', service: 'api' });
+});
 
 // Rate limiting for production security
 const limiter = rateLimit({
@@ -101,6 +117,11 @@ app.use('/api/publisher', require('./routes/publisher'));
 app.get("/", (req, res) => {
     res.send("✅ Node backend is running");
 });
+/** Minimal API root + health so ALB tests pass */
+app.get('/api', (_req, res) => res.status(200).send('ok'));
+app.get('/api/health', (_req, res) =>
+  res.status(200).json({ status: 'ok', service: 'api' })
+);
 
 // Protected route to test Clerk auth
 app.get('/auth-test', requireAuth(), (req, res) => {
@@ -165,7 +186,10 @@ app.get('/api/user/verify/:userId', async (req, res) => {
   }
 });
 
+
 const PORT = process.env.PORT || 4001;
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+const HOST = process.env.HOST || "0.0.0.0";
+
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 Server running on http://${HOST}:${PORT}`);
 });

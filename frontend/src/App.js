@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { ContentProvider } from './context/ContentContext';
 import ClerkLogin from './components/Auth/ClerkLogin';
 import ClerkRegister from './components/Auth/ClerkRegister';
@@ -18,9 +18,8 @@ import './App.css';
 function App() {
   return (
     <ContentProvider>
-      <Router>
-        <div className="App">
-          <Routes>
+      <div className="App">
+        <Routes>
             {/* Public routes */}
             <Route path="/" element={<RootRedirect />} />
             <Route path="/landing" element={<LandingPage />} />
@@ -82,9 +81,8 @@ function App() {
                 </ClerkProtectedRoute>
               }
             />
-          </Routes>
-        </div>
-      </Router>
+        </Routes>
+      </div>
     </ContentProvider>
   );
 }

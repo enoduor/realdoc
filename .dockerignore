@@ -1,0 +1,26 @@
+# git
+.git
+.gitignore
+
+# node
+node_modules
+**/node_modules
+frontend/dist
+frontend/.next
+**/npm-debug.log
+**/yarn-error.log
+
+# python
+**/__pycache__
+**/*.pyc
+back/backend-python/.venv
+back/backend-python/venv
+# misc large
+*.zip
+*.tar
+*.tgz
+*.mp4
+*.png
+*.jpg
+*.jpeg
+.DS_Store

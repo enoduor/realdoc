@@ -10,7 +10,18 @@
       "name": "repostly-ai",
       "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-ai:latest",
       "essential": true,
-      "portMappings": [ { "containerPort": 5001, "protocol": "tcp" } ]
+      "portMappings": [ { "containerPort": 5001, "protocol": "tcp" } ],
+      "secrets": [
+        { "name": "OPENAI_API_KEY", "valueFrom": "/repostly/ai/OPENAI_API_KEY" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/repostly-ai",
+          "awslogs-region": "us-west-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
     }
   ]
 }

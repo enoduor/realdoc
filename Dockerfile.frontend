@@ -3,8 +3,7 @@ WORKDIR /app
 
 # Install deps
 COPY frontend/package*.json ./
-# Use npm install to avoid lockfile requirement in ci
-RUN npm install
+RUN npm ci
 
 # Build
 COPY frontend/ ./
@@ -12,4 +11,5 @@ RUN npm run build && npm i -g serve
 
 EXPOSE 3000
 CMD ["serve", "-s", "build", "-l", "3000"]
+
 
