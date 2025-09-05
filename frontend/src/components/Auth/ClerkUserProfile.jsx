@@ -26,7 +26,11 @@ const ClerkUserProfile = () => {
       
       // Sign out without redirect, then manually redirect to ensure trailing slash
       await signOut();
-      window.location.href = redirectUrl;
+      
+      // Use a small timeout to ensure signout completes, then force redirect
+      setTimeout(() => {
+        window.location.replace(redirectUrl);
+      }, 100);
     } catch (error) {
       console.error('Error during sign out:', error);
     }
