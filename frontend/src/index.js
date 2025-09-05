@@ -17,8 +17,8 @@ function resolveClerkKey() {
 const clerkConfig = {
   publishableKey: resolveClerkKey(),
   get basePath() {
-    // Production: use /repostly, Local: use /repostly (without trailing slash for basePath)
-    const base = '/repostly';
+    // Production: use /repostly/, Local: use /repostly/ (with trailing slash for basePath)
+    const base = '/repostly/';
     return base && base !== '/' ? base : '';
   },
   appearance: {
@@ -29,16 +29,11 @@ const clerkConfig = {
       colorText: '#1f2937',
     },
   },
-  get signInUrl() { return `${this.__base()}login`; },
-  get signUpUrl() { return `${this.__base()}register`; },
-  get afterSignInUrl() { return `${this.__base()}app`; },
-  get afterSignUpUrl() { return `${this.__base()}app`; },
-  get afterSignOutUrl() { return `${this.__base()}`; },
-  __base() {
-    // Production: use /repostly/, Local: use /repostly/ (both should have trailing slash)
-    const base = '/repostly/';
-    return base && base !== '/' ? base : '';
-  }
+  get signInUrl() { return `${this.basePath}login`; },
+  get signUpUrl() { return `${this.basePath}register`; },
+  get afterSignInUrl() { return `${this.basePath}app`; },
+  get afterSignUpUrl() { return `${this.basePath}app`; },
+  get afterSignOutUrl() { return `${this.basePath}`; }
 };
 
 // === Debug logging (remove in production) ===
@@ -57,7 +52,7 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <ClerkProvider {...clerkConfig}>
-      <BrowserRouter basename="/repostly">
+      <BrowserRouter basename="/repostly/">
         <App />
       </BrowserRouter>
     </ClerkProvider>
