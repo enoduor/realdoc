@@ -286,12 +286,27 @@ const publishSinglePlatform = async (platform, postData, token) => {
 
   const body = buildPlatformBody(platform, postData);
 
+  // Add YouTube-specific logging
+  if (platform === 'youtube') {
+    console.log('[Frontend][YouTube] publishSinglePlatform - platform:', platform);
+    console.log('[Frontend][YouTube] publishSinglePlatform - path:', path);
+    console.log('[Frontend][YouTube] publishSinglePlatform - body:', JSON.stringify(body, null, 2));
+    console.log('[Frontend][YouTube] publishSinglePlatform - API_BASE_URL:', API_BASE_URL);
+    console.log('[Frontend][YouTube] publishSinglePlatform - full URL:', `${API_BASE_URL}${path}`);
+  }
+
   const res = await fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
     headers,
     credentials: 'include',
     body: JSON.stringify(body),
   });
+
+  // Add YouTube-specific response logging
+  if (platform === 'youtube') {
+    console.log('[Frontend][YouTube] publishSinglePlatform - response status:', res.status);
+    console.log('[Frontend][YouTube] publishSinglePlatform - response ok:', res.ok);
+  }
 
   // Robust parse: prefer JSON, fallback to text; treat empty 200 as success (backend responded OK without body)
   let raw = '';
@@ -304,10 +319,19 @@ const publishSinglePlatform = async (platform, postData, token) => {
     try { data = JSON.parse(raw); } catch {}
   }
 
+  // Add YouTube-specific response data logging
+  if (platform === 'youtube') {
+    console.log('[Frontend][YouTube] publishSinglePlatform - raw response:', raw);
+    console.log('[Frontend][YouTube] publishSinglePlatform - parsed data:', JSON.stringify(data, null, 2));
+  }
+
   if (res.ok) {
     // If we got JSON, normalize as usual
     if (data) {
       const normalized = normalizeReturn(data, [platform], platform);
+      if (platform === 'youtube') {
+        console.log('[Frontend][YouTube] publishSinglePlatform - normalized:', JSON.stringify(normalized, null, 2));
+      }
       const item = normalized?.post?.platforms?.[0] || {
         platform,
         success: data?.success ?? true,
@@ -319,7 +343,14 @@ const publishSinglePlatform = async (platform, postData, token) => {
         message: data?.message || data?.result?.message,
       };
       item.platform = platform;
-      return enrichPlatformItem(item);
+      if (platform === 'youtube') {
+        console.log('[Frontend][YouTube] publishSinglePlatform - item before enrich:', JSON.stringify(item, null, 2));
+      }
+      const enriched = enrichPlatformItem(item);
+      if (platform === 'youtube') {
+        console.log('[Frontend][YouTube] publishSinglePlatform - enriched:', JSON.stringify(enriched, null, 2));
+      }
+      return enriched;
     }
     // If 200 OK but empty/non-JSON, synthesize a success item so UI doesn't show "HTTP 200 OK"
     return enrichPlatformItem({
@@ -423,8 +454,18 @@ export async function publishNow(postData) {
 
   // ---- New: YouTube separated flow ----------------------------------------
   if (isYouTubeOnly) {
-    const item = await publishSinglePlatform('youtube', postData, token);
-    return { success: true, post: { id: item.postId || Date.now(), platforms: [item] }, message: item.message || 'Published to youtube' };
+    console.log('[Frontend][YouTube] Starting YouTube publish flow...');
+    console.log('[Frontend][YouTube] postData:', JSON.stringify(postData, null, 2));
+    try {
+      const item = await publishSinglePlatform('youtube', postData, token);
+      console.log('[Frontend][YouTube] publishSinglePlatform result:', JSON.stringify(item, null, 2));
+      const result = { success: true, post: { id: item.postId || Date.now(), platforms: [item] }, message: item.message || 'Published to youtube' };
+      console.log('[Frontend][YouTube] Final result:', JSON.stringify(result, null, 2));
+      return result;
+    } catch (error) {
+      console.error('[Frontend][YouTube] Error in YouTube publish flow:', error);
+      throw error;
+    }
   }
 
   // ---- Multi-platform (frontend-only aggregation; backend unchanged) -------
