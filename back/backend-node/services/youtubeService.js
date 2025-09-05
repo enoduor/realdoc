@@ -142,37 +142,6 @@ class YouTubeService {
     }
   }
 
-  /**
-   * Rehost media to S3 for reliable YouTube access
-   */
-  async rehostToS3(buffer, originalUrl) {
-    console.log('[YouTube] Rehosting media to S3 for reliable YouTube access...');
-    try {
-      const form = new FormData();
-      
-      // Detect real MIME type and filename from buffer
-      const mediaInfo = this.detectMediaType(buffer);
-      const filename = path.basename(originalUrl.split('?')[0]) || mediaInfo.filename;
-      
-      console.log('[YouTube] Detected media type:', mediaInfo.mimeType, 'extension:', mediaInfo.extension);
-      
-      form.append('file', buffer, { filename, contentType: mediaInfo.mimeType });
-      form.append('platform', 'youtube');
-
-      const resp = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/upload`, form, {
-        headers: form.getHeaders(),
-        timeout: 60000,
-      });
-      
-      if (!resp.data?.url) throw new Error('S3 rehost failed: no URL returned');
-      
-      console.log('[YouTube] Media rehosted to S3:', resp.data.url);
-      return resp.data.url;
-    } catch (error) {
-      console.error('[YouTube] Failed to rehost media to S3:', error.message);
-      throw new Error('Failed to rehost media to S3');
-    }
-  }
 
     /**
    * Upload video using YouTube's resumable upload API with streaming
@@ -269,41 +238,26 @@ class YouTubeService {
     let mediaBody = fileInput;
     let s3Url = null;
 
-    // Handle S3 URL string - use original URL if it's already S3, otherwise get consistent URL
+    // Handle URL string - always use centralized manager like other platforms
     if (typeof fileInput === 'string') {
-      // Check if this is already an S3 URL
-      const isS3Url = fileInput.includes('amazonaws.com') || fileInput.includes('s3.amazonaws.com');
-      
-      if (isS3Url) {
-        console.log('[YouTube] Already S3 URL, using directly:', fileInput);
-        s3Url = fileInput; // Use original S3 URL
+      console.log('[YouTube] Getting consistent media URL via centralized manager...');
+      try {
+        // Get consistent S3 URL (or create if doesn't exist)
+        const consistentS3Url = await this.mediaManager.getConsistentMediaUrl(fileInput, 'video');
         
-        // Download from original S3 URL to get buffer
-        const mediaBuffer = await this.downloadToBuffer(fileInput);
-        console.log('[YouTube] Media downloaded from original S3 URL, size:', mediaBuffer.length, 'bytes');
+        // Use consistent S3 URL
+        s3Url = consistentS3Url;
+        console.log('[YouTube] Using consistent S3 URL via centralized manager:', consistentS3Url);
+        
+        // Download from consistent URL to get buffer
+        const mediaBuffer = await this.downloadToBuffer(consistentS3Url);
+        console.log('[YouTube] Media downloaded from consistent S3 URL, size:', mediaBuffer.length, 'bytes');
         
         // Use downloaded buffer for YouTube upload
         mediaBody = mediaBuffer;
-      } else {
-        console.log('[YouTube] External URL, getting consistent S3 URL via centralized manager...');
-        try {
-          // Get consistent S3 URL (or create if doesn't exist)
-          const consistentS3Url = await this.mediaManager.getConsistentMediaUrl(fileInput, 'video');
-          
-          // Use consistent S3 URL
-          s3Url = consistentS3Url;
-          console.log('[YouTube] Using consistent S3 URL via centralized manager:', consistentS3Url);
-          
-          // Download from consistent URL to get buffer
-          const mediaBuffer = await this.downloadToBuffer(consistentS3Url);
-          console.log('[YouTube] Media downloaded from consistent S3 URL, size:', mediaBuffer.length, 'bytes');
-          
-          // Use downloaded buffer for YouTube upload
-          mediaBody = mediaBuffer;
-        } catch (error) {
-          console.error('[YouTube] Failed to get consistent media URL:', error.message);
-          throw new Error('Failed to get consistent media URL via centralized manager');
-        }
+      } catch (error) {
+        console.error('[YouTube] Failed to get consistent media URL:', error.message);
+        throw new Error('Failed to get consistent media URL via centralized manager');
       }
     } else {
       console.log('[YouTube] Using direct file input (not URL)');
