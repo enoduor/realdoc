@@ -1,13 +1,46 @@
-FROM node:18-alpine
-WORKDIR /app
-
-COPY back/backend-node/package*.json ./
-RUN npm ci --only=production || npm ci
-
-COPY back/backend-node/ ./
-
-ENV NODE_ENV=production
-EXPOSE 4001
-CMD ["npm", "start"]
-
-
+# ---------- API (Node.js Express) — fast + healthcheck ----------
+    FROM node:20-bookworm-slim AS deps
+    WORKDIR /app
+    
+    # Calm & cache npm
+    ENV NODE_ENV=production \
+        NPM_CONFIG_AUDIT=false \
+        NPM_CONFIG_FUND=false \
+        NPM_CONFIG_PROGRESS=false \
+        NPM_CONFIG_LOGLEVEL=error
+    
+    # Only package files (keeps cache hot)
+    COPY back/backend-node/package*.json ./
+    
+    # Cache npm dir between builds
+    RUN --mount=type=cache,target=/root/.npm \
+        npm ci --omit=dev --no-optional --no-audit --no-fund
+    
+    # ---------- Final runtime ----------
+    FROM node:20-bookworm-slim AS api
+    WORKDIR /app
+    
+    # Install curl for container healthcheck
+    RUN apt-get update \
+     && apt-get install -y --no-install-recommends curl \
+     && rm -rf /var/lib/apt/lists/*
+    
+    # Default env for your app
+    ENV NODE_ENV=production \
+        PORT=4001 \
+        HOST=0.0.0.0
+    
+    # Copy node_modules and app code
+    COPY --from=deps /app/node_modules ./node_modules
+    COPY back/backend-node/ ./
+    
+    # Make sure the process exits cleanly on stop
+    STOPSIGNAL SIGTERM
+    
+    # Container-level healthcheck (ALB can rely on this too)
+    # Your app already serves GET /api/health -> 200 {status:'ok'}
+    HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
+      CMD curl -fsS http://127.0.0.1:${PORT}/api/health || exit 1
+    
+    EXPOSE 4001
+    CMD ["npm", "start"]

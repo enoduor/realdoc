@@ -5,8 +5,25 @@ import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App';
 
-// === Clerk Configuration (inlined) ===
-// Resolve Clerk publishable key from build-time env or injected meta tag
+// --- Helpers for BASE + URL building ----------------------------------------
+const ORIGIN =
+  (typeof window !== 'undefined' && window.location && window.location.origin)
+    ? window.location.origin
+    : '';
+
+const PUBLIC_BASE_RAW = process.env.PUBLIC_URL || '/repostly/';
+
+// Normalize PUBLIC_BASE to always have exactly one trailing slash
+const PUBLIC_BASE = (() => {
+  const t = String(PUBLIC_BASE_RAW || '/');
+  return t.endsWith('/') ? t : `${t}/`;
+})();
+
+// Join helper (same as in api.js / ContentService.js)
+const joinUrl = (a, b = '') =>
+  `${String(a).replace(/\/+$/, '')}/${String(b).replace(/^\/+/, '')}`;
+
+// Resolve Clerk publishable key from env or <meta>
 function resolveClerkKey() {
   const key = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
   if (key && key !== 'undefined') return key;
@@ -14,47 +31,22 @@ function resolveClerkKey() {
   return meta?.getAttribute('content') || '';
 }
 
+// Clerk config with normalized BASE
 const clerkConfig = {
   publishableKey: resolveClerkKey(),
-  get basePath() {
-    // Use PUBLIC_URL from build process (set by homepage in package.json)
-    const base = process.env.PUBLIC_URL || '/repostly/';
-    return base && base !== '/' ? base : '';
-  },
-  appearance: {
-    baseTheme: 'light',
-    variables: {
-      colorPrimary: '#3b82f6',
-      colorBackground: '#ffffff',
-      colorText: '#1f2937',
-    },
-  },
-  get signInUrl() { return `${this.basePath}login`; },
-  get signUpUrl() { return `${this.basePath}register`; },
-  get afterSignInUrl() { return `${this.basePath}app`; },
-  get afterSignUpUrl() { return `${this.basePath}app`; },
-  get afterSignOutUrl() { return `${this.basePath}`; },
-  // Force the signout URL explicitly
-  afterSignOutUrl: 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly/'
+  afterSignInUrl: joinUrl(PUBLIC_BASE, 'app'),
+  afterSignUpUrl: joinUrl(PUBLIC_BASE, 'app'),
+  afterSignOutUrl: PUBLIC_BASE, // e.g. "/repostly/"
 };
 
-// === Debug logging (remove in production) ===
-console.log('Clerk Config:', {
-  publishableKey: clerkConfig.publishableKey ? 'Set' : 'Not set',
-  hasKey: !!clerkConfig.publishableKey
-});
+// React Router basename (no trailing slash)
+const BASENAME = PUBLIC_BASE.replace(/\/+$/, '');
 
-// === Root render ===
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error('Root element not found');
-}
-const root = ReactDOM.createRoot(rootElement);
-
+const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <ClerkProvider {...clerkConfig}>
-      <BrowserRouter basename={process.env.PUBLIC_URL || '/repostly/'}>
+      <BrowserRouter basename={BASENAME}>
         <App />
       </BrowserRouter>
     </ClerkProvider>

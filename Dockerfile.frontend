@@ -1,15 +1,24 @@
-FROM node:18-alpine
-WORKDIR /app
-
-# Install deps
-COPY frontend/package*.json ./
-RUN npm ci
-
-# Build
-COPY frontend/ ./
-RUN npm run build && npm i -g serve
-
-EXPOSE 3000
-CMD ["serve", "-s", "build", "-l", "3000"]
-
-
+# ---------- Frontend (React) ----------
+    FROM node:18-alpine AS build
+    WORKDIR /app
+    
+    # Install deps (cached if package*.json unchanged)
+    COPY frontend/package*.json ./
+    RUN npm ci --omit=dev --no-audit --no-fund --silent
+    
+    # Copy source and build
+    COPY frontend/ ./
+    RUN npm run build
+    
+    # ---------- Runtime ----------
+    FROM node:18-alpine
+    WORKDIR /app
+    
+    # Use a tiny static server
+    RUN npm i -g serve
+    
+    # Copy built files only
+    COPY --from=build /app/build ./build
+    
+    EXPOSE 3000
+    CMD ["serve", "-s", "build", "-l", "3000"]

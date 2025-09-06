@@ -1,8 +1,27 @@
-// --- Base URLs (unchanged) --------------------------------------------------
-const API_BASE_URL = process.env.REACT_APP_API_URL?.replace(/\/$/, '') || 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly';
-// const API_BASE_URL = process.env.REACT_APP_API_URL?.replace(/\/$/, '') || 'http://localhost:4001';
-const PYTHON_API_BASE_URL = process.env.REACT_APP_PYTHON_API_URL || 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly/ai';
-// const PYTHON_API_BASE_URL = process.env.REACT_APP_PYTHON_API_URL || 'http://localhost:5001';
+// --- Base URLs (updated to be origin/PUBLIC_URL-relative) -------------------
+const ORIGIN =
+  (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
+
+const PUBLIC_BASE_RAW = process.env.PUBLIC_URL || '/repostly/';
+
+// Normalize PUBLIC_BASE to always have exactly one trailing slash
+const PUBLIC_BASE = (() => {
+  const t = String(PUBLIC_BASE_RAW || '/');
+  return t.endsWith('/') ? t : `${t}/`;
+})();
+
+const joinUrl = (a, b = '') =>
+  `${String(a).replace(/\/+$/,'')}/${String(b).replace(/^\/+/,'')}`;
+
+// If REACT_APP_API_URL / REACT_APP_PYTHON_API_URL are provided at build time, use them.
+// Otherwise, build them from window.location.origin + PUBLIC_URL.
+export const API_BASE_URL =
+  (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.replace(/\/$/, ''))
+  || joinUrl(ORIGIN, PUBLIC_BASE).replace(/\/$/, '');
+
+export const PYTHON_API_BASE_URL =
+  process.env.REACT_APP_PYTHON_API_URL
+  || joinUrl(joinUrl(ORIGIN, PUBLIC_BASE), 'ai');
 
 // --- Auth helpers (unchanged) -----------------------------------------------
 const getAuthToken = async () => {

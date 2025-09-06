@@ -16,10 +16,13 @@ ECR_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
 DOCKERFILE="docker/Dockerfile"
 BUILD_CONTEXT="."
 
+# Detect host architecture for faster builds
+HOST_ARCH=$(docker info --format '{{.OSType}}/{{.Architecture}}' 2>/dev/null || echo "linux/amd64")
+
 # name | repo | task | container | target | platform
-SERVICES=("frontend" "repostly-frontend" "repostly-frontend" "repostly-frontend" "frontend" "${PLATFORM_FRONTEND:-linux/amd64}"
-          "api"      "repostly-api"      "repostly-api"      "repostly-api"      "api"      "${PLATFORM_API:-linux/amd64}"
-          "ai"       "repostly-ai"       "repostly-ai"       "repostly-ai"       "ai"       "${PLATFORM_AI:-linux/amd64}")
+SERVICES=("frontend" "repostly-frontend" "repostly-frontend" "repostly-frontend" "frontend" "${PLATFORM_FRONTEND:-$HOST_ARCH}"
+          "api"      "repostly-api"      "repostly-api"      "repostly-api"      "api"      "${PLATFORM_API:-$HOST_ARCH}"
+          "ai"       "repostly-ai"       "repostly-ai"       "repostly-ai"       "ai"       "${PLATFORM_AI:-$HOST_ARCH}")
 
 require() { command -v "$1" >/dev/null || { echo "Missing: $1"; exit 1; }; }
 require aws; require jq; require docker; command -v git >/dev/null || true
@@ -106,11 +109,13 @@ build_and_push() {
     fi
   fi
 
-  docker buildx create --use >/dev/null 2>&1 || true
+  # Create buildx builder with optimizations
+  docker buildx create --use --driver docker-container --driver-opt network=host >/dev/null 2>&1 || true
   export DOCKER_BUILDKIT=1
 
   >&2 echo "[Buildx] $image_tag (target=$target platform=$platform)"
 
+  # Fast build without cache complications
   docker buildx build \
     --platform "$platform" \
     --target "$target" \

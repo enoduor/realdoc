@@ -1,113 +1,154 @@
+// src/services/ContentService.js
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly/ai';
+/* ===== Base URLs (normalized to be origin/PUBLIC_URL-relative) ===== */
+const ORIGIN =
+  (typeof window !== 'undefined' && window.location && window.location.origin)
+    ? window.location.origin
+    : '';
 
-class ContentService {
-    // Caption endpoints
-    static async createCaption(data) {
-        try {
-            const response = await axios.post(`${API_BASE_URL}/api/v1/captions/`, data);
-            return response.data;
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+const PUBLIC_BASE_RAW = process.env.PUBLIC_URL || '/repostly/';
 
-    static async getCaptions() {
-        try {
-            const response = await axios.get(`${API_BASE_URL}/api/v1/captions/`);
-            return response.data;
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+// Ensure exactly one trailing slash
+const PUBLIC_BASE = (() => {
+  const t = String(PUBLIC_BASE_RAW || '/');
+  return t.endsWith('/') ? t : `${t}/`;
+})();
 
-    static async getCaption(id) {
-        try {
-            const response = await axios.get(`${API_BASE_URL}/api/v1/captions/${id}`);
-            return response.data;
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+const joinUrl = (a, b = '') =>
+  `${String(a).replace(/\/+$/, '')}/${String(b).replace(/^\/+/, '')}`;
 
-    static async updateCaption(id, data) {
-        try {
-            const response = await axios.put(`${API_BASE_URL}/api/v1/captions/${id}`, data);
-            return response.data;
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+// If REACT_APP_PYTHON_API_URL is provided at build time, use it.
+// Otherwise, build from window.location.origin + PUBLIC_URL + "ai".
+export const PYTHON_API_BASE_URL =
+  process.env.REACT_APP_PYTHON_API_URL
+    || joinUrl(joinUrl(ORIGIN, PUBLIC_BASE), 'ai');
 
-    static async deleteCaption(id) {
-        try {
-            const response = await axios.delete(`${API_BASE_URL}/api/v1/captions/${id}`);
-            return response.data;
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+/* ===== Axios instance for AI service ===== */
+const ai = axios.create({
+  baseURL: PYTHON_API_BASE_URL,
+  headers: { 'Content-Type': 'application/json' },
+});
 
-    // Hashtag endpoints
-    static async createHashtags(data) {
-        try {
-            const response = await axios.post(`${API_BASE_URL}/api/v1/hashtags/`, data);
-            return response.data;
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+/* ===== Error helper ===== */
+const handleError = (error) => {
+  if (error?.response) {
+    const msg =
+      error.response.data?.detail ||
+      error.response.data?.message ||
+      `Request failed (${error.response.status})`;
+    return new Error(msg);
+  }
+  if (error?.request) return new Error('No response from server');
+  return new Error(error?.message || 'Error setting up request');
+};
 
-    static async getHashtags() {
-        try {
-            const response = await axios.get(`${API_BASE_URL}/api/v1/hashtags/`);
-            return response.data;
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+/* ===== Caption endpoints ===== */
+const createCaption = async (data) => {
+  try {
+    const res = await ai.post('/captions/', data);
+    return res.data;
+  } catch (err) {
+    throw handleError(err);
+  }
+};
 
-    static async getHashtag(id) {
-        try {
-            const response = await axios.get(`${API_BASE_URL}/api/v1/hashtags/${id}`);
-            return response.data;
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+const getCaptions = async () => {
+  try {
+    const res = await ai.get('/captions/');
+    return res.data;
+  } catch (err) {
+    throw handleError(err);
+  }
+};
 
-    static async updateHashtags(id, data) {
-        try {
-            const response = await axios.put(`${API_BASE_URL}/api/v1/hashtags/${id}`, data);
-            return response.data;
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+const getCaption = async (id) => {
+  try {
+    const res = await ai.get(`/captions/${id}`);
+    return res.data;
+  } catch (err) {
+    throw handleError(err);
+  }
+};
 
-    static async deleteHashtags(id) {
-        try {
-            const response = await axios.delete(`${API_BASE_URL}/api/v1/hashtags/${id}`);
-            return response.data;
-        } catch (error) {
-            throw this.handleError(error);
-        }
-    }
+const updateCaption = async (id, data) => {
+  try {
+    const res = await ai.put(`/captions/${id}`, data);
+    return res.data;
+  } catch (err) {
+    throw handleError(err);
+  }
+};
 
-    // Error handling
-    static handleError(error) {
-        if (error.response) {
-            // Server responded with error
-            return new Error(error.response.data.detail || 'An error occurred');
-        } else if (error.request) {
-            // Request made but no response
-            return new Error('No response from server');
-        } else {
-            // Something else went wrong
-            return new Error('Error setting up request');
-        }
-    }
-}
+const deleteCaption = async (id) => {
+  try {
+    const res = await ai.delete(`/captions/${id}`);
+    return res.data;
+  } catch (err) {
+    throw handleError(err);
+  }
+};
 
-export default ContentService; 
+/* ===== Hashtag endpoints ===== */
+const createHashtags = async (data) => {
+  try {
+    const res = await ai.post('/hashtags/', data);
+    return res.data;
+  } catch (err) {
+    throw handleError(err);
+  }
+};
+
+const getHashtags = async () => {
+  try {
+    const res = await ai.get('/hashtags/');
+    return res.data;
+  } catch (err) {
+    throw handleError(err);
+  }
+};
+
+const getHashtag = async (id) => {
+  try {
+    const res = await ai.get(`/hashtags/${id}`);
+    return res.data;
+  } catch (err) {
+    throw handleError(err);
+  }
+};
+
+const updateHashtags = async (id, data) => {
+  try {
+    const res = await ai.put(`/hashtags/${id}`, data);
+    return res.data;
+  } catch (err) {
+    throw handleError(err);
+  }
+};
+
+const deleteHashtags = async (id) => {
+  try {
+    const res = await ai.delete(`/hashtags/${id}`);
+    return res.data;
+  } catch (err) {
+    throw handleError(err);
+  }
+};
+
+/* ===== Export API ===== */
+const ContentService = {
+  // captions
+  createCaption,
+  getCaptions,
+  getCaption,
+  updateCaption,
+  deleteCaption,
+  // hashtags
+  createHashtags,
+  getHashtags,
+  getHashtag,
+  updateHashtags,
+  deleteHashtags,
+};
+
+export default ContentService;
