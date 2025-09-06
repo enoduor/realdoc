@@ -38,6 +38,35 @@ function cleanCaption(str = '') {
   return str.toString().trim().replace(/\s+$/g, '');
 }
 
+function cleanCaption(str = '') {
+  return str.toString().trim().replace(/\s+$/g, '');
+}
+
+// ---- YouTube helper ----
+function normalizeYouTubeResult(raw = {}) {
+  const videoId =
+    raw.postId ||
+    raw.videoId ||
+    raw.id ||
+    raw.result?.postId ||
+    raw.result?.videoId ||
+    raw.result?.id ||
+    null;
+
+  const url =
+    raw.url ||
+    raw.webUrl ||
+    raw.result?.url ||
+    (videoId ? `https://www.youtube.com/watch?v=${videoId}` : null);
+
+  const message =
+    raw.message ||
+    raw.result?.message ||
+    'Uploaded to YouTube';
+
+  return { videoId, url, message };
+}
+
 class PlatformPublisher {
   constructor() {
     this.platforms = {
@@ -143,37 +172,54 @@ class PlatformPublisher {
           };
         }
 
+  
         // ------------ YOUTUBE ------------
-        case 'youtube': {
-          const { caption, text, mediaUrl, mediaType, hashtags } = postData || {};
-          
-          // Use the platform token we already retrieved
-          const identifier = { clerkUserId: clerkUserId };
+case 'youtube': {
+  const { caption, text, mediaUrl, mediaType, hashtags } = postData || {};
 
-          if (!mediaUrl) {
-            throw new Error('YouTube requires video content: mediaUrl (HTTPS URL or stream)');
-          }
+  // Token presence was checked earlier; still validate core inputs
+  if (!mediaUrl) throw new Error('YouTube requires video content: mediaUrl');
 
-          const { title, description, mediaUrl: formattedMediaUrl, tags, privacyStatus } =
-            this.formatContentForPlatform('youtube', postData);
+  // Build title/description/tags consistently
+  const { title, description, mediaUrl: formattedMediaUrl, tags, privacyStatus } =
+    this.formatContentForPlatform('youtube', postData);
 
-          console.log('[Publisher][YouTube] title =', title);
-          console.log('[Publisher][YouTube] mediaUrl =', formattedMediaUrl);
-          console.log('[Publisher][YouTube] Note: YouTube expects original external URL, not S3 URL');
+  console.log('[Publisher][YouTube] title =', title);
+  console.log('[Publisher][YouTube] privacyStatus =', privacyStatus);
+  console.log('[Publisher][YouTube] mediaUrl =', formattedMediaUrl);
 
-          // YouTube needs the original external URL, not S3 URL
-          // The YouTube service will handle downloading and S3 rehosting internally
-          const result = await this.youtubeService.postToYouTube(identifier, formattedMediaUrl, { title, description, tags, privacyStatus });
+  // Identifier we pass to the service (it will look up tokens itself or use passed clerkUserId)
+  const identifier = { clerkUserId };
 
-          // YouTube service now returns structured object like other platforms
-          return {
-            success: true,
-            platform,
-            postId: result.postId,
-            url: result.url,
-            message: result.message
-          };
-        }
+  // Call service
+  const svcResp = await this.youtubeService.postToYouTube(
+    identifier,
+    formattedMediaUrl,
+    {
+      title,
+      description,
+      tags,
+      privacyStatus, // 'public' | 'unlisted' | 'private'
+    }
+  );
+
+  // Normalize anything the service returns to a single shape
+  const { videoId, url, message } = normalizeYouTubeResult(svcResp);
+
+  if (!videoId) {
+    // Force a clear failure so the frontend doesn't fall back to generic URL
+    throw new Error('YouTube upload completed but no videoId was returned');
+  }
+
+  // Return the simple shape your frontend already consumes
+  return {
+    success: true,
+    platform,
+    postId: videoId,
+    url,
+    message,
+  };
+}
 
         // ------------ TWITTER ------------
         case 'twitter': {
