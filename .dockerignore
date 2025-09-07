@@ -89,13 +89,11 @@ coverage.xml
 .hypothesis
 
 # Frontend specific (not needed for API)
-frontend/
 public/
 src/
 
 # AI service (not needed for API)
 backend-python/
-back/backend-python/
 
 # Database files
 *.db

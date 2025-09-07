@@ -1,0 +1,221 @@
+#!/bin/bash
+set -euo pipefail
+
+# Deploy single Repostly container to AWS ECS
+# Usage: AWS_ACCOUNT_ID=657053005765 AWS_REGION=us-west-2 ./scripts/deploy-single-container.sh
+
+AWS_REGION="${AWS_REGION:-us-west-2}"
+AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-657053005765}"
+CLUSTER="repostly-cluster"
+ECR_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+REPO_NAME="repostly-unified"
+
+require() { command -v "$1" >/dev/null || { echo "Missing: $1"; exit 1; }; }
+require aws; require jq; require docker
+
+login_ecr() {
+  aws ecr get-login-password --region "$AWS_REGION" \
+    | docker login --username AWS --password-stdin "$ECR_URI" >/dev/null
+}
+
+ensure_repo() {
+  aws ecr describe-repositories --repository-names "$REPO_NAME" --region "$AWS_REGION" >/dev/null 2>&1 \
+    || aws ecr create-repository --repository-name "$REPO_NAME" --region "$AWS_REGION" >/dev/null
+}
+
+ensure_log_group() {
+  local group="/ecs/$REPO_NAME"
+  if ! aws logs describe-log-groups \
+      --log-group-name-prefix "$group" \
+      --region "$AWS_REGION" \
+      --query "logGroups[?logGroupName==\`$group\`]|length(@)" \
+      --output text | grep -q '^1$'; then
+    aws logs create-log-group --log-group-name "$group" --region "$AWS_REGION" >/dev/null 2>&1 || true
+  fi
+  aws logs put-retention-policy \
+    --log-group-name "$group" \
+    --retention-in-days 14 \
+    --region "$AWS_REGION" >/dev/null 2>&1 || true
+}
+
+tag() {
+  local ts hash
+  ts="$(date +%Y%m%d%H%M%S)"
+  hash="$(git rev-parse --short HEAD 2>/dev/null || echo local)"
+  echo "v${ts}-${hash}"
+}
+
+build_and_push() {
+  local tag="$1"
+  local image_tag="$ECR_URI/$REPO_NAME:$tag"
+  local image_latest="$ECR_URI/$REPO_NAME:latest"
+  
+  echo "[Build] Building unified container..."
+  docker buildx create --use --driver docker-container --driver-opt network=host >/dev/null 2>&1 || true
+  export DOCKER_BUILDKIT=1
+  
+  docker buildx build \
+    --platform linux/amd64 \
+    -f Dockerfile \
+    -t "$image_tag" \
+    -t "$image_latest" \
+    --push \
+    .
+  
+  echo "$image_tag"
+}
+
+create_task_definition() {
+  local image="$1"
+  local task_def_name="repostly-unified"
+  
+  cat > task-definition.json << EOF
+{
+  "family": "$task_def_name",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::$AWS_ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::$AWS_ACCOUNT_ID:role/ecsTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "repostly-unified",
+      "image": "$image",
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "protocol": "tcp"
+        },
+        {
+          "containerPort": 4001,
+          "protocol": "tcp"
+        },
+        {
+          "containerPort": 5001,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/$REPO_NAME",
+          "awslogs-region": "$AWS_REGION",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "environment": [
+        {
+          "name": "NODE_ENV",
+          "value": "production"
+        },
+        {
+          "name": "PORT",
+          "value": "4001"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "MONGODB_URI",
+          "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/mongodb-uri"
+        },
+        {
+          "name": "CLERK_SECRET_KEY",
+          "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/clerk-secret-key"
+        },
+        {
+          "name": "OPENAI_API_KEY",
+          "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/openai-api-key"
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/stripe-secret-key"
+        }
+      ],
+      "healthCheck": {
+        "command": ["CMD", "curl", "-f", "http://localhost:5001/ping"],
+        "interval": 30,
+        "timeout": 10,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}
+EOF
+
+  aws ecs register-task-definition \
+    --region "$AWS_REGION" \
+    --cli-input-json file://task-definition.json \
+    --query 'taskDefinition.taskDefinitionArn' \
+    --output text
+}
+
+create_service() {
+  local task_def_arn="$1"
+  local service_name="repostly-unified"
+  
+  # Check if service exists
+  if aws ecs describe-services \
+      --cluster "$CLUSTER" \
+      --services "$service_name" \
+      --region "$AWS_REGION" \
+      --query 'services[0].serviceName' \
+      --output text 2>/dev/null | grep -q "$service_name"; then
+    
+    echo "[Update] Updating existing service..."
+    aws ecs update-service \
+      --cluster "$CLUSTER" \
+      --service "$service_name" \
+      --task-definition "$task_def_arn" \
+      --region "$AWS_REGION" \
+      --force-new-deployment >/dev/null
+  else
+    echo "[Create] Creating new service..."
+    aws ecs create-service \
+      --cluster "$CLUSTER" \
+      --service-name "$service_name" \
+      --task-definition "$task_def_arn" \
+      --desired-count 1 \
+      --launch-type FARGATE \
+      --network-configuration "awsvpcConfiguration={subnets=[subnet-12345],securityGroups=[sg-12345],assignPublicIp=ENABLED}" \
+      --load-balancers "targetGroupArn=arn:aws:elasticloadbalancing:$AWS_REGION:$AWS_ACCOUNT_ID:targetgroup/tg-repostly-unified/12345,containerName=repostly-unified,containerPort=3000" \
+      --region "$AWS_REGION" >/dev/null
+  fi
+}
+
+main() {
+  echo "[Login] ECR $ECR_URI"
+  login_ecr
+  
+  echo "[Setup] Ensuring ECR repository and log group..."
+  ensure_repo
+  ensure_log_group
+  
+  echo "[Build] Building and pushing container..."
+  local tag
+  tag="$(tag)"
+  local image
+  image="$(build_and_push "$tag")"
+  echo "[Image] $image"
+  
+  echo "[TaskDef] Creating task definition..."
+  local task_def_arn
+  task_def_arn="$(create_task_definition "$image")"
+  echo "[TaskDef] $task_def_arn"
+  
+  echo "[Service] Creating/updating service..."
+  create_service "$task_def_arn"
+  
+  echo "[Wait] Waiting for service to stabilize..."
+  aws ecs wait services-stable \
+    --region "$AWS_REGION" \
+    --cluster "$CLUSTER" \
+    --services "repostly-unified"
+  
+  echo "[Success] Deployment complete!"
+  echo "[URL] https://your-alb-url/repostly/"
+}
+
+main "$@"

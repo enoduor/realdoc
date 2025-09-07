@@ -1,0 +1,22 @@
+services:
+  repostly:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: repostly-local
+    ports:
+      - "3000:3000"  # Frontend
+      - "4001:4001"  # API
+      - "5001:5001"  # AI
+    env_file:
+      - back/backend-node/.env
+      - back/backend-python/.env
+    environment:
+      - NODE_ENV=production
+      - PORT=4001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

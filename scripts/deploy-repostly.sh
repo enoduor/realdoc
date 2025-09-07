@@ -13,7 +13,7 @@ CLUSTER="repostly-cluster"
 ECR_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
 
 # Build from the consolidated multi-target Dockerfile
-DOCKERFILE="docker/Dockerfile"
+DOCKERFILE="Dockerfile"
 BUILD_CONTEXT="."
 
 # Detect host architecture for faster builds
