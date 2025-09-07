@@ -4,6 +4,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 const rateLimit = require("express-rate-limit");
+const { createProxyMiddleware } = require('http-proxy-middleware');
 const stripeWebhook = require("./webhooks/stripeWebhook");
 const { requireAuth, clerkMiddleware } = require('@clerk/express');
 
@@ -35,6 +36,19 @@ app.use((req, _res, next) => {
   }
   next();
 });
+
+// --- Proxy AI requests to Python backend ---
+app.use('/ai', createProxyMiddleware({
+  target: 'http://localhost:5001',
+  changeOrigin: true,
+  pathRewrite: {
+    '^/ai': '', // remove /ai prefix when forwarding to Python backend
+  },
+  onError: (err, req, res) => {
+    console.error('AI Proxy Error:', err.message);
+    res.status(500).json({ error: 'AI service unavailable' });
+  }
+}));
 
 // --- Minimal API root + health (single definition) ---
 app.get('/api', (_req, res) => res.status(200).send('ok'));

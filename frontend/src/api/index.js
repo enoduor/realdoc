@@ -21,7 +21,9 @@ export const API_BASE_URL =
 
 export const PYTHON_API_BASE_URL =
   process.env.REACT_APP_PYTHON_API_URL
-  || joinUrl(joinUrl(ORIGIN, PUBLIC_BASE), 'ai');
+  || (process.env.NODE_ENV === 'production' 
+      ? window.location.origin + '/repostly/ai'
+      : 'http://localhost:4001/repostly/ai');
 
 // --- Auth helpers (unchanged) -----------------------------------------------
 const getAuthToken = async () => {
@@ -67,7 +69,7 @@ const makeAuthenticatedRequest = async (url, options = {}) => {
 // --- AI Services (unchanged) -----------------------------------------------
 export const getCaption = async ({ platform, topic, tone }) => {
   try {
-    const response = await fetch(`${PYTHON_API_BASE_URL}/captions/`, {
+    const response = await fetch(`${PYTHON_API_BASE_URL}/api/v1/captions/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ platform, topic, tone }),
@@ -83,7 +85,7 @@ export const getCaption = async ({ platform, topic, tone }) => {
 
 export const getHashtags = async ({ platform, topic, count }) => {
   try {
-    const response = await fetch(`${PYTHON_API_BASE_URL}/hashtags/`, {
+    const response = await fetch(`${PYTHON_API_BASE_URL}/api/v1/hashtags/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ platform, topic, count }),

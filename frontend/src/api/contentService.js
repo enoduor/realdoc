@@ -19,10 +19,12 @@ const joinUrl = (a, b = '') =>
   `${String(a).replace(/\/+$/, '')}/${String(b).replace(/^\/+/, '')}`;
 
 // If REACT_APP_PYTHON_API_URL is provided at build time, use it.
-// Otherwise, build from window.location.origin + PUBLIC_URL + "ai".
+// Otherwise, use production path or Node.js backend proxy for development.
 export const PYTHON_API_BASE_URL =
   process.env.REACT_APP_PYTHON_API_URL
-    || joinUrl(joinUrl(ORIGIN, PUBLIC_BASE), 'ai');
+    || (process.env.NODE_ENV === 'production' 
+        ? window.location.origin + '/repostly/ai'
+        : 'http://localhost:4001/repostly/ai');
 
 /* ===== Axios instance for AI service ===== */
 const ai = axios.create({
@@ -46,7 +48,7 @@ const handleError = (error) => {
 /* ===== Caption endpoints ===== */
 const createCaption = async (data) => {
   try {
-    const res = await ai.post('/captions/', data);
+    const res = await ai.post('/api/v1/captions/', data);
     return res.data;
   } catch (err) {
     throw handleError(err);
@@ -55,7 +57,7 @@ const createCaption = async (data) => {
 
 const getCaptions = async () => {
   try {
-    const res = await ai.get('/captions/');
+    const res = await ai.get('/api/v1/captions/');
     return res.data;
   } catch (err) {
     throw handleError(err);
@@ -64,7 +66,7 @@ const getCaptions = async () => {
 
 const getCaption = async (id) => {
   try {
-    const res = await ai.get(`/captions/${id}`);
+    const res = await ai.get(`/api/v1/captions/${id}`);
     return res.data;
   } catch (err) {
     throw handleError(err);
@@ -73,7 +75,7 @@ const getCaption = async (id) => {
 
 const updateCaption = async (id, data) => {
   try {
-    const res = await ai.put(`/captions/${id}`, data);
+    const res = await ai.put(`/api/v1/captions/${id}`, data);
     return res.data;
   } catch (err) {
     throw handleError(err);
@@ -82,7 +84,7 @@ const updateCaption = async (id, data) => {
 
 const deleteCaption = async (id) => {
   try {
-    const res = await ai.delete(`/captions/${id}`);
+    const res = await ai.delete(`/api/v1/captions/${id}`);
     return res.data;
   } catch (err) {
     throw handleError(err);
@@ -92,7 +94,7 @@ const deleteCaption = async (id) => {
 /* ===== Hashtag endpoints ===== */
 const createHashtags = async (data) => {
   try {
-    const res = await ai.post('/hashtags/', data);
+    const res = await ai.post('/api/v1/hashtags/', data);
     return res.data;
   } catch (err) {
     throw handleError(err);
@@ -101,7 +103,7 @@ const createHashtags = async (data) => {
 
 const getHashtags = async () => {
   try {
-    const res = await ai.get('/hashtags/');
+    const res = await ai.get('/api/v1/hashtags/');
     return res.data;
   } catch (err) {
     throw handleError(err);
@@ -110,7 +112,7 @@ const getHashtags = async () => {
 
 const getHashtag = async (id) => {
   try {
-    const res = await ai.get(`/hashtags/${id}`);
+    const res = await ai.get(`/api/v1/hashtags/${id}`);
     return res.data;
   } catch (err) {
     throw handleError(err);
@@ -119,7 +121,7 @@ const getHashtag = async (id) => {
 
 const updateHashtags = async (id, data) => {
   try {
-    const res = await ai.put(`/hashtags/${id}`, data);
+    const res = await ai.put(`/api/v1/hashtags/${id}`, data);
     return res.data;
   } catch (err) {
     throw handleError(err);
@@ -128,7 +130,7 @@ const updateHashtags = async (id, data) => {
 
 const deleteHashtags = async (id) => {
   try {
-    const res = await ai.delete(`/hashtags/${id}`);
+    const res = await ai.delete(`/api/v1/hashtags/${id}`);
     return res.data;
   } catch (err) {
     throw handleError(err);

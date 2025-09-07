@@ -107,6 +107,13 @@ build_and_push() {
     if [ -n "${REACT_APP_CLERK_PUBLISHABLE_KEY:-}" ]; then
       extra_args+=" --build-arg REACT_APP_CLERK_PUBLISHABLE_KEY=${REACT_APP_CLERK_PUBLISHABLE_KEY}"
     fi
+    # Set production API URLs
+    if [ -n "${REACT_APP_API_URL:-}" ]; then
+      extra_args+=" --build-arg REACT_APP_API_URL=${REACT_APP_API_URL}"
+    fi
+    if [ -n "${REACT_APP_PYTHON_API_URL:-}" ]; then
+      extra_args+=" --build-arg REACT_APP_PYTHON_API_URL=${REACT_APP_PYTHON_API_URL}"
+    fi
   fi
 
   # Create buildx builder with optimizations
