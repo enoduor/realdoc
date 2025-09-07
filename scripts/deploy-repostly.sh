@@ -12,6 +12,15 @@ AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-657053005765}"
 CLUSTER="repostly-cluster"
 ECR_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
 
+# Production URLs (replace with your actual domain when you have one)
+ALB_DNS="${ALB_DNS:-videograb-alb-1069883284.us-west-2.elb.amazonaws.com}"
+PRODUCTION_BASE_URL="https://${ALB_DNS}"
+
+# Set production environment variables for frontend build
+export REACT_APP_API_URL="${REACT_APP_API_URL:-${PRODUCTION_BASE_URL}/repostly/api}"
+export REACT_APP_PYTHON_API_URL="${REACT_APP_PYTHON_API_URL:-${PRODUCTION_BASE_URL}/repostly/ai}"
+export REACT_APP_CLERK_PUBLISHABLE_KEY="${REACT_APP_CLERK_PUBLISHABLE_KEY:-pk_test_YW1hemVkLWdyb3VzZS03NS5jbGVyay5hY2NvdW50cy5kZXYk}"
+
 # Build from the consolidated multi-target Dockerfile
 DOCKERFILE="Dockerfile"
 BUILD_CONTEXT="."
@@ -242,6 +251,9 @@ deploy_one() {
 
 main() {
   echo "[Login] ECR $ECR_URI"
+  echo "[URLs] API: $REACT_APP_API_URL"
+  echo "[URLs] AI: $REACT_APP_PYTHON_API_URL"
+  echo "[URLs] Clerk: ${REACT_APP_CLERK_PUBLISHABLE_KEY:0:20}..."
   login_ecr
 
   case "${1:-all}" in

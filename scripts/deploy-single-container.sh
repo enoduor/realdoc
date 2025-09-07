@@ -10,6 +10,15 @@ CLUSTER="repostly-cluster"
 ECR_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
 REPO_NAME="repostly-unified"
 
+# Production URLs (replace with your actual domain when you have one)
+ALB_DNS="${ALB_DNS:-videograb-alb-1069883284.us-west-2.elb.amazonaws.com}"
+PRODUCTION_BASE_URL="https://${ALB_DNS}"
+
+# Set production environment variables for frontend build
+export REACT_APP_API_URL="${REACT_APP_API_URL:-${PRODUCTION_BASE_URL}/repostly/api}"
+export REACT_APP_PYTHON_API_URL="${REACT_APP_PYTHON_API_URL:-${PRODUCTION_BASE_URL}/repostly/ai}"
+export REACT_APP_CLERK_PUBLISHABLE_KEY="${REACT_APP_CLERK_PUBLISHABLE_KEY:-pk_test_YW1hemVkLWdyb3VzZS03NS5jbGVyay5hY2NvdW50cy5kZXYk}"
+
 require() { command -v "$1" >/dev/null || { echo "Missing: $1"; exit 1; }; }
 require aws; require jq; require docker
 
@@ -187,6 +196,9 @@ create_service() {
 
 main() {
   echo "[Login] ECR $ECR_URI"
+  echo "[URLs] API: $REACT_APP_API_URL"
+  echo "[URLs] AI: $REACT_APP_PYTHON_API_URL"
+  echo "[URLs] Clerk: ${REACT_APP_CLERK_PUBLISHABLE_KEY:0:20}..."
   login_ecr
   
   echo "[Setup] Ensuring ECR repository and log group..."
