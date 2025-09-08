@@ -7,6 +7,7 @@ const rateLimit = require("express-rate-limit");
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const stripeWebhook = require("./webhooks/stripeWebhook");
 const { requireAuth, clerkMiddleware } = require('@clerk/express');
+const path = require('path');
 
 // Only load .env in development
 if (process.env.NODE_ENV !== 'production') {
@@ -78,11 +79,22 @@ app.use(cors({
 app.use(express.json());
 
 // --- Static file serving for frontend ---
-app.use('/repostly/static', express.static('/app/frontend/build/static'));
-app.use('/repostly/asset-manifest.json', express.static('/app/frontend/build/asset-manifest.json'));
-app.use('/repostly/favicon.ico', express.static('/app/frontend/build/favicon.ico'));
-app.use('/repostly/manifest.json', express.static('/app/frontend/build/manifest.json'));
-app.use('/repostly/robots.txt', express.static('/app/frontend/build/robots.txt'));
+const BUILD_DIR = '/app/frontend/build';
+
+// 1) Cache-busted chunk assets (JS/CSS) with proper MIME types
+app.use(
+  '/repostly/static',
+  express.static(path.join(BUILD_DIR, 'static'), {
+    maxAge: '1y',
+    immutable: true,
+  })
+);
+
+// 2) Other build assets (favicon, manifest, asset-manifest, etc.)
+app.use(
+  '/repostly',
+  express.static(BUILD_DIR, { index: false }) // IMPORTANT: don't auto-serve index.html
+);
 
 // --- Rate limiter (skip webhook to avoid Stripe signature/body issues) ---
 const limiter = rateLimit({
@@ -181,8 +193,13 @@ app.get('/api/user/verify/:userId', async (req, res) => {
 });
 
 // --- SPA fallback route (must be last) ---
-app.get('/repostly/*', (req, res) => {
-  res.sendFile('/app/frontend/build/index.html');
+// Only catch app routes, NOT static files (which are handled above)
+app.get(['/repostly', '/repostly/*'], (req, res) => {
+  // Skip if this is a static file request (should be handled by express.static above)
+  if (req.path.startsWith('/repostly/static/')) {
+    return res.status(404).send('Static file not found');
+  }
+  res.sendFile(path.join(BUILD_DIR, 'index.html'));
 });
 
 const PORT = process.env.PORT || 4001;
