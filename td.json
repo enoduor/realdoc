@@ -1,98 +1,85 @@
 {
-    "taskDefinitionArn": "arn:aws:ecs:us-west-2:657053005765:task-definition/repostly-api:57",
+    "taskDefinitionArn": "arn:aws:ecs:us-west-2:657053005765:task-definition/repostly-unified:10",
     "containerDefinitions": [
         {
-            "name": "repostly-api",
-            "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-api:v20250905215700-4c5d3f0",
+            "name": "repostly-unified",
+            "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250907160509",
             "cpu": 0,
             "portMappings": [
+                {
+                    "containerPort": 3000,
+                    "hostPort": 3000,
+                    "protocol": "tcp"
+                },
                 {
                     "containerPort": 4001,
                     "hostPort": 4001,
                     "protocol": "tcp"
+                },
+                {
+                    "containerPort": 5001,
+                    "hostPort": 5001,
+                    "protocol": "tcp"
                 }
             ],
             "essential": true,
-            "environment": [],
+            "environment": [
+                {
+                    "name": "PORT",
+                    "value": "4001"
+                },
+                {
+                    "name": "NODE_ENV",
+                    "value": "production"
+                }
+            ],
             "mountPoints": [],
             "volumesFrom": [],
             "secrets": [
                 {
                     "name": "MONGODB_URI",
-                    "valueFrom": "/repostly/api/MONGODB_URI"
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/mongodb-uri"
                 },
                 {
                     "name": "CLERK_SECRET_KEY",
-                    "valueFrom": "/repostly/api/CLERK_SECRET_KEY"
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/clerk-secret-key"
                 },
                 {
-                    "name": "CLERK_ISSUER_URL",
-                    "valueFrom": "/repostly/api/CLERK_ISSUER_URL"
+                    "name": "OPENAI_API_KEY",
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/openai-api-key"
                 },
                 {
                     "name": "STRIPE_SECRET_KEY",
-                    "valueFrom": "/repostly/api/STRIPE_SECRET_KEY"
-                },
-                {
-                    "name": "STRIPE_STARTER_MONTHLY_PRICE_ID",
-                    "valueFrom": "/repostly/api/STRIPE_STARTER_MONTHLY_PRICE_ID"
-                },
-                {
-                    "name": "STRIPE_STARTER_YEARLY_PRICE_ID",
-                    "valueFrom": "/repostly/api/STRIPE_STARTER_YEARLY_PRICE_ID"
-                },
-                {
-                    "name": "STRIPE_CREATOR_MONTHLY_PRICE_ID",
-                    "valueFrom": "/repostly/api/STRIPE_CREATOR_MONTHLY_PRICE_ID"
-                },
-                {
-                    "name": "STRIPE_CREATOR_YEARLY_PRICE_ID",
-                    "valueFrom": "/repostly/api/STRIPE_CREATOR_YEARLY_PRICE_ID"
-                },
-                {
-                    "name": "STRIPE_PRO_MONTHLY_PRICE_ID",
-                    "valueFrom": "/repostly/api/STRIPE_PRO_MONTHLY_PRICE_ID"
-                },
-                {
-                    "name": "STRIPE_PRO_YEARLY_PRICE_ID",
-                    "valueFrom": "/repostly/api/STRIPE_PRO_YEARLY_PRICE_ID"
-                },
-                {
-                    "name": "FRONTEND_URL",
-                    "valueFrom": "/repostly/api/FRONTEND_URL"
-                },
-                {
-                    "name": "APP_URL",
-                    "valueFrom": "/repostly/api/APP_URL"
-                },
-                {
-                    "name": "FACEBOOK_APP_ID",
-                    "valueFrom": "/repostly/api/FACEBOOK_APP_ID"
-                },
-                {
-                    "name": "FACEBOOK_APP_SECRET",
-                    "valueFrom": "/repostly/api/FACEBOOK_APP_SECRET"
-                },
-                {
-                    "name": "FACEBOOK_REDIRECT_URI",
-                    "valueFrom": "/repostly/api/FACEBOOK_REDIRECT_URI"
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/stripe-secret-key"
                 }
             ],
             "logConfiguration": {
                 "logDriver": "awslogs",
                 "options": {
-                    "awslogs-group": "/ecs/repostly-api",
+                    "awslogs-group": "/ecs/repostly-unified",
                     "awslogs-region": "us-west-2",
                     "awslogs-stream-prefix": "ecs"
                 }
             },
+            "healthCheck": {
+                "command": [
+                    "CMD",
+                    "curl",
+                    "-f",
+                    "http://localhost:5001/ping"
+                ],
+                "interval": 30,
+                "timeout": 10,
+                "retries": 3,
+                "startPeriod": 60
+            },
             "systemControls": []
         }
     ],
-    "family": "repostly-api",
+    "family": "repostly-unified",
     "executionRoleArn": "arn:aws:iam::657053005765:role/ecsTaskExecutionRole",
     "networkMode": "awsvpc",
-    "revision": 57,
+    "revision": 10,
     "volumes": [],
     "status": "ACTIVE",
     "requiresAttributes": [
@@ -109,6 +96,9 @@
             "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
         },
         {
+            "name": "ecs.capability.container-health-check"
+        },
+        {
             "name": "ecs.capability.execution-role-ecr-pull"
         },
         {
@@ -119,6 +109,9 @@
         },
         {
             "name": "ecs.capability.task-eni"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.29"
         }
     ],
     "placementConstraints": [],
@@ -129,8 +122,8 @@
     "requiresCompatibilities": [
         "FARGATE"
     ],
-    "cpu": "256",
-    "memory": "512",
-    "registeredAt": "2025-09-05T21:58:32.001000-04:00",
+    "cpu": "1024",
+    "memory": "2048",
+    "registeredAt": "2025-09-07T16:05:42.660000-04:00",
     "registeredBy": "arn:aws:iam::657053005765:user/videograb-deploy"
 }

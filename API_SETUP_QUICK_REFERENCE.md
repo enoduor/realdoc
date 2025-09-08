@@ -164,3 +164,5 @@ If you encounter issues:
 ---
 
 **🎯 The setup script makes this process much easier - just run `./setup-real-apis.sh` and follow the prompts!**
+
+

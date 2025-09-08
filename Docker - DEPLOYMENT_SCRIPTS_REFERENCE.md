@@ -4,34 +4,9 @@
 
 This document explains the deployment scripts and their usage for the Repostly application.
 
-## Script Redundancy Analysis
-
-### Why `deploy-production.sh` was removed
-
-Now that both `deploy-repostly.sh` and `deploy-single-container.sh` have the production URLs built-in, `deploy-production.sh` was **redundant**.
-
-### Script Comparison
-
-#### `deploy-production.sh` (removed):
-- Sets production URLs
-- Calls `deploy-repostly.sh all`
-- Provides production-specific messaging
-
-#### `deploy-repostly.sh` (now updated):
-- ✅ Has production URLs built-in
-- ✅ Deploys multi-container setup
-- ✅ Provides deployment messaging
-
-### Why `deploy-production.sh` was redundant:
-
-1. **URL Configuration**: `deploy-repostly.sh` now has the same URL configuration
-2. **Functionality**: `deploy-production.sh` just calls `deploy-repostly.sh all`
-3. **No Added Value**: It doesn't provide any unique functionality
-
-## Final Clean Setup
 
 ### Local Docker:
-- ✅ `docker-start.sh` - Start local container
+- ✅ `docker-start.sh` - Start local container and compiles the entire project locally before starting the container
 - ✅ `docker-test.sh` - Test local container
 - ✅ `docker-compose.yml` - Local development
 - ✅ `Dockerfile` - Single container build

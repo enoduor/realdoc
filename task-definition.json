@@ -1,0 +1,73 @@
+{
+  "family": "repostly-unified",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::657053005765:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::657053005765:role/ecsTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "repostly-unified",
+      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250907182153-0312f48",
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "protocol": "tcp"
+        },
+        {
+          "containerPort": 4001,
+          "protocol": "tcp"
+        },
+        {
+          "containerPort": 5001,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/repostly-unified",
+          "awslogs-region": "us-west-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "environment": [
+        {
+          "name": "NODE_ENV",
+          "value": "production"
+        },
+        {
+          "name": "PORT",
+          "value": "4001"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "MONGODB_URI",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/MONGODB_URI"
+        },
+        {
+          "name": "CLERK_SECRET_KEY",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_SECRET_KEY"
+        },
+        {
+          "name": "OPENAI_API_KEY",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/ai/OPENAI_API_KEY"
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_SECRET_KEY"
+        }
+      ],
+      "healthCheck": {
+        "command": ["CMD", "curl", "-f", "http://localhost:4001/health"],
+        "interval": 30,
+        "timeout": 10,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}

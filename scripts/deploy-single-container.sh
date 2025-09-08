@@ -23,8 +23,13 @@ require() { command -v "$1" >/dev/null || { echo "Missing: $1"; exit 1; }; }
 require aws; require jq; require docker
 
 login_ecr() {
-  aws ecr get-login-password --region "$AWS_REGION" \
-    | docker login --username AWS --password-stdin "$ECR_URI" >/dev/null
+  echo "[Login] Logging into ECR..." >&2
+  if ! aws ecr get-login-password --region "$AWS_REGION" \
+    | docker login --username AWS --password-stdin "$ECR_URI"; then
+    echo "[ERROR] ECR login failed!" >&2
+    exit 1
+  fi
+  echo "[Login] ECR login successful" >&2
 }
 
 ensure_repo() {
@@ -59,18 +64,41 @@ build_and_push() {
   local image_tag="$ECR_URI/$REPO_NAME:$tag"
   local image_latest="$ECR_URI/$REPO_NAME:latest"
   
-  echo "[Build] Building unified container..."
+  echo "[Build] Building unified container..." >&2
   docker buildx create --use --driver docker-container --driver-opt network=host >/dev/null 2>&1 || true
   export DOCKER_BUILDKIT=1
   
-  docker buildx build \
+  echo "[Build] Building with tag: $tag" >&2
+  if ! docker buildx build \
     --platform linux/amd64 \
     -f Dockerfile \
+    --build-arg REACT_APP_API_URL="$REACT_APP_API_URL" \
+    --build-arg REACT_APP_PYTHON_API_URL="$REACT_APP_PYTHON_API_URL" \
+    --build-arg REACT_APP_CLERK_PUBLISHABLE_KEY="$REACT_APP_CLERK_PUBLISHABLE_KEY" \
+    --build-arg PUBLIC_URL="/repostly" \
     -t "$image_tag" \
     -t "$image_latest" \
     --push \
-    .
+    .; then
+    echo "[ERROR] Docker build failed!" >&2
+    exit 1
+  fi
   
+  echo "[Build] Successfully built and pushed: $image_tag" >&2
+  
+  # Verify the image exists in ECR
+  echo "[Verify] Checking image exists in ECR..." >&2
+  if ! aws ecr describe-images \
+    --repository-name "$REPO_NAME" \
+    --region "$AWS_REGION" \
+    --image-ids imageTag="$tag" \
+    --query 'imageDetails[0].imageDigest' \
+    --output text >/dev/null 2>&1; then
+    echo "[ERROR] Image $image_tag not found in ECR after push!" >&2
+    exit 1
+  fi
+  
+  echo "[Verify] Image confirmed in ECR: $image_tag" >&2
   echo "$image_tag"
 }
 
@@ -127,23 +155,27 @@ create_task_definition() {
       "secrets": [
         {
           "name": "MONGODB_URI",
-          "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/mongodb-uri"
+          "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/MONGODB_URI"
         },
         {
           "name": "CLERK_SECRET_KEY",
-          "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/clerk-secret-key"
+          "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/CLERK_SECRET_KEY"
+        },
+        {
+          "name": "CLERK_PUBLISHABLE_KEY",
+          "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/CLERK_PUBLISHABLE_KEY"
         },
         {
           "name": "OPENAI_API_KEY",
-          "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/openai-api-key"
+          "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/ai/OPENAI_API_KEY"
         },
         {
           "name": "STRIPE_SECRET_KEY",
-          "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/stripe-secret-key"
+          "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/STRIPE_SECRET_KEY"
         }
       ],
       "healthCheck": {
-        "command": ["CMD", "curl", "-f", "http://localhost:5001/ping"],
+        "command": ["CMD", "curl", "-f", "http://localhost:4001/health"],
         "interval": 30,
         "timeout": 10,
         "retries": 3,
@@ -188,8 +220,8 @@ create_service() {
       --task-definition "$task_def_arn" \
       --desired-count 1 \
       --launch-type FARGATE \
-      --network-configuration "awsvpcConfiguration={subnets=[subnet-12345],securityGroups=[sg-12345],assignPublicIp=ENABLED}" \
-      --load-balancers "targetGroupArn=arn:aws:elasticloadbalancing:$AWS_REGION:$AWS_ACCOUNT_ID:targetgroup/tg-repostly-unified/12345,containerName=repostly-unified,containerPort=3000" \
+      --network-configuration "awsvpcConfiguration={subnets=[subnet-0840b774ddc688987,subnet-0113e0c8e2cafde02],securityGroups=[sg-05a357e17fb04284b],assignPublicIp=ENABLED}" \
+      --load-balancers "targetGroupArn=arn:aws:elasticloadbalancing:$AWS_REGION:$AWS_ACCOUNT_ID:targetgroup/tg-repostly-unified/6ac02528aefcdd85,containerName=repostly-unified,containerPort=3000" \
       --region "$AWS_REGION" >/dev/null
   fi
 }
