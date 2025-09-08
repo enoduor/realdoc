@@ -77,6 +77,13 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// --- Static file serving for frontend ---
+app.use('/repostly/static', express.static('/app/frontend/build/static'));
+app.use('/repostly/asset-manifest.json', express.static('/app/frontend/build/asset-manifest.json'));
+app.use('/repostly/favicon.ico', express.static('/app/frontend/build/favicon.ico'));
+app.use('/repostly/manifest.json', express.static('/app/frontend/build/manifest.json'));
+app.use('/repostly/robots.txt', express.static('/app/frontend/build/robots.txt'));
+
 // --- Rate limiter (skip webhook to avoid Stripe signature/body issues) ---
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -171,6 +178,11 @@ app.get('/api/user/verify/:userId', async (req, res) => {
     console.error('Error verifying user:', error);
     res.status(500).json({ verified: false, error: error.message });
   }
+});
+
+// --- SPA fallback route (must be last) ---
+app.get('/repostly/*', (req, res) => {
+  res.sendFile('/app/frontend/build/index.html');
 });
 
 const PORT = process.env.PORT || 4001;
