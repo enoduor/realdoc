@@ -97,6 +97,11 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+// --- Add ping route before Clerk middleware ---
+app.get('/ping', (_req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Backend is running' });
+});
+
 // --- Clerk middleware globally (required for requireAuth) ---
 app.use(clerkMiddleware());
 

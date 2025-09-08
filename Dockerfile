@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 FROM base AS ai-builder
 WORKDIR /app/ai
 
-# Install Python packages globally (simpler for Docker)
+# Install Python packages globally (override system protection)
 COPY back/backend-python/requirements.txt ./
 RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt && \
     pip3 list | grep -E "(fastapi|uvicorn|openai)"
@@ -62,6 +62,10 @@ RUN echo "PUBLIC_URL=${PUBLIC_URL}" && \
 FROM base AS runtime
 WORKDIR /app
 
+# Install Python packages for AI service
+COPY back/backend-python/requirements.txt ./ai/
+RUN pip3 install --no-cache-dir --break-system-packages -r ai/requirements.txt
+
 # Copy AI service
 COPY --from=ai-builder /app/ai ./ai
 
@@ -82,7 +86,7 @@ set -e\n\
 cd /app/ai && python3 -m uvicorn main:app --host 0.0.0.0 --port 5001 &\n\
 \n\
 # Start API service in background\n\
-cd /app/api && npm start &\n\
+cd /app/api && node index.js &\n\
 \n\
 # Start frontend service\n\
 cd /app && serve -s frontend/build -l 3000\n\

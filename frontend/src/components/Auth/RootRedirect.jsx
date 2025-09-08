@@ -18,13 +18,8 @@ const RootRedirect = () => {
     );
   }
 
-  // Redirect based on authentication status
-  if (isSignedIn) {
-    return <Navigate to="/app" replace />;
-  } else {
-    // Show landing page for unauthenticated users instead of redirecting to login
-    return <LandingPage />;
-  }
+  // Always show landing page regardless of authentication status
+  return <LandingPage />;
 };
 
 export default RootRedirect;

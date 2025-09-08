@@ -9,7 +9,7 @@
   "containerDefinitions": [
     {
       "name": "repostly-unified",
-      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250907182153-0312f48",
+      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250908035339-6a7d969",
       "portMappings": [
         {
           "containerPort": 3000,
@@ -53,16 +53,52 @@
           "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_SECRET_KEY"
         },
         {
+          "name": "CLERK_PUBLISHABLE_KEY",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_PUBLISHABLE_KEY"
+        },
+        {
+          "name": "CLERK_ISSUER_URL",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_ISSUER_URL"
+        },
+        {
           "name": "OPENAI_API_KEY",
           "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/ai/OPENAI_API_KEY"
         },
         {
           "name": "STRIPE_SECRET_KEY",
           "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_SECRET_KEY"
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_WEBHOOK_SECRET"
+        },
+        {
+          "name": "STRIPE_STARTER_MONTHLY_PRICE_ID",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_STARTER_MONTHLY_PRICE_ID"
+        },
+        {
+          "name": "STRIPE_STARTER_YEARLY_PRICE_ID",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_STARTER_YEARLY_PRICE_ID"
+        },
+        {
+          "name": "STRIPE_CREATOR_MONTHLY_PRICE_ID",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_CREATOR_MONTHLY_PRICE_ID"
+        },
+        {
+          "name": "STRIPE_CREATOR_YEARLY_PRICE_ID",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_CREATOR_YEARLY_PRICE_ID"
+        },
+        {
+          "name": "STRIPE_PRO_MONTHLY_PRICE_ID",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_PRO_MONTHLY_PRICE_ID"
+        },
+        {
+          "name": "STRIPE_PRO_YEARLY_PRICE_ID",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_PRO_YEARLY_PRICE_ID"
         }
       ],
       "healthCheck": {
-        "command": ["CMD", "curl", "-f", "http://localhost:4001/health"],
+        "command": ["CMD", "curl", "-f", "http://localhost:3000/"],
         "interval": 30,
         "timeout": 10,
         "retries": 3,
