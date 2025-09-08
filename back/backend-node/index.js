@@ -81,17 +81,11 @@ app.use(express.json());
 // --- Static file serving for frontend ---
 const BUILD_DIR = process.env.NODE_ENV === 'production' ? '/app/frontend/build' : path.join(__dirname, '../../frontend/build');
 
-// 1. Serve static files (JS, CSS, etc.)
-app.use(
-  '/repostly/static',
-  express.static(path.join(BUILD_DIR, 'static'), {
-    maxAge: '1y',
-    immutable: true,
-  })
-);
-
-// 2. Serve other build assets (manifest, favicon, etc.)
-app.use('/repostly', express.static(BUILD_DIR, { index: false }));
+// Serve static files (CSS, JS, assets) - only for files with extensions
+app.use('/repostly/static', express.static(path.join(BUILD_DIR, 'static')));
+app.use('/repostly/asset-manifest.json', express.static(path.join(BUILD_DIR, 'asset-manifest.json')));
+app.use('/repostly/manifest.json', express.static(path.join(BUILD_DIR, 'manifest.json')));
+app.use('/repostly/favicon.ico', express.static(path.join(BUILD_DIR, 'favicon.ico')));
 
 // --- Rate limiter (skip webhook to avoid Stripe signature/body issues) ---
 const limiter = rateLimit({
@@ -189,8 +183,8 @@ app.get('/api/user/verify/:userId', async (req, res) => {
   }
 });
 
-// 3. SPA fallback — must be LAST
-app.get(['/repostly', /^\/repostly\/.*/], (_req, res) => {
+// Catch-all route → serve index.html for React Router
+app.get('/repostly', (_req, res) => {
   res.sendFile(path.join(BUILD_DIR, 'index.html'));
 });
 
