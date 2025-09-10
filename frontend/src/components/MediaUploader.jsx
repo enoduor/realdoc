@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { PLATFORMS } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
 
-const API_URL = process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly/ai';
+const API_URL = process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://reelpostly.com/ai';
 
 const MediaUploader = () => {
   const { updateContent, content } = useContent();

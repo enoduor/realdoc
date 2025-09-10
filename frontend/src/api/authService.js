@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const AUTH_URL = process.env.REACT_APP_API_URL?.replace(/\/$/, '') || 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly';
+const AUTH_URL = process.env.REACT_APP_API_URL?.replace(/\/$/, '') || 'https://reelpostly.com';
 // const AUTH_URL = process.env.REACT_APP_API_URL?.replace(/\/$/, '') || 'http://localhost:4001';
 
 class AuthService {

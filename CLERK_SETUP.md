@@ -23,7 +23,7 @@
 ```bash
 REACT_APP_CLERK_PUBLISHABLE_KEY=pk_test_your_actual_key_here
 REACT_APP_API_URL=http://localhost:4001
-REACT_APP_PYTHON_API_URL=http://localhost:5001
+REACT_APP_AI_API=http://localhost:5001
 ```
 
 #### Backend (.env file in back/backend-node/ directory):

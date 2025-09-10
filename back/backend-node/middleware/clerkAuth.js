@@ -21,13 +21,14 @@ const clerkAuthMiddleware = async (req, res, next) => {
     
     // Check for required environment variables
     const clerkSecretKey = process.env.CLERK_SECRET_KEY || process.env.CLERK_JWT_KEY;
-    const clerkIssuerUrl = process.env.CLERK_ISSUER_URL;
+    // Let Clerk SDK resolve issuer from token automatically
+    const clerkIssuerUrl = process.env.CLERK_ISSUER_URL; // Optional - for fallback only
     // Don't enforce audience validation - use issuer + signature only
     const clerkAudience = null;
     
     console.log('Environment variables:');
     console.log('- CLERK_SECRET_KEY:', clerkSecretKey ? 'Set' : 'Not set');
-    console.log('- CLERK_ISSUER_URL:', clerkIssuerUrl);
+    console.log('- CLERK_ISSUER_URL:', clerkIssuerUrl || 'Not set (will auto-resolve)');
     console.log('- CLERK_AUDIENCE:', clerkAudience);
     
     if (!clerkSecretKey) {
@@ -35,19 +36,23 @@ const clerkAuthMiddleware = async (req, res, next) => {
       return res.status(500).json({ error: 'Clerk configuration missing' });
     }
     
-    if (!clerkIssuerUrl) {
-      console.log('❌ CLERK_ISSUER_URL not found');
-      return res.status(500).json({ error: 'Clerk configuration missing' });
-    }
-    
     // Verify the token with Clerk
     console.log('Verifying token...');
     try {
-      const payload = await verifyToken(token, {
+      const verifyOptions = {
         jwtKey: clerkSecretKey,
-        issuer: clerkIssuerUrl,
         // Don't enforce audience validation - use issuer + signature only
-      });
+      };
+      
+      // Only add issuer if explicitly set (let Clerk auto-resolve otherwise)
+      if (clerkIssuerUrl) {
+        verifyOptions.issuer = clerkIssuerUrl;
+        console.log('Using explicit issuer URL:', clerkIssuerUrl);
+      } else {
+        console.log('Letting Clerk auto-resolve issuer from token');
+      }
+      
+      const payload = await verifyToken(token, verifyOptions);
 
       console.log('✅ Token verified successfully');
       console.log('Payload:', {

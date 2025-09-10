@@ -1,30 +1,23 @@
 // src/services/ContentService.js
 import axios from 'axios';
 
-/* ===== Base URLs (normalized to be origin/PUBLIC_URL-relative) ===== */
+/* ===== Base URLs ===== */
 const ORIGIN =
   (typeof window !== 'undefined' && window.location && window.location.origin)
     ? window.location.origin
     : '';
 
-const PUBLIC_BASE_RAW = process.env.PUBLIC_URL || '/repostly/';
-
-// Ensure exactly one trailing slash
-const PUBLIC_BASE = (() => {
-  const t = String(PUBLIC_BASE_RAW || '/');
-  return t.endsWith('/') ? t : `${t}/`;
-})();
-
-const joinUrl = (a, b = '') =>
-  `${String(a).replace(/\/+$/, '')}/${String(b).replace(/^\/+/, '')}`;
-
-// If REACT_APP_PYTHON_API_URL is provided at build time, use it.
-// Otherwise, use production path or Node.js backend proxy for development.
+/**
+ * If REACT_APP_AI_API is set at build time, use it.
+ * Otherwise:
+ *   - production:   use `${origin}/ai`
+ *   - development:  use `http://localhost:5001`
+ */
 export const PYTHON_API_BASE_URL =
-  process.env.REACT_APP_PYTHON_API_URL
-    || (process.env.NODE_ENV === 'production' 
-        ? window.location.origin + '/repostly/ai'
-        : 'http://localhost:4001/repostly/ai');
+  process.env.REACT_APP_AI_API
+    || (process.env.NODE_ENV === 'production'
+        ? `${ORIGIN}/ai`
+        : 'http://localhost:5001');
 
 /* ===== Axios instance for AI service ===== */
 const ai = axios.create({

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ContentProvider } from "./context/ContentContext";
 import ClerkLogin from "./components/Auth/ClerkLogin";
@@ -15,6 +15,14 @@ import PricingPage from "./components/PricingPage";
 import "./App.css";
 
 export default function App() {
+  // Debug logging for troubleshooting
+  useEffect(() => {
+    console.log('🚀 App component mounted');
+    console.log('🔍 Current URL:', window.location.href);
+    console.log('🔍 Current pathname:', window.location.pathname);
+    console.log('🔍 Current route:', window.location.pathname);
+  }, []);
+
   return (
     <ContentProvider>
       <div className="App">

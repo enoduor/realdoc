@@ -9,7 +9,7 @@
   "containerDefinitions": [
     {
       "name": "repostly-unified",
-      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250908035339-6a7d969",
+      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250910041639-0cd1c5d",
       "portMappings": [
         {
           "containerPort": 3000,

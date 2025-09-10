@@ -271,3 +271,53 @@ this.platformService.postToPlatform(identifier, message, mediaUrl);
 
 **🚀 Ready for Production:**
 All platforms are now production-ready with enterprise-grade reliability and maintainability!
+🔥 All set — API & Web are live and healthy.
+	•	/ → 200 OK (HTML)
+	•	/api/health → 200 OK (JSON)
+	•	http:// → 301 to https://
+
+Want a tiny runbook so you can repeat this setup fast next time? Here’s a compact one you can save.
+
+Repostly Deploy Runbook (TL;DR)
+
+1) Security Groups
+	•	ALB SG (repostly-alb-sg)
+	•	Inbound: 80/tcp from 0.0.0.0/0
+	•	Inbound: 443/tcp from 0.0.0.0/0
+	•	Outbound: allow all
+	•	Tasks SG (repostly-tasks-sg)
+	•	Inbound: 3000/tcp from ALB SG
+	•	Inbound: 4001/tcp from ALB SG
+	•	Outbound: allow all
+
+2) Target Groups
+	•	repostly-unified-tg → port 3000, health path /, success 200–399
+	•	tg-repostly-unified-api → port 4001, health path /api/health, success 200–299
+
+3) ALB Listeners
+	•	HTTP :80 → Default action: Redirect to HTTPS :443 (301)
+	•	HTTPS :443
+	•	Default → repostly-unified-tg
+	•	Rule (prio 10): Path /api/* → tg-repostly-unified-api
+	•	Cert: reelpostly.com
+
+4) ECS Service (Fargate)
+	•	Task def exposes 3000/tcp and 4001/tcp
+	•	Networking: VPC + 2 subnets (2a & 2b), Tasks SG, Public IP On
+	•	Load balancing mappings:
+	•	repostly-unified:3000 → repostly-unified-tg
+	•	repostly-unified:4001 → tg-repostly-unified-api
+	•	Deploy: MinHealthy=100%, MaxPercent=200%, Grace=60s, Circuit breaker On
+
+5) Smoke Tests
+
+curl -I  http://reelpostly.com/                # 301 to https
+curl -I  https://reelpostly.com/               # 200 HTML
+curl -i  https://reelpostly.com/api/health     # 200 JSON
+
+6) Nice-to-haves
+	•	CloudWatch Alarms: UnHealthyHostCount > 0 (both TGs)
+	•	ALB access logs → S3
+	•	Stream ECS task logs to CloudWatch
+
+If you want, I can turn this into a one-page checklist you can keep in your repo (README) or runbook doc.

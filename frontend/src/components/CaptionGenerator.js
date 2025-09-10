@@ -5,18 +5,18 @@ import { PLATFORMS, getCharacterLimit } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
 
 const CaptionGenerator = () => {
+    console.log('🎯 CaptionGenerator component rendering');
+    
     const { updateContent, content } = useContent();
     const [formData, setFormData] = useState({
-        platform: content.platform || 'instagram',
-        topic: content.topic || '',
-        tone: content.tone || 'professional',
-        language: content.language || 'en'
+        platform: content?.platform || 'instagram',
+        topic: content?.topic || '',
+        tone: content?.tone || 'professional',
+        language: content?.language || 'en'
     });
     const [caption, setCaption] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-
-    const platformLimits = PLATFORMS[formData.platform.toUpperCase()];
 
     useEffect(() => {
         if (content.platform !== formData.platform) {
@@ -25,7 +25,7 @@ const CaptionGenerator = () => {
                 platform: content.platform
             }));
         }
-    }, [content.platform]);
+    }, [content.platform, formData.platform]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -33,6 +33,7 @@ const CaptionGenerator = () => {
             ...prev,
             [name]: value
         }));
+        
         if (name === 'platform') {
             updateContent({ platform: value });
         }
@@ -57,6 +58,10 @@ const CaptionGenerator = () => {
             setLoading(false);
         }
     };
+
+
+    const platformLimits = PLATFORMS[formData.platform.toUpperCase()];
+
 
     return (
         <div className="min-h-screen bg-gray-50">

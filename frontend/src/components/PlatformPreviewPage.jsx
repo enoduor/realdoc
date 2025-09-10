@@ -5,6 +5,8 @@ import { publishNow } from '../api';
 import PlatformPreviewPanel from './PlatformPreviewPanel';
 
 const PlatformPreviewPage = () => {
+  console.log('🎯 PlatformPreviewPage component rendering');
+  
   const { content } = useContent();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');

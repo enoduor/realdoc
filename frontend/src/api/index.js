@@ -2,7 +2,7 @@
 const ORIGIN =
   (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
 
-const PUBLIC_BASE_RAW = process.env.PUBLIC_URL || '/repostly/';
+const PUBLIC_BASE_RAW = process.env.PUBLIC_URL || '/';
 
 // Normalize PUBLIC_BASE to always have exactly one trailing slash
 const PUBLIC_BASE = (() => {
@@ -13,17 +13,34 @@ const PUBLIC_BASE = (() => {
 const joinUrl = (a, b = '') =>
   `${String(a).replace(/\/+$/,'')}/${String(b).replace(/^\/+/,'')}`;
 
-// If REACT_APP_API_URL / REACT_APP_PYTHON_API_URL are provided at build time, use them.
-// Otherwise, build them from window.location.origin + PUBLIC_URL.
-export const API_BASE_URL =
-  (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.replace(/\/$/, ''))
-  || joinUrl(ORIGIN, PUBLIC_BASE).replace(/\/$/, '');
+// Base URL without /api prefix (just the origin)
+export const API_BASE_URL = (() => {
+  const envUrl = process.env.REACT_APP_API_URL;
+  const fallbackUrl = joinUrl(ORIGIN, PUBLIC_BASE).replace(/\/$/, '');
+  
+  console.log('🔍 API_BASE_URL Debug:');
+  console.log('- REACT_APP_API_URL:', envUrl);
+  console.log('- ORIGIN:', ORIGIN);
+  console.log('- PUBLIC_BASE:', PUBLIC_BASE);
+  console.log('- Fallback URL:', fallbackUrl);
+  
+  const finalUrl = (envUrl && envUrl.replace(/\/$/, '')) || fallbackUrl;
+  console.log('- Final API_BASE_URL:', finalUrl);
+  
+  return finalUrl;
+})();
+
+// Helper function to build API URLs with correct /api prefix
+const apiUrl = (path = '') => {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${API_BASE_URL}/api${cleanPath}`;
+};
 
 export const PYTHON_API_BASE_URL =
-  process.env.REACT_APP_PYTHON_API_URL
+  process.env.REACT_APP_AI_API
   || (process.env.NODE_ENV === 'production' 
-      ? window.location.origin + '/repostly/ai'
-      : 'http://localhost:4001/repostly/ai');
+      ? window.location.origin + '/ai'
+      : 'http://localhost:5001');
 
 // --- Auth helpers (unchanged) -----------------------------------------------
 const getAuthToken = async () => {
@@ -63,7 +80,27 @@ const makeAuthenticatedRequest = async (url, options = {}) => {
     throw new Error(`API request failed: ${response.statusText}`);
   }
 
-  return response.json();
+  // Handle response parsing more robustly
+  const contentType = response.headers.get('content-type');
+  
+  // Read the response text once
+  const text = await response.text();
+  
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      if (!text.trim()) {
+        return { message: 'Empty response' };
+      }
+      return JSON.parse(text);
+    } catch (error) {
+      console.error('Failed to parse JSON response:', error);
+      console.error('Response was:', text);
+      throw new Error(`Invalid JSON response from server: ${error.message}`);
+    }
+  } else {
+    // If not JSON, return the text response
+    return { message: text };
+  }
 };
 
 // --- AI Services (unchanged) -----------------------------------------------
@@ -102,12 +139,12 @@ export const getHashtags = async ({ platform, topic, count }) => {
 // ---- Internal helpers ------------------------------------------------------
 const ENDPOINTS = [
   // Individual platform endpoints for legacy flow
-  '/api/publisher/linkedin/publish',
-  '/api/publisher/facebook/publish',
-  '/api/publisher/instagram/publish',
-  '/api/publisher/twitter/publish',
-  '/api/publisher/youtube/publish',
-  '/api/publisher/tiktok/publish',
+  '/publisher/linkedin/publish',
+  '/publisher/facebook/publish',
+  '/publisher/instagram/publish',
+  '/publisher/twitter/publish',
+  '/publisher/youtube/publish',
+  '/publisher/tiktok/publish',
 ];
 
 const asArray = (v) => (Array.isArray(v) ? v : []);
@@ -263,17 +300,17 @@ const buildPlatformBody = (platform, postData) => {
 const platformPath = (platform) => {
   switch (platform) {
     case 'twitter':
-      return '/api/publisher/twitter/publish';
+      return '/publisher/twitter/publish';
     case 'linkedin':
-      return '/api/publisher/linkedin/publish';
+      return '/publisher/linkedin/publish';
     case 'instagram':
-      return '/api/publisher/instagram/publish';
+      return '/publisher/instagram/publish';
     case 'facebook':
-      return '/api/publisher/facebook/publish';
+      return '/publisher/facebook/publish';
     case 'tiktok':
-      return '/api/publisher/tiktok/publish';
+      return '/publisher/tiktok/publish';
     case 'youtube':
-      return '/api/publisher/youtube/publish';
+      return '/publisher/youtube/publish';
     default:
       return null;
   }
@@ -313,10 +350,10 @@ const publishSinglePlatform = async (platform, postData, token) => {
     console.log('[Frontend][YouTube] publishSinglePlatform - path:', path);
     console.log('[Frontend][YouTube] publishSinglePlatform - body:', JSON.stringify(body, null, 2));
     console.log('[Frontend][YouTube] publishSinglePlatform - API_BASE_URL:', API_BASE_URL);
-    console.log('[Frontend][YouTube] publishSinglePlatform - full URL:', `${API_BASE_URL}${path}`);
+    console.log('[Frontend][YouTube] publishSinglePlatform - full URL:', apiUrl(path));
   }
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await fetch(apiUrl(path), {
     method: 'POST',
     headers,
     credentials: 'include',
@@ -417,7 +454,7 @@ export async function publishNow(postData) {
       if (token) headers['Authorization'] = `Bearer ${token}`;
       const linkedinPostData = { content: postData.content };
 
-      const res = await fetch(`${API_BASE_URL}/api/publisher/linkedin/publish`, {
+      const res = await fetch(apiUrl('/publisher/linkedin/publish'), {
         method: 'POST',
         headers,
         credentials: 'include',
@@ -519,7 +556,7 @@ export async function publishNow(postData) {
 
 // --- Platform status (unchanged) -------------------------------------------
 export const getPlatformStatus = async () => {
-  return makeAuthenticatedRequest(`${API_BASE_URL}/api/publisher/platforms/status`);
+  return makeAuthenticatedRequest(apiUrl('/publisher/platforms/status'));
 };
 
 // --- Stripe Services --------------------------------------------------------
@@ -531,7 +568,7 @@ export const createSubscriptionSession = async (plan, billingCycle) => {
     const requestBody = { plan, billingCycle };
     console.log('🔍 Request body:', requestBody);
 
-    const response = await fetch(`${API_BASE_URL}/api/stripe/create-subscription-session`, {
+    const response = await fetch(apiUrl('/stripe/create-subscription-session'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
@@ -557,7 +594,7 @@ export const createSubscriptionSession = async (plan, billingCycle) => {
 
 export const getSubscriptionStatus = async () => {
   try {
-    return await makeAuthenticatedRequest(`${API_BASE_URL}/api/stripe/subscription`);
+    return await makeAuthenticatedRequest(apiUrl('/stripe/subscription'));
   } catch (error) {
     console.error('Error getting subscription status:', error);
     throw error;
@@ -566,7 +603,7 @@ export const getSubscriptionStatus = async () => {
 
 export const cancelSubscription = async () => {
   try {
-    return await makeAuthenticatedRequest(`${API_BASE_URL}/api/stripe/cancel-subscription`, { method: 'POST' });
+    return await makeAuthenticatedRequest(apiUrl('/stripe/cancel-subscription'), { method: 'POST' });
   } catch (error) {
     console.error('Error canceling subscription:', error);
     throw error;
@@ -575,7 +612,7 @@ export const cancelSubscription = async () => {
 
 export const reactivateSubscription = async () => {
   try {
-    return await makeAuthenticatedRequest(`${API_BASE_URL}/api/stripe/reactivate-subscription`, { method: 'POST' });
+    return await makeAuthenticatedRequest(apiUrl('/stripe/reactivate-subscription'), { method: 'POST' });
   } catch (error) {
     console.error('Error reactivating subscription:', error);
     throw error;
@@ -584,7 +621,7 @@ export const reactivateSubscription = async () => {
 
 export const getBillingPortalUrl = async () => {
   try {
-    return await makeAuthenticatedRequest(`${API_BASE_URL}/api/stripe/billing-portal`, { method: 'POST' });
+    return await makeAuthenticatedRequest(apiUrl('/stripe/billing-portal'), { method: 'POST' });
   } catch (error) {
     console.error('Error getting billing portal URL:', error);
     throw error;
@@ -594,7 +631,7 @@ export const getBillingPortalUrl = async () => {
 // Check if user has active subscription
 export const checkSubscriptionStatus = async () => {
   try {
-    return await makeAuthenticatedRequest(`${API_BASE_URL}/api/stripe/subscription`);
+    return await makeAuthenticatedRequest(apiUrl('/stripe/subscription'));
   } catch (error) {
     console.error('Error checking subscription status:', error);
     return { hasActiveSubscription: false };
@@ -604,7 +641,7 @@ export const checkSubscriptionStatus = async () => {
 // Check subscription status by session ID (no auth required)
 export const checkSubscriptionBySession = async (sessionId) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/stripe/subscription-by-session/${sessionId}`);
+    const response = await fetch(apiUrl(`/stripe/subscription-by-session/${sessionId}`));
     return await response.json();
   } catch (error) {
     console.error('Error checking subscription by session:', error);
@@ -616,12 +653,38 @@ export const checkSubscriptionBySession = async (sessionId) => {
 export const linkTempUser = async (email) => {
   try {
     const token = await window.Clerk.session?.getToken({ skipCache: true });
-    const response = await fetch(`${API_BASE_URL}/api/auth/link-temp-user`, {
+    console.log('🔍 linkTempUser Debug:');
+    console.log('- window.Clerk:', window.Clerk ? 'Available' : 'Not available');
+    console.log('- window.Clerk.session:', window.Clerk?.session ? 'Available' : 'Not available');
+    console.log('- Token value:', token);
+    console.log('- Token type:', typeof token);
+    console.log('- Token length:', token ? token.length : 'N/A');
+    console.log('- Email being sent:', email);
+    
+    const response = await fetch(apiUrl('/auth/link-temp-user'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ email }),
     });
-    return await response.json();
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    // Handle response parsing more robustly
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      try {
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to parse JSON response:', error);
+        throw new Error('Invalid JSON response from server');
+      }
+    } else {
+      // If not JSON, return the text response
+      const text = await response.text();
+      return { message: text };
+    }
   } catch (error) {
     console.error('Error linking temporary user:', error);
     throw error;
@@ -631,7 +694,7 @@ export const linkTempUser = async (email) => {
 // Create or link Clerk user with database user
 export const createOrLinkClerkUser = async () => {
   try {
-    return await makeAuthenticatedRequest(`${API_BASE_URL}/api/auth/create-clerk-user`, { method: 'POST' });
+    return await makeAuthenticatedRequest(apiUrl('/auth/create-clerk-user'), { method: 'POST' });
   } catch (error) {
     console.error('Error creating/linking Clerk user:', error);
     throw error;

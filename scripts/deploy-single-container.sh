@@ -11,13 +11,13 @@ ECR_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
 REPO_NAME="repostly-unified"
 
 # Production URLs (replace with your actual domain when you have one)
-ALB_DNS="${ALB_DNS:-repostly-alb-1811247430.us-west-2.elb.amazonaws.com}"
+ALB_DNS="${ALB_DNS:-reelpostly.com}"
 PRODUCTION_BASE_URL="https://${ALB_DNS}"
 
 # Set production environment variables for frontend build
-export REACT_APP_API_URL="${REACT_APP_API_URL:-${PRODUCTION_BASE_URL}/api}"
-export REACT_APP_PYTHON_API_URL="${REACT_APP_PYTHON_API_URL:-${PRODUCTION_BASE_URL}/ai}"
-export REACT_APP_CLERK_PUBLISHABLE_KEY="${REACT_APP_CLERK_PUBLISHABLE_KEY:-pk_live_51RCMFRLPiEjYBNcQYp0Czn3uE51AnrqeUnw3S36BKi5G5Nwj1AU2yXFFvG750PE8VeZHhORAtEVubkMdjUzOCd8A003seIy7Nl}"
+export REACT_APP_API_URL="${REACT_APP_API_URL:-${PRODUCTION_BASE_URL}}"
+export REACT_APP_AI_API="${REACT_APP_AI_API:-${PRODUCTION_BASE_URL}/ai}"
+export REACT_APP_CLERK_PUBLISHABLE_KEY="${REACT_APP_CLERK_PUBLISHABLE_KEY:-pk_live_Y2xlcmsucmVlbHBvc3RseS5jb20k}"
 
 require() { command -v "$1" >/dev/null || { echo "Missing: $1"; exit 1; }; }
 require aws; require jq; require docker
@@ -73,7 +73,7 @@ build_and_push() {
     --platform linux/amd64 \
     -f Dockerfile \
     --build-arg REACT_APP_API_URL="$REACT_APP_API_URL" \
-    --build-arg REACT_APP_PYTHON_API_URL="$REACT_APP_PYTHON_API_URL" \
+    --build-arg REACT_APP_AI_API="$REACT_APP_AI_API" \
     --build-arg REACT_APP_CLERK_PUBLISHABLE_KEY="$REACT_APP_CLERK_PUBLISHABLE_KEY" \
     --build-arg PUBLIC_URL="/" \
     -t "$image_tag" \
@@ -229,23 +229,39 @@ create_service() {
   local task_def_arn="$1"
   local service_name="repostly-unified"
   
-  # Always create a new service for fresh deployment
-  echo "[Create] Creating new service for Repostly ALB..."
-  aws ecs create-service \
+  # Check if service exists, then update or create
+  echo "[Check] Checking if service exists..."
+  if aws ecs describe-services \
     --cluster "$CLUSTER" \
-    --service-name "$service_name" \
-    --task-definition "$task_def_arn" \
-    --desired-count 1 \
-    --launch-type FARGATE \
-    --network-configuration "awsvpcConfiguration={subnets=[subnet-0840b774ddc688987,subnet-0113e0c8e2cafde02],securityGroups=[sg-05a357e17fb04284b],assignPublicIp=ENABLED}" \
-    --load-balancers "targetGroupArn=arn:aws:elasticloadbalancing:$AWS_REGION:$AWS_ACCOUNT_ID:targetgroup/repostly-unified-tg/7eb50bb851dc19fc,containerName=repostly-unified,containerPort=3000" \
-    --region "$AWS_REGION" >/dev/null
+    --services "$service_name" \
+    --region "$AWS_REGION" \
+    --query 'services[0].status' \
+    --output text 2>/dev/null | grep -q "ACTIVE"; then
+    
+    echo "[Update] Updating existing service..."
+    aws ecs update-service \
+      --cluster "$CLUSTER" \
+      --service "$service_name" \
+      --task-definition "$task_def_arn" \
+      --region "$AWS_REGION" >/dev/null
+  else
+    echo "[Create] Creating new service for Repostly ALB..."
+    aws ecs create-service \
+      --cluster "$CLUSTER" \
+      --service-name "$service_name" \
+      --task-definition "$task_def_arn" \
+      --desired-count 1 \
+      --launch-type FARGATE \
+      --network-configuration "awsvpcConfiguration={subnets=[subnet-0840b774ddc688987,subnet-0113e0c8e2cafde02],securityGroups=[sg-05a357e17fb04284b],assignPublicIp=ENABLED}" \
+      --load-balancers "targetGroupArn=arn:aws:elasticloadbalancing:$AWS_REGION:$AWS_ACCOUNT_ID:targetgroup/repostly-unified-tg/7eb50bb851dc19fc,containerName=repostly-unified,containerPort=3000" \
+      --region "$AWS_REGION" >/dev/null
+  fi
 }
 
 main() {
   echo "[Login] ECR $ECR_URI"
   echo "[URLs] API: $REACT_APP_API_URL"
-  echo "[URLs] AI: $REACT_APP_PYTHON_API_URL"
+  echo "[URLs] AI: $REACT_APP_AI_API"
   echo "[URLs] Clerk: ${REACT_APP_CLERK_PUBLISHABLE_KEY:0:20}..."
   login_ecr
   
@@ -275,7 +291,7 @@ main() {
     --services "repostly-unified"
   
   echo "[Success] Deployment complete!"
-  echo "[URL] https://your-alb-url/repostly/"
+  echo "[URL] https://reelpostly.com"
 }
 
 main "$@"

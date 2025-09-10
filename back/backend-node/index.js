@@ -15,6 +15,12 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 console.log("📡 Attempting MongoDB connection...");
+console.log("🔍 Environment check:");
+console.log("- NODE_ENV:", process.env.NODE_ENV);
+console.log("- CLERK_SECRET_KEY:", process.env.CLERK_SECRET_KEY ? "Set" : "Not set");
+console.log("- CLERK_PUBLISHABLE_KEY:", process.env.CLERK_PUBLISHABLE_KEY ? "Set" : "Not set");
+console.log("- CLERK_ISSUER_URL:", process.env.CLERK_ISSUER_URL || "Not set");
+
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log("✅ MongoDB Connected");
@@ -30,13 +36,7 @@ const app = express();
 // --- NEW: trust proxy for ALB ---
 app.set('trust proxy', 1);
 
-// --- Keep path-prefix stripping first ---
-app.use((req, _res, next) => {
-  if (req.url.startsWith('/repostly')) {
-    req.url = req.url.slice('/repostly'.length) || '/';
-  }
-  next();
-});
+// --- Path-prefix stripping removed (running on root domain) ---
 
 // --- Proxy AI requests to Python backend ---
 app.use('/ai', createProxyMiddleware({
@@ -82,10 +82,10 @@ app.use(express.json());
 const BUILD_DIR = process.env.NODE_ENV === 'production' ? '/app/frontend/build' : path.join(__dirname, '../../frontend/build');
 
 // Serve static files (CSS, JS, assets) - only for files with extensions
-app.use('/repostly/static', express.static(path.join(BUILD_DIR, 'static')));
-app.use('/repostly/asset-manifest.json', express.static(path.join(BUILD_DIR, 'asset-manifest.json')));
-app.use('/repostly/manifest.json', express.static(path.join(BUILD_DIR, 'manifest.json')));
-app.use('/repostly/favicon.ico', express.static(path.join(BUILD_DIR, 'favicon.ico')));
+app.use('/static', express.static(path.join(BUILD_DIR, 'static')));
+app.use('/asset-manifest.json', express.static(path.join(BUILD_DIR, 'asset-manifest.json')));
+app.use('/manifest.json', express.static(path.join(BUILD_DIR, 'manifest.json')));
+app.use('/favicon.ico', express.static(path.join(BUILD_DIR, 'favicon.ico')));
 
 // --- Rate limiter (skip webhook to avoid Stripe signature/body issues) ---
 const limiter = rateLimit({
@@ -112,10 +112,13 @@ app.use((req, res, next) => {
     req.path === '/ping' ||
     req.path.startsWith('/webhook') ||
     req.path.startsWith('/oauth') ||
-    req.path.startsWith('/api') // public auth endpoints / callbacks live here
+    req.path.startsWith('/api/health') ||
+    req.path.startsWith('/api/stripe/webhook') ||
+    req.path.startsWith('/api/auth/oauth') // OAuth callbacks are public
   ) {
     return next();
   }
+  // Allow all other routes to pass through (they can enforce their own auth)
   next();
 });
 
@@ -188,9 +191,9 @@ app.get('/api/user/verify/:userId', async (req, res) => {
   }
 });
 
-// Catch-all route → serve index.html for React Router
+// Legacy route for /repostly (redirect to root)
 app.get('/repostly', (_req, res) => {
-  res.sendFile(path.join(BUILD_DIR, 'index.html'));
+  res.redirect('/');
 });
 
 const PORT = process.env.PORT || 4001;

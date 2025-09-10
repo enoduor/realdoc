@@ -186,13 +186,16 @@ const Dashboard = () => {
     });
   }, []);
 
-  const handleFeatureClick = (e, feature) => {
-    if (!hasSubscription) {
-      e.preventDefault();
-      alert('You must subscribe to use this feature. Redirecting to pricing...');
-      navigate('/pricing');
-    }
-  };
+    const handleFeatureClick = (e, feature) => {
+      // Only block navigation if we've confirmed the user doesn't have a subscription
+      // Allow navigation if subscription status is still loading (null) or if user has subscription
+      if (hasSubscription === false) {
+        e.preventDefault();
+        alert('You must subscribe to use this feature. Redirecting to pricing...');
+        navigate('/pricing');
+      }
+      // If hasSubscription is null (loading) or true, allow navigation to proceed
+    };
 
   const features = [
     {

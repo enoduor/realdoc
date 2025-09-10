@@ -21,12 +21,31 @@ function resolveClerkKey() {
   return meta?.getAttribute("content") || "";
 }
 
+// Detect if we're running on production
+const isProdHost = typeof window !== "undefined" && 
+  (window.location.hostname === "reelpostly.com" || 
+   window.location.hostname === "www.reelpostly.com");
+
+// Debug logging
+console.log("🔍 Hostname:", window.location.hostname);
+console.log("🔍 Is production host:", isProdHost);
+
 const clerkConfig = {
   publishableKey: resolveClerkKey(),
-  afterSignInUrl: joinUrl(PUBLIC_BASE, "app"),
-  afterSignUpUrl: joinUrl(PUBLIC_BASE, "app"),
+  fallbackRedirectUrl: joinUrl(PUBLIC_BASE, "app"),
   afterSignOutUrl: PUBLIC_BASE,
 };
+
+// Only use custom frontendApi in production
+if (isProdHost) {
+  clerkConfig.frontendApi = "clerk.reelpostly.com";
+  console.log("🔧 Using custom frontendApi: clerk.reelpostly.com");
+} else {
+  console.log("🔧 Using default Clerk endpoints");
+}
+
+console.log("🔧 Final clerkConfig:", clerkConfig);
+
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

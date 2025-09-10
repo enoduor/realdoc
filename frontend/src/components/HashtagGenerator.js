@@ -32,6 +32,7 @@ const HashtagGenerator = () => {
             ...prev,
             [name]: name === 'count' ? Math.min(parseInt(value), platformLimits.maxHashtags) : value
         }));
+        
         if (name === 'platform') {
             updateContent({ platform: value });
         }
@@ -56,6 +57,7 @@ const HashtagGenerator = () => {
             setLoading(false);
         }
     };
+
 
     return (
         <div className="min-h-screen bg-gray-50">

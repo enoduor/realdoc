@@ -23,7 +23,7 @@ const ClerkUserProfile = () => {
       // Sign out from Clerk
       // Use the same URL building logic as the main app
       const ORIGIN = window.location.origin;
-      const PUBLIC_BASE_RAW = process.env.PUBLIC_URL || '/repostly/';
+      const PUBLIC_BASE_RAW = process.env.PUBLIC_URL || '/';
       const PUBLIC_BASE = PUBLIC_BASE_RAW.endsWith('/') ? PUBLIC_BASE_RAW : `${PUBLIC_BASE_RAW}/`;
       const redirectUrl = `${ORIGIN}${PUBLIC_BASE}`;
       

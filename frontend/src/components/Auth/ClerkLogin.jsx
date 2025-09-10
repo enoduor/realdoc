@@ -6,6 +6,10 @@ import { useUser } from '@clerk/clerk-react';
 const ClerkLogin = () => {
   const { isSignedIn, isLoaded } = useUser();
 
+  // Debug logging
+  console.log('🔐 ClerkLogin - isLoaded:', isLoaded, 'isSignedIn:', isSignedIn);
+  console.log('🔐 ClerkLogin - Current pathname:', window.location.pathname);
+
   // Show loading while Clerk is initializing
   if (!isLoaded) {
     return (
@@ -20,6 +24,7 @@ const ClerkLogin = () => {
 
   // Redirect to app if already authenticated
   if (isSignedIn) {
+    console.log('🔄 Redirecting authenticated user to /app');
     return <Navigate to="/app" replace />;
   }
 

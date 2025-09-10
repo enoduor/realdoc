@@ -3,6 +3,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - REACT_APP_CLERK_PUBLISHABLE_KEY=pk_test_YW1hemVkLWdyb3VzZS03NS5jbGVyay5hY2NvdW50cy5kZXYk
+        - REACT_APP_API_URL=http://localhost:4001
+        - REACT_APP_AI_API=http://localhost:5001
     container_name: repostly-local
     ports:
       - "3000:3000"  # Frontend

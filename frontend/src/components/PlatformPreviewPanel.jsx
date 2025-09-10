@@ -339,7 +339,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
             formData.append('file', file);
             formData.append('platform', content.platform || 'instagram');
 
-            const response = await axios.post(`${process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://videograb-alb-1069883284.us-west-2.elb.amazonaws.com/repostly/ai'}/api/v1/upload`, formData, {
+            const response = await axios.post(`${process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://reelpostly.com/ai'}/api/v1/upload`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 },

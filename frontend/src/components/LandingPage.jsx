@@ -12,7 +12,7 @@ const LandingPage = () => {
         <div className="nav-container">
           <div className="nav-logo">
             <Link to="/" className="logo-link">
-              Repostly
+              Reelpostly
             </Link>
           </div>
           <div className="nav-links">
@@ -41,7 +41,8 @@ const LandingPage = () => {
           <div className="hero-content">
             <h1 className="hero-title">Create Once, Publish Everywhere</h1>
             <p className="hero-subtitle">
-            Save hours, skip juggling tools. Repurpose a single video, auto-caption it, and publish across Instagram, TikTok, YouTube, Facebook, LinkedIn, and X in seconds</p>
+            Save hours and skip juggling tools. Repurpose a single video, auto-caption it, and publish across Instagram, TikTok, YouTube, Facebook, LinkedIn, and X in seconds — and yes, you can even download videos for free from our platform and get started instantly.
+            </p>
             <div className="hero-cta">
               <Link to="/register" className="cta-primary">
                 1 Post × 6 Platforms
@@ -133,7 +134,7 @@ const LandingPage = () => {
       <section className="cta-section">
         <div className="cta-container">
           <h2>Ready to Transform Your Social Media?</h2>
-          <p>Join thousands of creators who are already growing their audience with Repostly</p>
+          <p>Join thousands of creators who are already growing their audience with Reelpostly</p>
           <Link to="/register" className="cta-button-large">
             1 Post × 6 Platforms
           </Link>
@@ -146,7 +147,7 @@ const LandingPage = () => {
         <div className="footer-container">
           <div className="footer-content">
             <div className="footer-section">
-              <h4>Repostly</h4>
+              <h4>Reelpostly</h4>
               <p>Made for solo creators, startups, small businesses.<br/>
               <strong>Create once, publish everywhere.</strong></p>
             </div>
@@ -188,7 +189,7 @@ const LandingPage = () => {
             </div>
           </div>
           <div className="footer-bottom">
-            <p>&copy; 2024 Repostly. All rights reserved.</p>
+            <p>&copy; 2024 Reelpostly. All rights reserved.</p>
             <div className="footer-links">
               <Link to="/privacy">Privacy Policy</Link>
               <Link to="/terms">Terms of Service</Link>
