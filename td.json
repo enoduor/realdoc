@@ -1,9 +1,9 @@
 {
-    "taskDefinitionArn": "arn:aws:ecs:us-west-2:657053005765:task-definition/repostly-unified:10",
+    "taskDefinitionArn": "arn:aws:ecs:us-west-2:657053005765:task-definition/repostly-unified:100",
     "containerDefinitions": [
         {
             "name": "repostly-unified",
-            "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250907160509",
+            "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250911035816-a288826",
             "cpu": 0,
             "portMappings": [
                 {
@@ -29,6 +29,10 @@
                     "value": "4001"
                 },
                 {
+                    "name": "AI_ROOT_PATH",
+                    "value": "/ai"
+                },
+                {
                     "name": "NODE_ENV",
                     "value": "production"
                 }
@@ -38,19 +42,55 @@
             "secrets": [
                 {
                     "name": "MONGODB_URI",
-                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/mongodb-uri"
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/MONGODB_URI"
                 },
                 {
                     "name": "CLERK_SECRET_KEY",
-                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/clerk-secret-key"
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_SECRET_KEY"
+                },
+                {
+                    "name": "CLERK_PUBLISHABLE_KEY",
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_PUBLISHABLE_KEY"
+                },
+                {
+                    "name": "CLERK_ISSUER_URL",
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_ISSUER_URL"
                 },
                 {
                     "name": "OPENAI_API_KEY",
-                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/openai-api-key"
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/ai/OPENAI_API_KEY"
                 },
                 {
                     "name": "STRIPE_SECRET_KEY",
-                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/stripe-secret-key"
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_SECRET_KEY"
+                },
+                {
+                    "name": "STRIPE_WEBHOOK_SECRET",
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_WEBHOOK_SECRET"
+                },
+                {
+                    "name": "STRIPE_STARTER_MONTHLY_PRICE_ID",
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_STARTER_MONTHLY_PRICE_ID"
+                },
+                {
+                    "name": "STRIPE_STARTER_YEARLY_PRICE_ID",
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_STARTER_YEARLY_PRICE_ID"
+                },
+                {
+                    "name": "STRIPE_CREATOR_MONTHLY_PRICE_ID",
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_CREATOR_MONTHLY_PRICE_ID"
+                },
+                {
+                    "name": "STRIPE_CREATOR_YEARLY_PRICE_ID",
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_CREATOR_YEARLY_PRICE_ID"
+                },
+                {
+                    "name": "STRIPE_PRO_MONTHLY_PRICE_ID",
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_PRO_MONTHLY_PRICE_ID"
+                },
+                {
+                    "name": "STRIPE_PRO_YEARLY_PRICE_ID",
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_PRO_YEARLY_PRICE_ID"
                 }
             ],
             "logConfiguration": {
@@ -66,7 +106,7 @@
                     "CMD",
                     "curl",
                     "-f",
-                    "http://localhost:5001/ping"
+                    "http://localhost:3000/"
                 ],
                 "interval": 30,
                 "timeout": 10,
@@ -77,9 +117,10 @@
         }
     ],
     "family": "repostly-unified",
+    "taskRoleArn": "arn:aws:iam::657053005765:role/ecsTaskRole",
     "executionRoleArn": "arn:aws:iam::657053005765:role/ecsTaskExecutionRole",
     "networkMode": "awsvpc",
-    "revision": 10,
+    "revision": 100,
     "volumes": [],
     "status": "ACTIVE",
     "requiresAttributes": [
@@ -94,6 +135,9 @@
         },
         {
             "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.task-iam-role"
         },
         {
             "name": "ecs.capability.container-health-check"
@@ -123,7 +167,7 @@
         "FARGATE"
     ],
     "cpu": "1024",
-    "memory": "2048",
-    "registeredAt": "2025-09-07T16:05:42.660000-04:00",
+    "memory": "4096",
+    "registeredAt": "2025-09-11T04:01:56.116000-04:00",
     "registeredBy": "arn:aws:iam::657053005765:user/videograb-deploy"
 }

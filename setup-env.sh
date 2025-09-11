@@ -4,7 +4,7 @@ echo "🛠️ Setting up environment files for all services..."
 
 # Create directories if they don't exist
 mkdir -p back/backend-node
-mkdir -p back/backend-python
+mkdir -p back/backend_python
 mkdir -p frontend
 
 # Backend Node
@@ -20,12 +20,12 @@ EOF
 echo "✅ back/backend-node/.env created"
 
 # Backend Python
-echo "➡️  Creating .env in back/backend-python/"
-cat <<EOF > back/backend-python/.env
+echo "➡️  Creating .env in back/backend_python/"
+cat <<EOF > back/backend_python/.env
 OPENAI_API_KEY=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
 PORT=5000
 EOF
-echo "✅ back/backend-python/.env created"
+echo "✅ back/backend_python/.env created"
 
 # Frontend (React)
 echo "➡️  Creating .env in frontend/"
@@ -147,7 +147,7 @@ cd /Users/mzmzma/Desktop/creatorsync
 # 2. Create/update main project directories
 mkdir -p frontend/src/{components,context,api,styles}
 mkdir -p back/backend-node/{routes,controllers,models,middleware}
-mkdir -p back/backend-python/{routes,services,utils}
+mkdir -p back/backend_python/{routes,services,utils}
 mkdir -p config
 mkdir -p scripts
 
@@ -195,7 +195,7 @@ AI-powered content creation assistant platform.
 │   │   ├── controllers/  # Route controllers
 │   │   ├── models/       # MongoDB models
 │   │   └── middleware/   # Express middleware
-│   └── backend-python/
+│   └── backend_python/
 │       ├── routes/       # Flask routes
 │       ├── services/     # AI services
 │       └── utils/        # Utility functions
@@ -217,7 +217,7 @@ AI-powered content creation assistant platform.
    node index.js
 
    # Python backend
-   cd back/backend-python
+   cd back/backend_python
    source venv/bin/activate
    pip install -r requirements.txt
    python app.py

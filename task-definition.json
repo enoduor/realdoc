@@ -9,22 +9,33 @@
   "containerDefinitions": [
     {
       "name": "repostly-unified",
-      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250910041639-0cd1c5d",
+      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250910225105-a288826",
       "portMappings": [
-        {
-          "containerPort": 3000,
-          "protocol": "tcp"
-        },
-        {
-          "containerPort": 4001,
-          "protocol": "tcp"
-        },
-        {
-          "containerPort": 5001,
-          "protocol": "tcp"
-        }
+        { "containerPort": 3000, "protocol": "tcp" },
+        { "containerPort": 4001, "protocol": "tcp" },
+        { "containerPort": 5001, "protocol": "tcp" }
       ],
       "essential": true,
+      "environment": [
+        { "name": "NODE_ENV", "value": "production" },
+        { "name": "PORT", "value": "4001" },
+        { "name": "AI_ROOT_PATH", "value": "/ai" }
+      ],
+      "secrets": [
+        { "name": "MONGODB_URI", "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/MONGODB_URI" },
+        { "name": "CLERK_SECRET_KEY", "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_SECRET_KEY" },
+        { "name": "CLERK_PUBLISHABLE_KEY", "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_PUBLISHABLE_KEY" },
+        { "name": "CLERK_ISSUER_URL", "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_ISSUER_URL" },
+        { "name": "OPENAI_API_KEY", "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/ai/OPENAI_API_KEY" },
+        { "name": "STRIPE_SECRET_KEY", "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_SECRET_KEY" },
+        { "name": "STRIPE_WEBHOOK_SECRET", "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_WEBHOOK_SECRET" },
+        { "name": "STRIPE_STARTER_MONTHLY_PRICE_ID", "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_STARTER_MONTHLY_PRICE_ID" },
+        { "name": "STRIPE_STARTER_YEARLY_PRICE_ID", "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_STARTER_YEARLY_PRICE_ID" },
+        { "name": "STRIPE_CREATOR_MONTHLY_PRICE_ID", "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_CREATOR_MONTHLY_PRICE_ID" },
+        { "name": "STRIPE_CREATOR_YEARLY_PRICE_ID", "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_CREATOR_YEARLY_PRICE_ID" },
+        { "name": "STRIPE_PRO_MONTHLY_PRICE_ID", "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_PRO_MONTHLY_PRICE_ID" },
+        { "name": "STRIPE_PRO_YEARLY_PRICE_ID", "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_PRO_YEARLY_PRICE_ID" }
+      ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
@@ -33,76 +44,9 @@
           "awslogs-stream-prefix": "ecs"
         }
       },
-      "environment": [
-        {
-          "name": "NODE_ENV",
-          "value": "production"
-        },
-        {
-          "name": "PORT",
-          "value": "4001"
-        }
-      ],
-      "secrets": [
-        {
-          "name": "MONGODB_URI",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/MONGODB_URI"
-        },
-        {
-          "name": "CLERK_SECRET_KEY",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_SECRET_KEY"
-        },
-        {
-          "name": "CLERK_PUBLISHABLE_KEY",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_PUBLISHABLE_KEY"
-        },
-        {
-          "name": "CLERK_ISSUER_URL",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_ISSUER_URL"
-        },
-        {
-          "name": "OPENAI_API_KEY",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/ai/OPENAI_API_KEY"
-        },
-        {
-          "name": "STRIPE_SECRET_KEY",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_SECRET_KEY"
-        },
-        {
-          "name": "STRIPE_WEBHOOK_SECRET",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_WEBHOOK_SECRET"
-        },
-        {
-          "name": "STRIPE_STARTER_MONTHLY_PRICE_ID",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_STARTER_MONTHLY_PRICE_ID"
-        },
-        {
-          "name": "STRIPE_STARTER_YEARLY_PRICE_ID",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_STARTER_YEARLY_PRICE_ID"
-        },
-        {
-          "name": "STRIPE_CREATOR_MONTHLY_PRICE_ID",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_CREATOR_MONTHLY_PRICE_ID"
-        },
-        {
-          "name": "STRIPE_CREATOR_YEARLY_PRICE_ID",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_CREATOR_YEARLY_PRICE_ID"
-        },
-        {
-          "name": "STRIPE_PRO_MONTHLY_PRICE_ID",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_PRO_MONTHLY_PRICE_ID"
-        },
-        {
-          "name": "STRIPE_PRO_YEARLY_PRICE_ID",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_PRO_YEARLY_PRICE_ID"
-        }
-      ],
       "healthCheck": {
         "command": ["CMD", "curl", "-f", "http://localhost:3000/"],
-        "interval": 30,
-        "timeout": 10,
-        "retries": 3,
-        "startPeriod": 60
+        "interval": 30, "timeout": 10, "retries": 3, "startPeriod": 60
       }
     }
   ]

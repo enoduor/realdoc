@@ -54,14 +54,14 @@ check_env_files() {
     fi
     
     # Check Python backend .env
-    if [ -f "back/backend-python/.env" ]; then
+    if [ -f "back/backend_python/.env" ]; then
         echo -e "${GREEN}✅ Python backend .env found${NC}"
-        if grep -q "OPENAI_API_KEY" back/backend-python/.env; then
+        if grep -q "OPENAI_API_KEY" back/backend_python/.env; then
             echo -e "${GREEN}✅ OpenAI API configured${NC}"
         else
             echo -e "${YELLOW}⚠️  OpenAI API not configured${NC}"
         fi
-        if grep -q "AWS_BUCKET_NAME" back/backend-python/.env; then
+        if grep -q "AWS_BUCKET_NAME" back/backend_python/.env; then
             echo -e "${GREEN}✅ AWS S3 configured${NC}"
         else
             echo -e "${YELLOW}⚠️  AWS S3 not configured${NC}"
@@ -124,7 +124,7 @@ echo -e "${GREEN}✅ Node.js Backend started (PID: $NODE_PID)${NC}"
 
 # Start Python Backend (AI Services)
 echo -e "${BLUE}🤖 Starting Python Backend (AI Services)...${NC}"
-cd ../backend-python
+cd ../backend_python
 
 # Check if virtual environment exists
 if [ ! -d "venv" ]; then

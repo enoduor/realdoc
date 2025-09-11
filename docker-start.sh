@@ -24,7 +24,7 @@ else
     echo "❌ Node.js backend .env not found"
 fi
 
-if [ -f back/backend-python/.env ]; then
+if [ -f back/backend_python/.env ]; then
     echo "✅ Python backend .env found"
 else
     echo "❌ Python backend .env not found"

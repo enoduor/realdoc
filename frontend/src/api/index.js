@@ -649,6 +649,17 @@ export const checkSubscriptionBySession = async (sessionId) => {
   }
 };
 
+// Check subscription status by email (no auth required)
+export const checkSubscriptionByEmail = async (email) => {
+  try {
+    const response = await fetch(apiUrl(`/stripe/subscription-by-email/${email}`));
+    return await response.json();
+  } catch (error) {
+    console.error('Error checking subscription by email:', error);
+    return { hasActiveSubscription: false };
+  }
+};
+
 // Link temporary user with Clerk user
 export const linkTempUser = async (email) => {
   try {

@@ -12,7 +12,7 @@ fail() { echo -e "${RED}[FAIL]${NC} $1"; exit 1; }
 
 # Clean build folder
 rm -rf build
-mkdir -p build/{frontend,backend-node,backend-python}
+mkdir -p build/{frontend,backend-node,backend_python}
 
 # ---- FRONTEND ----
 echo "📦 Building React frontend..."
@@ -35,13 +35,13 @@ cd ../.. && ok "Node backend ready"
 
 # ---- PYTHON BACKEND ----
 echo "📦 Preparing Python backend..."
-cd back/backend-python || fail "backend-python dir missing"
+cd back/backend_python || fail "backend_python dir missing"
 pip install --upgrade pip >/dev/null 2>&1
 pip install --no-cache-dir -r requirements.txt || fail "pip install failed"
 
 # Copy only required files
-mkdir -p ../../build/backend-python
-cp -r main.py app requirements.txt ../../build/backend-python/ 2>/dev/null || true
+mkdir -p ../../build/backend_python
+cp -r main.py app requirements.txt ../../build/backend_python/ 2>/dev/null || true
 
 cd ../.. && ok "Python backend ready"
 

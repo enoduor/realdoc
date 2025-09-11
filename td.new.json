@@ -2,7 +2,7 @@
   "containerDefinitions": [
     {
       "name": "repostly-unified",
-      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:latest",
+      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250911042125-a288826",
       "cpu": 0,
       "portMappings": [
         {
@@ -28,6 +28,10 @@
           "value": "4001"
         },
         {
+          "name": "AI_ROOT_PATH",
+          "value": "/ai"
+        },
+        {
           "name": "NODE_ENV",
           "value": "production"
         }
@@ -37,19 +41,55 @@
       "secrets": [
         {
           "name": "MONGODB_URI",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/mongodb-uri"
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/MONGODB_URI"
         },
         {
           "name": "CLERK_SECRET_KEY",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/clerk-secret-key"
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_SECRET_KEY"
+        },
+        {
+          "name": "CLERK_PUBLISHABLE_KEY",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_PUBLISHABLE_KEY"
+        },
+        {
+          "name": "CLERK_ISSUER_URL",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_ISSUER_URL"
         },
         {
           "name": "OPENAI_API_KEY",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/openai-api-key"
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/ai/OPENAI_API_KEY"
         },
         {
           "name": "STRIPE_SECRET_KEY",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/stripe-secret-key"
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_SECRET_KEY"
+        },
+        {
+          "name": "STRIPE_WEBHOOK_SECRET",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_WEBHOOK_SECRET"
+        },
+        {
+          "name": "STRIPE_STARTER_MONTHLY_PRICE_ID",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_STARTER_MONTHLY_PRICE_ID"
+        },
+        {
+          "name": "STRIPE_STARTER_YEARLY_PRICE_ID",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_STARTER_YEARLY_PRICE_ID"
+        },
+        {
+          "name": "STRIPE_CREATOR_MONTHLY_PRICE_ID",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_CREATOR_MONTHLY_PRICE_ID"
+        },
+        {
+          "name": "STRIPE_CREATOR_YEARLY_PRICE_ID",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_CREATOR_YEARLY_PRICE_ID"
+        },
+        {
+          "name": "STRIPE_PRO_MONTHLY_PRICE_ID",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_PRO_MONTHLY_PRICE_ID"
+        },
+        {
+          "name": "STRIPE_PRO_YEARLY_PRICE_ID",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_PRO_YEARLY_PRICE_ID"
         }
       ],
       "logConfiguration": {
@@ -65,7 +105,7 @@
           "CMD",
           "curl",
           "-f",
-          "http://localhost:5001/ping"
+          "http://localhost:3000/"
         ],
         "interval": 30,
         "timeout": 10,
@@ -76,6 +116,7 @@
     }
   ],
   "family": "repostly-unified",
+  "taskRoleArn": "arn:aws:iam::657053005765:role/ecsTaskRole",
   "executionRoleArn": "arn:aws:iam::657053005765:role/ecsTaskExecutionRole",
   "networkMode": "awsvpc",
   "volumes": [],
@@ -84,5 +125,5 @@
     "FARGATE"
   ],
   "cpu": "1024",
-  "memory": "2048"
+  "memory": "4096"
 }
