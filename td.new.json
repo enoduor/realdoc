@@ -2,7 +2,7 @@
   "containerDefinitions": [
     {
       "name": "repostly-unified",
-      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250911042125-a288826",
+      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250912031206-158051a",
       "cpu": 0,
       "portMappings": [
         {
@@ -24,16 +24,20 @@
       "essential": true,
       "environment": [
         {
+          "name": "NODE_ENV",
+          "value": "production"
+        },
+        {
           "name": "PORT",
           "value": "4001"
         },
         {
-          "name": "AI_ROOT_PATH",
-          "value": "/ai"
+          "name": "AWS_REGION",
+          "value": "us-west-2"
         },
         {
-          "name": "NODE_ENV",
-          "value": "production"
+          "name": "AWS_BUCKET_NAME",
+          "value": "bigvideograb-media"
         }
       ],
       "mountPoints": [],

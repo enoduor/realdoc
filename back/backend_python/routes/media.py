@@ -10,20 +10,13 @@ import io
 router = APIRouter()
 
 def get_s3_client():
-    aws_access_key = os.getenv('AWS_ACCESS_KEY_ID')
-    aws_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY')
-    aws_region = os.getenv('AWS_REGION')
+    aws_region = os.getenv('AWS_REGION', 'us-west-2')
     
     print(f"AWS Region: {aws_region}")
-    print(f"AWS Access Key ID exists: {bool(aws_access_key)}")
-    print(f"AWS Secret Key exists: {bool(aws_secret_key)}")
+    print("Using ECS Task Role for S3 authentication")
     
-    return boto3.client(
-        's3',
-        aws_access_key_id=aws_access_key,
-        aws_secret_access_key=aws_secret_key,
-        region_name=aws_region
-    )
+    # Let boto3 use the Task Role - no explicit credentials needed
+    return boto3.client('s3', region_name=aws_region)
 
 # Platform-specific dimensions
 PLATFORM_DIMENSIONS = {
