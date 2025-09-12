@@ -131,7 +131,7 @@ register_task_definition() {
 
   # Fetch current TD (or scaffold a minimal one if family not found)
   if ! aws ecs describe-task-definition --task-definition "$TASK_FAMILY" --region "$AWS_REGION" \
-       --query 'taskDefinition' >/dev/null 2 /*&1*/; then
+       --query 'taskDefinition' >/dev/null 2>&1; then
     cat > td.new.json <<JSON
 {
   "family": "$TASK_FAMILY",
@@ -158,12 +158,13 @@ register_task_definition() {
         "awslogs-stream-prefix": "ecs"
       }
     },
-    "environment": [
-      {"name":"NODE_ENV","value":"production"},
-      {"name":"PORT","value":"$PORT_API"},
-      {"name":"AWS_REGION","value":"$AWS_REGION"},
-      {"name":"AWS_BUCKET_NAME","value":"repostly-media-bucket"}
-    ],
+        "environment": [
+          {"name":"NODE_ENV","value":"production"},
+          {"name":"PORT","value":"$PORT_API"},
+          {"name":"AWS_REGION","value":"$AWS_REGION"},
+          {"name":"AWS_BUCKET_NAME","value":"bigvideograb-media"},
+          {"name":"AI_ROOT_PATH","value":"/ai"}
+        ],
     "secrets": [
       {"name":"MONGODB_URI",      "valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/MONGODB_URI"},
       {"name":"CLERK_SECRET_KEY", "valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/CLERK_SECRET_KEY"},
@@ -183,11 +184,20 @@ JSON
       --region "$AWS_REGION" \
       --query 'taskDefinition' > td.json
 
-    # update only the container image; keep roles/limits/ports
-    jq --arg NAME "$REPO_NAME" --arg IMG "$image" '
+    # update container image and environment variables; keep roles/limits/ports
+    jq --arg NAME "$REPO_NAME" --arg IMG "$image" --arg AWS_REGION "$AWS_REGION" '
       del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy,.inferenceAccelerators)
       | .containerDefinitions = (.containerDefinitions | map(
-          if .name == $NAME then (.image = $IMG) else . end))
+          if .name == $NAME then 
+            (.image = $IMG) |
+                 (.environment = [
+                   {"name":"NODE_ENV","value":"production"},
+                   {"name":"PORT","value":"4001"},
+                   {"name":"AWS_REGION","value":$AWS_REGION},
+                   {"name":"AWS_BUCKET_NAME","value":"bigvideograb-media"},
+                   {"name":"AI_ROOT_PATH","value":"/ai"}
+                 ])
+          else . end))
     ' td.json > td.new.json
   fi
 

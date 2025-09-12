@@ -1,9 +1,9 @@
 {
-    "taskDefinitionArn": "arn:aws:ecs:us-west-2:657053005765:task-definition/repostly-unified:116",
+    "taskDefinitionArn": "arn:aws:ecs:us-west-2:657053005765:task-definition/repostly-unified:135",
     "containerDefinitions": [
         {
             "name": "repostly-unified",
-            "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250911231732-158051a",
+            "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250912181332-3e3eb07",
             "cpu": 0,
             "portMappings": [
                 {
@@ -25,16 +25,24 @@
             "essential": true,
             "environment": [
                 {
+                    "name": "NODE_ENV",
+                    "value": "production"
+                },
+                {
+                    "name": "AWS_REGION",
+                    "value": "us-west-2"
+                },
+                {
                     "name": "PORT",
                     "value": "4001"
                 },
                 {
-                    "name": "AI_ROOT_PATH",
-                    "value": "/ai"
+                    "name": "AWS_BUCKET_NAME",
+                    "value": "bigvideograb-media"
                 },
                 {
-                    "name": "NODE_ENV",
-                    "value": "production"
+                    "name": "AI_ROOT_PATH",
+                    "value": "/ai"
                 }
             ],
             "mountPoints": [],
@@ -120,7 +128,7 @@
     "taskRoleArn": "arn:aws:iam::657053005765:role/ecsTaskRole",
     "executionRoleArn": "arn:aws:iam::657053005765:role/ecsTaskExecutionRole",
     "networkMode": "awsvpc",
-    "revision": 116,
+    "revision": 135,
     "volumes": [],
     "status": "ACTIVE",
     "requiresAttributes": [
@@ -168,6 +176,6 @@
     ],
     "cpu": "1024",
     "memory": "4096",
-    "registeredAt": "2025-09-11T23:24:01.461000-04:00",
+    "registeredAt": "2025-09-12T18:19:42.184000-04:00",
     "registeredBy": "arn:aws:iam::657053005765:user/videograb-deploy"
 }
