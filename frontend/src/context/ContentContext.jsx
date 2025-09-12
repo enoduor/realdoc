@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { PLATFORMS } from '../constants/platforms';
 
 // Create context
@@ -9,9 +9,19 @@ export const useContent = () => {
     return useContext(ContentContext);
 };
 
-// Content provider component
-export const ContentProvider = ({ children }) => {
-    const [content, setContent] = useState({
+// Load content from localStorage
+const loadContentFromStorage = () => {
+    try {
+        const saved = localStorage.getItem('repostly-content');
+        if (saved) {
+            return JSON.parse(saved);
+        }
+    } catch (error) {
+        console.error('Error loading content from localStorage:', error);
+    }
+    
+    // Default content
+    return {
         platform: 'instagram',
         caption: '',
         hashtags: [],
@@ -22,15 +32,33 @@ export const ContentProvider = ({ children }) => {
         topic: '',
         tone: 'professional',
         language: 'en'
-    });
+    };
+};
+
+// Save content to localStorage
+const saveContentToStorage = (content) => {
+    try {
+        localStorage.setItem('repostly-content', JSON.stringify(content));
+    } catch (error) {
+        console.error('Error saving content to localStorage:', error);
+    }
+};
+
+// Content provider component
+export const ContentProvider = ({ children }) => {
+    const [content, setContent] = useState(loadContentFromStorage());
 
     // Function to update content
     const updateContent = (newContent) => {
         console.log('Updating content:', newContent);
-        setContent(prev => ({
-            ...prev,
-            ...newContent
-        }));
+        setContent(prev => {
+            const updated = {
+                ...prev,
+                ...newContent
+            };
+            saveContentToStorage(updated);
+            return updated;
+        });
     };
 
     // Get platform-specific limits
@@ -53,18 +81,22 @@ export const ContentProvider = ({ children }) => {
             });
         },
         updateTopic: (topic) => updateContent({ topic }),
-        clearContent: () => setContent({
-            platform: 'instagram',
-            caption: '',
-            hashtags: [],
-            mediaUrl: null,
-            mediaType: null,
-            mediaFile: null,
-            mediaDimensions: null,
-            topic: '',
-            tone: 'professional',
-            language: 'en'
-        })
+        clearContent: () => {
+            const defaultContent = {
+                platform: 'instagram',
+                caption: '',
+                hashtags: [],
+                mediaUrl: null,
+                mediaType: null,
+                mediaFile: null,
+                mediaDimensions: null,
+                topic: '',
+                tone: 'professional',
+                language: 'en'
+            };
+            saveContentToStorage(defaultContent);
+            setContent(defaultContent);
+        }
     };
 
     return (

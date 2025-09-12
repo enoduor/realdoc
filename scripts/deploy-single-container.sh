@@ -160,7 +160,9 @@ register_task_definition() {
     },
     "environment": [
       {"name":"NODE_ENV","value":"production"},
-      {"name":"PORT","value":"$PORT_API"}
+      {"name":"PORT","value":"$PORT_API"},
+      {"name":"AWS_REGION","value":"$AWS_REGION"},
+      {"name":"AWS_BUCKET_NAME","value":"repostly-media-bucket"}
     ],
     "secrets": [
       {"name":"MONGODB_URI",      "valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/MONGODB_URI"},

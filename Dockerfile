@@ -1,15 +1,20 @@
+# syntax=docker/dockerfile:1.7
+
 # ================== Base ==================
 FROM node:20-bookworm-slim AS base
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl python3 python3-pip python3-venv \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt \
+    apt-get update && apt-get install -y --no-install-recommends \
+        curl python3 python3-pip python3-venv \
  && rm -rf /var/lib/apt/lists/*
 
 # ================== AI builder ==================
 FROM base AS ai-builder
 WORKDIR /app/ai
 COPY back/backend_python/requirements.txt ./
-# Validate deps in the builder (optional, keeps CI nice)
-RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt \
+# keep your exact install + validation; add pip cache only
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip3 install --no-cache-dir --break-system-packages -r requirements.txt \
  && python3 -c "import fastapi, uvicorn, pydantic, starlette; print('✅ ai builder deps ok')"
 COPY back/backend_python/ ./
 
@@ -17,7 +22,8 @@ COPY back/backend_python/ ./
 FROM base AS api-builder
 WORKDIR /app/api
 COPY back/backend-node/package*.json ./
-RUN npm install --omit=dev --no-optional --no-audit --no-fund
+RUN --mount=type=cache,target=/root/.npm \
+    npm install --omit=dev --no-optional --no-audit --no-fund
 COPY back/backend-node/ ./
 
 # ================== Frontend builder ==================
@@ -37,7 +43,8 @@ ENV PUBLIC_URL=${PUBLIC_URL}
 ENV REACT_APP_CLERK_PUBLISHABLE_KEY=${REACT_APP_CLERK_PUBLISHABLE_KEY}
 
 COPY frontend/package*.json ./
-RUN npm ci --no-audit --no-fund --silent
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund --silent
 COPY frontend/ ./
 RUN echo "PUBLIC_URL=${PUBLIC_URL}" && \
     echo "REACT_APP_API_URL=${REACT_APP_API_URL}" && \
@@ -50,18 +57,21 @@ RUN echo "PUBLIC_URL=${PUBLIC_URL}" && \
 FROM node:20-bookworm-slim AS runtime
 WORKDIR /app
 
-# System deps
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl python3 python3-pip python3-venv \
+# System deps (kept exactly; just cached)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt \
+    apt-get update && apt-get install -y --no-install-recommends \
+        curl python3 python3-pip python3-venv \
  && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 # If ALB mounts AI under /ai, FastAPI needs this for URL generation
 ENV AI_ROOT_PATH=/ai
 
-# ---- AI (Python) in final image (fixes "No module named uvicorn") ----
+# ---- AI (Python) in final image (kept) ----
 COPY back/backend_python/requirements.txt ./ai/requirements.txt
-RUN pip3 install --no-cache-dir --break-system-packages -r ai/requirements.txt \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip3 install --no-cache-dir --break-system-packages -r ai/requirements.txt \
  && python3 -c "import fastapi, uvicorn, pydantic, starlette; print('✅ python deps ok')"
 COPY back/backend_python/ ./ai
 
@@ -72,7 +82,8 @@ COPY --from=api-builder /app/api ./api
 COPY --from=frontend-builder /app/frontend/build ./frontend/build
 
 # Simple static file server for the built SPA
-RUN npm install -g serve
+RUN --mount=type=cache,target=/root/.npm \
+    npm install -g serve
 
 # ---- Startup script ----
 RUN printf '%s\n' '#!/bin/bash' \

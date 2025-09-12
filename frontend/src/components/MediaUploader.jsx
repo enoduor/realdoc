@@ -3,11 +3,13 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { PLATFORMS } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
+import SubscriptionCheck, { useSubscriptionCheck } from './SubscriptionCheck';
 
 const API_URL = process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://reelpostly.com/ai';
 
 const MediaUploader = () => {
   const { updateContent, content } = useContent();
+  const { requireSubscription } = useSubscriptionCheck();
   const [formData, setFormData] = useState({
     platform: content?.platform || 'instagram',
     files: null,
@@ -60,18 +62,18 @@ const MediaUploader = () => {
   }, []);
 
   const validateFile = (file) => {
-    const fileType = file.type.split('/')[0];
-    const fileExtension = file.name.split('.').pop().toLowerCase();
-    
+    const fileType = (file.type || '').split('/')[0];
+    const fileExtension = (file.name || '').split('.').pop().toLowerCase();
+
     // Check if platformLimits exists
     if (!platformLimits || !platformLimits.supportedMedia) {
       throw new Error('Platform configuration not found');
     }
-    
+
     // Check if file type is supported by the platform
     const isSupportedType = platformLimits.supportedMedia.some(type => {
-      if (type === 'image') return fileType === 'image' || ['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension);
-      if (type === 'video') return fileType === 'video' || ['mp4', 'mov', 'avi'].includes(fileExtension);
+      if (type === 'image') return fileType === 'image' || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension);
+      if (type === 'video') return fileType === 'video' || ['mp4', 'mov', 'avi', 'webm'].includes(fileExtension);
       if (type === 'carousel') return fileType === 'image';
       if (type === 'gif') return fileExtension === 'gif';
       if (type === 'document') return ['pdf', 'doc', 'docx'].includes(fileExtension);
@@ -86,9 +88,9 @@ const MediaUploader = () => {
     let maxSize = 100 * 1024 * 1024; // Default 100MB
     if (formData.platform === 'instagram') maxSize = 15 * 1024 * 1024; // 15MB for Instagram
     if (formData.platform === 'twitter') maxSize = 5 * 1024 * 1024; // 5MB for Twitter
-    
+
     if (file.size > maxSize) {
-      throw new Error(`File too large for ${formData.platform}. Maximum size is ${maxSize / (1024 * 1024)}MB`);
+      throw new Error(`File too large for ${formData.platform}. Maximum size is ${Math.floor(maxSize / (1024 * 1024))}MB`);
     }
   };
 
@@ -102,25 +104,25 @@ const MediaUploader = () => {
           files: selectedFiles,
           error: null
         }));
-        
+
         const file = selectedFiles[0];
-        const fileType = file.type.split('/')[0];
-        const fileExtension = file.name.split('.').pop().toLowerCase();
-        
+        const fileType = (file.type || '').split('/')[0];
+        const fileExtension = (file.name || '').split('.').pop().toLowerCase();
+
         // Determine media type based on file extension and MIME type
         let mediaType = fileType;
-        if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) mediaType = 'image';
-        if (['mp4', 'mov', 'avi'].includes(fileExtension)) mediaType = 'video';
-        
+        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension)) mediaType = 'image';
+        if (['mp4', 'mov', 'avi', 'webm'].includes(fileExtension)) mediaType = 'video';
+
         // Create preview URL
         const previewUrl = URL.createObjectURL(file);
         setFormData(prev => ({
           ...prev,
           preview: previewUrl
         }));
-        
+
         // Update content with preview URL immediately
-        updateContent({ 
+        updateContent({
           mediaUrl: previewUrl,
           mediaType: mediaType,
           mediaFile: file,
@@ -134,7 +136,7 @@ const MediaUploader = () => {
         files: null,
         preview: null
       }));
-      updateContent({ 
+      updateContent({
         mediaUrl: null,
         mediaType: null,
         mediaFile: null,
@@ -144,6 +146,11 @@ const MediaUploader = () => {
   };
 
   const handleUpload = async () => {
+    // Check subscription before proceeding
+    if (!requireSubscription('Media Upload')) {
+      return;
+    }
+
     if (!formData.files || formData.files.length === 0) {
       setFormData(prev => ({
         ...prev,
@@ -158,15 +165,16 @@ const MediaUploader = () => {
         uploading: true
       }));
       const file = formData.files[0];
-      
+
       const uploadFormData = new FormData();
-      uploadFormData.append('file', file);
+      // Always pass a filename for robustness
+      uploadFormData.append('file', file, file.name || 'upload');
       if (formData.platform) {
         uploadFormData.append('platform', formData.platform);
       }
 
       const res = await axios.post(`${API_URL}/api/v1/upload`, uploadFormData, {
-        headers: { 
+        headers: {
           'Content-Type': 'multipart/form-data'
         },
         timeout: 30000,
@@ -185,7 +193,7 @@ const MediaUploader = () => {
           mediaFile: null,
           mediaFilename: res.data.filename // Store filename for URL refresh
         };
-        
+
         // For images and videos, verify URL accessibility
         if (updatedContent.mediaType === 'image') {
           const img = new Image();
@@ -231,8 +239,8 @@ const MediaUploader = () => {
     } catch (err) {
       console.error('Upload error:', err);
       let errorMessage = 'Upload failed';
-      
-      if (err.code === 'NETWORK_ERROR' || err.message.includes('Network Error')) {
+
+      if (err.code === 'NETWORK_ERROR' || (err.message || '').includes('Network Error')) {
         errorMessage = 'Network error - Please check your connection and try again';
       } else if (err.response?.status === 413) {
         errorMessage = 'File too large - Please try a smaller file';
@@ -243,7 +251,7 @@ const MediaUploader = () => {
       } else if (err.message) {
         errorMessage = err.message;
       }
-      
+
       console.error('Detailed error:', errorMessage);
       setFormData(prev => ({
         ...prev,
@@ -266,8 +274,6 @@ const MediaUploader = () => {
     };
   }, [formData.preview]);
 
-
-  
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
@@ -280,17 +286,19 @@ const MediaUploader = () => {
             >
               Go to Preview
             </Link>
-                                <Link
-                        to="/app"
-                        className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md"
-                    >
-                        Back to Dashboard
-                    </Link>
+            <Link
+              to="/app"
+              className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md"
+            >
+              Back to Dashboard
+            </Link>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <SubscriptionCheck featureName="Media Upload" />
+
         <div className="bg-white shadow rounded-lg p-6">
           <form onSubmit={(e) => { e.preventDefault(); handleUpload(); }} className="space-y-4">
             {/* Platform Selection */}
@@ -312,20 +320,20 @@ const MediaUploader = () => {
               </select>
             </div>
 
-          {/* Platform Requirements */}
-          <div className="mb-6 bg-gray-50 p-4 rounded-lg">
-            <h2 className="text-lg font-medium mb-3">{content?.platform || 'instagram'} Requirements</h2>
-            <ul className="text-sm text-gray-600">
-              <li>Supported Types: {platformLimits.supportedMedia.join(', ')}</li>
-              <li>Image Size: {platformLimits.recommendedImageSize}</li>
-              <li>Video Length: {platformLimits.recommendedVideoLength}</li>
-            </ul>
-          </div>
+            {/* Platform Requirements */}
+            <div className="mb-6 bg-gray-50 p-4 rounded-lg">
+              <h2 className="text-lg font-medium mb-3">{content?.platform || 'instagram'} Requirements</h2>
+              <ul className="text-sm text-gray-600">
+                <li>Supported Types: {platformLimits.supportedMedia.join(', ')}</li>
+                <li>Image Size: {platformLimits.recommendedImageSize}</li>
+                <li>Video Length: {platformLimits.recommendedVideoLength}</li>
+              </ul>
+            </div>
 
-                      {/* Upload Area */}
+            {/* Upload Area */}
             <div className="p-4 border rounded-lg shadow-sm">
               <div className="mb-4">
-                <input 
+                <input
                   type="file"
                   id="fileInput"
                   accept={platformLimits.supportedMedia.map(type => {
@@ -338,8 +346,8 @@ const MediaUploader = () => {
                   onChange={handleFileChange}
                   className="hidden"
                 />
-                <label 
-                  htmlFor="fileInput" 
+                <label
+                  htmlFor="fileInput"
                   className="cursor-pointer inline-block px-6 py-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
                 >
                   Choose File
@@ -350,19 +358,19 @@ const MediaUploader = () => {
                   </span>
                 )}
               </div>
-              
+
               {formData.error && (
                 <div className="mb-4 text-red-500 text-sm">
                   {formData.error}
                 </div>
               )}
-              
-              <button 
+
+              <button
                 type="submit"
                 disabled={formData.uploading || !formData.files}
                 className={`px-4 py-2 rounded-md text-white
-                  ${formData.uploading || !formData.files 
-                    ? 'bg-gray-400 cursor-not-allowed' 
+                  ${formData.uploading || !formData.files
+                    ? 'bg-gray-400 cursor-not-allowed'
                     : 'bg-blue-600 hover:bg-blue-700'}`}
               >
                 {formData.uploading ? 'Uploading...' : 'Upload'}
@@ -381,7 +389,7 @@ const MediaUploader = () => {
                       src={content.mediaUrl || formData.preview}
                       alt="Upload preview"
                       className={`rounded-lg shadow ${
-                        content?.platform === 'instagram' ? 'aspect-square max-h-[500px]' : 
+                        content?.platform === 'instagram' ? 'aspect-square max-h-[500px]' :
                         content?.platform === 'facebook' ? 'aspect-[1200/630] max-h-[500px]' :
                         content?.platform === 'linkedin' ? 'aspect-[1200/627] max-h-[500px]' :
                         content?.platform === 'twitter' ? 'aspect-[16/9] max-h-[500px]' :
@@ -403,7 +411,7 @@ const MediaUploader = () => {
                       src={formData.preview}
                       controls
                       className={`rounded-lg shadow ${
-                        content?.platform === 'instagram' ? 'aspect-[4/5] max-h-[500px]' : 
+                        content?.platform === 'instagram' ? 'aspect-[4/5] max-h-[500px]' :
                         content?.platform === 'facebook' ? 'aspect-[16/9] max-h-[500px]' :
                         content?.platform === 'linkedin' ? 'aspect-[16/9] max-h-[500px]' :
                         content?.platform === 'twitter' ? 'aspect-[16/9] max-h-[500px]' :
@@ -455,4 +463,4 @@ const MediaUploader = () => {
   );
 };
 
-export default MediaUploader; 
+export default MediaUploader;

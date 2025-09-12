@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import { useContent } from '../context/ContentContext';
 import { publishNow } from '../api';
 import PlatformPreviewPanel from './PlatformPreviewPanel';
+import SubscriptionCheck, { useSubscriptionCheck } from './SubscriptionCheck';
 
 const PlatformPreviewPage = () => {
   console.log('🎯 PlatformPreviewPage component rendering');
   
   const { content } = useContent();
+  const { requireSubscription } = useSubscriptionCheck();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -24,6 +26,11 @@ const PlatformPreviewPage = () => {
   }, []);
 
   const handlePublishNow = useCallback(async (publishData) => {
+    // Check subscription before proceeding
+    if (!requireSubscription('Platform Preview')) {
+      return;
+    }
+    
     setIsLoading(true);
     setError('');
     try {
@@ -40,7 +47,7 @@ const PlatformPreviewPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [getAuthToken]);
+  }, [getAuthToken, requireSubscription]);
 
   useEffect(() => {
     if (success || error) {
@@ -59,6 +66,8 @@ const PlatformPreviewPage = () => {
       </header>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <SubscriptionCheck featureName="Platform Preview" />
+        
         {success && (
           <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">{success}</div>
         )}

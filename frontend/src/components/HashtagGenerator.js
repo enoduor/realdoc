@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom';
 import ContentService from '../api/contentService';
 import { PLATFORMS } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
+import SubscriptionCheck, { useSubscriptionCheck } from './SubscriptionCheck';
 
 const HashtagGenerator = () => {
     const { updateContent, content } = useContent();
+    const { requireSubscription } = useSubscriptionCheck();
     const [formData, setFormData] = useState({
         platform: content.platform || 'instagram',
         topic: content.topic || '',
@@ -40,6 +42,12 @@ const HashtagGenerator = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // Check subscription before proceeding
+        if (!requireSubscription('Hashtag Generator')) {
+            return;
+        }
+        
         setLoading(true);
         setError('');
 
@@ -75,6 +83,8 @@ const HashtagGenerator = () => {
             </header>
 
             <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+                <SubscriptionCheck featureName="Hashtag Generator" />
+                
                 <div className="bg-white shadow rounded-lg p-6">
                     {/* Platform Requirements */}
                     <div className="mb-6 bg-gray-50 p-4 rounded-lg">

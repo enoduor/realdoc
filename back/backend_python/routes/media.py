@@ -6,24 +6,18 @@ import boto3
 from botocore.exceptions import ClientError
 from datetime import datetime
 import io
+import mimetypes
 
 router = APIRouter()
 
 def get_s3_client():
-    aws_access_key = os.getenv('AWS_ACCESS_KEY_ID')
-    aws_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY')
-    aws_region = os.getenv('AWS_REGION')
+    aws_region = os.getenv('AWS_REGION', 'us-west-2')
     
     print(f"AWS Region: {aws_region}")
-    print(f"AWS Access Key ID exists: {bool(aws_access_key)}")
-    print(f"AWS Secret Key exists: {bool(aws_secret_key)}")
+    print("Using ECS Task Role for S3 authentication")
     
-    return boto3.client(
-        's3',
-        aws_access_key_id=aws_access_key,
-        aws_secret_access_key=aws_secret_key,
-        region_name=aws_region
-    )
+    # Let boto3 use the Task Role - no explicit credentials needed
+    return boto3.client('s3', region_name=aws_region)
 
 # Platform-specific dimensions
 PLATFORM_DIMENSIONS = {
@@ -50,6 +44,32 @@ PLATFORM_DIMENSIONS = {
         'image': (1600, 900),
         'video': (1280, 720)
     }
+}
+
+# Backend enforcement: allowed content-types and max upload sizes
+IMAGE_EXTS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+VIDEO_EXTS = {'.mp4', '.mov', '.avi', '.wmv', '.flv', '.mkv', '.webm'}
+AUDIO_EXTS = {'.mp3', '.wav', '.ogg', '.m4a'}
+
+ALLOWED_TYPES = {
+    'image': {
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp'
+    },
+    'video': {
+        'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-ms-wmv',
+        'video/x-flv', 'video/x-matroska', 'video/webm'
+    },
+    'audio': {
+        'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4'
+    }
+}
+
+# Reasonable server-side caps (match frontend guidance)
+DEFAULT_MAX_SIZE = 100 * 1024 * 1024  # 100MB
+MAX_SIZE_BY_PLATFORM = {
+    'instagram': 15 * 1024 * 1024,  # 15MB
+    'twitter':   5 * 1024 * 1024,   # 5MB
+    # fallback to DEFAULT_MAX_SIZE for others
 }
 
 def resize_image(image, platform, media_type):
@@ -90,31 +110,74 @@ async def upload_media(
     file: UploadFile = File(...),
     platform: str = Form(None)
 ):
+    # Normalize platform early
+    platform = (platform or "").strip().lower() or None
+
     try:
         # Read file content
         content = await file.read()
-        
-        # Get file extension
-        ext = os.path.splitext(file.filename)[1].lower()
-        
+        if not content:
+            raise HTTPException(status_code=400, detail="Empty file upload")
+
+        # Derive a safe filename and extension
+        raw_name = getattr(file, "filename", None) or "upload"
+        if not isinstance(raw_name, str):
+            raw_name = "upload"
+        ext = os.path.splitext(raw_name)[1].lower()
+
+        # Fallback: try to guess extension from content-type
+        base_ct = (getattr(file, "content_type", "") or "").split(";")[0].strip()
+        if not ext:
+            guessed = mimetypes.guess_extension(base_ct) or ".bin"
+            ext = guessed.lower()
+
+        # Resolve a safe content-type early
+        content_type = base_ct or mimetypes.guess_type(f"dummy{ext}")[0] or 'application/octet-stream'
+
+        # Detect media kind using extension or content-type
+        if ext in IMAGE_EXTS or content_type.startswith('image/'):
+            media_kind = 'image'
+        elif ext in VIDEO_EXTS or content_type.startswith('video/'):
+            media_kind = 'video'
+        elif ext in AUDIO_EXTS or content_type.startswith('audio/'):
+            media_kind = 'audio'
+        else:
+            media_kind = 'document'
+
+        # Enforce content-type allowlist per media kind (if known)
+        allowed_set = ALLOWED_TYPES.get(media_kind)
+        if allowed_set and content_type not in allowed_set:
+            raise HTTPException(
+                status_code=415,
+                detail=f"Unsupported content-type for {media_kind}: '{content_type}'. Allowed: {', '.join(sorted(allowed_set))}"
+            )
+
+        # Enforce max file size per platform
+        max_size = MAX_SIZE_BY_PLATFORM.get(platform, DEFAULT_MAX_SIZE)
+        if len(content) > max_size:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large for {platform or 'this platform'} (max {int(max_size / (1024*1024))}MB)"
+            )
+
         # Generate unique filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{timestamp}{ext}"
-        
+
         # Process image if it's an image file
-        if ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+        if ext in IMAGE_EXTS:
             try:
                 img = Image.open(io.BytesIO(content))
-                
+
                 # Resize image according to platform requirements
                 if platform and platform in PLATFORM_DIMENSIONS:
                     img = resize_image(img, platform, 'image')
-                
+
                 # Convert to bytes for uploading (ensure a valid format)
                 img_byte_arr = io.BytesIO()
                 # Fallback format if PIL did not detect one
                 fallback_format = 'JPEG' if ext in ['.jpg', '.jpeg'] else 'PNG'
-                save_format = img.format or fallback_format
+                save_format = (getattr(img, 'format', None) or '').upper() or fallback_format
                 img.save(img_byte_arr, format=save_format, quality=95)
                 content = img_byte_arr.getvalue()
             except Exception as e:
@@ -125,8 +188,9 @@ async def upload_media(
         try:
             s3 = get_s3_client()
             bucket_name = os.getenv('AWS_BUCKET_NAME')
-            content_type = file.content_type if file.content_type else 'video/mp4'
-            
+            if not bucket_name:
+                raise HTTPException(status_code=500, detail='S3 not configured (missing AWS_BUCKET_NAME)')
+
             print(f"Uploading to bucket: {bucket_name}")
             print(f"Content type: {content_type}")
             print(f"File size: {len(content)} bytes")
@@ -135,8 +199,8 @@ async def upload_media(
             try:
                 s3.head_bucket(Bucket=bucket_name)
             except ClientError as e:
-                error_code = e.response['Error']['Code']
-                error_message = e.response['Error']['Message']
+                error_code = str(e.response.get('Error', {}).get('Code'))
+                error_message = str(e.response.get('Error', {}).get('Message'))
                 print(f"S3 Bucket Error - Code: {error_code}, Message: {error_message}")
                 if error_code == '404':
                     raise HTTPException(status_code=500, detail=f"Bucket {bucket_name} does not exist")
@@ -154,7 +218,7 @@ async def upload_media(
                     ContentType=content_type,
                     Metadata={
                         'upload-date': datetime.now().isoformat(),
-                        'platform': platform or 'unknown',
+                        'platform': platform if (platform and platform in PLATFORM_DIMENSIONS) else 'unknown',
                         'user-upload': 'true'
                     }
                 )
@@ -169,18 +233,13 @@ async def upload_media(
                     ExpiresIn=3600  # URL expires in 1 hour
                 )
             except ClientError as e:
-                error_code = e.response['Error']['Code']
-                error_message = e.response['Error']['Message']
+                error_code = str(e.response.get('Error', {}).get('Code'))
+                error_message = str(e.response.get('Error', {}).get('Message'))
                 print(f"S3 Upload Error - Code: {error_code}, Message: {error_message}")
                 raise HTTPException(status_code=500, detail=f"S3 Upload Error: {error_message}")
             
             # Determine media type and dimensions
-            media_type = "image" if ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp'] else \
-                        "video" if ext in ['.mp4', '.mov', '.avi', '.wmv', '.flv', '.mkv'] else \
-                        "audio" if ext in ['.mp3', '.wav', '.ogg', '.m4a'] else \
-                        "document"
-            
-            # Get dimensions if it's an image
+            media_type = media_kind
             dimensions = None
             if media_type == "image" and 'img' in locals():
                 dimensions = {
@@ -200,6 +259,8 @@ async def upload_media(
             print(f"S3 upload error: {str(e)}")
             raise HTTPException(status_code=500, detail="Failed to upload to S3")
             
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error processing upload: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

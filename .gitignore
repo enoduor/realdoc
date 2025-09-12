@@ -1,84 +1,50 @@
-docker/*
-!docker/Dockerfile.*
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-**/__pycache__/
-**/*.pyc
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Virtual environments
-venv/
-env/
-ENV/
-env.bak/
-venv.bak/
-
-# Logs
-*.log
-logs/
-back/*.log
-frontend.log
-back/node-backend.log
-back/python-backend.log
-
-# Node.js
-node_modules/
-**/node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-package-lock.json
-**/package-lock.json
-
-# Environment variables
+# Environment files
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+config/.env.*
+!config/.env.example
 
-# IDE
+# Dependencies
+node_modules/
+venv/
+__pycache__/
+*.pyc
+
+# Build files
+/frontend/build/
+/frontend/dist/
+*.log
+
+# IDE and Editor files
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
-
-# OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
 
-# Build outputs
-build/
-dist/
-*.tgz
-*.tar.gz
+# Testing
+/coverage
+.nyc_output
+.pytest_cache/
 
 # Temporary files
-*.tmp
-*.temp
-.app-pids
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local development
+.local
+*.local
+
+# Production
+/build
+/dist
+
+# Misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
