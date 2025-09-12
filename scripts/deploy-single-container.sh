@@ -158,12 +158,13 @@ register_task_definition() {
         "awslogs-stream-prefix": "ecs"
       }
     },
-    "environment": [
-      {"name":"NODE_ENV","value":"production"},
-      {"name":"PORT","value":"$PORT_API"},
-      {"name":"AWS_REGION","value":"$AWS_REGION"},
-      {"name":"AWS_BUCKET_NAME","value":"bigvideograb-media"}
-    ],
+        "environment": [
+          {"name":"NODE_ENV","value":"production"},
+          {"name":"PORT","value":"$PORT_API"},
+          {"name":"AWS_REGION","value":"$AWS_REGION"},
+          {"name":"AWS_BUCKET_NAME","value":"bigvideograb-media"},
+          {"name":"AI_ROOT_PATH","value":"/ai"}
+        ],
     "secrets": [
       {"name":"MONGODB_URI",      "valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/MONGODB_URI"},
       {"name":"CLERK_SECRET_KEY", "valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/CLERK_SECRET_KEY"},
@@ -189,12 +190,13 @@ JSON
       | .containerDefinitions = (.containerDefinitions | map(
           if .name == $NAME then 
             (.image = $IMG) |
-            (.environment = [
-              {"name":"NODE_ENV","value":"production"},
-              {"name":"PORT","value":"4001"},
-              {"name":"AWS_REGION","value":$AWS_REGION},
-              {"name":"AWS_BUCKET_NAME","value":"bigvideograb-media"}
-            ])
+                 (.environment = [
+                   {"name":"NODE_ENV","value":"production"},
+                   {"name":"PORT","value":"4001"},
+                   {"name":"AWS_REGION","value":$AWS_REGION},
+                   {"name":"AWS_BUCKET_NAME","value":"bigvideograb-media"},
+                   {"name":"AI_ROOT_PATH","value":"/ai"}
+                 ])
           else . end))
     ' td.json > td.new.json
   fi
