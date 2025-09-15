@@ -90,7 +90,6 @@ coverage.xml
 
 # Frontend specific (not needed for API)
 public/
-src/
 
 # AI service (not needed for API)
 backend-python/

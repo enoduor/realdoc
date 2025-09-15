@@ -230,11 +230,21 @@ router.post("/create-clerk-user", requireAuth(), async (req, res) => {
       // Link existing user to Clerk
       console.log(`🔗 Linking existing user ${user.email} to Clerk user ${clerkUserId}`);
       console.log(`📝 Before linking - clerkUserId: ${user.clerkUserId}`);
+      console.log(`📋 Current plan: ${user.selectedPlan}, status: ${user.subscriptionStatus}`);
+      
       user.clerkUserId = clerkUserId;
       user.firstName = firstName;
       user.lastName = lastName;
+      
+      // Update subscription status based on selected plan
+      // If user has selected a plan, they have paid through Stripe, so status should be 'active'
+      if (['starter', 'creator', 'pro'].includes(user.selectedPlan) && user.subscriptionStatus === 'none') {
+        console.log(`🔄 Updating subscription status to 'active' for paid plan: ${user.selectedPlan}`);
+        user.subscriptionStatus = 'active';
+      }
+      
       await user.save();
-      console.log(`✅ After linking - clerkUserId: ${user.clerkUserId}`);
+      console.log(`✅ After linking - clerkUserId: ${user.clerkUserId}, status: ${user.subscriptionStatus}`);
       
       return res.json({
         success: true,

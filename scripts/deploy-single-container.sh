@@ -20,7 +20,7 @@ BASE_URL="https://${DOMAIN}"
 export REACT_APP_API_URL="${REACT_APP_API_URL:-${BASE_URL}}"
 export REACT_APP_PYTHON_API_URL="${REACT_APP_PYTHON_API_URL:-${BASE_URL}/ai}"
 # Clerk publishable key is public; safe to embed at build time
-export REACT_APP_CLERK_PUBLISHABLE_KEY="${REACT_APP_CLERK_PUBLISHABLE_KEY:-pk_test_YW1hemVkLWdyb3VzZS03NS5jbGVyay5hY2NvdW50cy5kZXYk}"
+export REACT_APP_CLERK_PUBLISHABLE_KEY="${REACT_APP_CLERK_PUBLISHABLE_KEY:-pk_live_Y2xlcmsucmVlbHBvc3RseS5jb20k}"
 # We now serve at root, not /repostly
 PUBLIC_URL="${PUBLIC_URL:-/}"
 
