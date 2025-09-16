@@ -19,8 +19,8 @@ const {
   GOOGLE_SCOPES
 } = process.env;
 
-// Construct redirect URI dynamically like LinkedIn does
-const GOOGLE_REDIRECT_URI = abs('api/auth/youtube/oauth2/callback/google');
+// Construct redirect URI dynamically like other platforms
+const GOOGLE_REDIRECT_URI = abs('api/auth/youtube/callback');
 
 const oauth2 = new google.auth.OAuth2(
   GOOGLE_CLIENT_ID,
@@ -82,7 +82,7 @@ router.get('/oauth2/start/google', async (req, res) => {
 });
 
 // Callback
-router.get('/oauth2/callback/google', async (req, res) => {
+router.get('/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
     if (req.query.error) return res.redirect(abs('app?error=google_auth_failed'));

@@ -212,6 +212,8 @@ JSON
                    {"name":"LINKEDIN_CLIENT_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/LINKEDIN_CLIENT_SECRET")},
                    {"name":"TWITTER_API_KEY","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/TWITTER_API_KEY")},
                    {"name":"TWITTER_API_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/TWITTER_API_SECRET")},
+                   {"name":"GOOGLE_CLIENT_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/GOOGLE_CLIENT_ID")},
+                   {"name":"GOOGLE_CLIENT_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/GOOGLE_CLIENT_SECRET")},
                    {"name":"STATE_HMAC_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STATE_HMAC_SECRET")}
                  ])
           else . end))
