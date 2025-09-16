@@ -119,6 +119,8 @@ class LinkedInService {
    * ✅ UPDATED: Now actually implements the LinkedIn-style approach (was using old direct method)
    */
   async postToLinkedIn(identifier, message, mediaUrl = null, hashtags = []) {
+    // Handle both string and array inputs for captions
+    const captionText = Array.isArray(message) ? message[0] || '' : message || '';
     // ✅ CREDENTIAL CHECK AT THE START (consistent with other platforms)
     const accessToken = await this.getValidLinkedInToken(identifier);
     const profile = await this.getLinkedInProfile(identifier);
@@ -131,7 +133,7 @@ class LinkedInService {
     const timestampString = `\n\n🕐 Posted at ${new Date().toLocaleString()}`;
     
     // Combine message, hashtags, and timestamp
-    const fullMessage = `${message}${hashtagString}${timestampString}`;
+    const fullMessage = `${captionText}${hashtagString}${timestampString}`;
 
     // Detect media type from URL or file extension
     const getMediaType = (url) => {

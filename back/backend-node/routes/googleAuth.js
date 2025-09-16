@@ -3,6 +3,7 @@
 const { google } = require('googleapis');
 const express = require('express');
 const crypto = require('crypto');
+const { requireAuth } = require('@clerk/express');
 const router = express.Router();
 const User = require('../models/User');
 
@@ -15,9 +16,11 @@ const STATE_HMAC_SECRET = process.env.STATE_HMAC_SECRET || 'change-me';
 const {
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
-  GOOGLE_SCOPES,
-  GOOGLE_REDIRECT_URI
+  GOOGLE_SCOPES
 } = process.env;
+
+// Construct redirect URI dynamically like LinkedIn does
+const GOOGLE_REDIRECT_URI = abs('api/auth/youtube/oauth2/callback/google');
 
 const oauth2 = new google.auth.OAuth2(
   GOOGLE_CLIENT_ID,
@@ -41,6 +44,9 @@ function verifyState(signed) {
 // Start
 router.get('/oauth2/start/google', async (req, res) => {
   try {
+    console.log('🔍 [Google OAuth] Starting OAuth flow...');
+    console.log('🔍 [Google OAuth] Redirect URI:', GOOGLE_REDIRECT_URI);
+    
     let userId = req.auth?.().userId;
     let email  = req.auth?.().email;
 
@@ -56,6 +62,8 @@ router.get('/oauth2/start/google', async (req, res) => {
       } catch {}
     }
 
+    console.log('🔍 [Google OAuth] User ID:', userId, 'Email:', email);
+
     const state = signState({ userId: userId || null, email: email || null, ts: Date.now() });
 
     const url = oauth2.generateAuthUrl({
@@ -65,8 +73,10 @@ router.get('/oauth2/start/google', async (req, res) => {
       state
     });
 
+    console.log('🔍 [Google OAuth] Generated URL:', url);
     return res.redirect(url);
-  } catch {
+  } catch (error) {
+    console.error('❌ [Google OAuth] Error:', error);
     return res.status(500).json({ error: 'Google authentication failed' });
   }
 });
@@ -135,14 +145,9 @@ router.get('/oauth/start/youtube', async (req, res) => {
 });
 
 // Status
-router.get('/status', async (req, res) => {
+router.get('/status', requireAuth(), async (req, res) => {
   try {
-    let clerkUserId = req.auth?.().userId;
-    if (!clerkUserId && req.headers['x-clerk-user-id']) clerkUserId = String(req.headers['x-clerk-user-id']);
-    if (!clerkUserId && req.query.userId) clerkUserId = String(req.query.userId);
-
-    if (!clerkUserId) return res.status(400).json({ error: 'Missing user ID' });
-
+    const clerkUserId = req.auth().userId;
     const YouTubeToken = require('../models/YouTubeToken');
     const token = await YouTubeToken.findOne({ clerkUserId });
     if (!token || !token.accessToken) return res.json({ connected: false });
@@ -162,16 +167,11 @@ router.get('/status', async (req, res) => {
 });
 
 // Disconnect
-router.delete('/disconnect', async (req, res) => {
+router.delete('/disconnect', requireAuth(), async (req, res) => {
   try {
-    let userId = req.auth?.().userId;
-    if (!userId && req.headers['x-clerk-user-id']) userId = String(req.headers['x-clerk-user-id']);
-    if (!userId && req.query.userId) userId = String(req.query.userId);
-
-    if (!userId) return res.status(400).json({ error: 'Missing user ID' });
-
+    const clerkUserId = req.auth().userId;
     const YouTubeToken = require('../models/YouTubeToken');
-    await YouTubeToken.findOneAndDelete({ clerkUserId: userId });
+    await YouTubeToken.findOneAndDelete({ clerkUserId });
     res.json({ success: true, message: 'YouTube disconnected successfully' });
   } catch {
     res.status(500).json({ error: 'Failed to disconnect YouTube' });

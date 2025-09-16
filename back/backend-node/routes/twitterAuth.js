@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { TwitterApi } = require('twitter-api-v2');
+const { requireAuth } = require('@clerk/express');
 const TwitterToken = require('../models/TwitterToken');
 const User = require('../models/User');
 const { abs } = require('../config/url');  // ✅ only abs needed
@@ -80,11 +81,9 @@ router.get('/oauth/callback/twitter', async (req, res) => {
 });
 
 // Status
-router.get('/status', async (req, res) => {
+router.get('/status', requireAuth(), async (req, res) => {
   try {
-    const clerkUserId = req.auth?.().userId || req.headers['x-clerk-user-id'] || req.query.userId;
-    if (!clerkUserId) return res.status(401).json({ error: 'User not authenticated' });
-
+    const clerkUserId = req.auth().userId;
     const token = await TwitterToken.findOne({ clerkUserId });
     if (!token || !token.oauthToken || !token.oauthTokenSecret) return res.json({ connected: false });
 
@@ -103,11 +102,9 @@ router.get('/status', async (req, res) => {
 });
 
 // Disconnect
-router.delete('/disconnect', async (req, res) => {
+router.delete('/disconnect', requireAuth(), async (req, res) => {
   try {
-    const clerkUserId = req.auth?.().userId || req.headers['x-clerk-user-id'] || req.query.userId;
-    if (!clerkUserId) return res.status(401).json({ error: 'User not authenticated' });
-
+    const clerkUserId = req.auth().userId;
     const existing = await TwitterToken.findOne({ clerkUserId });
     if (!existing) return res.status(404).json({ error: 'Twitter account not found' });
 

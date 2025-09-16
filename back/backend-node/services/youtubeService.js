@@ -219,6 +219,13 @@ class YouTubeService {
    * ✅ S3 ONLY: Only accepts S3 URLs, downloads media from S3 for processing
    */
   async postToYouTube(identifier, fileInput, meta = {}) {
+    // Handle both string and array inputs for captions in meta
+    if (meta.title && Array.isArray(meta.title)) {
+      meta.title = meta.title[0] || '';
+    }
+    if (meta.description && Array.isArray(meta.description)) {
+      meta.description = meta.description[0] || '';
+    }
     console.log('[YouTube] Starting postToYouTube with identifier:', identifier);
     
     // ✅ CREDENTIAL CHECK AT THE START (consistent with other platforms)

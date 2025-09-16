@@ -141,15 +141,16 @@ class PlatformPublisher {
         case 'linkedin': {
           console.log('[Publisher] Executing LinkedIn case');
           // Extract from postData (which is the content object)
-          const { linkedinUserId, caption, text } = postData || {};
+          const { linkedinUserId, captions, text } = postData || {};
           const identifier = { clerkUserId: clerkUserId };
 
           if (!clerkUserId) {
             throw new Error('LinkedIn requires authenticated clerkUserId');
           }
 
-          // Convert caption/text to message
-          const message = (caption || text || '').trim();
+          // Handle both string and array inputs for captions
+          const captionText = Array.isArray(captions) ? captions[0] || '' : captions || '';
+          const message = (captionText || text || '').trim();
           if (!message) throw new Error('LinkedIn post text is empty');
 
            // Extract mediaUrl and hashtags
@@ -175,14 +176,18 @@ class PlatformPublisher {
   
         // ------------ YOUTUBE ------------
 case 'youtube': {
-  const { caption, text, mediaUrl, mediaType, hashtags } = postData || {};
+  const { captions, text, mediaUrl, mediaType, hashtags } = postData || {};
 
   // Token presence was checked earlier; still validate core inputs
   if (!mediaUrl) throw new Error('YouTube requires video content: mediaUrl');
 
+  // Handle both string and array inputs for captions
+  const captionText = Array.isArray(captions) ? captions[0] || '' : captions || '';
+  const modifiedPostData = { ...postData, caption: captionText };
+
   // Build title/description/tags consistently
   const { title, description, mediaUrl: formattedMediaUrl, tags, privacyStatus } =
-    this.formatContentForPlatform('youtube', postData);
+    this.formatContentForPlatform('youtube', modifiedPostData);
 
   console.log('[Publisher][YouTube] title =', title);
   console.log('[Publisher][YouTube] privacyStatus =', privacyStatus);
@@ -224,11 +229,11 @@ case 'youtube': {
         // ------------ TWITTER ------------
         case 'twitter': {
           // Extract from postData (which is the content object)
-          const { clerkUserId, caption, text, mediaUrl } = postData || {};
+          const { clerkUserId, captions, text, mediaUrl } = postData || {};
           
           console.log('[Publisher][Twitter] Debug - postData:', JSON.stringify(postData, null, 2));
           console.log('[Publisher][Twitter] Debug - clerkUserId:', clerkUserId);
-          console.log('[Publisher][Twitter] Debug - caption:', caption);
+          console.log('[Publisher][Twitter] Debug - captions:', captions);
           console.log('[Publisher][Twitter] Debug - text:', text);
           console.log('[Publisher][Twitter] Debug - mediaUrl:', mediaUrl);
           
@@ -239,7 +244,9 @@ case 'youtube': {
           // Use the platform token we already retrieved (same as other platforms)
           const identifier = { clerkUserId: clerkUserId };
 
-          const tweetText = (caption || text || '').trim();
+          // Handle both string and array inputs for captions
+          const captionText = Array.isArray(captions) ? captions[0] || '' : captions || '';
+          const tweetText = (captionText || text || '').trim();
           console.log('[Publisher][Twitter] Debug - tweetText:', tweetText);
           if (!tweetText) throw new Error('Tweet text is empty');
 
@@ -258,12 +265,14 @@ case 'youtube': {
 
         // ------------ TIKTOK ------------
         case 'tiktok': {
-          const { caption, text, mediaUrl, mediaType } = postData || {};
+          const { captions, text, mediaUrl, mediaType } = postData || {};
           
           // Use the platform token we already retrieved
           const identifier = { clerkUserId: clerkUserId };
 
-          const message = (caption || text || '').trim();
+          // Handle both string and array inputs for captions
+          const captionText = Array.isArray(captions) ? captions[0] || '' : captions || '';
+          const message = (captionText || text || '').trim();
           if (!message) throw new Error('TikTok post text is empty');
 
           const result = await this.tiktokService.postToTikTok(identifier, message, mediaUrl, mediaType);
@@ -280,13 +289,14 @@ case 'youtube': {
 
         // ------------ INSTAGRAM ------------
         case 'instagram': {
-          const { caption, text, mediaUrl, mediaType, hashtags } = postData || {};
+          const { captions, text, mediaUrl, mediaType, hashtags } = postData || {};
           
           // Use the platform token we already retrieved
           const identifier = { clerkUserId: clerkUserId };
 
-          // Build caption + hashtags like other platforms
-          const safeCaption = (caption || text || '').toString().trim();
+          // Handle both string and array inputs for captions
+          const captionText = Array.isArray(captions) ? captions[0] || '' : captions || '';
+          const safeCaption = (captionText || text || '').toString().trim();
           const tagString = Array.isArray(hashtags) && hashtags.length
             ? hashtags.map(t => `#${(t ?? '').toString().replace(/^#+/, '')}`).join(' ')
             : '';
@@ -312,12 +322,14 @@ case 'youtube': {
         // ------------ FACEBOOK ------------
         case 'facebook': {
           console.log('[Publisher] Executing Facebook case');
-          const { caption, text, mediaUrl } = postData || {};
+          const { captions, text, mediaUrl } = postData || {};
           
           // Use the platform token we already retrieved
           const identifier = { clerkUserId: clerkUserId };
 
-          const message = (caption || text || '').trim();
+          // Handle both string and array inputs for captions
+          const captionText = Array.isArray(captions) ? captions[0] || '' : captions || '';
+          const message = (captionText || text || '').trim();
           if (!message) throw new Error('Facebook post text is empty');
 
           console.log('[Publisher][Facebook] message.preview =', message.slice(0, 140));
@@ -351,24 +363,27 @@ case 'youtube': {
 
   // ===== Validation per platform =====
   validatePlatformRequirements(platform, postData) {
-    const { caption, hashtags, mediaUrl } = postData;
+    const { captions, hashtags, mediaUrl } = postData;
 
     switch (platform) {
       case 'instagram':
         if (!mediaUrl) throw new Error('Instagram requires media content');
-        if (caption && caption.length > 2200) throw new Error('Instagram caption exceeds 2200 character limit');
+        const instagramCaption = Array.isArray(captions) ? captions[0] || '' : captions || '';
+        if (instagramCaption && instagramCaption.length > 2200) throw new Error('Instagram caption exceeds 2200 character limit');
         if (hashtags && hashtags.length > 30) throw new Error('Instagram allows maximum 30 hashtags');
         break;
 
       case 'tiktok':
         if (!mediaUrl) throw new Error('TikTok requires media content');
-        if (caption && caption.length > 150) throw new Error('TikTok caption exceeds 150 character limit');
+        const tiktokCaption = Array.isArray(captions) ? captions[0] || '' : captions || '';
+        if (tiktokCaption && tiktokCaption.length > 150) throw new Error('TikTok caption exceeds 150 character limit');
         if (hashtags && hashtags.length > 20) throw new Error('TikTok allows maximum 20 hashtags');
         break;
 
       case 'linkedin': {
         // validate the *message* length after stripping inline hashtags
-        const stripped = (caption || '').toString().replace(/#[\p{L}\p{N}_]+/gu, '');
+        const linkedinCaption = Array.isArray(captions) ? captions[0] || '' : captions || '';
+        const stripped = (linkedinCaption || '').toString().replace(/#[\p{L}\p{N}_]+/gu, '');
         if (stripped.length > 3000) throw new Error('LinkedIn post exceeds 3000 character limit');
         if (hashtags && hashtags.length > 50) throw new Error('LinkedIn allows maximum 50 hashtags');
         break;
@@ -388,7 +403,8 @@ case 'youtube': {
         break;
 
       case 'facebook':
-        if (caption && caption.length > 63206) throw new Error('Facebook post exceeds character limit');
+        const facebookCaption = Array.isArray(captions) ? captions[0] || '' : captions || '';
+        if (facebookCaption && facebookCaption.length > 63206) throw new Error('Facebook post exceeds character limit');
         if (hashtags && hashtags.length > 100) throw new Error('Facebook allows maximum 100 hashtags');
         break;
     }
@@ -396,8 +412,10 @@ case 'youtube': {
 
   // ===== Normalize content per platform =====
   formatContentForPlatform(platform, postData) {
-    const { caption, hashtags, mediaUrl, mediaType, privacyStatus } = postData;
-    const safeCaption = (caption || '').toString();
+    const { captions, hashtags, mediaUrl, mediaType, privacyStatus } = postData;
+    // Handle both string and array inputs for captions
+    const captionText = Array.isArray(captions) ? captions[0] || '' : captions || '';
+    const safeCaption = captionText.toString();
     const tagString = Array.isArray(hashtags) && hashtags.length
       ? hashtags.map(t => `#${(t ?? '').toString().replace(/^#+/, '')}`).join(' ')
       : '';

@@ -267,8 +267,10 @@ class TwitterService {
    * Now uses LinkedIn-style media handling.
    */
   async postToTwitter(identifier, text, mediaUrlOrBuffer = null) {
+    // Handle both string and array inputs for captions
+    const captionText = Array.isArray(text) ? text[0] || '' : text || '';
     const client = await this.getUserClient(identifier);
-    const payload = { text: String(text || '').trim().slice(0, 280) };
+    const payload = { text: String(captionText || '').trim().slice(0, 280) };
 
     if (mediaUrlOrBuffer) {
       try {

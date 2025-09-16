@@ -15,7 +15,7 @@ const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
 const STATE_HMAC_SECRET = process.env.STATE_HMAC_SECRET || 'dev_state_secret';
 
 // APP_URL is already imported as BASE from config/url
-const IG_REDIRECT_URI = abs('api/auth/instagram/oauth/callback/instagram');
+const IG_REDIRECT_URI = abs('api/auth/instagram/callback');
 
 function signState(obj) {
   const payload = Buffer.from(JSON.stringify(obj)).toString('base64url');
@@ -69,7 +69,7 @@ router.get('/oauth/start/instagram', async (req, res) => {
 });
 
 // Callback
-router.get('/oauth/callback/instagram', async (req, res) => {
+router.get('/callback', async (req, res) => {
   try {
     const { code, state, error } = req.query;
     if (error) return res.redirect(abs('app?error=instagram_auth_failed'));

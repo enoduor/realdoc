@@ -40,7 +40,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
     
     // Editable content state
     const [editableContent, setEditableContent] = useState({
-        caption: content?.caption || '',
+        captions: content?.captions || [content?.caption || ''],
         hashtags: content?.hashtags || []
     });
     
@@ -64,7 +64,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
 
     // Check for changes
     useEffect(() => {
-        const hasCaptionChanges = editableContent.caption !== (content?.caption || '');
+        const hasCaptionChanges = editableContent.captions[0] !== (content?.captions?.[0] || content?.caption || '');
         const hasHashtagChanges = JSON.stringify(editableContent.hashtags) !== JSON.stringify(content?.hashtags || []);
         setHasChanges(hasCaptionChanges || hasHashtagChanges);
     }, [editableContent, content]);
@@ -145,7 +145,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
 
     const saveChanges = () => {
         updateContent({
-            caption: editableContent.caption,
+            captions: editableContent.captions,
             hashtags: editableContent.hashtags.filter(tag => tag.trim() !== '')
         });
         setIsEditing(false);
@@ -224,7 +224,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
             return;
         }
 
-        if (!editableContent.caption && editableContent.hashtags.filter(tag => tag.trim() !== '').length === 0 && !content.mediaUrl) {
+        if (!editableContent.captions[0] && editableContent.hashtags.filter(tag => tag.trim() !== '').length === 0 && !content.mediaUrl) {
             setPublishStatus({
                 type: 'error',
                 message: 'Please add a caption, hashtags, or media before publishing.'
@@ -506,8 +506,8 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
             
             {/* Caption Area */}
             <div className="p-4 h-1/4 overflow-y-auto">
-                {editableContent.caption && (
-                    <p className="text-sm mb-2">{editableContent.caption}</p>
+                {editableContent.captions[0] && (
+                    <p className="text-sm mb-2">{editableContent.captions[0]}</p>
                 )}
                 {editableContent.hashtags && editableContent.hashtags.length > 0 && (
                     <div className="flex flex-wrap gap-1">
@@ -570,9 +570,9 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
             
             {/* Caption */}
             <div className="px-3 pb-3">
-                {editableContent.caption && (
+                {editableContent.captions[0] && (
                     <p className="text-sm mb-2">
-                        <span className="font-medium">username</span> {editableContent.caption}
+                        <span className="font-medium">username</span> {editableContent.captions[0]}
                     </p>
                 )}
                 {editableContent.hashtags && editableContent.hashtags.length > 0 && (
@@ -602,8 +602,8 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
             
             {/* Content */}
             <div className="p-4">
-                {editableContent.caption && (
-                    <p className="text-gray-800 mb-4 leading-relaxed">{editableContent.caption}</p>
+                {editableContent.captions[0] && (
+                    <p className="text-gray-800 mb-4 leading-relaxed">{editableContent.captions[0]}</p>
                 )}
                 
                 {content.mediaUrl && (
@@ -670,8 +670,8 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
             
             {/* Content */}
             <div className="px-3 pb-3">
-                {editableContent.caption && (
-                    <p className="text-gray-800 mb-3">{editableContent.caption}</p>
+                {editableContent.captions[0] && (
+                    <p className="text-gray-800 mb-3">{editableContent.captions[0]}</p>
                 )}
                 
                 {content.mediaUrl && (
@@ -761,8 +761,8 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
             {/* Video Info */}
             <div className="p-4">
                 <h3 className="font-medium mb-2">Your Video Title</h3>
-                {editableContent.caption && (
-                    <p className="text-sm text-gray-600 mb-2">{editableContent.caption}</p>
+                {editableContent.captions[0] && (
+                    <p className="text-sm text-gray-600 mb-2">{editableContent.captions[0]}</p>
                 )}
                 
                 <div className="flex items-center text-sm text-gray-500">
@@ -796,8 +796,8 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
             
             {/* Content */}
             <div className="px-3 pb-3">
-                {editableContent.caption && (
-                    <p className="text-gray-800 mb-3">{editableContent.caption}</p>
+                {editableContent.captions[0] && (
+                    <p className="text-gray-800 mb-3">{editableContent.captions[0]}</p>
                 )}
                 
                 {content.mediaUrl && (
@@ -849,7 +849,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
     const renderDefaultPreview = () => (
         <div className="w-full bg-white p-4">
             <h4 className="font-medium mb-3">Preview</h4>
-            {editableContent.caption && <p className="mb-3">{editableContent.caption}</p>}
+            {editableContent.captions[0] && <p className="mb-3">{editableContent.captions[0]}</p>}
             {content.mediaUrl && (
                 <div className="w-full h-48 bg-gray-100 mb-3 rounded overflow-hidden flex items-center justify-center">
                     {content.mediaType === 'video' ? (
@@ -993,11 +993,11 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                 {/* Caption Editor */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Caption ({editableContent.caption?.length || 0}/{platformLimits.maxCharacters})
+                                        Caption ({editableContent.captions[0]?.length || 0}/{platformLimits.maxCharacters})
                                     </label>
                                     <textarea
-                                        value={editableContent.caption}
-                                        onChange={(e) => handleEditableContentChange('caption', e.target.value)}
+                                        value={editableContent.captions[0]}
+                                        onChange={(e) => handleEditableContentChange('captions', [e.target.value])}
                                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         rows={4}
                                         maxLength={platformLimits.maxCharacters}
@@ -1041,9 +1041,9 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {editableContent.caption && (
+                                {editableContent.captions[0] && (
                                     <div>
-                                        <strong>Caption:</strong> {editableContent.caption}
+                                        <strong>Caption:</strong> {editableContent.captions[0]}
                                     </div>
                                 )}
                                 {editableContent.hashtags.filter(tag => tag.trim() !== '').length > 0 && (
@@ -1199,7 +1199,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                             <button
                                 onClick={handlePublishPost}
                                 className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                                disabled={isPublishing || platforms.length === 0 || (!editableContent.caption && editableContent.hashtags.filter(tag => tag.trim() !== '').length === 0 && !content.mediaUrl)}
+                                disabled={isPublishing || platforms.length === 0 || (!editableContent.captions[0] && editableContent.hashtags.filter(tag => tag.trim() !== '').length === 0 && !content.mediaUrl)}
                             >
                                 {isPublishing ? (
                                     <>

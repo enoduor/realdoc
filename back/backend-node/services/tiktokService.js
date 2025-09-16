@@ -185,11 +185,13 @@ class TikTokService {
    * Posts content to TikTok (combines upload + publish steps).
    * Same pattern as other platforms: postTo[Platform]
    * @param {Object} identifier  { clerkUserId } - same pattern as other platforms
-   * @param {string} message  Caption/text for the post
+   * @param {string|Array} message  Caption/text for the post (can be string or array)
    * @param {string} mediaUrl  URL to media file
    * @param {string} mediaType  'video' or 'image'
    */
   async postToTikTok(identifier, message, mediaUrl, mediaType = 'video') {
+    // Handle both string and array inputs for captions
+    const captionText = Array.isArray(message) ? message[0] || '' : message || '';
     const { clerkUserId } = identifier;
     
     if (!clerkUserId) {
@@ -200,7 +202,7 @@ class TikTokService {
       throw new Error('TikTok requires media content: mediaUrl (HTTPS URL)');
     }
 
-    if (!message) {
+    if (!captionText) {
       throw new Error('TikTok post text is empty');
     }
 
@@ -223,7 +225,7 @@ class TikTokService {
     const result = await this.publishVideo({
       clerkUserId: clerkUserId,
       videoId: video_id,
-      title: message,
+      title: captionText,
     });
 
     return result;

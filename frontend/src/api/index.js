@@ -2,8 +2,17 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost:4001";
 const AI_API_URL = process.env.REACT_APP_PYTHON_API_URL || "http://localhost:5000";
 
 // Helper function to get auth headers
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('clerk-token');
+const getAuthHeaders = async () => {
+  let token = null;
+  try {
+    // Get token from Clerk session
+    if (window.Clerk && window.Clerk.session) {
+      token = await window.Clerk.session.getToken();
+    }
+  } catch (error) {
+    console.error('Error getting Clerk token:', error);
+  }
+  
   return {
     'Content-Type': 'application/json',
     ...(token && { 'Authorization': `Bearer ${token}` })
@@ -55,7 +64,7 @@ export const getCaption = async (text) => {
   try {
     const response = await fetch(`${AI_API_URL}/api/captions/generate`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: await getAuthHeaders(),
       body: JSON.stringify({ text })
     });
     return await handleResponse(response);
@@ -69,7 +78,7 @@ export const createOrLinkClerkUser = async (clerkUserId, email) => {
   try {
     const response = await fetch(`${API_URL}/api/auth/create-clerk-user`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: await getAuthHeaders(),
       body: JSON.stringify({
         clerkUserId,
         email
@@ -86,7 +95,7 @@ export const checkSubscriptionStatus = async (clerkUserId) => {
   try {
     const response = await fetch(`${API_URL}/api/auth/subscription-status`, {
       method: 'GET',
-      headers: getAuthHeaders()
+      headers: await getAuthHeaders()
     });
     return await handleResponse(response);
   } catch (error) {
@@ -99,7 +108,7 @@ export const checkSubscriptionByEmail = async (email) => {
   try {
     const response = await fetch(`${API_URL}/api/stripe/subscription-by-email/${encodeURIComponent(email)}`, {
       method: 'GET',
-      headers: getAuthHeaders()
+      headers: await getAuthHeaders()
     });
     return await handleResponse(response);
   } catch (error) {
@@ -112,7 +121,7 @@ export const publishNow = async (postData) => {
   try {
     const response = await fetch(`${API_URL}/api/publisher/publish`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: await getAuthHeaders(),
       body: JSON.stringify(postData)
     });
     return await handleResponse(response);
@@ -126,7 +135,7 @@ export const createSubscriptionSession = async (priceId) => {
   try {
     const response = await fetch(`${API_URL}/api/stripe/create-checkout-session`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: await getAuthHeaders(),
       body: JSON.stringify({ priceId })
     });
     return await handleResponse(response);

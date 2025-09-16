@@ -38,6 +38,7 @@ declare -A SSM_PARAMS=(
     ["/repostly/api/FACEBOOK_APP_ID"]="Facebook application ID"
     ["/repostly/api/FACEBOOK_APP_SECRET"]="Facebook application secret"
     ["/repostly/api/FACEBOOK_REDIRECT_URI"]="Facebook OAuth redirect URI"
+    ["/repostly/api/STATE_HMAC_SECRET"]="OAuth state HMAC secret"
     
     # AI Parameters
     ["/repostly/ai/OPENAI_API_KEY"]="OpenAI API key for AI services"

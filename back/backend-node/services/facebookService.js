@@ -5,11 +5,11 @@ const path = require('path');
 const FacebookToken = require('../models/FacebookToken');
 
 const {
-  FACEBOOK_API_URL,
   FACEBOOK_APP_ID,
   FACEBOOK_APP_SECRET
 } = process.env;
 
+const FACEBOOK_API_URL = process.env.FACEBOOK_API_URL || 'https://graph.facebook.com/v18.0';
 const PYTHON_API_BASE_URL = process.env.PYTHON_API_BASE_URL || 'http://localhost:5001';
 const MediaManagerService = require('./mediaManagerService');
 
@@ -331,7 +331,9 @@ class FacebookService {
     const targetId = doc.pageAccessToken && doc.pageId ? doc.pageId : 'me';
     const tokenForPost = doc.pageAccessToken && doc.pageId ? doc.pageAccessToken : doc.accessToken;
 
-    const message = String(text || '').trim().slice(0, 63206); // Facebook limit
+    // Handle both string and array inputs for captions
+    const captionText = Array.isArray(text) ? text[0] || '' : text || '';
+    const message = String(captionText).trim().slice(0, 63206); // Facebook limit
 
     if (!mediaUrlOrBuffer) {
       throw new Error('Facebook requires media content for posting');

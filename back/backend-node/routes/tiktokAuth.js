@@ -90,14 +90,9 @@ router.get('/callback', async (req, res) => {
 });
 
 // Status
-router.get('/status', async (req, res) => {
+router.get('/status', requireAuth(), async (req, res) => {
   try {
-    let clerkUserId = req.auth?.().userId;
-    if (!clerkUserId && req.headers['x-clerk-user-id']) clerkUserId = String(req.headers['x-clerk-user-id']);
-    if (!clerkUserId && req.query.userId) clerkUserId = String(req.query.userId);
-
-    if (!clerkUserId) return res.status(401).json({ error: 'User not authenticated' });
-
+    const clerkUserId = req.auth().userId;
     const token = await TikTokToken.findOne({ clerkUserId });
     if (!token || !token.accessToken) return res.json({ connected: false });
 
@@ -116,18 +111,10 @@ router.get('/status', async (req, res) => {
 });
 
 // Disconnect
-router.delete('/disconnect', async (req, res) => {
+router.delete('/disconnect', requireAuth(), async (req, res) => {
   try {
-    let clerkUserId = req.auth?.().userId;
-    if (!clerkUserId && req.headers['x-clerk-user-id']) clerkUserId = String(req.headers['x-clerk-user-id']);
-    if (!clerkUserId && req.query.userId) clerkUserId = String(req.query.userId);
-
-    if (!clerkUserId) return res.status(401).json({ error: 'User not authenticated' });
-
-    const user = await User.findOne({ clerkUserId });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const existing = await TikTokToken.findOne({ userId: user._id });
+    const clerkUserId = req.auth().userId;
+    const existing = await TikTokToken.findOne({ clerkUserId });
     if (!existing) return res.status(404).json({ error: 'TikTok account not found' });
 
     await TikTokToken.deleteOne({ _id: existing._id });

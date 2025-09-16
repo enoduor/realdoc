@@ -169,7 +169,10 @@ register_task_definition() {
       {"name":"MONGODB_URI",      "valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/MONGODB_URI"},
       {"name":"CLERK_SECRET_KEY", "valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/CLERK_SECRET_KEY"},
       {"name":"OPENAI_API_KEY",   "valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/ai/OPENAI_API_KEY"},
-      {"name":"STRIPE_SECRET_KEY","valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/STRIPE_SECRET_KEY"}
+      {"name":"STRIPE_SECRET_KEY","valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/STRIPE_SECRET_KEY"},
+      {"name":"FACEBOOK_APP_ID",  "valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/FACEBOOK_APP_ID"},
+      {"name":"FACEBOOK_APP_SECRET","valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/FACEBOOK_APP_SECRET"},
+      {"name":"STATE_HMAC_SECRET","valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/STATE_HMAC_SECRET"}
     ],
     "healthCheck": {
       "command": ["CMD", "curl", "-fsS", "http://localhost:$PORT_API/health"],
@@ -184,8 +187,8 @@ JSON
       --region "$AWS_REGION" \
       --query 'taskDefinition' > td.json
 
-    # update container image and environment variables; keep roles/limits/ports
-    jq --arg NAME "$REPO_NAME" --arg IMG "$image" --arg AWS_REGION "$AWS_REGION" '
+    # update container image, environment variables, and secrets; keep roles/limits/ports
+    jq --arg NAME "$REPO_NAME" --arg IMG "$image" --arg AWS_REGION "$AWS_REGION" --arg AWS_ACCOUNT_ID "$AWS_ACCOUNT_ID" '
       del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy,.inferenceAccelerators)
       | .containerDefinitions = (.containerDefinitions | map(
           if .name == $NAME then 
@@ -196,6 +199,16 @@ JSON
                    {"name":"AWS_REGION","value":$AWS_REGION},
                    {"name":"AWS_BUCKET_NAME","value":"bigvideograb-media"},
                    {"name":"AI_ROOT_PATH","value":"/ai"}
+                 ]) |
+                 (.secrets = [
+                   {"name":"MONGODB_URI",      "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/MONGODB_URI")},
+                   {"name":"CLERK_SECRET_KEY", "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/CLERK_SECRET_KEY")},
+                   {"name":"CLERK_PUBLISHABLE_KEY", "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/CLERK_PUBLISHABLE_KEY")},
+                   {"name":"OPENAI_API_KEY",   "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/ai/OPENAI_API_KEY")},
+                   {"name":"STRIPE_SECRET_KEY","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_SECRET_KEY")},
+                   {"name":"FACEBOOK_APP_ID",  "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/FACEBOOK_APP_ID")},
+                   {"name":"FACEBOOK_APP_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/FACEBOOK_APP_SECRET")},
+                   {"name":"STATE_HMAC_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STATE_HMAC_SECRET")}
                  ])
           else . end))
     ' td.json > td.new.json

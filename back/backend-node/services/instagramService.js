@@ -110,6 +110,8 @@ class InstagramService {
 
   // NEW: LinkedIn-style Instagram posting - always download and rehost to S3 for reliability
   async postToInstagram(identifier, message, mediaUrl, isVideo = false) {
+    // Handle both string and array inputs for captions
+    const captionText = Array.isArray(message) ? message[0] || '' : message || '';
     const doc = await this.findToken(identifier);
     if (!doc || !doc.accessToken || !doc.igUserId) {
       throw new Error('Instagram not connected for this user');
@@ -128,9 +130,9 @@ class InstagramService {
     let creation;
     try {
       if (isVideo) {
-        creation = await this.createContainerVideo(accessToken, igUserId, s3Url, message);
+        creation = await this.createContainerVideo(accessToken, igUserId, s3Url, captionText);
       } else {
-        creation = await this.createContainerImage(accessToken, igUserId, s3Url, message);
+        creation = await this.createContainerImage(accessToken, igUserId, s3Url, captionText);
       }
       console.log(`[IG] Container created successfully with S3 URL:`, creation);
     } catch (error) {

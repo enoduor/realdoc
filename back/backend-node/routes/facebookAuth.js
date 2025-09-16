@@ -15,7 +15,7 @@ const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
 const STATE_HMAC_SECRET = process.env.STATE_HMAC_SECRET || 'change-me';
 
 // APP_URL is already imported as BASE from config/url
-const FACEBOOK_REDIRECT_URI = abs('api/auth/facebook/oauth/callback/facebook');
+const FACEBOOK_REDIRECT_URI = abs('api/auth/facebook/callback');
 
 function signState(payload) {
   const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -51,8 +51,9 @@ router.get('/oauth/start/facebook', async (req, res) => {
       `https://www.facebook.com/v18.0/dialog/oauth` +
       `?client_id=${FACEBOOK_APP_ID}` +
       `&redirect_uri=${encodeURIComponent(FACEBOOK_REDIRECT_URI)}` +
-      `&state=${encodeURIComponent(state)}` +
-      `&scope=${encodeURIComponent('public_profile,email,pages_manage_posts,pages_read_engagement,pages_show_list')}`;
+      `&scope=${encodeURIComponent('public_profile,email,pages_manage_posts,pages_read_engagement,pages_show_list')}` +
+      `&response_type=code` +
+      `&state=${encodeURIComponent(state)}`;
 
     return res.redirect(authUrl);
   } catch (error) {
@@ -61,7 +62,7 @@ router.get('/oauth/start/facebook', async (req, res) => {
 });
 
 // Callback
-router.get('/oauth/callback/facebook', async (req, res) => {
+router.get('/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
     if (!code || !state) return res.redirect(abs('app?error=facebook_auth_failed'));

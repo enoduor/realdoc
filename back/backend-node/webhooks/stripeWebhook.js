@@ -93,8 +93,9 @@ async function handleCheckoutSessionCompleted(session) {
       if (user) {
         user.selectedPlan = plan;
         user.billingCycle = billingCycle;
+        user.subscriptionStatus = 'active'; // User has paid, so status should be active
         await user.save();
-        console.log(`✅ Updated authenticated user ${clerkUserId} with plan: ${plan}`);
+        console.log(`✅ Updated authenticated user ${clerkUserId} with plan: ${plan} and status: active`);
       }
     } else {
       // User was not authenticated - create temporary record
@@ -103,7 +104,7 @@ async function handleCheckoutSessionCompleted(session) {
         stripeCustomerId: session.customer,
         selectedPlan: plan,
         billingCycle: billingCycle,
-        subscriptionStatus: 'trialing',
+        subscriptionStatus: 'active', // User has paid, so status should be active
         trialStartDate: new Date(),
         trialEndDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days
         email: session.customer_details?.email || 'temp@example.com'

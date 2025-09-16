@@ -82,7 +82,7 @@ const Scheduler = ({ onPublishNow }) => {
                 platforms,
                 content: {
                     mediaUrl: content.mediaUrl,
-                    caption: content.caption,
+                    captions: content.captions || [content.caption || ''],
                     hashtags: content.hashtags,
                     mediaType: content.mediaType,
                     privacyStatus: 'unlisted'

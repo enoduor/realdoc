@@ -57,7 +57,7 @@ const CaptionGenerator = () => {
             const response = await ContentService.createCaption(formData);
             setCaption(response.caption);
             updateContent({ 
-                caption: response.caption,
+                captions: [response.caption],
                 platform: formData.platform,
                 topic: formData.topic 
             });

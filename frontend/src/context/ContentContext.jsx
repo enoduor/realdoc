@@ -23,7 +23,7 @@ const loadContentFromStorage = () => {
     // Default content
     return {
         platform: 'instagram',
-        caption: '',
+        captions: [''],
         hashtags: [],
         mediaUrl: null,
         mediaType: null,
@@ -84,7 +84,7 @@ export const ContentProvider = ({ children }) => {
         clearContent: () => {
             const defaultContent = {
                 platform: 'instagram',
-                caption: '',
+                captions: [''],
                 hashtags: [],
                 mediaUrl: null,
                 mediaType: null,

@@ -2,7 +2,7 @@
   "containerDefinitions": [
     {
       "name": "repostly-unified",
-      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250914194315-8e1449d",
+      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250915195055-fa48a8c",
       "cpu": 0,
       "portMappings": [
         {
@@ -60,10 +60,6 @@
           "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_PUBLISHABLE_KEY"
         },
         {
-          "name": "CLERK_ISSUER_URL",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_ISSUER_URL"
-        },
-        {
           "name": "OPENAI_API_KEY",
           "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/ai/OPENAI_API_KEY"
         },
@@ -72,32 +68,16 @@
           "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_SECRET_KEY"
         },
         {
-          "name": "STRIPE_WEBHOOK_SECRET",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_WEBHOOK_SECRET"
+          "name": "FACEBOOK_APP_ID",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/FACEBOOK_APP_ID"
         },
         {
-          "name": "STRIPE_STARTER_MONTHLY_PRICE_ID",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_STARTER_MONTHLY_PRICE_ID"
+          "name": "FACEBOOK_APP_SECRET",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/FACEBOOK_APP_SECRET"
         },
         {
-          "name": "STRIPE_STARTER_YEARLY_PRICE_ID",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_STARTER_YEARLY_PRICE_ID"
-        },
-        {
-          "name": "STRIPE_CREATOR_MONTHLY_PRICE_ID",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_CREATOR_MONTHLY_PRICE_ID"
-        },
-        {
-          "name": "STRIPE_CREATOR_YEARLY_PRICE_ID",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_CREATOR_YEARLY_PRICE_ID"
-        },
-        {
-          "name": "STRIPE_PRO_MONTHLY_PRICE_ID",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_PRO_MONTHLY_PRICE_ID"
-        },
-        {
-          "name": "STRIPE_PRO_YEARLY_PRICE_ID",
-          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STRIPE_PRO_YEARLY_PRICE_ID"
+          "name": "STATE_HMAC_SECRET",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STATE_HMAC_SECRET"
         }
       ],
       "logConfiguration": {
