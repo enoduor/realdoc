@@ -7,7 +7,7 @@ const User = require('../models/User');
 const { abs } = require('../config/url');  // ✅ only abs needed
 
 const reqSecrets = new Map(); // temp in-memory
-const TWITTER_CALLBACK = abs('api/auth/twitter/oauth/callback/twitter');  // ✅ clean and consistent
+const TWITTER_CALLBACK = abs('api/auth/twitter/callback');  // ✅ clean and consistent
 
 // Start
 router.get('/oauth/start/twitter', async (req, res) => {
@@ -40,7 +40,7 @@ router.get('/oauth/start/twitter', async (req, res) => {
 });
 
 // Callback
-router.get('/oauth/callback/twitter', async (req, res) => {
+router.get('/callback', async (req, res) => {
   try {
     const { oauth_token, oauth_verifier } = req.query;
     if (!oauth_token || !oauth_verifier) return res.status(400).send('Missing params');

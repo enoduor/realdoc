@@ -38,6 +38,10 @@ declare -A SSM_PARAMS=(
     ["/repostly/api/FACEBOOK_APP_ID"]="Facebook application ID"
     ["/repostly/api/FACEBOOK_APP_SECRET"]="Facebook application secret"
     ["/repostly/api/FACEBOOK_REDIRECT_URI"]="Facebook OAuth redirect URI"
+    ["/repostly/api/LINKEDIN_CLIENT_ID"]="LinkedIn OAuth client ID"
+    ["/repostly/api/LINKEDIN_CLIENT_SECRET"]="LinkedIn OAuth client secret"
+    ["/repostly/api/TWITTER_API_KEY"]="Twitter API key (Client ID)"
+    ["/repostly/api/TWITTER_API_SECRET"]="Twitter API secret (Client Secret)"
     ["/repostly/api/STATE_HMAC_SECRET"]="OAuth state HMAC secret"
     
     # AI Parameters
