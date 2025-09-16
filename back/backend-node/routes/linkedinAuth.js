@@ -16,7 +16,7 @@ const STATE_HMAC_SECRET = process.env.STATE_HMAC_SECRET || 'dev_state_secret';
 
 // Unified base + redirect
 // APP_URL is already imported as BASE from config/url
-const LINKEDIN_REDIRECT_URI = abs('api/auth/linkedin/oauth2/callback/linkedin');
+const LINKEDIN_REDIRECT_URI = abs('api/auth/linkedin/callback');
 
 // --- HMAC state helpers ---
 function signState(payload) {
@@ -83,10 +83,10 @@ router.get('/oauth2/start/linkedin', async (req, res) => {
 });
 
 /**
- * CALLBACK: /oauth2/callback/linkedin
+ * CALLBACK: /callback
  * This must match the app's authorized redirect URL.
  */
-router.get('/oauth2/callback/linkedin', async (req, res) => {
+router.get('/callback', async (req, res) => {
   try {
     const { code, state, error } = req.query;
 
