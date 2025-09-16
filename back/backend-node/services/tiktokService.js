@@ -5,12 +5,14 @@ const dayjs = require('dayjs');
 const TikTokToken = require('../models/TikTokToken');
 const FormData = require('form-data');
 const path = require('path');
+const { abs } = require('../config/url');
 
 // For sandbox testing, use the sandbox API URL
 const TIKTOK_API_BASE = process.env.TIKTOK_API_URL || 'https://open-sandbox.tiktokapis.com/v2';
 const CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY;
 const CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET;
-const REDIRECT_URI = process.env.TIKTOK_REDIRECT_URI; // e.g., https://yourdomain.com/api/auth/tiktok/callback
+// Construct redirect URI dynamically like other platforms
+const REDIRECT_URI = abs('api/auth/tiktok/callback');
 
 const PYTHON_API_BASE_URL = process.env.PYTHON_API_BASE_URL || 'http://localhost:5001';
 const MediaManagerService = require('./mediaManagerService');

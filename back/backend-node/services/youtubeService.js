@@ -9,6 +9,7 @@ const { pipeline } = require('stream/promises');
 
 const PYTHON_API_BASE_URL = process.env.PYTHON_API_BASE_URL || 'http://localhost:5001';
 const MediaManagerService = require('./mediaManagerService');
+const { abs } = require('../config/url');
 
 class YouTubeService {
   constructor(config = {}) {
@@ -17,13 +18,15 @@ class YouTubeService {
   }
 
   getOAuthClient() {
-    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
-      throw new Error('Missing Google OAuth env (GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI)');
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      throw new Error('Missing Google OAuth env (GOOGLE_CLIENT_ID/SECRET)');
     }
+    // Construct redirect URI dynamically like the auth route
+    const GOOGLE_REDIRECT_URI = abs('api/auth/youtube/callback');
     return new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI
+      GOOGLE_REDIRECT_URI
     );
   }
 

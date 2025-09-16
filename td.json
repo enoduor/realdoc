@@ -1,9 +1,9 @@
 {
-    "taskDefinitionArn": "arn:aws:ecs:us-west-2:657053005765:task-definition/repostly-unified:195",
+    "taskDefinitionArn": "arn:aws:ecs:us-west-2:657053005765:task-definition/repostly-unified:201",
     "containerDefinitions": [
         {
             "name": "repostly-unified",
-            "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250915193223-fa48a8c",
+            "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250916003912-cca3ab0",
             "cpu": 0,
             "portMappings": [
                 {
@@ -77,6 +77,30 @@
                     "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/FACEBOOK_APP_SECRET"
                 },
                 {
+                    "name": "LINKEDIN_CLIENT_ID",
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/LINKEDIN_CLIENT_ID"
+                },
+                {
+                    "name": "LINKEDIN_CLIENT_SECRET",
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/LINKEDIN_CLIENT_SECRET"
+                },
+                {
+                    "name": "TWITTER_API_KEY",
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/TWITTER_API_KEY"
+                },
+                {
+                    "name": "TWITTER_API_SECRET",
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/TWITTER_API_SECRET"
+                },
+                {
+                    "name": "GOOGLE_CLIENT_ID",
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/GOOGLE_CLIENT_ID"
+                },
+                {
+                    "name": "GOOGLE_CLIENT_SECRET",
+                    "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/GOOGLE_CLIENT_SECRET"
+                },
+                {
                     "name": "STATE_HMAC_SECRET",
                     "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/STATE_HMAC_SECRET"
                 }
@@ -108,7 +132,7 @@
     "taskRoleArn": "arn:aws:iam::657053005765:role/ecsTaskRole",
     "executionRoleArn": "arn:aws:iam::657053005765:role/ecsTaskExecutionRole",
     "networkMode": "awsvpc",
-    "revision": 195,
+    "revision": 201,
     "volumes": [],
     "status": "ACTIVE",
     "requiresAttributes": [
@@ -156,6 +180,6 @@
     ],
     "cpu": "1024",
     "memory": "4096",
-    "registeredAt": "2025-09-15T19:37:54.785000-04:00",
+    "registeredAt": "2025-09-16T00:45:30.790000-04:00",
     "registeredBy": "arn:aws:iam::657053005765:user/videograb-deploy"
 }
