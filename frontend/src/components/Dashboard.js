@@ -91,28 +91,28 @@ const Dashboard = () => {
 
   const features = [
     {
-      name: 'Caption Generator',
+      name: 'Generate Captions',
       description: 'Create engaging AI-powered captions for your social media posts',
       icon: '✍️',
       link: '/app/caption-generator'
     },
     {
-      name: 'Hashtag Generator',
+      name: 'Generate Hashtags',
       description: 'Generate relevant hashtags to increase your content reach',
       icon: '#️⃣',
       link: '/app/hashtag-generator'
     },
     {
-      name: 'Media Upload',
+      name: 'Upload Media',
       description: 'Upload and manage your media content',
       icon: '📸',
       link: '/app/media-upload'
     },
     {
-              name: 'Platform Preview',
-              description: 'Preview and publish your content to different platforms',
-              icon: '🚀',
-                      link: '/app/platform-preview'
+      name: 'Preview Content',
+      description: 'Preview and publish your content to different platforms',
+      icon: '🚀',
+      link: '/app/platform-preview'
     },
     {
       name: 'Publish Now',
@@ -200,10 +200,10 @@ const Dashboard = () => {
                 📺 Connect YouTube
               </a>
               <a
-                href={`/api/auth/tiktok/oauth/start/tiktok?userId=${user?.id}&email=${user?.primaryEmailAddress?.emailAddress}`}
+                href={`/api/auth/tiktok/connect?userId=${user?.id}&email=${user?.primaryEmailAddress?.emailAddress}`}
                 className="inline-flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium"
               >
-                🎵 Coming Soon
+                🎵 TBD - TikTok
               </a>
             </div>
           </div>

@@ -18,6 +18,7 @@ BASE_URL="https://${DOMAIN}"
 
 # Build-time env (React build)
 export REACT_APP_API_URL="${REACT_APP_API_URL:-${BASE_URL}}"
+export REACT_APP_AI_API="${REACT_APP_AI_API:-${BASE_URL}/ai}"
 export REACT_APP_PYTHON_API_URL="${REACT_APP_PYTHON_API_URL:-${BASE_URL}/ai}"
 # Clerk publishable key is public; safe to embed at build time
 export REACT_APP_CLERK_PUBLISHABLE_KEY="${REACT_APP_CLERK_PUBLISHABLE_KEY:-pk_live_Y2xlcmsucmVlbHBvc3RseS5jb20k}"
@@ -109,6 +110,7 @@ build_and_push() {
     --no-cache \
     -f Dockerfile \
     --build-arg REACT_APP_API_URL="$REACT_APP_API_URL" \
+    --build-arg REACT_APP_AI_API="$REACT_APP_AI_API" \
     --build-arg REACT_APP_PYTHON_API_URL="$REACT_APP_PYTHON_API_URL" \
     --build-arg REACT_APP_CLERK_PUBLISHABLE_KEY="$REACT_APP_CLERK_PUBLISHABLE_KEY" \
     --build-arg PUBLIC_URL="$PUBLIC_URL" \
@@ -214,6 +216,8 @@ JSON
                    {"name":"TWITTER_API_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/TWITTER_API_SECRET")},
                    {"name":"GOOGLE_CLIENT_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/GOOGLE_CLIENT_ID")},
                    {"name":"GOOGLE_CLIENT_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/GOOGLE_CLIENT_SECRET")},
+                   {"name":"TIKTOK_CLIENT_KEY","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/TIKTOK_CLIENT_KEY")},
+                   {"name":"TIKTOK_CLIENT_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/TIKTOK_CLIENT_SECRET")},
                    {"name":"STATE_HMAC_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STATE_HMAC_SECRET")}
                  ])
           else . end))

@@ -50,14 +50,17 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
     
     // Publishing state
     const [isPublishing, setIsPublishing] = useState(false);
+    const [publishingProgress, setPublishingProgress] = useState({});
     const [publishStatus, setPublishStatus] = useState(null);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
 
     const platformLimits = PLATFORMS[formData.platform.toUpperCase()];
 
     // Update editable content when content context changes
     useEffect(() => {
         setEditableContent({
-            caption: content?.caption || '',
+            captions: content?.captions || [content?.caption || ''],
             hashtags: content?.hashtags || []
         });
     }, [content]);
@@ -154,7 +157,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
 
     const cancelChanges = () => {
         setEditableContent({
-            caption: content?.caption || '',
+            captions: content?.captions || [content?.caption || ''],
             hashtags: content?.hashtags || []
         });
         setIsEditing(false);
@@ -233,6 +236,16 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
         }
 
         setIsPublishing(true);
+        setPublishingProgress({});
+        setError('');
+        setSuccess('');
+
+        // Initialize progress tracking for all selected platforms
+        const initialProgress = {};
+        platforms.forEach(platform => {
+            initialProgress[platform] = 'pending';
+        });
+        setPublishingProgress(initialProgress);
 
         try {
             // Align payload with Scheduler behavior (use ContentContext values directly)
@@ -240,7 +253,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                 platforms,
                 content: {
                     mediaUrl: content.mediaUrl,
-                    caption: content.caption,
+                    captions: content.captions || [content.caption || ''],
                     hashtags: content.hashtags,
                     mediaType: content.mediaType,
                     privacyStatus: 'unlisted'
@@ -281,11 +294,11 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                 
                 // Clear the form after successful publish
                 setEditableContent({
-                    caption: '',
+                    captions: [''],
                     hashtags: []
                 });
                 updateContent({
-                    caption: '',
+                    captions: [''],
                     hashtags: [],
                     mediaUrl: null,
                     mediaType: null
@@ -1207,7 +1220,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
-                                        Publishing...
+                                        Publishing to {platforms.length} platforms...
                                     </>
                                 ) : (
                                     '✅ Confirm and Publish'

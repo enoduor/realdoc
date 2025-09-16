@@ -24,32 +24,48 @@ exports.publishNow = async (req, res) => {
             });
         }
 
-        // Publish to all platforms
-        const publishResults = [];
-        for (const platform of platforms) {
+        // Publish to all platforms in parallel
+        console.log(`🚀 Publishing to ${platforms.length} platforms in parallel: ${platforms.join(', ')}`);
+        
+        const publishPromises = platforms.map(async (platform) => {
             try {
-                console.log(`🚀 Publishing to ${platform}...`);
+                console.log(`🚀 Starting publish to ${platform}...`);
                 const result = await platformPublisher.publishToPlatform(platform, { ...content, clerkUserId });
                 
-                publishResults.push({
+                console.log(`✅ Published to ${platform}:`, result);
+                return {
                     success: true,
                     platform,
                     result
-                });
-                
-                console.log(`✅ Published to ${platform}:`, result);
+                };
             } catch (error) {
                 console.error(`❌ Failed to publish to ${platform}:`, error.message);
-                publishResults.push({
+                return {
                     success: false,
                     platform,
                     error: error.message
-                });
+                };
             }
-        }
+        });
+
+        // Wait for all platforms to complete
+        const publishResults = await Promise.allSettled(publishPromises);
+        
+        // Extract results from Promise.allSettled format
+        const finalResults = publishResults.map((promiseResult, index) => {
+            if (promiseResult.status === 'fulfilled') {
+                return promiseResult.value;
+            } else {
+                return {
+                    success: false,
+                    platform: platforms[index],
+                    error: promiseResult.reason?.message || 'Unknown error'
+                };
+            }
+        });
 
         // Check if any platforms succeeded
-        const successCount = publishResults.filter(r => r.success).length;
+        const successCount = finalResults.filter(r => r.success).length;
         const totalCount = platforms.length;
 
         res.json({
@@ -57,9 +73,9 @@ exports.publishNow = async (req, res) => {
             message: `Published to ${successCount}/${totalCount} platforms`,
             post: {
                 id: Date.now(),
-                platforms: publishResults,
+                platforms: finalResults,
                 timestamp: new Date().toISOString(),
-                results: publishResults
+                results: finalResults
             }
         });
 

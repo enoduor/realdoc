@@ -2,7 +2,7 @@
   "containerDefinitions": [
     {
       "name": "repostly-unified",
-      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250916004834-cca3ab0",
+      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250916131100-0d70638",
       "cpu": 0,
       "portMappings": [
         {
@@ -98,6 +98,14 @@
         {
           "name": "GOOGLE_CLIENT_SECRET",
           "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/GOOGLE_CLIENT_SECRET"
+        },
+        {
+          "name": "TIKTOK_CLIENT_KEY",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/TIKTOK_CLIENT_KEY"
+        },
+        {
+          "name": "TIKTOK_CLIENT_SECRET",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/TIKTOK_CLIENT_SECRET"
         },
         {
           "name": "STATE_HMAC_SECRET",

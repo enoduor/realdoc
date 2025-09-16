@@ -44,6 +44,8 @@ declare -A SSM_PARAMS=(
     ["/repostly/api/TWITTER_API_SECRET"]="Twitter API secret (Client Secret)"
     ["/repostly/api/GOOGLE_CLIENT_ID"]="Google OAuth client ID (YouTube)"
     ["/repostly/api/GOOGLE_CLIENT_SECRET"]="Google OAuth client secret (YouTube)"
+    ["/repostly/api/TIKTOK_CLIENT_KEY"]="TikTok OAuth client key"
+    ["/repostly/api/TIKTOK_CLIENT_SECRET"]="TikTok OAuth client secret"
     ["/repostly/api/STATE_HMAC_SECRET"]="OAuth state HMAC secret"
     
     # AI Parameters

@@ -9,7 +9,7 @@ const { abs } = require('../config/url');  // ✅ only abs needed
 
 // Helpers
 const STATE_HMAC_SECRET = process.env.STATE_HMAC_SECRET || 'change-me';
-const TIKTOK_REDIRECT_URI = abs('api/auth/tiktok/callback');  // stays the same
+const TIKTOK_REDIRECT_URI = abs('api/auth/tiktok/callback');
 
 function signState(payload) {
   const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
