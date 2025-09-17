@@ -102,13 +102,9 @@ userSchema.methods.calculateTrialDaysRemaining = function() {
 
 // Check if user has active subscription
 userSchema.methods.hasActiveSubscription = function() {
-  // User has active subscription if:
-  // 1. They have ANY selected plan (starter, creator, or pro) - because selecting a plan means they paid
-  // 2. OR they have trialing/active subscription status (for legacy users)
-  const hasPaidPlan = ['starter', 'creator', 'pro'].includes(this.selectedPlan);
-  const hasActiveStatus = ['trialing', 'active'].includes(this.subscriptionStatus);
-  
-  return hasPaidPlan || hasActiveStatus;
+  // User has active subscription ONLY if status is 'active' (confirmed payment)
+  // selectedPlan is just a preference - subscriptionStatus confirms payment
+  return this.subscriptionStatus === 'active';
 };
 
 // Check if user can create posts
