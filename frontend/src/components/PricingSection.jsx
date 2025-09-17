@@ -106,7 +106,7 @@ const PricingSection = () => {
         {/* Header */}
         <div className="pricing-header">
           <h2 className="pricing-title">Eliminate Platform Fragmentation</h2>
-          <p className="pricing-subtitle">Start your 3-day free trial. No credit card required. Includes free BigVideoGrab access.</p>
+          <p className="pricing-subtitle">Start your 3-day free trial with a credit card (not charged) and cancel anytime. 30-day money-back guarantee</p>
           
           {/* Billing Toggle */}
           <div className="billing-toggle">

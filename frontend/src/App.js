@@ -12,6 +12,12 @@ import PlatformPreviewPage from "./components/PlatformPreviewPage";
 import SchedulerPage from "./components/SchedulerPage";
 import LandingPage from "./components/LandingPage";
 import PricingPage from "./components/PricingPage";
+import HelpCenter from "./components/HelpCenter";
+import AboutPage from "./components/AboutPage";
+import TermsOfService from "./components/TermsOfService";
+import PrivacyPolicy from "./components/PrivacyPolicy";
+import PartnerWithUs from "./components/PartnerWithUs";
+import APIsPage from "./components/APIsPage";
 import "./App.css";
 
 export default function App() {
@@ -33,6 +39,12 @@ export default function App() {
           <Route path="/login" element={<ClerkLogin />} />
           <Route path="/register" element={<ClerkRegister />} />
           <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/help" element={<HelpCenter />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/partner" element={<PartnerWithUs />} />
+              <Route path="/apis" element={<APIsPage />} />
 
           {/* Protected */}
           <Route

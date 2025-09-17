@@ -11,8 +11,8 @@ const { abs } = require('../config/url');
 const TIKTOK_API_BASE = process.env.TIKTOK_API_URL || 'https://open-sandbox.tiktokapis.com/v2';
 const CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY;
 const CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET;
-// Use dynamic redirect URI for TikTok (standardized with other platforms)
-const REDIRECT_URI = abs('api/auth/tiktok/callback');
+// Use maji.co.ke callback URI for TikTok (app is authorized on maji domain)
+const REDIRECT_URI = 'https://www.maji.co.ke/social/auth/tiktok/callback';
 
 const PYTHON_API_BASE_URL = process.env.PYTHON_API_BASE_URL || 'http://localhost:5001';
 const MediaManagerService = require('./mediaManagerService');

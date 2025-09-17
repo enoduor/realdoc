@@ -109,7 +109,7 @@ const Dashboard = () => {
       link: '/app/media-upload'
     },
     {
-      name: 'Preview Content',
+      name: 'Edit & Publish',
       description: 'Preview and publish your content to different platforms',
       icon: '🚀',
       link: '/app/platform-preview'

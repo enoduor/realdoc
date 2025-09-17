@@ -1,0 +1,246 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
+import './LandingPage.css';
+
+const PartnerWithUs = () => {
+  return (
+    <div className="landing-page">
+      {/* Navigation Bar */}
+      <nav className="landing-nav">
+        <div className="nav-container">
+          <div className="nav-logo">
+            <Link to="/" className="logo-link">
+              <img src="/logo.png" alt="Reelpostly" className="logo-image" />
+              <span className="logo-text">ReelPostly</span>
+            </Link>
+          </div>
+          <div className="nav-links">
+            <a href="/#features" className="nav-link">Features</a>
+            <a href="/#pricing" className="nav-link">Pricing</a>
+            <Link to="/about" className="nav-link">About</Link>
+            <a 
+              href="https://bigvideograb.com/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="nav-link"
+            >
+              Grab videos
+            </a>
+          </div>
+          <div className="nav-actions">
+            <Link to="/login" className="nav-btn nav-btn-secondary">Sign In</Link>
+            <Link to="/register" className="nav-btn nav-btn-primary">Sign Up</Link>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="hero-section">
+        <div className="hero-container">
+          <div className="hero-content">
+            <h1 className="hero-title">Partner with Us</h1>
+            <p className="hero-subtitle">
+              Building a better social media ecosystem together
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Social Media Etiquette Section */}
+      <section className="features-section">
+        <div className="features-container">
+          <h2 className="section-title">Social Media Growth with Integrity</h2>
+          <p style={{textAlign: 'center', marginBottom: '2rem', fontSize: '1.1rem'}}>
+            As social media tools become more powerful, it's crucial to use them responsibly. 
+            Here's how to grow your audience ethically and sustainably.
+          </p>
+          
+          <div className="features-grid">
+            <div className="feature-card">
+              <div className="feature-icon">🤝</div>
+              <h3>Authentic Engagement</h3>
+              <p>Focus on building genuine connections with your audience. Respond to comments, ask questions, and create content that adds real value to people's lives.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">📚</div>
+              <h3>Educational Content</h3>
+              <p>Share knowledge, insights, and experiences that help others. Educational content builds trust and establishes you as an authority in your field.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">🎯</div>
+              <h3>Quality Over Quantity</h3>
+              <p>Better to post less frequently with high-quality content than to flood feeds with mediocre posts. Your audience will appreciate the thoughtfulness.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">💬</div>
+              <h3>Respectful Communication</h3>
+              <p>Always communicate with respect and empathy. Disagreements are natural, but maintain professionalism and avoid personal attacks.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">🔄</div>
+              <h3>Consistent Brand Voice</h3>
+              <p>Maintain a consistent voice and message across all platforms. This helps build recognition and trust with your audience.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">📊</div>
+              <h3>Transparent Metrics</h3>
+              <p>Be honest about your growth and metrics. Authentic growth takes time, and your audience will respect your transparency.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Partnership Opportunities */}
+      <section className="cta-section">
+        <div className="cta-container">
+          <h2>Partnership Opportunities</h2>
+          <p>
+            We're looking for creators, agencies, and businesses who share our vision of 
+            ethical social media growth. Join us in building a community that values 
+            authenticity and meaningful connections.
+          </p>
+          
+          <div className="features-grid" style={{marginTop: '2rem'}}>
+            <div className="feature-card">
+              <div className="feature-icon">🎨</div>
+              <h3>Content Creators</h3>
+              <p>Share your expertise and help other creators grow. We're looking for thought leaders who can contribute to our educational content.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">🏢</div>
+              <h3>Marketing Agencies</h3>
+              <p>Partner with us to offer your clients powerful social media management tools while maintaining ethical practices.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">🔧</div>
+              <h3>Technology Partners</h3>
+              <p>Help us improve our platform with integrations, features, and innovations that benefit the creator community.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">🎓</div>
+              <h3>Educational Partners</h3>
+              <p>Collaborate with us to create comprehensive learning resources, courses, and workshops for social media creators and marketers.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Best Practices Section */}
+      <section className="features-section">
+        <div className="features-container">
+          <h2 className="section-title">Best Practices for Social Media Growth</h2>
+          
+          <div className="features-grid">
+            <div className="feature-card">
+              <div className="feature-icon">⏰</div>
+              <h3>Optimal Posting Times</h3>
+              <p>Research when your audience is most active and post consistently during those times. Use analytics to optimize your posting schedule.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">#️⃣</div>
+              <h3>Strategic Hashtag Use</h3>
+              <p>Use relevant hashtags that your audience actually searches for. Mix popular and niche hashtags to reach both broad and targeted audiences.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">📱</div>
+              <h3>Platform-Specific Content</h3>
+              <p>Adapt your content for each platform's unique format and audience. What works on Instagram may not work on LinkedIn.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">📈</div>
+              <h3>Track and Analyze</h3>
+              <p>Regularly review your analytics to understand what content resonates with your audience. Use data to inform your content strategy.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">🤝</div>
+              <h3>Community Building</h3>
+              <p>Engage with other creators in your niche. Comment thoughtfully, share others' content, and build genuine relationships.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">🎯</div>
+              <h3>Clear Value Proposition</h3>
+              <p>Make it clear what value you provide to your audience. Whether it's entertainment, education, or inspiration, be consistent in your value delivery.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section className="cta-section">
+        <div className="cta-container">
+          <h2>Ready to Partner with Us?</h2>
+          <p>
+            If you're interested in partnering with Reelpostly or have ideas for how we can 
+            better serve the creator community, we'd love to hear from you.
+          </p>
+          <a 
+            href="https://docs.google.com/forms/d/e/1FAIpQLSdXGiQBAVMQy3lXGkNdRwqgfWw20E_VlXODYloiMo7L3bwYCw/viewform"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="cta-button-large"
+          >
+            Get in Touch
+          </a>
+          <p className="cta-note">Let's build the future of social media together</p>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="landing-footer">
+        <div className="footer-container">
+          <div className="footer-content">
+            <div className="footer-section">
+              <h4>Reelpostly</h4>
+              <p>Made for solo creators, startups, small businesses.<br/>
+              <strong>Create once, publish everywhere.</strong></p>
+            </div>
+            <div className="footer-section">
+              <h4>Product</h4>
+              <ul>
+                <li><a href="/#features">Features</a></li>
+                <li><a href="/#pricing">Pricing</a></li>
+                <li><a 
+                  href="https://bigvideograb.com/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  Grab videos
+                </a></li>
+              </ul>
+            </div>
+            <div className="footer-section">
+              <h4>Support</h4>
+              <ul>
+                <li><Link to="/help">Help Center</Link></li>
+                <li><a 
+                  href="https://bigvideograb.com/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  Grab videos
+                </a></li>
+                <li><Link to="/apis">Our APIs</Link></li>
+              </ul>
+            </div>
+            <div className="footer-section">
+              <h4>Company</h4>
+              <ul>
+                <li><Link to="/about">About</Link></li>
+                <li><Link to="/terms">Terms of Service</Link></li>
+                <li><Link to="/partner">Partner with us</Link></li>
+              </ul>
+            </div>
+          </div>
+          <div className="footer-bottom">
+            <p>&copy; 2024 Reelpostly. All rights reserved.</p>
+            <div className="footer-links">
+              <Link to="/terms">Terms of Service & Privacy Policy</Link>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default PartnerWithUs;

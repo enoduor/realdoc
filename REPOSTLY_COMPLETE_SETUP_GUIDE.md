@@ -7,8 +7,9 @@
 4. [API Setup & Configuration](#api-setup--configuration)
 5. [Docker Deployment](#docker-deployment)
 6. [SSM Parameter Management](#ssm-parameter-management)
-7. [Troubleshooting Guide](#troubleshooting-guide)
-8. [Production Status](#production-status)
+7. [Pre-Launch Testing Guide](#pre-launch-testing-guide)
+8. [Troubleshooting Guide](#troubleshooting-guide)
+9. [Production Status](#production-status)
 
 ---
 
@@ -837,6 +838,271 @@ aws ssm put-parameter \
   --type "SecureString" \
   --overwrite
 ```
+
+---
+
+## 🧪 Pre-Launch Testing Guide
+
+### 🎯 **Testing Overview**
+
+Before launching Repostly, it's crucial to thoroughly test all functionality to ensure a smooth user experience. This section provides a comprehensive testing framework.
+
+### 📊 **Testing Documentation & Tools**
+
+#### ✅ **Automated Test Scripts**
+- **File**: `scripts/test-basic-functionality.sh`
+- **Purpose**: Basic health checks and functionality tests
+- **Coverage**: Endpoints, builds, dependencies, database
+
+- **File**: `scripts/run-pre-launch-tests.sh`
+- **Purpose**: Complete pre-launch test suite
+- **Coverage**: All critical systems and performance
+
+#### ✅ **Complete Testing Guide**
+- **File**: `REPOSTLY_COMPLETE_TESTING_GUIDE.md`
+- **Purpose**: Comprehensive user testing guide for pre-launch
+- **Coverage**: All features, platforms, and edge cases
+
+### 🎯 **Testing Strategy**
+
+#### **Phase 1: Automated Testing**
+```bash
+# Run basic functionality tests
+./scripts/test-basic-functionality.sh
+
+# Run complete pre-launch test suite
+./scripts/run-pre-launch-tests.sh
+```
+
+#### **Phase 2: Manual Testing**
+1. **User Authentication Testing**
+   - Registration and login flows
+   - Password reset functionality
+   - Profile management
+
+2. **Platform Integration Testing**
+   - OAuth connections for all platforms
+   - Publishing to individual platforms
+   - Multi-platform publishing
+
+3. **Content Creation Testing**
+   - Text content creation
+   - Media upload and processing
+   - AI-generated content
+
+4. **Error Handling Testing**
+   - Network failures
+   - Invalid content
+   - Platform errors
+
+#### **Phase 3: Performance Testing**
+- Load testing with multiple users
+- Publishing speed measurements
+- Mobile responsiveness testing
+
+### 🚨 **Critical Test Scenarios**
+
+#### **Must Pass Before Launch**
+1. **All platform OAuth connections work**
+2. **Content creation and publishing works**
+3. **Multi-platform publishing works**
+4. **Error handling is robust**
+5. **Mobile experience is functional**
+
+#### **Should Pass Before Launch**
+1. **Performance meets expectations**
+2. **User experience is smooth**
+3. **All edge cases are handled**
+4. **Security checks pass**
+
+### 📈 **Testing Metrics**
+
+#### **Success Criteria**
+- **Functionality**: 100% of core features work
+- **Performance**: Page load times < 3 seconds
+- **Reliability**: 99% uptime during testing
+- **Security**: No critical vulnerabilities
+- **Mobile**: Responsive on all devices
+
+#### **Performance Benchmarks**
+- **Frontend Load Time**: < 3 seconds
+- **API Response Time**: < 1 second
+- **Publishing Time**: < 30 seconds per platform
+- **Multi-platform Publishing**: < 60 seconds total
+
+### 🔄 **Testing Workflow**
+
+#### **Daily Testing**
+1. Run automated test suite
+2. Check production health
+3. Test critical user flows
+4. Monitor performance metrics
+
+#### **Weekly Testing**
+1. Full platform integration testing
+2. Mobile responsiveness testing
+3. Performance benchmarking
+4. Security vulnerability scanning
+
+#### **Pre-Launch Testing**
+1. Complete user testing guide
+2. Platform-specific testing
+3. Load testing
+4. Final security review
+
+### 🎯 **Launch Readiness Criteria**
+
+#### **Green Light (Ready to Launch)**
+- ✅ All critical tests pass
+- ✅ Performance meets benchmarks
+- ✅ Security checks pass
+- ✅ Mobile experience works
+- ✅ User testing feedback is positive
+
+#### **Yellow Light (Proceed with Caution)**
+- ⚠️ Minor issues identified
+- ⚠️ Performance slightly below benchmarks
+- ⚠️ Some edge cases not fully tested
+- ⚠️ User feedback mixed
+
+#### **Red Light (Not Ready)**
+- ❌ Critical functionality broken
+- ❌ Security vulnerabilities found
+- ❌ Performance significantly below benchmarks
+- ❌ User experience issues
+
+### 🚀 **Quick Testing Commands**
+
+#### **Automated Testing**
+```bash
+# Run all automated tests
+./scripts/run-pre-launch-tests.sh
+
+# Run basic functionality tests only
+./scripts/test-basic-functionality.sh
+```
+
+#### **Manual Health Checks**
+```bash
+# Test production endpoints
+curl -s https://reelpostly.com/ai/ping
+curl -s https://reelpostly.com/api/health
+curl -s https://reelpostly.com/
+
+# Test AI services
+curl -s -X POST https://reelpostly.com/ai/api/v1/captions/ \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "test", "platform": "instagram", "tone": "professional"}'
+```
+
+### 📋 **Testing Checklist**
+
+#### **🔐 Authentication & User Management**
+- [ ] User registration works
+- [ ] User login works
+- [ ] Password reset works
+- [ ] Profile management works
+- [ ] Session management works
+
+#### **🔗 Platform Connections**
+- [ ] LinkedIn OAuth works
+- [ ] Twitter OAuth works
+- [ ] TikTok OAuth works
+- [ ] Instagram OAuth works
+- [ ] Facebook OAuth works
+- [ ] YouTube OAuth works
+
+#### **📝 Content Creation**
+- [ ] Text content creation works
+- [ ] Image upload works
+- [ ] Video upload works
+- [ ] AI caption generation works
+- [ ] AI hashtag generation works
+
+#### **🚀 Publishing Features**
+- [ ] Single platform publishing works
+- [ ] Multi-platform publishing works
+- [ ] Parallel publishing works
+- [ ] Error handling works
+- [ ] Progress tracking works
+
+#### **📱 Mobile Experience**
+- [ ] Mobile responsive design works
+- [ ] Mobile OAuth flows work
+- [ ] Mobile media upload works
+- [ ] Mobile navigation works
+
+#### **🔧 Technical Requirements**
+- [ ] All endpoints respond correctly
+- [ ] Database connections work
+- [ ] Build processes work
+- [ ] Docker builds work
+- [ ] Performance meets requirements
+
+### 📞 **Testing Team**
+
+#### **Roles & Responsibilities**
+- **Development Team**: Technical testing and bug fixes
+- **QA Team**: Manual testing and test case execution
+- **Product Team**: User experience testing
+- **DevOps Team**: Infrastructure and performance testing
+
+#### **Communication**
+- **Daily Standups**: Test results and issues
+- **Weekly Reviews**: Testing progress and blockers
+- **Launch Readiness**: Final go/no-go decision
+
+### 🚨 **Emergency Procedures**
+
+#### **If Critical Issues Found**
+1. **Document the issue** with screenshots and steps
+2. **Test on multiple devices/browsers** to confirm
+3. **Check server logs** for error details
+4. **Notify development team** immediately
+5. **Consider delaying launch** if blocking issues
+
+#### **Rollback Plan**
+- [ ] Database rollback procedures
+- [ ] Code rollback procedures
+- [ ] User notification plan
+- [ ] Communication plan
+
+### 📋 **Testing Tools & Resources**
+
+#### **Automated Testing**
+- **Scripts**: `test-basic-functionality.sh`, `run-pre-launch-tests.sh`
+- **Monitoring**: Production health checks
+- **Performance**: Load testing tools
+
+#### **Manual Testing**
+- **Guides**: `REPOSTLY_COMPLETE_TESTING_GUIDE.md`
+- **Templates**: Test result templates
+
+#### **Testing Environment**
+- **Production**: https://reelpostly.com
+- **Staging**: [Staging URL if available]
+- **Local**: http://localhost:3000
+
+### 🚀 **Next Steps**
+
+1. **Run Automated Tests**
+   ```bash
+   ./scripts/run-pre-launch-tests.sh
+   ```
+
+2. **Execute Manual Testing**
+   - Follow the comprehensive testing guide
+   - Document all results
+
+3. **Address Issues**
+   - Fix any failed tests
+   - Resolve performance issues
+   - Address security concerns
+
+4. **Final Review**
+   - Review all test results
+   - Make launch readiness decision
+   - Prepare launch plan
 
 ---
 

@@ -38,10 +38,31 @@
   color: #667eea;
   text-decoration: none;
   transition: color 0.3s ease;
+  display: flex;
+  align-items: center;
 }
 
 .nav-logo .logo-link:hover {
   color: #764ba2;
+}
+
+.logo-image {
+  height: 50px;
+  width: auto;
+  max-width: 200px;
+  object-fit: contain;
+  transition: transform 0.3s ease;
+}
+
+.logo-image:hover {
+  transform: scale(1.05);
+}
+
+.logo-text {
+  margin-left: 10px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #667eea;
 }
 
 .nav-links {

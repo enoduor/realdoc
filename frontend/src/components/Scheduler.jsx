@@ -3,6 +3,12 @@ import { PLATFORMS } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
 import { useUser } from '@clerk/clerk-react';
 
+// Helper function to convert platform names to IDs
+const toPlatformId = (name) => {
+    if (!name) return 'unknown';
+    return name.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+};
+
 const Scheduler = ({ onPublishNow }) => {
     const { content } = useContent();
     const { user } = useUser();
@@ -11,17 +17,17 @@ const Scheduler = ({ onPublishNow }) => {
     const [isPublishing, setIsPublishing] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [publishResults, setPublishResults] = useState(null);
 
-    // Clear messages after 5 seconds
+    // Clear only error messages after 5 seconds (keep success messages)
     useEffect(() => {
-        if (success || error) {
+        if (error) {
             const timer = setTimeout(() => {
-                setSuccess('');
                 setError('');
             }, 5000);
             return () => clearTimeout(timer);
         }
-    }, [success, error]);
+    }, [error]);
 
     const handlePlatformChange = (e) => {
         const { value, checked } = e.target;
@@ -75,6 +81,9 @@ const Scheduler = ({ onPublishNow }) => {
             return;
         }
 
+        setError('');
+        setSuccess('');
+        setPublishResults(null);
         setIsPublishing(true);
 
         try {
@@ -112,6 +121,9 @@ const Scheduler = ({ onPublishNow }) => {
             // Show detailed results
             const successCount = result.post.platforms.filter(r => r.success).length;
             const totalCount = result.post.platforms.length;
+            
+            // Store detailed results for displaying links
+            setPublishResults(result.post.platforms);
             
             if (successCount === totalCount) {
                 setSuccess(`🚀 Successfully published to all ${totalCount} platforms!`);

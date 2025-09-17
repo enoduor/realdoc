@@ -280,9 +280,9 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                 
                 let message = '';
                 if (successCount === totalCount) {
-                    message = `✅ Successfully published to all ${totalCount} platforms!`;
+                    message = `✅ Successfully published to all ${totalCount} platforms! Click "View Post →" to see your posts.`;
                 } else {
-                    message = `✅ Published to ${successCount}/${totalCount} platforms. Some failed.`;
+                    message = `✅ Published to ${successCount}/${totalCount} platforms. Click "View Post →" to see your posts.`;
                 }
 
                 setPublishStatus({
@@ -1185,20 +1185,22 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                         {publishStatus.platforms.map((r, i) => {
                                             const pid = toPlatformId(r?.platform || r?.id);
                                             const name = PLATFORMS?.[pid.toUpperCase()]?.name || pid || 'platform';
+                                            // Access URL from the nested result structure  
+                                            const postUrl = r?.result?.url;
                                             return (
                                                 <div key={r.postId || i} className="text-sm">
                                                     <span className={r.success ? 'text-green-700' : 'text-red-700'}>
                                                         {r.success ? '✅' : '❌'} {name}
                                                     </span>
-                                                    {r.url && (
+                                                    {postUrl && (
                                                         <>
                                                             {' • '}
-                                                            <a className="text-blue-600 hover:underline" href={r.url} target="_blank" rel="noreferrer">
-                                                                open
+                                                            <a className="text-blue-600 hover:underline font-medium" href={postUrl} target="_blank" rel="noreferrer">
+                                                                View Post →
                                                             </a>
                                                         </>
                                                     )}
-                                                    {r.message && <> • <span className="text-gray-600">{r.message}</span></>}
+                                                    {r?.result?.message && <> • <span className="text-gray-600">{r?.result?.message}</span></>}
                                                 </div>
                                             );
                                         })}

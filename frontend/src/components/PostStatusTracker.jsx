@@ -104,15 +104,15 @@ const PostStatusTracker = ({ posts = [], searchTerm = '' }) => {
                     <span className={r.success ? 'text-green-700' : 'text-red-700'}>
                       {r.success ? '✅' : '❌'} {name}
                     </span>
-                    {r.url && (
+                    {(r?.result?.url || r?.url) && (
                       <>
                         {' • '}
-                        <a className="text-blue-600 hover:underline" href={r.url} target="_blank" rel="noreferrer">
-                          open
+                        <a className="text-blue-600 hover:underline font-medium" href={r?.result?.url || r?.url} target="_blank" rel="noreferrer">
+                          View Post →
                         </a>
                       </>
                     )}
-                    {r.message && <> • <span className="text-gray-600">{r.message}</span></>}
+                    {(r?.result?.message || r?.message) && <> • <span className="text-gray-600">{r?.result?.message || r?.message}</span></>}
                   </div>
                 );
               })}
