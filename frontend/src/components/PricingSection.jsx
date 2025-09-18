@@ -14,7 +14,7 @@ const PricingSection = () => {
       yearlyTotal: 64,
       yearlySavings: 44,
       features: [
-        'Free TikTok downloads',
+        'Free public video downloads',
         '6 connected social accounts',
         '1 Post → 6 platform posts',
         'AI captions & hashtags',
@@ -33,7 +33,7 @@ const PricingSection = () => {
       yearlyTotal: 129,
       yearlySavings: 87,
       features: [
-        'TikTok & Instagram downloads',
+        'Free public video downloads',
         '6 connected social accounts',
         '1 Post → 6 platform posts',
         'AI captions & hashtags',
@@ -45,23 +45,20 @@ const PricingSection = () => {
       bestDeal: false
     },
     {
-      name: 'Pro',
-      description: 'For agencies & scaling brands',
-      monthlyPrice: 27,
-      yearlyPrice: 16.17,
-      yearlyTotal: 194,
-      yearlySavings: 130,
+      name: 'Enterprise',
+      description: 'For organizations & institutions',
+      isEnterprise: true,
       features: [
-        'Downloads from 5 platforms',
-        '1 Post → 6 platform posts',
-        'AI captions & hashtags',
-        'Content studio access',
-        'Viral growth consulting',
-        'Priority support',
-        'Unlimited posts per day'
+        'Custom integrations & workflows',
+        'Dedicated account manager',
+        'White-label solutions',
+        'Customized analytics & reporting',
+        'Custom training & onboarding',
+        'Priority technical support',
+        'Volume discounts available'
       ],
       popular: false,
-      bestDeal: true
+      bestDeal: false
     }
   ];
 
@@ -141,22 +138,31 @@ const PricingSection = () => {
               </div>
 
               {/* Pricing */}
-              <div className="plan-pricing">
-                <div className="price-container">
-                  <span className="currency">$</span>
-                  <span className="price">
-                    {billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}
-                  </span>
-                  <span className="period">/month</span>
-                </div>
-                
-                {billingCycle === 'yearly' && (
-                  <div className="yearly-info">
-                    <p className="yearly-total">Billed as ${plan.yearlyTotal}/year</p>
-                    <p className="yearly-savings">Save ${plan.yearlySavings} with yearly pricing</p>
+              {!plan.isEnterprise ? (
+                <div className="plan-pricing">
+                  <div className="price-container">
+                    <span className="currency">$</span>
+                    <span className="price">
+                      {billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}
+                    </span>
+                    <span className="period">/month</span>
                   </div>
-                )}
-              </div>
+                  
+                  {billingCycle === 'yearly' && (
+                    <div className="yearly-info">
+                      <p className="yearly-total">Billed as ${plan.yearlyTotal}/year</p>
+                      <p className="yearly-savings">Save ${plan.yearlySavings} with yearly pricing</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="plan-pricing enterprise-pricing">
+                  <div className="enterprise-price">
+                    <span className="custom-text">Custom Pricing</span>
+                    <p className="enterprise-subtitle">Tailored to your organization's needs</p>
+                  </div>
+                </div>
+              )}
 
               {/* Features */}
               <div className="plan-features">
@@ -174,14 +180,30 @@ const PricingSection = () => {
 
               {/* CTA */}
               <div className="plan-cta">
-                <p className="trial-info">Start your 3-day free trial and cancel anytime.</p>
-                <button 
-                  className={`cta-button ${plan.popular ? 'popular' : ''} ${plan.bestDeal ? 'best-deal' : ''}`}
-                  onClick={() => handleStartTrial(plan.name)}
-                  disabled={loading}
-                >
-                  {loading ? 'Loading...' : 'Start Free Trial'}
-                </button>
+                {!plan.isEnterprise ? (
+                  <>
+                    <p className="trial-info">Start your 3-day free trial and cancel anytime.</p>
+                    <button 
+                      className={`cta-button ${plan.popular ? 'popular' : ''} ${plan.bestDeal ? 'best-deal' : ''}`}
+                      onClick={() => handleStartTrial(plan.name)}
+                      disabled={loading}
+                    >
+                      {loading ? 'Loading...' : 'Start Free Trial'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="trial-info">Get personalized guidance and custom solutions for your organization.</p>
+                    <a 
+                      href="https://docs.google.com/forms/d/e/1FAIpQLSdXGiQBAVMQy3lXGkNdRwqgfWw20E_VlXODYloiMo7L3bwYCw/viewform"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="cta-button enterprise"
+                    >
+                      Contact Us
+                    </a>
+                  </>
+                )}
               </div>
             </div>
           ))}

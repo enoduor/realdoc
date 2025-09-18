@@ -258,6 +258,27 @@
   margin: 4px 0;
 }
 
+/* Enterprise Pricing */
+.enterprise-pricing {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.custom-text {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #2d3748;
+  display: block;
+  line-height: 1.2;
+}
+
+.enterprise-subtitle {
+  font-size: 0.9rem;
+  color: #718096;
+  margin: 8px 0 0 0;
+  font-style: italic;
+}
+
 /* Features */
 .plan-features {
   margin-bottom: 30px;
@@ -343,6 +364,21 @@
 
 .cta-button.best-deal:hover {
   box-shadow: 0 10px 25px rgba(255, 107, 107, 0.4);
+}
+
+.cta-button.enterprise {
+  background: linear-gradient(135deg, #2d3748, #4a5568);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.cta-button.enterprise:hover {
+  box-shadow: 0 10px 25px rgba(45, 55, 72, 0.4);
+  color: white;
+  text-decoration: none;
 }
 
 /* Footer */
