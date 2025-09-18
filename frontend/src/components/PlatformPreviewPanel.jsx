@@ -38,6 +38,12 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
     // Multi-platform selection state
     const [platforms, setPlatforms] = useState([]);
     
+    // Simple individual mode toggle
+    const [isIndividualMode, setIsIndividualMode] = useState(false);
+    const [activePlatform, setActivePlatform] = useState('instagram');
+    const [individualContent, setIndividualContent] = useState({});
+    const [originalIndividualContent, setOriginalIndividualContent] = useState({});
+    
     // Editable content state
     const [editableContent, setEditableContent] = useState({
         captions: content?.captions || [content?.caption || ''],
@@ -57,6 +63,68 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
 
     const platformLimits = PLATFORMS[formData.platform.toUpperCase()];
 
+    // Simple toggle function
+    const toggleIndividualMode = () => {
+        const newMode = !isIndividualMode;
+        setIsIndividualMode(newMode);
+        
+        if (newMode) {
+            // Initialize individual content with current content for all platforms
+            initializeIndividualContent();
+        }
+    };
+
+    // Initialize individual content for all selected platforms
+    const initializeIndividualContent = () => {
+        if (platforms.length > 0) {
+            const newIndividualContent = {};
+            const newOriginalContent = {};
+            platforms.forEach(platform => {
+                const platformContent = {
+                    captions: [...editableContent.captions],
+                    hashtags: [...editableContent.hashtags]
+                };
+                newIndividualContent[platform] = platformContent;
+                newOriginalContent[platform] = { ...platformContent }; // Deep copy for comparison
+            });
+            setIndividualContent(newIndividualContent);
+            setOriginalIndividualContent(newOriginalContent);
+            setActivePlatform(platforms[0] || 'instagram');
+        }
+    };
+
+    // Get current content based on mode
+    const getCurrentContent = () => {
+        if (isIndividualMode) {
+            // In individual mode, return the platform-specific content or default structure
+            return individualContent[activePlatform] || {
+                captions: editableContent.captions,
+                hashtags: editableContent.hashtags
+            };
+        }
+        return editableContent;
+    };
+
+    // Update content based on mode
+    const updateCurrentContent = (field, value) => {
+        if (isIndividualMode) {
+            setIndividualContent(prev => ({
+                ...prev,
+                [activePlatform]: {
+                    captions: prev[activePlatform]?.captions || editableContent.captions,
+                    hashtags: prev[activePlatform]?.hashtags || editableContent.hashtags,
+                    ...prev[activePlatform],
+                    [field]: value
+                }
+            }));
+        } else {
+            setEditableContent(prev => ({
+                ...prev,
+                [field]: value
+            }));
+        }
+    };
+
     // Update editable content when content context changes
     useEffect(() => {
         setEditableContent({
@@ -65,12 +133,60 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
         });
     }, [content]);
 
+    // Initialize individual content when platforms change in individual mode
+    useEffect(() => {
+        if (isIndividualMode && platforms.length > 0) {
+            const newIndividualContent = {};
+            const newOriginalContent = {};
+            
+            platforms.forEach(platform => {
+                // Only initialize if this platform doesn't already have content
+                if (!individualContent[platform]) {
+                    const platformContent = {
+                        captions: [...editableContent.captions],
+                        hashtags: [...editableContent.hashtags]
+                    };
+                    newIndividualContent[platform] = platformContent;
+                    newOriginalContent[platform] = { ...platformContent }; // Deep copy for comparison
+                } else {
+                    // Keep existing content
+                    newIndividualContent[platform] = individualContent[platform];
+                    newOriginalContent[platform] = originalIndividualContent[platform] || { ...individualContent[platform] };
+                }
+            });
+            
+            setIndividualContent(newIndividualContent);
+            setOriginalIndividualContent(newOriginalContent);
+            
+            // Set active platform if not set or if current active platform is not in the list
+            if (!activePlatform || !platforms.includes(activePlatform)) {
+                setActivePlatform(platforms[0] || 'instagram');
+            }
+        }
+    }, [platforms, isIndividualMode, editableContent, individualContent, originalIndividualContent, activePlatform]);
+
     // Check for changes
     useEffect(() => {
-        const hasCaptionChanges = editableContent.captions[0] !== (content?.captions?.[0] || content?.caption || '');
-        const hasHashtagChanges = JSON.stringify(editableContent.hashtags) !== JSON.stringify(content?.hashtags || []);
-        setHasChanges(hasCaptionChanges || hasHashtagChanges);
-    }, [editableContent, content]);
+        if (isIndividualMode) {
+            // In individual mode, check if current platform content differs from original
+            const currentPlatformContent = individualContent[activePlatform];
+            const originalPlatformContent = originalIndividualContent[activePlatform];
+            
+            if (currentPlatformContent && originalPlatformContent) {
+                const hasCaptionChanges = currentPlatformContent.captions[0] !== originalPlatformContent.captions[0];
+                const hasHashtagChanges = JSON.stringify(currentPlatformContent.hashtags) !== JSON.stringify(originalPlatformContent.hashtags);
+                setHasChanges(hasCaptionChanges || hasHashtagChanges);
+            } else {
+                // If no original content, any content means changes
+                setHasChanges(currentPlatformContent && (currentPlatformContent.captions[0] || currentPlatformContent.hashtags.length > 0));
+            }
+        } else {
+            // Default mode - check editableContent against original content
+            const hasCaptionChanges = editableContent.captions[0] !== (content?.captions?.[0] || content?.caption || '');
+            const hasHashtagChanges = JSON.stringify(editableContent.hashtags) !== JSON.stringify(content?.hashtags || []);
+            setHasChanges(hasCaptionChanges || hasHashtagChanges);
+        }
+    }, [editableContent, content, isIndividualMode, individualContent, originalIndividualContent, activePlatform]);
 
     // Debug function to check media URL
     const debugMediaUrl = () => {
@@ -121,42 +237,64 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
     };
 
     const handleHashtagChange = (index, value) => {
-        const newHashtags = [...editableContent.hashtags];
+        const currentHashtags = getCurrentContent().hashtags;
+        const newHashtags = [...currentHashtags];
         newHashtags[index] = value;
-        setEditableContent(prev => ({
-            ...prev,
-            hashtags: newHashtags
-        }));
+        updateCurrentContent('hashtags', newHashtags);
     };
 
     const addHashtag = () => {
-        setEditableContent(prev => ({
-            ...prev,
-            hashtags: [...prev.hashtags, '']
-        }));
+        const currentHashtags = getCurrentContent().hashtags;
+        updateCurrentContent('hashtags', [...currentHashtags, '']);
     };
 
     const removeHashtag = (index) => {
-        setEditableContent(prev => ({
-            ...prev,
-            hashtags: prev.hashtags.filter((_, i) => i !== index)
-        }));
+        const currentHashtags = getCurrentContent().hashtags;
+        updateCurrentContent('hashtags', currentHashtags.filter((_, i) => i !== index));
     };
 
+    // Save changes function
     const saveChanges = () => {
-        updateContent({
-            captions: editableContent.captions,
-            hashtags: editableContent.hashtags.filter(tag => tag.trim() !== '')
-        });
-        setIsEditing(false);
-        setHasChanges(false);
+        if (isIndividualMode) {
+            // Individual mode: update original content to match current saved state
+            setOriginalIndividualContent(prev => ({
+                ...prev,
+                [activePlatform]: {
+                    captions: [...individualContent[activePlatform].captions],
+                    hashtags: [...individualContent[activePlatform].hashtags]
+                }
+            }));
+            setIsEditing(false);
+            setHasChanges(false);
+        } else {
+            // Default mode: save to main content context
+            updateContent({
+                captions: editableContent.captions,
+                hashtags: editableContent.hashtags.filter(tag => tag.trim() !== '')
+            });
+            setIsEditing(false);
+            setHasChanges(false);
+        }
     };
+
 
     const cancelChanges = () => {
-        setEditableContent({
-            captions: content?.captions || [content?.caption || ''],
-            hashtags: content?.hashtags || []
-        });
+        if (isIndividualMode) {
+            // Reset individual platform content to original content
+            setIndividualContent(prev => ({
+                ...prev,
+                [activePlatform]: {
+                    captions: content?.captions || [content?.caption || ''],
+                    hashtags: content?.hashtags || []
+                }
+            }));
+        } else {
+            // Reset unified content
+            setEditableContent({
+                captions: content?.captions || [content?.caption || ''],
+                hashtags: content?.hashtags || []
+            });
+        }
         setIsEditing(false);
         setHasChanges(false);
     };
@@ -246,18 +384,40 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
 
         try {
             // Align payload with Scheduler behavior (use ContentContext values directly)
-            const publishData = {
-                platforms,
-                content: {
-                    mediaUrl: content.mediaUrl,
-                    captions: content.captions || [content.caption || ''],
-                    hashtags: content.hashtags,
-                    mediaType: content.mediaType,
-                    privacyStatus: 'unlisted'
-                },
-                // For now, use backend test token. In production, get from user's profile/db
-                refreshToken: user?.publicMetadata?.youtubeRefreshToken || null
-            };
+            let publishData;
+            
+            if (isIndividualMode) {
+                // Individual mode: transform individual content to standard format for backend
+                // Use the current active platform's content for now
+                const currentPlatformContent = getCurrentContent();
+                publishData = {
+                    platforms,
+                    content: {
+                        mediaUrl: content.mediaUrl,
+                        captions: currentPlatformContent.captions,
+                        hashtags: currentPlatformContent.hashtags,
+                        mediaType: content.mediaType,
+                        privacyStatus: 'unlisted'
+                    },
+                    // Include individual content for backend to handle platform-specific publishing
+                    individualContent: individualContent,
+                    isIndividualMode: true,
+                    refreshToken: user?.publicMetadata?.youtubeRefreshToken || null
+                };
+            } else {
+                // Default mode: send unified content
+                publishData = {
+                    platforms,
+                    content: {
+                        mediaUrl: content.mediaUrl,
+                        captions: editableContent.captions,
+                        hashtags: editableContent.hashtags,
+                        mediaType: content.mediaType,
+                        privacyStatus: 'unlisted'
+                    },
+                    refreshToken: user?.publicMetadata?.youtubeRefreshToken || null
+                };
+            }
 
             const result = await onPublishNow(publishData);
             // Debug: log normalized response and expose globally (match Scheduler behavior)
@@ -905,6 +1065,33 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                         </select>
                     </div>
 
+                    {/* Content Editing Mode Toggle */}
+                    <div className="mb-6 bg-gray-50 p-4 rounded-lg">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">
+                                    📝 Content Editing Mode
+                                </label>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    {isIndividualMode ? 'Edit unique content for each platform' : 'Use same content for all platforms'}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={toggleIndividualMode}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                                    isIndividualMode ? 'bg-indigo-600' : 'bg-gray-200'
+                                }`}
+                            >
+                                <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                        isIndividualMode ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                                />
+                            </button>
+                        </div>
+                    </div>
+
                     {/* Multi-Platform Selection */}
                     <div className="mb-6 bg-blue-50 p-4 rounded-lg">
                         <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -955,7 +1142,9 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                     {/* Editable Content Section */}
                     <div className="mb-6 bg-blue-50 p-4 rounded-lg">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-lg font-medium">Edit Content</h2>
+                            <h2 className="text-lg font-medium">
+                                {isIndividualMode ? `Edit Content - ${PLATFORMS[activePlatform.toUpperCase()]?.name || activePlatform}` : 'Edit Content'}
+                            </h2>
                             <div className="flex gap-2">
                                 {!isEditing ? (
                                     <button
@@ -984,16 +1173,37 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                             </div>
                         </div>
 
+                        {/* Platform Tabs for Individual Mode */}
+                        {isIndividualMode && platforms.length > 0 && (
+                            <div className="mb-4 border-b border-gray-200">
+                                <nav className="flex space-x-4">
+                                    {platforms.map((platform) => (
+                                        <button
+                                            key={platform}
+                                            onClick={() => setActivePlatform(platform)}
+                                            className={`py-2 px-3 text-sm font-medium border-b-2 transition-colors ${
+                                                activePlatform === platform
+                                                    ? 'border-blue-500 text-blue-600'
+                                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                            }`}
+                                        >
+                                            {PLATFORMS[platform.toUpperCase()]?.name || platform}
+                                        </button>
+                                    ))}
+                                </nav>
+                            </div>
+                        )}
+
                         {isEditing ? (
                             <div className="space-y-4">
                                 {/* Caption Editor */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Caption ({editableContent.captions[0]?.length || 0}/{platformLimits.maxCharacters})
+                                        Caption ({getCurrentContent().captions[0]?.length || 0}/{platformLimits.maxCharacters})
                                     </label>
                                     <textarea
-                                        value={editableContent.captions[0]}
-                                        onChange={(e) => handleEditableContentChange('captions', [e.target.value])}
+                                        value={getCurrentContent().captions[0] || ''}
+                                        onChange={(e) => updateCurrentContent('captions', [e.target.value])}
                                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         rows={4}
                                         maxLength={platformLimits.maxCharacters}
@@ -1004,10 +1214,10 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                 {/* Hashtags Editor */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Hashtags ({editableContent.hashtags.filter(tag => tag.trim() !== '').length}/{platformLimits.maxHashtags})
+                                        Hashtags ({getCurrentContent().hashtags.filter(tag => tag.trim() !== '').length}/{platformLimits.maxHashtags})
                                     </label>
                                     <div className="space-y-2">
-                                        {editableContent.hashtags.map((tag, index) => (
+                                        {getCurrentContent().hashtags.map((tag, index) => (
                                             <div key={index} className="flex gap-2">
                                                 <input
                                                     type="text"
@@ -1037,14 +1247,14 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {editableContent.captions[0] && (
+                                {getCurrentContent().captions[0] && (
                                     <div>
-                                        <strong>Caption:</strong> {editableContent.captions[0]}
+                                        <strong>Caption:</strong> {getCurrentContent().captions[0]}
                                     </div>
                                 )}
-                                {editableContent.hashtags.filter(tag => tag.trim() !== '').length > 0 && (
+                                {getCurrentContent().hashtags.filter(tag => tag.trim() !== '').length > 0 && (
                                     <div>
-                                        <strong>Hashtags:</strong> {editableContent.hashtags.filter(tag => tag.trim() !== '').map(tag => `#${tag}`).join(' ')}
+                                        <strong>Hashtags:</strong> {getCurrentContent().hashtags.filter(tag => tag.trim() !== '').map(tag => `#${tag}`).join(' ')}
                                     </div>
                                 )}
                             </div>

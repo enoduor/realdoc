@@ -30,6 +30,8 @@ const isProdHost = typeof window !== "undefined" &&
 const clerkConfig = {
   publishableKey: resolveClerkKey(),
   fallbackRedirectUrl: joinUrl(PUBLIC_BASE, "app"),
+  afterSignInUrl: joinUrl(PUBLIC_BASE, "app"),
+  afterSignUpUrl: joinUrl(PUBLIC_BASE, "app"),
   afterSignOutUrl: PUBLIC_BASE,
 };
 

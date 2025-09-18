@@ -44,11 +44,6 @@ const CaptionGenerator = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // Check subscription before proceeding
-        if (!requireSubscription('Caption Generator')) {
-            return;
-        }
-        
         setLoading(true);
         setError('');
 
