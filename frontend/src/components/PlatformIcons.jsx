@@ -4,7 +4,8 @@ import {
   Twitter, 
   Instagram, 
   Youtube, 
-  Music 
+  Music,
+  Facebook
 } from 'lucide-react';
 
 const PlatformIcons = () => {
@@ -33,6 +34,11 @@ const PlatformIcons = () => {
       name: 'tiktok',
       icon: <Music size={32} color="#000000" />,
       className: 'platform-icon tiktok'
+    },
+    {
+      name: 'facebook',
+      icon: <Facebook size={32} color="#1877F2" />,
+      className: 'platform-icon facebook'
     }
   ];
 

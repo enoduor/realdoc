@@ -106,7 +106,7 @@ const PricingSection = () => {
         {/* Header */}
         <div className="pricing-header">
           <h2 className="pricing-title">Eliminate Platform Fragmentation</h2>
-          <p className="pricing-subtitle">Start your 3-day free trial with a credit card (not charged) and cancel anytime. 30-day money-back guarantee</p>
+          <p className="pricing-subtitle">Start your 3-day free trial and cancel anytime. 30-day money-back guarantee</p>
           
           {/* Billing Toggle */}
           <div className="billing-toggle">
@@ -178,7 +178,7 @@ const PricingSection = () => {
 
               {/* CTA */}
               <div className="plan-cta">
-                <p className="trial-info">Start your 3-day free trial with a credit card <span className="text-green-600 font-bold">(not charged)</span> and cancel anytime.</p>
+                <p className="trial-info">Start your 3-day free trial and cancel anytime.</p>
                 <button 
                   className={`cta-button ${plan.popular ? 'popular' : ''} ${plan.bestDeal ? 'best-deal' : ''}`}
                   onClick={() => handleStartTrial(plan.name)}
