@@ -102,17 +102,13 @@ const Scheduler = ({ onPublishNow }) => {
 
             // Debug: log outgoing payload for comparison between pages
             try {
-                console.log('🧪 [Scheduler] publishData:', JSON.parse(JSON.stringify(publishData)));
             } catch (_) {
-                console.log('🧪 [Scheduler] publishData (raw):', publishData);
             }
 
             const result = await onPublishNow(publishData);
             // Debug: log normalized response and expose globally
             try {
-                console.log('🧪 [Scheduler] response:', JSON.parse(JSON.stringify(result)));
             } catch (_) {
-                console.log('🧪 [Scheduler] response (raw):', result);
             }
             try {
                 window.__lastPublish = { source: 'Scheduler', publishData, response: result, timestamp: Date.now() };

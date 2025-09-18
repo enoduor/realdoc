@@ -12,52 +12,24 @@ const Dashboard = () => {
   const { user } = useUser();
   const { session } = useSession();
 
-  // Debug: Log Clerk session info
-  useEffect(() => {
-    console.log('🔍 Dashboard Debug Info:');
-    console.log('- User:', user ? 'Authenticated' : 'Not authenticated');
-    console.log('- Session:', session ? 'Active' : 'No session');
-    if (user) {
-      console.log('- User ID:', user.id);
-      console.log('- User Email:', user.primaryEmailAddress?.emailAddress);
-    }
-    if (session) {
-      console.log('- Session ID:', session.id);
-      // Test token generation
-      session.getToken().then(token => {
-        console.log('- Token generated:', token ? 'Yes' : 'No');
-        if (token) {
-          console.log('- Token preview:', token.substring(0, 20) + '...');
-        }
-      }).catch(err => {
-        console.error('- Token generation failed:', err);
-      });
-    }
-  }, [user, session]);
 
 
   useEffect(() => {
     const checkSubscription = async () => {
       try {
-        console.log('🔍 Checking subscription status for authenticated user...');
         
         // First, create or link Clerk user with database user
         try {
-          console.log('🔗 Creating/linking Clerk user with database...');
           const linkResult = await createOrLinkClerkUser();
-          console.log('✅ Clerk user linked:', linkResult);
         } catch (error) {
-          console.log('ℹ️ Clerk user linking failed:', error.message);
         }
         
         // Check subscription status using email lookup (main process)
         const userEmail = user.primaryEmailAddress?.emailAddress;
         if (userEmail) {
           const status = await checkSubscriptionByEmail(userEmail);
-          console.log('📊 Subscription status from database:', status);
           setHasSubscription(status.hasActiveSubscription);
         } else {
-          console.log('❌ No user email available for subscription check');
           setHasSubscription(false);
         }
         

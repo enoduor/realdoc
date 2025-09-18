@@ -40,10 +40,34 @@ const LandingPage = () => {
       <section className="hero-section">
         <div className="hero-container">
           <div className="hero-content">
-            <h1 className="hero-title">Create Once, Publish Everywhere</h1>
+            <h1 className="hero-title">Create Once, Publish Everywhere!</h1>
             <p className="hero-subtitle">
-            Save hours and skip juggling tools. Repurpose a single video, auto-caption it, and publish across Instagram, TikTok, YouTube, Facebook, LinkedIn, and X in seconds — and yes, you can even download videos for free from our platform and get started instantly.
+            Creators are overwhelmed by too many tools and endless complexity. We're here to make things simple, so you can focus on creating, not juggling.
             </p>
+            <div className="hero-benefits">
+                <ul className="space-y-3 text-left">
+                    <li className="flex items-start">
+                        <span className="text-green-500 mr-3 mt-1">✅</span>
+                        <span>Create once and publish to major platforms in 3 clicks</span>
+                    </li>
+                    <li className="flex items-start">
+                        <span className="text-green-500 mr-3 mt-1">✅</span>
+                        <span>Repurpose a single post with AI-generated captions</span>
+                    </li>
+                    <li className="flex items-start">
+                        <span className="text-green-500 mr-3 mt-1">✅</span>
+                        <span>Share everywhere in seconds with one-click publishing</span>
+                    </li>
+                    <li className="flex items-start">
+                        <span className="text-green-500 mr-3 mt-1">✅</span>
+                        <span>Save time, cut costs, and grow faster with less effort</span>
+                    </li>
+                    <li className="flex items-start">
+                        <span className="text-green-500 mr-3 mt-1">✅</span>
+                        <span>No confusing analytics or endless repetitive tasks</span>
+                    </li>
+                </ul>
+            </div>
             <div className="hero-cta">
               <Link to="/register" className="cta-primary">
                 Sign Up
@@ -54,16 +78,16 @@ const LandingPage = () => {
             </div>
             <div className="hero-stats">
               <div className="stat">
-                <span className="stat-number">1000+</span>
-                <span className="stat-label">Get Discount</span>
+                <span className="stat-number">Lifetime</span>
+                <span className="stat-label">One-time payment</span>
               </div>
               <div className="stat">
                 <span className="stat-number">Referrals</span>
-                <span className="stat-label">Get Discount</span>
+                <span className="stat-label">Free Subscription</span>
               </div>
               <div className="stat">
-                <span className="stat-number">25</span>
-                <span className="stat-label">Languages</span>
+                <span className="stat-number">Launch</span>
+                <span className="stat-label">Friendly Pricing</span>
               </div>
             </div>
           </div>
@@ -120,7 +144,7 @@ const LandingPage = () => {
               rel="noopener noreferrer" 
               className="cta-button-large videograb-platform-btn"
             >
-              Grab Videos from 5 platforms
+              Grab Free Videos
             </a>
           </div>
         </div>
@@ -135,11 +159,11 @@ const LandingPage = () => {
       <section className="cta-section">
         <div className="cta-container">
           <h2>Ready to Transform Your Social Media?</h2>
-          <p>Join thousands of creators who are already growing their audience with Reelpostly</p>
+          <p>Start creating and publishing content across all platforms with Reelpostly</p>
           <Link to="/register" className="cta-button-large">
             Sign Up
           </Link>
-          <p className="cta-note">Start your 3-day free trial with a credit card (not charged) and cancel anytime</p>
+          <p className="cta-note">Start your 3-day free trial and cancel anytime</p>
         </div>
       </section>
 
@@ -149,7 +173,7 @@ const LandingPage = () => {
           <div className="footer-content">
             <div className="footer-section">
               <h4>Reelpostly</h4>
-              <p>Made for solo creators, startups, small businesses.<br/>
+              <p>Social media creators are drowning in complexity. We're here to simplify.<br/>
               <strong>Create once, publish everywhere.</strong></p>
             </div>
             <div className="footer-section">

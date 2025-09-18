@@ -6,7 +6,6 @@ import PlatformPreviewPanel from './PlatformPreviewPanel';
 import SubscriptionCheck, { useSubscriptionCheck } from './SubscriptionCheck';
 
 const PlatformPreviewPage = () => {
-  console.log('🎯 PlatformPreviewPage component rendering');
   
   const { content } = useContent();
   const { requireSubscription } = useSubscriptionCheck();

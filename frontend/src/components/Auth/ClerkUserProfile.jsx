@@ -17,7 +17,6 @@ const ClerkUserProfile = () => {
         localStorage.removeItem(hasSubscriptionKey);
         localStorage.removeItem(sessionIdKey);
         
-        console.log('🧹 Cleared user-specific subscription data for:', userEmail);
       }
       
       // Sign out from Clerk

@@ -74,16 +74,12 @@ const PricingSection = () => {
       // Convert plan name to lowercase for API
       const plan = planName.toLowerCase();
       
-      console.log(`🚀 Starting trial for ${planName} plan (${plan}) with ${billingCycle} billing`);
-      console.log('📡 Calling createSubscriptionSession...');
       
       // Call Stripe API to create checkout session
       const response = await createSubscriptionSession(plan, billingCycle);
       
-      console.log('✅ Stripe response:', response);
       
       if (response && response.url) {
-        console.log('🔄 Redirecting to Stripe checkout:', response.url);
         // Redirect to Stripe checkout
         window.location.href = response.url;
       } else {

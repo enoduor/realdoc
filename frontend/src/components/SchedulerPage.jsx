@@ -59,7 +59,6 @@ const SchedulerPage = () => {
             try {
                 const token = await getAuthToken();
                 if (!token) {
-                    console.log('No auth token available');
                     return;
                 }
 

@@ -75,9 +75,6 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
     // Debug function to check media URL
     const debugMediaUrl = () => {
         if (content.mediaUrl) {
-            console.log('Current media URL:', content.mediaUrl);
-            console.log('Media type:', content.mediaType);
-            console.log('Platform:', formData.platform);
         }
     };
 
@@ -265,9 +262,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
             const result = await onPublishNow(publishData);
             // Debug: log normalized response and expose globally (match Scheduler behavior)
             try {
-                console.log('🧪 [PlatformPreview] response:', JSON.parse(JSON.stringify(result)));
             } catch (_) {
-                console.log('🧪 [PlatformPreview] response (raw):', result);
             }
             try {
                 window.__lastPublish = { source: 'PlatformPreview', publishData, response: result, timestamp: Date.now() };
@@ -551,7 +546,6 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                 src={content.mediaUrl} 
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
-                                    console.log('Video load error:', e);
                                     e.target.style.display = 'none';
                                 }}
                             />
@@ -561,7 +555,6 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                 alt="Instagram" 
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
-                                    console.log('Image load error:', e);
                                     e.target.style.display = 'none';
                                 }}
                             />
@@ -628,7 +621,6 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                     alt="LinkedIn" 
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
-                                        console.log('LinkedIn image load error:', e);
                                         e.target.style.display = 'none';
                                     }}
                                 />
@@ -640,7 +632,6 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                     className="w-full h-full object-cover" 
                                     controls
                                     onError={(e) => {
-                                        console.log('LinkedIn video load error:', e);
                                         e.target.style.display = 'none';
                                     }}
                                 />
@@ -695,7 +686,6 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                     src={content.mediaUrl} 
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
-                                        console.log('Twitter video load error:', e);
                                         e.target.style.display = 'none';
                                     }}
                                 />
@@ -705,7 +695,6 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                     alt="Twitter" 
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
-                                        console.log('Twitter image load error:', e);
                                         e.target.style.display = 'none';
                                     }}
                                 />
@@ -745,7 +734,6 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                 src={content.mediaUrl} 
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
-                                    console.log('YouTube video load error:', e);
                                     e.target.style.display = 'none';
                                 }}
                             />
@@ -755,7 +743,6 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                 alt="YouTube" 
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
-                                    console.log('YouTube image load error:', e);
                                     e.target.style.display = 'none';
                                 }}
                             />
@@ -821,7 +808,6 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                     src={content.mediaUrl} 
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
-                                        console.log('Facebook video load error:', e);
                                         e.target.style.display = 'none';
                                     }}
                                 />
@@ -831,7 +817,6 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                     alt="Facebook" 
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
-                                        console.log('Facebook image load error:', e);
                                         e.target.style.display = 'none';
                                     }}
                                 />
@@ -870,7 +855,6 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                             src={content.mediaUrl} 
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                                console.log('Default video load error:', e);
                                 e.target.style.display = 'none';
                             }}
                         />
@@ -880,7 +864,6 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                             alt="Preview" 
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                                console.log('Default image load error:', e);
                                 e.target.style.display = 'none';
                             }}
                         />

@@ -15,20 +15,16 @@ const Login = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log('Form submitted with:', { email, password });
         setIsLoading(true);
         setError('');
 
         try {
             // First, make the API call using apiLogin from api.js
             const response = await AuthService.login(email, password);
-            console.log('API Response:', response);
 
             // Then, update the auth context with the response
             if (response.success) {
-                console.log('Login successful, updating context...');
                 await login(response);  // This is from useAuth()
-                console.log('Context updated, navigating...');
                 // Change this to your main page route
                 navigate('/');  // or navigate('/home') depending on your setup
             } else {

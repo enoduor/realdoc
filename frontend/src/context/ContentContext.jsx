@@ -50,7 +50,6 @@ export const ContentProvider = ({ children }) => {
 
     // Function to update content
     const updateContent = (newContent) => {
-        console.log('Updating content:', newContent);
         setContent(prev => {
             const updated = {
                 ...prev,

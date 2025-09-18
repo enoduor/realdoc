@@ -26,9 +26,6 @@ const isProdHost = typeof window !== "undefined" &&
   (window.location.hostname === "reelpostly.com" || 
    window.location.hostname === "www.reelpostly.com");
 
-// Debug logging
-console.log("🔍 Hostname:", window.location.hostname);
-console.log("🔍 Is production host:", isProdHost);
 
 const clerkConfig = {
   publishableKey: resolveClerkKey(),
@@ -39,12 +36,8 @@ const clerkConfig = {
 // Only use custom frontendApi in production
 if (isProdHost) {
   clerkConfig.frontendApi = "clerk.reelpostly.com";
-  console.log("🔧 Using custom frontendApi: clerk.reelpostly.com");
-} else {
-  console.log("🔧 Using default Clerk endpoints");
 }
 
-console.log("🔧 Final clerkConfig:", clerkConfig);
 
 
 ReactDOM.createRoot(document.getElementById("root")).render(

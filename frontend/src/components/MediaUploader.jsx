@@ -45,7 +45,6 @@ const MediaUploader = () => {
     const checkServer = async () => {
       try {
         const res = await axios.get(`${API_URL}/ping`);
-        console.log('Server is running:', res.data);
         // Clear any previous errors
         setFormData(prev => ({
           ...prev,
@@ -54,7 +53,6 @@ const MediaUploader = () => {
       } catch (err) {
         console.error('Server check failed:', err.message);
         // Don't set error on initial load, let user try upload
-        console.log('Server check failed, but will allow upload attempts');
       }
     };
 
@@ -182,7 +180,6 @@ const MediaUploader = () => {
         maxBodyLength: Infinity
       });
 
-      console.log('Upload response:', res.data);
 
       if (res.data && res.data.url) {
         // Update content based on media type

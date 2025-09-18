@@ -21,13 +21,6 @@ import APIsPage from "./components/APIsPage";
 import "./App.css";
 
 export default function App() {
-  // Debug logging for troubleshooting
-  useEffect(() => {
-    console.log('🚀 App component mounted');
-    console.log('🔍 Current URL:', window.location.href);
-    console.log('🔍 Current pathname:', window.location.pathname);
-    console.log('🔍 Current route:', window.location.pathname);
-  }, []);
 
   return (
     <ContentProvider>

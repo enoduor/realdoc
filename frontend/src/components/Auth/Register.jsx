@@ -15,7 +15,6 @@ const Register = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log('Registration form submitted with:', { email, password, confirmPassword });
         
         // Validate passwords match
         if (password !== confirmPassword) {
@@ -35,10 +34,8 @@ const Register = () => {
         try {
             // Register the user
             const response = await AuthService.register(email, password);
-            console.log('Registration Response:', response);
 
             if (response.success) {
-                console.log('Registration successful, logging in...');
                 // After successful registration, log the user in
                 const loginResponse = await AuthService.login(email, password);
                 if (loginResponse.success) {

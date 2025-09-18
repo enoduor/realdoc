@@ -6,7 +6,6 @@ import { useContent } from '../context/ContentContext';
 import SubscriptionCheck, { useSubscriptionCheck } from './SubscriptionCheck';
 
 const CaptionGenerator = () => {
-    console.log('🎯 CaptionGenerator component rendering');
     
     const { updateContent, content } = useContent();
     const { hasSubscription, requireSubscription } = useSubscriptionCheck();

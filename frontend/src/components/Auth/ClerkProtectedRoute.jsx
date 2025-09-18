@@ -5,8 +5,6 @@ import { Navigate } from 'react-router-dom';
 const ClerkProtectedRoute = ({ children }) => {
   const { isSignedIn, isLoaded } = useUser();
 
-  // Debug logging
-  console.log('🔐 ClerkProtectedRoute - isLoaded:', isLoaded, 'isSignedIn:', isSignedIn);
 
   // Show loading while Clerk is initializing
   if (!isLoaded) {
