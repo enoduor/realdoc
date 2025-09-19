@@ -49,27 +49,27 @@ const LandingPage = () => {
                 <ul className="space-y-3 text-left">
                     <li className="flex items-start">
                         <span className="text-green-500 mr-3 mt-1">✅</span>
-                        <span>Create once and publish to major platforms in 3 clicks</span>
+                        <span>Save time, reduce costs, manage everything from one dashboard</span>
                     </li>
                     <li className="flex items-start">
                         <span className="text-green-500 mr-3 mt-1">✅</span>
-                        <span>Repurpose a single post with AI-generated captions</span>
+                        <span>Create once and publish to all major platforms instantly</span>
                     </li>
                     <li className="flex items-start">
                         <span className="text-green-500 mr-3 mt-1">✅</span>
-                        <span>Share everywhere in seconds with one-click publishing</span>
+                        <span>Customize posts per platform with simple toggle and one-click publish</span>
                     </li>
                     <li className="flex items-start">
                         <span className="text-green-500 mr-3 mt-1">✅</span>
-                        <span>Save time, cut costs, and grow faster with less effort</span>
+                        <span>Get direct, hyperlinked confirmations after each post publishes</span>
                     </li>
                     <li className="flex items-start">
                         <span className="text-green-500 mr-3 mt-1">✅</span>
-                        <span>No confusing analytics or endless repetitive tasks</span>
+                        <span>Craft engaging captions and hashtags effortlessly with AI tools</span>
                     </li>
                 </ul>
             </div>
-            <div className="hero-cta">
+            <div id="hero-cta" className="hero-cta">
               <Link to="/register" className="cta-primary">
                 Sign Up
               </Link>
@@ -103,51 +103,72 @@ const LandingPage = () => {
       {/* Features Section */}
       <section id="features" className="features-section">
         <div className="features-container">
-          <h2 className="section-title">Everything You Need to Succeed</h2>
-          <div className="features-grid">
-            <div className="feature-card">
-              <div className="feature-icon">🤖</div>
-              <h3>AI-Powered Content</h3>
-              <p>Generate engaging captions and hashtags with AI technology</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">🔄</div>
-              <h3>Seamless Repurposing</h3>
-              <p>instantly convert and share your post to TikTok, Reels, Shorts, and more.</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">📊</div>
-              <h3> 1-Click Publishing</h3>
-              <p>Go live across five socual media accounts directly from one workspace.</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">🔄</div>
-              <h3>Multi-Platform Sync</h3>
-              <p>Track all your social accounts posts from a single platform</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">🎨</div>
-              <h3>Customize Posts</h3>
-              <p>Create and edit your posts with our built-in Content and Hashtag Editor</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">📥</div>
-              <h3>Download free videos</h3>
-              <p>Download Publicly available videos instantly then repurpose and publish</p>
-            </div>
-          </div>
           
-          {/* VideoGrab Platform Button */}
-          <div className="videograb-platform-section">
-            <a 
-              href="https://bigvideograb.com/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="cta-button-large videograb-platform-btn"
-            >
-              Grab Free Videos
-            </a>
-          </div>
+          <section id="multi-platform-posting" className="rp-section">
+            <h2>One Post. Six Platforms. Zero Stress.</h2>
+            <p>With ReelPostly, you don't need to repeat the same upload six times. Publish your content to Instagram, TikTok, YouTube, Facebook, LinkedIn, and Twitter, all in one go. One dashboard, one post, one publish.</p>
+            <ul>
+              <li>✅ Save hours every week</li>
+              <li>✅ Stay consistent across all channels</li>
+              <li>✅ Focus on creating, not copy-pasting</li>
+            </ul>
+          </section>
+
+          <section id="ai-workflow" className="rp-section">
+            <h2>Smarter Publishing with AI</h2>
+
+            <h3 id="ai-captions">Generate Captions & Hashtags Instantly</h3>
+            <p>Let our <strong>AI captions and hashtags generator</strong> do the heavy lifting. With one click, ReelPostly creates tailored copy for each platform so your post feels natural whether it's on TikTok or LinkedIn.</p>
+
+            <h3 id="toggle-customize">Toggle & Customize Per Platform</h3>
+            <p>Need to tweak tone or length? Use our simple toggle editor to adjust content per channel, then publish everything at once.</p>
+          </section>
+
+          <section id="confirmation-links" className="rp-section">
+            <h2>Instant Post Confirmation</h2>
+            <p>No second guessing. After you publish, ReelPostly gives you a direct, hyperlinked preview of your live post on every platform so you know your message went out exactly as planned.</p>
+          </section>
+
+          <section id="simplicity" className="rp-section">
+            <h2>Simplicity Without the Noise</h2>
+            <p>Unlike other <strong>social media posting tools</strong>, ReelPostly doesn't drown you in dashboards and charts. We don't track your posts after publishing, we help you focus on creating and keeping your message consistent across every platform.</p>
+            <ul>
+              <li>✅ No confusing analytics clutter</li>
+              <li>✅ One-click publishing workflow</li>
+              <li>✅ Grow faster with less effort</li>
+            </ul>
+          </section>
+
+          <section id="videograb-funnel" className="rp-section">
+            <h2>Free Video Downloader</h2>
+            <p>Start with <strong>Free public available videos</strong>, in case you don't have any content to repurpose. Repurpose your TikToks, YouTube Shorts, or Instagram Reels, then with a single click, send them straight to ReelPostly for multi-platform publishing.</p>
+            <p>It's the fastest way to go from download → caption → share everywhere.</p>
+            
+            {/* VideoGrab Platform Button */}
+            <div className="videograb-platform-section">
+              <a 
+                href="https://bigvideograb.com/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="cta-button-large videograb-platform-btn"
+              >
+                Grab Free Videos
+              </a>
+            </div>
+          </section>
+
+          <section id="why-reelpostly" className="rp-section">
+            <h2>Why Choose ReelPostly?</h2>
+            <ul>
+              <li>🚀 <strong>Time Saved</strong>: One workflow replaces six uploads.</li>
+              <li>✨ <strong>AI-Powered</strong>: Smart captions & hashtags per platform.</li>
+              <li>🔗 <strong>Direct Proof</strong>: See your post live with confirmation links.</li>
+              <li>🧘 <strong>Simplicity</strong>: No extra noise, just effortless publishing.</li>
+              <li>🎥 <strong>Free Funnel</strong>: <a href="https://bigvideograb.com/" target="_blank" rel="noopener noreferrer">Download</a> → <a href="#hero-cta">Repurpose</a> → Publish everywhere.</li>
+            </ul>
+            <Link to="/register" className="cta-button-large">Start Free Today</Link>
+          </section>
+
         </div>
       </section>
 

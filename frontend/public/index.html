@@ -6,12 +6,152 @@
     <meta name="theme-color" content="#000000" />
     <meta
       name="description"
-      content="Repostly - AI-Powered Social Media Content Generator"
+      content="ReelPostly - AI-Powered Social Media Content Generator. Create once, publish everywhere across Instagram, TikTok, YouTube, Facebook, LinkedIn, and Twitter."
     />
-    <title>Repostly</title>
+    <title>ReelPostly | Create Once. Publish Everywhere.</title>
+    <link rel="canonical" href="https://reelpostly.com/" />
+
+    <!-- Open Graph meta tags -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://reelpostly.com/">
+    <meta property="og:title" content="ReelPostly | Create Once. Publish Everywhere.">
+    <meta property="og:description" content="Publish across 6 platforms in one click with AI captions and instant confirmation links.">
+    <meta property="og:image" content="https://reelpostly.com/og-image.jpg">
+
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ReelPostly | Create Once. Publish Everywhere.">
+    <meta name="twitter:description" content="Publish across 6 platforms in one click with AI captions and instant confirmation links.">
+    <meta name="twitter:image" content="https://reelpostly.com/og-image.jpg">
 
     <!-- Clerk publishable key (CRA will inject env if set) -->
     <meta name="clerk-publishable-key" content="%REACT_APP_CLERK_PUBLISHABLE_KEY%" />
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZW3EEY9MQY"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-ZW3EEY9MQY', { 'anonymize_ip': true });
+    </script>
+
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "@id": "https://reelpostly.com/",
+      "url": "https://reelpostly.com/",
+      "name": "ReelPostly | Create Once. Publish Everywhere.",
+      "headline": "Create Once. Publish Everywhere.",
+      "description": "ReelPostly is a multi-platform posting tool that helps creators save time with AI captions, instant confirmation links, and a clutter-free workflow.",
+      "inLanguage": "en",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "ReelPostly",
+        "url": "https://reelpostly.com"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "ReelPostly",
+        "url": "https://reelpostly.com",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://reelpostly.com/logo.png"
+        }
+      },
+      "mainEntity": {
+        "@type": "ItemList",
+        "name": "ReelPostly Features",
+        "itemListElement": [
+          {
+            "@type": "WebPageElement",
+            "@id": "https://reelpostly.com/#multi-platform-posting",
+            "position": 1,
+            "name": "One Post. Six Platforms. Zero Stress.",
+            "description": "Publish to Instagram, TikTok, YouTube, Facebook, LinkedIn, and Twitter from one dashboard. Save hours and stay consistent."
+          },
+          {
+            "@type": "WebPageElement",
+            "@id": "https://reelpostly.com/#ai-workflow",
+            "position": 2,
+            "name": "Smarter Publishing with AI",
+            "hasPart": [
+              {
+                "@type": "WebPageElement",
+                "@id": "https://reelpostly.com/#ai-captions",
+                "name": "Generate Captions & Hashtags Instantly",
+                "description": "AI creates platform-ready captions and hashtags in seconds."
+              },
+              {
+                "@type": "WebPageElement",
+                "@id": "https://reelpostly.com/#toggle-customize",
+                "name": "Toggle & Customize Per Platform",
+                "description": "Tweak tone, length, and hashtags per channel, then publish all at once."
+              }
+            ]
+          },
+          {
+            "@type": "WebPageElement",
+            "@id": "https://reelpostly.com/#confirmation-links",
+            "position": 3,
+            "name": "Instant Post Confirmation",
+            "description": "Get direct, hyperlinked previews for each live post immediately after publishing."
+          },
+          {
+            "@type": "WebPageElement",
+            "@id": "https://reelpostly.com/#simplicity",
+            "position": 4,
+            "name": "Simplicity Without the Noise",
+            "description": "Skip analytics clutter. ReelPostly focuses on publishing, not tracking."
+          },
+          {
+            "@type": "WebPageElement",
+            "@id": "https://reelpostly.com/#videograb-funnel",
+            "position": 5,
+            "name": "Free Video Downloader Funnel",
+            "description": "Use VideoGrab to download videos, then repurpose and publish them everywhere via ReelPostly."
+          },
+          {
+            "@type": "WebPageElement",
+            "@id": "https://reelpostly.com/#why-reelpostly",
+            "position": 6,
+            "name": "Why Creators Choose ReelPostly",
+            "description": "One workflow replaces six uploads, powered by AI, with confirmation links and simplicity built-in."
+          }
+        ]
+      },
+      "potentialAction": {
+        "@type": "RegisterAction",
+        "name": "Start Free Today",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://reelpostly.com/register",
+          "actionPlatform": [
+            "https://schema.org/DesktopWebPlatform",
+            "https://schema.org/MobileWebPlatform"
+          ]
+        }
+      }
+    }
+    </script>
+
+    <!-- WebSite Schema with SearchAction -->
+    <script type="application/ld+json">
+    {
+      "@context":"https://schema.org",
+      "@type":"WebSite",
+      "url":"https://reelpostly.com",
+      "name":"ReelPostly",
+      "potentialAction":{
+        "@type":"SearchAction",
+        "target":"https://reelpostly.com/search?q={query}",
+        "query-input":"required name=query"
+      }
+    }
+    </script>
 
     <!-- Fonts -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
