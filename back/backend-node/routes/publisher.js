@@ -3,6 +3,7 @@ const multer = require('multer');
 const router = express.Router();
 const { requireAuth } = require('@clerk/express');
 const { requireSubscription } = require('../middleware/subscriptionAuth');
+const { checkDailyUsage, incrementUsage } = require('../middleware/usageAuth');
 const {
     publishNow,
     getPlatformStatus
@@ -375,12 +376,38 @@ router.post('/tiktok/publish', requireAuth(), requireSubscription, async (req, r
   }
 });
 
-// General publish endpoint - requires Clerk authentication
-router.post('/publish', requireAuth(), requireSubscription, publishNow);
+// General publish endpoint - requires Clerk authentication and daily usage check
+router.post('/publish', requireAuth(), requireSubscription, checkDailyUsage, incrementUsage, publishNow);
 
 
 
 // Get platform connection status - requires Clerk authentication
 router.get('/platforms/status', requireAuth(), getPlatformStatus);
+
+// Get user's daily usage status - requires Clerk authentication
+router.get('/usage/status', requireAuth(), async (req, res) => {
+  try {
+    const clerkUserId = (typeof req.auth === 'function' ? req.auth().userId : req.auth?.userId);
+    
+    if (!clerkUserId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User authentication required'
+      });
+    }
+
+    const { getUserUsageStatus } = require('../middleware/usageAuth');
+    const usageStatus = await getUserUsageStatus(clerkUserId);
+    
+    res.json(usageStatus);
+  } catch (error) {
+    console.error('Error getting usage status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting usage status',
+      error: error.message
+    });
+  }
+});
 
 module.exports = router;

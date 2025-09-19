@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import Footer from './Footer';
 import './LandingPage.css';
 
 const PrivacyPolicy = () => {
@@ -148,54 +149,7 @@ const PrivacyPolicy = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="landing-footer">
-        <div className="footer-container">
-          <div className="footer-content">
-            <div className="footer-section">
-              <h4>Reelpostly</h4>
-              <p>Made for solo creators, startups, small businesses.<br/>
-              <strong>Create once, publish everywhere.</strong></p>
-            </div>
-            <div className="footer-section">
-              <h4>Product</h4>
-              <ul>
-                <li><a href="/#features">Features</a></li>
-                <li><a href="/#pricing">Pricing</a></li>
-                <li><a 
-                  href="https://bigvideograb.com/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                >
-                  Grab videos
-                </a></li>
-              </ul>
-            </div>
-            <div className="footer-section">
-              <h4>Support</h4>
-              <ul>
-                <li><Link to="/help">Help Center</Link></li>
-                <li><Link to="/privacy">Privacy Policy</Link></li>
-                <li><Link to="/apis">Our APIs</Link></li>
-              </ul>
-            </div>
-            <div className="footer-section">
-              <h4>Company</h4>
-              <ul>
-                <li><Link to="/about">About</Link></li>
-                <li><Link to="/terms">Terms of Service</Link></li>
-                <li><Link to="/partner">Partner with us</Link></li>
-              </ul>
-            </div>
-          </div>
-          <div className="footer-bottom">
-            <p>&copy; 2024 Reelpostly. All rights reserved.</p>
-            <div className="footer-links">
-              <Link to="/privacy">Privacy Policy</Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

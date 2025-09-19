@@ -18,8 +18,8 @@ const PricingSection = () => {
         '6 connected social accounts',
         '1 Post → 6 platform posts',
         'AI captions & hashtags',
-        'Referral discounts',
-        '30 platform posts per day'
+        '1 post per day limit',
+        '6 platform posts per day'
         
       ],
       popular: false,
@@ -38,8 +38,8 @@ const PricingSection = () => {
         '1 Post → 6 platform posts',
         'AI captions & hashtags',
         'Content studio access',
-        'Referral discounts',
-        '150 platform posts per day'
+        '5 posts per day limit',
+        '30 platform posts per day'
       ],
       popular: true,
       bestDeal: false
@@ -127,7 +127,7 @@ const PricingSection = () => {
               {/* Badges */}
               {plan.popular && <div className="badge popular-badge">Most Popular</div>}
               {plan.bestDeal && <div className="badge best-deal-badge">Best Deal</div>}
-              {billingCycle === 'yearly' && (
+              {billingCycle === 'yearly' && !plan.isEnterprise && (
                 <div className="badge discount-badge">40% OFF</div>
               )}
 

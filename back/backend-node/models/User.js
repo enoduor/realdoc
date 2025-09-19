@@ -69,6 +69,20 @@ const userSchema = new mongoose.Schema({
     default: Date.now
   },
 
+  // Daily Post Limits (NEW)
+  dailyPostsUsed: {
+    type: Number,
+    default: 0
+  },
+  lastPostDate: {
+    type: String, // YYYY-MM-DD format
+    default: null
+  },
+  dailyLimitResetAt: {
+    type: Date,
+    default: null
+  },
+
   // Metadata
   createdAt: {
     type: Date,
@@ -149,9 +163,77 @@ userSchema.methods.canConnectMoreAccounts = function() {
 };
 
 // Check if file size is within limits
-userSchema.methods.isFileSizeAllowed = function(fileSizeMB) {
+userSchema.methods.isFileSizeAllowed = function(fileSizeInMB) {
   const limits = this.getPlanLimits();
-  return fileSizeMB <= limits.maxFileSize;
+  return fileSizeInMB <= limits.maxFileSize;
+};
+
+// Get daily post limit for user's plan
+userSchema.methods.getDailyPostLimit = function() {
+  const planLimits = {
+    starter: 1,
+    creator: 5
+  };
+  return planLimits[this.selectedPlan] || 1;
+};
+
+// Check if user can publish today
+userSchema.methods.canPublishToday = function() {
+  const today = new Date().toISOString().split('T')[0];
+  const dailyLimit = this.getDailyPostLimit();
+  
+  // Reset counter if it's a new day
+  if (this.lastPostDate !== today) {
+    return {
+      canPublish: true,
+      used: 0,
+      limit: dailyLimit,
+      remaining: dailyLimit,
+      resetAt: this.getNextResetTime()
+    };
+  }
+  
+  return {
+    canPublish: this.dailyPostsUsed < dailyLimit,
+    used: this.dailyPostsUsed,
+    limit: dailyLimit,
+    remaining: Math.max(0, dailyLimit - this.dailyPostsUsed),
+    resetAt: this.dailyLimitResetAt
+  };
+};
+
+// Increment daily usage counter
+userSchema.methods.incrementDailyUsage = function() {
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Reset if new day
+  if (this.lastPostDate !== today) {
+    this.dailyPostsUsed = 0;
+    this.lastPostDate = today;
+    this.dailyLimitResetAt = this.getNextResetTime();
+  }
+  
+  this.dailyPostsUsed += 1;
+  this.postsCreated += 1; // Overall counter
+  this.lastActiveDate = new Date();
+  
+  return this.save();
+};
+
+// Get next reset time (midnight UTC)
+userSchema.methods.getNextResetTime = function() {
+  const resetTime = new Date();
+  resetTime.setUTCDate(resetTime.getUTCDate() + 1);
+  resetTime.setUTCHours(0, 0, 0, 0);
+  return resetTime;
+};
+
+// Reset daily usage (called by cron job or manually)
+userSchema.methods.resetDailyUsage = function() {
+  this.dailyPostsUsed = 0;
+  this.lastPostDate = null;
+  this.dailyLimitResetAt = null;
+  return this.save();
 };
 
 module.exports = mongoose.model('User', userSchema);

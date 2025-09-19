@@ -144,3 +144,17 @@ export const createSubscriptionSession = async (priceId) => {
     throw error;
   }
 };
+
+// Get user's daily usage status
+export const getUserUsageStatus = async () => {
+  try {
+    const response = await fetch(`${API_URL}/api/publisher/usage/status`, {
+      method: 'GET',
+      headers: await getAuthHeaders()
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error getting usage status:', error);
+    throw error;
+  }
+};

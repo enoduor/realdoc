@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useUser, useSession } from '@clerk/clerk-react';
+import { 
+  Linkedin, 
+  Twitter, 
+  Instagram, 
+  Youtube, 
+  Music,
+  Facebook
+} from 'lucide-react';
 import ClerkUserProfile from './Auth/ClerkUserProfile';
-import { checkSubscriptionStatus, checkSubscriptionByEmail, createOrLinkClerkUser } from '../api';
+import { checkSubscriptionStatus, checkSubscriptionByEmail, createOrLinkClerkUser, getUserUsageStatus } from '../api';
 
 const Dashboard = () => {
   const [hasSubscription, setHasSubscription] = useState(null);
+  const [usageStatus, setUsageStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -29,6 +38,16 @@ const Dashboard = () => {
         if (userEmail) {
           const status = await checkSubscriptionByEmail(userEmail);
           setHasSubscription(status.hasActiveSubscription);
+          
+          // Get usage status if user has subscription
+          if (status.hasActiveSubscription) {
+            try {
+              const usage = await getUserUsageStatus();
+              setUsageStatus(usage);
+            } catch (error) {
+              console.error('Error getting usage status:', error);
+            }
+          }
         } else {
           setHasSubscription(false);
         }
@@ -115,6 +134,50 @@ const Dashboard = () => {
         <div className="px-4 py-6 sm:px-0">
           <h2 className="text-2xl font-bold mb-8">Welcome to Reelpostly</h2>
           
+          {/* Daily Usage Status */}
+          {hasSubscription && usageStatus && (
+            <div className="mb-6 bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Daily Usage</h3>
+                  <p className="text-sm text-gray-600">
+                    Plan: <span className="font-medium capitalize">{usageStatus.plan}</span>
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {usageStatus.usage.used}/{usageStatus.usage.limit}
+                  </div>
+                  <p className="text-sm text-gray-500">posts today</p>
+                  {usageStatus.usage.remaining === 0 && (
+                    <p className="text-xs text-red-500 mt-1">
+                      Resets in {Math.ceil((new Date(usageStatus.usage.resetAt) - new Date()) / (1000 * 60 * 60))} hours
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              {/* Progress Bar */}
+              <div className="mt-4">
+                <div className="flex justify-between text-sm text-gray-600 mb-1">
+                  <span>Posts Used</span>
+                  <span>{usageStatus.usage.remaining} remaining</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full ${
+                      usageStatus.usage.remaining === 0 ? 'bg-red-500' : 
+                      usageStatus.usage.remaining <= 1 ? 'bg-yellow-500' : 'bg-green-500'
+                    }`}
+                    style={{ 
+                      width: `${(usageStatus.usage.used / usageStatus.usage.limit) * 100}%` 
+                    }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Payment Success Message */}
           {hasSubscription && (
             <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-center">
@@ -140,43 +203,48 @@ const Dashboard = () => {
           <div className="mb-8 p-6 bg-white rounded-lg shadow text-center">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Connect Your Social Media Accounts</h3>
             <p className="text-sm text-gray-600 mb-4">Connect your accounts to start publishing content across platforms.</p>
-            <div className="flex flex-wrap gap-3 justify-center">
+            <div className="flex flex-wrap gap-4 justify-center">
               <a
                 href={`/api/auth/linkedin/oauth2/start/linkedin?userId=${user?.id}&email=${user?.primaryEmailAddress?.emailAddress}`}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                className="inline-flex items-center justify-center w-12 h-12 bg-[#0A66C2] text-white rounded-lg hover:bg-[#004182] transition-colors"
+                title="Connect LinkedIn"
               >
-                🔗 Connect LinkedIn
+                <Linkedin size={24} />
               </a>
               <a
                 href={`/api/auth/twitter/oauth/start/twitter?userId=${user?.id}&email=${user?.primaryEmailAddress?.emailAddress}`}
-                className="inline-flex items-center px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors text-sm font-medium"
+                className="inline-flex items-center justify-center w-12 h-12 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                title="Connect Twitter"
               >
-                🐦 Connect Twitter
+                <Twitter size={24} />
               </a>
               <a
                 href={`/api/auth/facebook/oauth/start/facebook?userId=${user?.id}&email=${user?.primaryEmailAddress?.emailAddress}`}
-                className="inline-flex items-center px-4 py-2 bg-blue-800 text-white rounded-lg hover:bg-blue-900 transition-colors text-sm font-medium"
+                className="inline-flex items-center justify-center w-12 h-12 bg-[#1877F2] text-white rounded-lg hover:bg-[#0d5dbf] transition-colors"
+                title="Connect Facebook"
               >
-                📘 Connect Facebook
+                <Facebook size={24} />
               </a>
               <a
                 href={`/api/auth/instagram/oauth/start/instagram?userId=${user?.id}&email=${user?.primaryEmailAddress?.emailAddress}`}
-                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors text-sm font-medium"
+                className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors"
+                title="Connect Instagram"
               >
-                📸 Connect Instagram
+                <Instagram size={24} />
               </a>
               <a
                 href={`/api/auth/youtube/oauth2/start/google?userId=${user?.id}&email=${user?.primaryEmailAddress?.emailAddress}`}
-                className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                className="inline-flex items-center justify-center w-12 h-12 bg-[#FF0000] text-white rounded-lg hover:bg-[#cc0000] transition-colors"
+                title="Connect YouTube"
               >
-                📺 Connect YouTube
+                <Youtube size={24} />
               </a>
-              <a
-                href={`/api/auth/tiktok/connect?userId=${user?.id}&email=${user?.primaryEmailAddress?.emailAddress}`}
-                className="inline-flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium"
+              <div
+                className="inline-flex items-center justify-center w-12 h-12 bg-gray-400 text-white rounded-lg cursor-not-allowed"
+                title="TikTok - Coming Soon"
               >
-                🎵 TBD - TikTok
-              </a>
+                <Music size={24} />
+              </div>
             </div>
           </div>
           

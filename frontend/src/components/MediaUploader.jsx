@@ -3,13 +3,12 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { PLATFORMS } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
-import SubscriptionCheck, { useSubscriptionCheck } from './SubscriptionCheck';
+// Subscription check removed - users are already verified at dashboard level
 
 const API_URL = process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://reelpostly.com/ai';
 
 const MediaUploader = () => {
   const { updateContent, content } = useContent();
-  const { requireSubscription } = useSubscriptionCheck();
   const [formData, setFormData] = useState({
     platform: content?.platform || 'instagram',
     files: null,
@@ -144,10 +143,7 @@ const MediaUploader = () => {
   };
 
   const handleUpload = async () => {
-    // Check subscription before proceeding
-    if (!requireSubscription('Media Upload')) {
-      return;
-    }
+    // Media upload is available to all authenticated users
 
     if (!formData.files || formData.files.length === 0) {
       setFormData(prev => ({
@@ -294,7 +290,7 @@ const MediaUploader = () => {
       </header>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <SubscriptionCheck featureName="Media Upload" />
+        {/* Subscription check removed - users are already verified at dashboard level */}
 
         <div className="bg-white shadow rounded-lg p-6">
           <form onSubmit={(e) => { e.preventDefault(); handleUpload(); }} className="space-y-4">

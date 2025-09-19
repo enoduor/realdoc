@@ -3,7 +3,7 @@ import { useUser } from '@clerk/clerk-react';
 import { Link } from 'react-router-dom';
 import { PLATFORMS } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
-import { publishNow } from '../api';
+import { publishNow, getUserUsageStatus } from '../api';
 import axios from 'axios';
 
 // --- helpers (same as PostStatusTracker) -------------------------------------------------------------
@@ -60,8 +60,32 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
     const [publishStatus, setPublishStatus] = useState(null);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    
+    // Usage tracking state
+    const [usageStatus, setUsageStatus] = useState(null);
+    const [usageLoading, setUsageLoading] = useState(false);
 
     const platformLimits = PLATFORMS[formData.platform.toUpperCase()];
+
+    // Fetch usage status
+    const fetchUsageStatus = async () => {
+        try {
+            setUsageLoading(true);
+            const usage = await getUserUsageStatus();
+            setUsageStatus(usage);
+        } catch (error) {
+            console.error('Error fetching usage status:', error);
+        } finally {
+            setUsageLoading(false);
+        }
+    };
+
+    // Fetch usage status when component mounts and user is available
+    useEffect(() => {
+        if (user) {
+            fetchUsageStatus();
+        }
+    }, [user]);
 
     // Simple toggle function
     const toggleIndividualMode = () => {
@@ -326,6 +350,14 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
         // Clear previous messages
         setPublishStatus(null);
 
+        // Check usage limits first
+        if (usageStatus && !usageStatus.usage.canPublish) {
+            const resetTime = new Date(usageStatus.usage.resetAt);
+            const hoursUntilReset = Math.ceil((resetTime - new Date()) / (1000 * 60 * 60));
+            setError(`Daily limit reached! You've used ${usageStatus.usage.used}/${usageStatus.usage.limit} posts today. Resets in ${hoursUntilReset} hours.`);
+            return;
+        }
+
         // Validate inputs
         if (platforms.length === 0) {
             setPublishStatus({
@@ -439,6 +471,9 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                 } else {
                     message = `✅ Published to ${successCount}/${totalCount} platforms. Click "View Post →" to see your posts.`;
                 }
+                
+                // Refresh usage status after successful publish
+                fetchUsageStatus();
 
                 setPublishStatus({
                     type: 'success',
@@ -1402,12 +1437,39 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                             </div>
                         )}
 
+                        {/* Usage Status Display */}
+                        {usageStatus && (
+                            <div className={`mt-4 p-3 rounded-lg border ${
+                                usageStatus.usage.canPublish ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                            }`}>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className={`text-sm font-medium ${
+                                            usageStatus.usage.canPublish ? 'text-green-800' : 'text-red-800'
+                                        }`}>
+                                            Daily Posts: {usageStatus.usage.used}/{usageStatus.usage.limit}
+                                        </p>
+                                        <p className="text-xs text-gray-600">
+                                            Plan: {usageStatus.plan} • {usageStatus.usage.remaining} remaining
+                                        </p>
+                                    </div>
+                                    {!usageStatus.usage.canPublish && (
+                                        <div className="text-right">
+                                            <p className="text-xs text-red-600">
+                                                Resets in {Math.ceil((new Date(usageStatus.usage.resetAt) - new Date()) / (1000 * 60 * 60))}h
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                                                 {/* Action Buttons - Fixed positioning to avoid hashtag overlay */}
                         <div className="flex mt-6">
                             <button
                                 onClick={handlePublishPost}
                                 className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                                disabled={isPublishing || platforms.length === 0 || (!editableContent.captions[0] && editableContent.hashtags.filter(tag => tag.trim() !== '').length === 0 && !content.mediaUrl)}
+                                disabled={isPublishing || platforms.length === 0 || (!editableContent.captions[0] && editableContent.hashtags.filter(tag => tag.trim() !== '').length === 0 && !content.mediaUrl) || (usageStatus && !usageStatus.usage.canPublish)}
                             >
                                 {isPublishing ? (
                                     <>
@@ -1418,7 +1480,9 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                         Publishing to {platforms.length} platforms...
                                     </>
                                 ) : (
-                                    '✅ Confirm and Publish'
+                                    usageStatus && !usageStatus.usage.canPublish ? 
+                                        `Daily Limit Reached (${usageStatus.usage.used}/${usageStatus.usage.limit})` :
+                                        '✅ Confirm and Publish'
                                 )}
                             </button>
                         </div>

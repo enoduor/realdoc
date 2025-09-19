@@ -2,6 +2,7 @@ const PlatformPublisher = require('../services/platformPublisher');
 const platformPublisher = new PlatformPublisher();
 const { findToken, getTwitterHandle } = require('../services/twitterService');
 const { getPlatformConnectionStatus, getUserSubscriptionStatus } = require('../utils/tokenUtils');
+const { getUserUsageStatus } = require('../middleware/usageAuth');
 
 // Publish post immediately to platforms
 exports.publishNow = async (req, res) => {

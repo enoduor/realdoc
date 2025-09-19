@@ -3,11 +3,10 @@ import { Link } from 'react-router-dom';
 import ContentService from '../api/contentService';
 import { PLATFORMS } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
-import SubscriptionCheck, { useSubscriptionCheck } from './SubscriptionCheck';
+// Subscription check removed - hashtag generation should be free like caption generation
 
 const HashtagGenerator = () => {
     const { updateContent, content } = useContent();
-    const { requireSubscription } = useSubscriptionCheck();
     const [formData, setFormData] = useState({
         platform: content.platform || 'instagram',
         topic: content.topic || '',
@@ -43,10 +42,7 @@ const HashtagGenerator = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // Check subscription before proceeding
-        if (!requireSubscription('Hashtag Generator')) {
-            return;
-        }
+        // Hashtag generation is free - no subscription check needed
         
         setLoading(true);
         setError('');
@@ -83,7 +79,7 @@ const HashtagGenerator = () => {
             </header>
 
             <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-                <SubscriptionCheck featureName="Hashtag Generator" />
+                {/* Subscription check removed - hashtag generation is free */}
                 
                 <div className="bg-white shadow rounded-lg p-6">
                     {/* Platform Requirements */}
