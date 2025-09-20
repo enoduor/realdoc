@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { createSubscriptionSession } from '../api';
+import { createSubscriptionSession, getPriceId } from '../api';
 import './PricingSection.css';
 
 const PricingSection = () => {
@@ -64,21 +64,25 @@ const PricingSection = () => {
 
   const [loading, setLoading] = useState(false);
 
-  const handleStartTrial = async (planName) => {
+  const handleStartTrial = async (plan) => {
     try {
       setLoading(true);
       
-      // Convert plan name to lowercase for API
-      const plan = planName.toLowerCase();
+      console.log(`🎯 Getting price ID for ${plan.name} (${billingCycle})...`);
       
+      // Get Price ID from backend at runtime
+      const priceData = await getPriceId(plan.name.toLowerCase(), billingCycle);
+      const priceId = priceData.priceId;
       
-      // Call Stripe API to create checkout session
-      const response = await createSubscriptionSession(plan, billingCycle);
+      console.log(`✅ Got price ID: ${priceId}`);
       
+      // Create checkout session with the Price ID
+      const response = await createSubscriptionSession(priceId);
       
       if (response && response.url) {
-        // Redirect to Stripe checkout
-        window.location.href = response.url;
+        console.log(`🚀 Redirecting to Stripe: ${response.url}`);
+        // Force full page redirect to Stripe checkout
+        window.location.replace(response.url);
       } else {
         console.error('❌ No checkout URL in response:', response);
         throw new Error('No checkout URL received from Stripe');
@@ -185,7 +189,7 @@ const PricingSection = () => {
                     <p className="trial-info">Start your 3-day free trial and cancel anytime.</p>
                     <button 
                       className={`cta-button ${plan.popular ? 'popular' : ''} ${plan.bestDeal ? 'best-deal' : ''}`}
-                      onClick={() => handleStartTrial(plan.name)}
+                      onClick={() => handleStartTrial(plan)}
                       disabled={loading}
                     >
                       {loading ? 'Loading...' : 'Start Free Trial'}

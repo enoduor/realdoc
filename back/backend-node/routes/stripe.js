@@ -25,7 +25,88 @@ const STRIPE_PRICES = {
   }
 };
 
-// ✅ Create a subscription checkout session with trial
+// ✅ Get Price ID for plan and billing cycle
+router.post("/get-price-id", async (req, res) => {
+  try {
+    const { plan, billingCycle } = req.body;
+    
+    // Validate inputs
+    if (!plan || !billingCycle) {
+      return res.status(400).json({ error: "Plan and billing cycle required" });
+    }
+    
+    if (!['starter', 'creator', 'pro'].includes(plan)) {
+      return res.status(400).json({ error: "Invalid plan" });
+    }
+    
+    if (!['monthly', 'yearly'].includes(billingCycle)) {
+      return res.status(400).json({ error: "Invalid billing cycle" });
+    }
+    
+    // Get Price ID from SSM environment variables
+    const priceId = STRIPE_PRICES[plan][billingCycle];
+    
+    if (!priceId) {
+      return res.status(400).json({ error: `Price not configured for ${plan} ${billingCycle}` });
+    }
+    
+    console.log(`✅ Price ID lookup: ${plan} ${billingCycle} → ${priceId}`);
+    
+    res.json({ priceId });
+    
+  } catch (error) {
+    console.error("❌ Error getting price ID:", error);
+    res.status(500).json({ error: "Failed to get price ID" });
+  }
+});
+
+// ✅ Create a checkout session with priceId (simple version)
+router.post("/create-checkout-session", async (req, res) => {
+  try {
+    console.log("🎯 Creating checkout session with priceId...");
+    const { priceId } = req.body;
+    
+    if (!priceId) {
+      return res.status(400).json({ error: "Price ID required" });
+    }
+
+    console.log("✅ Creating Stripe checkout session with price ID:", priceId);
+
+    // Create checkout session with trial
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "subscription",
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      subscription_data: {
+        trial_period_days: 3, // 3-day free trial
+        metadata: {
+          priceId: priceId,
+          clerkUserId: req.user?.userId || null
+        }
+      },
+      success_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/app?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/pricing`,
+      allow_promotion_codes: true,
+    });
+
+    console.log("✅ Checkout session created:", session.url);
+    res.status(200).json({ 
+      url: session.url,
+      sessionId: session.id
+    });
+
+  } catch (err) {
+    console.error("❌ Stripe error:", err.message);
+    res.status(500).json({ error: "Failed to create checkout session" });
+  }
+});
+
+// ✅ Create a subscription checkout session with trial (legacy)
 router.post("/create-subscription-session", async (req, res) => {
   try {
     console.log("🎯 Creating subscription checkout session...");

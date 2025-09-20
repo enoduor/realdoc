@@ -269,8 +269,8 @@ router.post("/create-clerk-user", requireAuth(), async (req, res) => {
         firstName: firstName,
         lastName: lastName,
         subscriptionStatus: 'none',
-        selectedPlan: 'starter',
-        billingCycle: 'monthly'
+        selectedPlan: 'none',
+        billingCycle: 'none'
       });
 
       await user.save();

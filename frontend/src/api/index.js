@@ -131,6 +131,20 @@ export const publishNow = async (postData) => {
   }
 };
 
+export const getPriceId = async (plan, billingCycle) => {
+  try {
+    const response = await fetch(`${API_URL}/api/stripe/get-price-id`, {
+      method: 'POST',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ plan, billingCycle })
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('Error getting price ID:', error);
+    throw error;
+  }
+};
+
 export const createSubscriptionSession = async (priceId) => {
   try {
     const response = await fetch(`${API_URL}/api/stripe/create-checkout-session`, {

@@ -38,13 +38,13 @@ const userSchema = new mongoose.Schema({
   },
   selectedPlan: {
     type: String,
-    enum: ['starter', 'creator', 'pro'],
-    default: 'starter'
+    enum: ['none', 'starter', 'creator', 'pro'],
+    default: 'none'
   },
   billingCycle: {
     type: String,
-    enum: ['monthly', 'yearly'],
-    default: 'monthly'
+    enum: ['none', 'monthly', 'yearly'],
+    default: 'none'
   },
 
   // Trial Management
