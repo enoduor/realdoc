@@ -54,8 +54,7 @@ const PricingSection = () => {
         'White-label solutions',
         'Customized analytics & reporting',
         'Custom training & onboarding',
-        'Priority technical support',
-        'Volume discounts available'
+        'Priority technical support'
       ],
       popular: false,
       bestDeal: false

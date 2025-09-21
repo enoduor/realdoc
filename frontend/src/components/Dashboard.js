@@ -44,6 +44,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [welcomeMsg, setWelcomeMsg] = useState('');
   const [checking, setChecking] = useState(false);
+  const [errorModal, setErrorModal] = useState({ show: false, title: '', message: '' });
   const [me, setMe] = useState(null); // full /auth/me snapshot for banner/detail
   const navigate = useNavigate();
   const { user } = useUser();
@@ -295,54 +296,100 @@ const Dashboard = () => {
             </div>
           )}
 
-           {/* Realtime subscription banner from /auth/me */}
-{!loading && me && (
-  <div
-    style={{
-      margin: '12px auto',
-      maxWidth: '1200px',
-      padding: '12px 16px',
-      borderRadius: 10,
-      textAlign: 'center',
-      border: '1px solid',
-      background:
-        (me.subscriptionStatus === 'active' || me.subscriptionStatus === 'trialing')
-          ? '#e8f5e9'
-          : '#fff8e1',
-      borderColor:
-        (me.subscriptionStatus === 'active' || me.subscriptionStatus === 'trialing')
-          ? '#c8e6c9'
-          : '#ffe0b2',
-      color:
-        (me.subscriptionStatus === 'active' || me.subscriptionStatus === 'trialing')
-          ? '#1b5e20'
-          : '#8d6e63',
-    }}
-  >
-    {me.subscriptionStatus === 'active' && (
-      <span>
-        ✅ Subscription active — <strong>{me.selectedPlan ?? '—'}</strong> ({me.billingCycle ?? '—'})
-      </span>
-    )}
+          {/* Realtime subscription banner from /auth/me */}
+          {!loading && me && (
+            <div
+              style={{
+                margin: '12px auto',
+                maxWidth: '1200px',
+                padding: '12px 16px',
+                borderRadius: 10,
+                border: '1px solid',
+                background:
+                  (me.subscriptionStatus === 'active' || me.subscriptionStatus === 'trialing')
+                    ? '#e8f5e9'
+                    : '#fff8e1',
+                borderColor:
+                  (me.subscriptionStatus === 'active' || me.subscriptionStatus === 'trialing')
+                    ? '#c8e6c9'
+                    : '#ffe0b2',
+                color:
+                  (me.subscriptionStatus === 'active' || me.subscriptionStatus === 'trialing')
+                    ? '#1b5e20'
+                    : '#8d6e63',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+              }}
+            >
+              {/* Left: status text */}
+              <div>
+                {me.subscriptionStatus === 'active' && (
+                  <span>
+                    ✅ Subscription active — <strong>{me.selectedPlan ?? '—'}</strong> ({me.billingCycle ?? '—'})
+                  </span>
+                )}
+                {me.subscriptionStatus === 'trialing' && (
+                  <span>
+                    🎉 Trialing — <strong>{me.selectedPlan ?? '—'}</strong> ({me.billingCycle ?? '—'})
+                    {Number.isFinite(me.trialDaysRemaining)
+                      ? ` • ${me.trialDaysRemaining} day${me.trialDaysRemaining === 1 ? '' : 's'} left`
+                      : ''}
+                  </span>
+                )}
+                {me.subscriptionStatus === 'past_due' && (
+                  <span>⚠️ Past due — please update your payment method.</span>
+                )}
+                {(me.subscriptionStatus === 'none' || !me.subscriptionStatus) && (
+                  <span>⚠️ No active subscription.</span>
+                )}
+              </div>
 
-    {me.subscriptionStatus === 'trialing' && (
-      <span>
-        🎉 Trialing — <strong>{me.selectedPlan ?? '—'}</strong> ({me.billingCycle ?? '—'})
-        {Number.isFinite(me.trialDaysRemaining)
-          ? ` • ${me.trialDaysRemaining} day${me.trialDaysRemaining === 1 ? '' : 's'} left`
-          : ''}
-      </span>
-    )}
-
-    {me.subscriptionStatus === 'past_due' && (
-      <span>⚠️ Past due — please update your payment method.</span>
-    )}
-
-    {(me.subscriptionStatus === 'none' || !me.subscriptionStatus) && (
-      <span>⚠️ No active subscription.</span>
-    )}
-  </div>
-)}
+              {/* Right: Manage Billing button (only show if we have a customer or an active/trial sub) */}
+              {(me.stripeCustomerId || me.hasActiveSubscription) && (
+                <button
+                onClick={async () => {
+                  try {
+                    // get Clerk session token
+                    const token = await getToken();
+                
+                    const res = await fetch('/api/stripe/portal-session', {
+                      method: 'POST',
+                      credentials: 'include',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`, // 👈 REQUIRED for requireAuth()
+                      },
+                    });
+                
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data?.error || 'Failed to create billing portal session');
+                    window.location.href = data.url;
+                  } catch (err) {
+                    console.error('Unable to open billing portal:', err);
+                    setErrorModal({
+                      show: true,
+                      title: 'Unable to Open Billing Portal',
+                      message: err.message || 'An unexpected error occurred while trying to access your billing information. Please try again later.'
+                    });
+                  }
+                }}
+                  style={{
+                    background: '#0ea5e9',
+                    color: 'white',
+                    border: 0,
+                    borderRadius: 8,
+                    padding: '8px 12px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Manage Billing
+                </button>
+              )}
+            </div>
+          )}
 
           {/* OAuth Connection Buttons */}
           <div className="mb-8 p-6 bg-white rounded-lg shadow text-center">
@@ -427,6 +474,110 @@ const Dashboard = () => {
           </div>
         </div>
       </main>
+
+      {/* Beautiful Error Modal */}
+      {errorModal.show && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            maxWidth: '400px',
+            width: '100%',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            animation: 'modalSlideIn 0.2s ease-out'
+          }}>
+            {/* Header */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: '16px'
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                backgroundColor: '#fee2e2',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: '12px'
+              }}>
+                <span style={{ fontSize: '20px' }}>⚠️</span>
+              </div>
+              <h3 style={{
+                margin: 0,
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#374151'
+              }}>
+                {errorModal.title}
+              </h3>
+            </div>
+
+            {/* Message */}
+            <p style={{
+              margin: '0 0 20px 0',
+              color: '#6b7280',
+              lineHeight: '1.5',
+              fontSize: '14px'
+            }}>
+              {errorModal.message}
+            </p>
+
+            {/* Actions */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px'
+            }}>
+              <button
+                onClick={() => setErrorModal({ show: false, title: '', message: '' })}
+                style={{
+                  background: '#0ea5e9',
+                  color: 'white',
+                  border: 0,
+                  borderRadius: '8px',
+                  padding: '10px 20px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => e.target.style.background = '#0284c7'}
+                onMouseOut={(e) => e.target.style.background = '#0ea5e9'}
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes modalSlideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+      `}</style>
     </div>
   );
 };

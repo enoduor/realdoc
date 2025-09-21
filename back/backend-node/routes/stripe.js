@@ -1,92 +1,88 @@
+// routes/stripe.js
 const express = require("express");
 const router = express.Router();
 const Stripe = require("stripe");
 const User = require("../models/User");
-const { requireAuth } = require('@clerk/express');
+const { requireAuth } = require("@clerk/express");
 
-// ✅ Load Stripe key from .env and verify it's loading
-console.log("✅ Stripe key loaded:", process.env.STRIPE_SECRET_KEY?.slice(0, 10) + "...");
+// --- Stripe init & sanity log ---
+const stripeKey = process.env.STRIPE_SECRET_KEY || "";
+console.log("✅ Stripe key loaded:", stripeKey ? stripeKey.slice(0, 10) + "..." : "MISSING");
+const stripe = Stripe(stripeKey);
 
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
-
-// Stripe price IDs (you'll need to create these in your Stripe dashboard)
+// --- Price map (from SSM env) ---
 const STRIPE_PRICES = {
   starter: {
     monthly: process.env.STRIPE_STARTER_MONTHLY_PRICE_ID,
-    yearly: process.env.STRIPE_STARTER_YEARLY_PRICE_ID
+    yearly: process.env.STRIPE_STARTER_YEARLY_PRICE_ID,
   },
   creator: {
     monthly: process.env.STRIPE_CREATOR_MONTHLY_PRICE_ID,
-    yearly: process.env.STRIPE_CREATOR_YEARLY_PRICE_ID
+    yearly: process.env.STRIPE_CREATOR_YEARLY_PRICE_ID,
   },
   pro: {
     monthly: process.env.STRIPE_PRO_MONTHLY_PRICE_ID,
-    yearly: process.env.STRIPE_PRO_YEARLY_PRICE_ID
-  }
+    yearly: process.env.STRIPE_PRO_YEARLY_PRICE_ID,
+  },
 };
 
-// ✅ Get Price ID for plan and billing cycle
+// Utility: normalize Clerk auth accessor (supports req.auth() and req.auth)
+function getClerkAuth(req) {
+  try {
+    if (typeof req.auth === "function") return req.auth();
+    return req.auth;
+  } catch {
+    return undefined;
+  }
+}
+
+/* =========================
+ *  PRICE ID LOOKUP
+ * ========================= */
 router.post("/get-price-id", async (req, res) => {
   try {
-    const { plan, billingCycle } = req.body;
-    
-    // Validate inputs
+    const { plan, billingCycle } = req.body || {};
     if (!plan || !billingCycle) {
       return res.status(400).json({ error: "Plan and billing cycle required" });
     }
-    
-    if (!['starter', 'creator', 'pro'].includes(plan)) {
+    if (!["starter", "creator", "pro"].includes(plan)) {
       return res.status(400).json({ error: "Invalid plan" });
     }
-    
-    if (!['monthly', 'yearly'].includes(billingCycle)) {
+    if (!["monthly", "yearly"].includes(billingCycle)) {
       return res.status(400).json({ error: "Invalid billing cycle" });
     }
-    
-    // Get Price ID from SSM environment variables
-    const priceId = STRIPE_PRICES[plan][billingCycle];
-    
+
+    const priceId = STRIPE_PRICES?.[plan]?.[billingCycle];
     if (!priceId) {
       return res.status(400).json({ error: `Price not configured for ${plan} ${billingCycle}` });
     }
-    
+
     console.log(`✅ Price ID lookup: ${plan} ${billingCycle} → ${priceId}`);
-    
-    res.json({ priceId });
-    
-  } catch (error) {
-    console.error("❌ Error getting price ID:", error);
-    res.status(500).json({ error: "Failed to get price ID" });
+    return res.json({ priceId });
+  } catch (err) {
+    console.error("❌ Error getting price ID:", err);
+    return res.status(500).json({ error: "Failed to get price ID" });
   }
 });
 
-// ✅ Create a checkout session with priceId (simple version)
+/* =========================
+ *  CHECKOUT (DIRECT BY priceId)
+ * ========================= */
 router.post("/create-checkout-session", async (req, res) => {
   try {
-    console.log("🎯 ===== STRIPE CHECKOUT SESSION START ======");
-    console.log("📋 Request body:", JSON.stringify(req.body, null, 2));
-    console.log("📋 Request headers:", JSON.stringify(req.headers, null, 2));
-    console.log("📋 User from req.user:", req.user);
-    console.log("📋 Auth token present:", !!req.headers.authorization);
-    
-    const { priceId } = req.body;
-    
-    if (!priceId) {
-      console.log("❌ No price ID provided");
-      return res.status(400).json({ error: "Price ID required" });
-    }
+    const { priceId } = req.body || {};
+    const auth = getClerkAuth(req);
+    const clerkUserId = auth?.userId || null;
 
-    console.log("✅ Creating Stripe checkout session with price ID:", priceId);
+    if (!priceId) return res.status(400).json({ error: "Price ID required" });
 
-    // Determine plan and billing cycle from price ID
+    // reverse-lookup plan/cycle for metadata (nice-to-have)
     let plan = null;
     let billingCycle = null;
-    
-    // Reverse lookup from STRIPE_PRICES
-    for (const [planName, prices] of Object.entries(STRIPE_PRICES)) {
-      for (const [cycle, id] of Object.entries(prices)) {
+    for (const [p, cycles] of Object.entries(STRIPE_PRICES)) {
+      for (const [cycle, id] of Object.entries(cycles)) {
         if (id === priceId) {
-          plan = planName;
+          plan = p;
           billingCycle = cycle;
           break;
         }
@@ -94,145 +90,97 @@ router.post("/create-checkout-session", async (req, res) => {
       if (plan) break;
     }
 
-    console.log(`✅ Determined plan: ${plan}, billing cycle: ${billingCycle}`);
-
-    // 🔍 COMPREHENSIVE LOGGING - Stripe Session Creation
-    const sessionMetadata = {
-      priceId: priceId,
-      plan: plan,
-      billingCycle: billingCycle,
-      clerkUserId: req.user?.userId || null
-    };
-    
-    console.log("📤 ===== SENDING TO STRIPE START ======");
-    console.log("📤 Metadata being sent to Stripe:", JSON.stringify(sessionMetadata, null, 2));
-    console.log("📤 Clerk User ID being sent:", sessionMetadata.clerkUserId);
-    console.log("📤 Price ID being sent:", sessionMetadata.priceId);
-    console.log("📤 Plan being sent:", sessionMetadata.plan);
-    console.log("📤 Billing cycle being sent:", sessionMetadata.billingCycle);
-    console.log("📤 ===== SENDING TO STRIPE END ======");
-
-    // Create checkout session with trial
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
       mode: "subscription",
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      subscription_data: {
-        trial_period_days: 3, // 3-day free trial
-      },
-      metadata: sessionMetadata,
+      payment_method_types: ["card"],
+      line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: { trial_period_days: 3 },
+      metadata: { clerkUserId, plan, billingCycle, priceId },
       success_url: `https://reelpostly.com/app?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `https://reelpostly.com/pricing`,
       allow_promotion_codes: true,
     });
 
-    // 🔍 COMPREHENSIVE LOGGING - Stripe Response
-    console.log("📨 ===== STRIPE RESPONSE START ======");
-    console.log("📨 Stripe session created:", session.id);
-    console.log("📨 Session URL:", session.url);
-    console.log("📨 Customer ID:", session.customer);
-    console.log("📨 Full session object:", JSON.stringify(session, null, 2));
-    console.log("📨 ===== STRIPE RESPONSE END ======");
-
-    console.log("🎯 ===== STRIPE CHECKOUT SESSION END ======");
-    res.status(200).json({ 
+    console.log("✅ checkout session created:", {
+      id: session.id,
       url: session.url,
-      sessionId: session.id
+      customer: session.customer,
+      clerkUserId,
+      plan,
+      billingCycle,
     });
 
+    return res.status(200).json({ url: session.url, sessionId: session.id });
   } catch (err) {
-    console.error("❌ Stripe error:", err.message);
-    res.status(500).json({ error: "Failed to create checkout session" });
+    console.error("❌ Stripe error (create-checkout-session):", err);
+    return res.status(500).json({ error: "Failed to create checkout session" });
   }
 });
 
-// ✅ Create a subscription checkout session with trial (legacy)
+/* =========================
+ *  LEGACY CHECKOUT (BY plan/cycle)
+ * ========================= */
 router.post("/create-subscription-session", async (req, res) => {
   try {
-    console.log("🎯 Creating subscription checkout session...");
-    const { plan, billingCycle } = req.body;
-    const clerkUserId = req.user?.userId || 'test-user-id';
+    const { plan, billingCycle } = req.body || {};
+    const auth = getClerkAuth(req);
+    const clerkUserId = auth?.userId || null;
 
-    // Validate plan and billing cycle
-    if (!['starter', 'creator', 'pro'].includes(plan)) {
+    if (!["starter", "creator", "pro"].includes(plan)) {
       return res.status(400).json({ error: "Invalid plan" });
     }
-    if (!['monthly', 'yearly'].includes(billingCycle)) {
+    if (!["monthly", "yearly"].includes(billingCycle)) {
       return res.status(400).json({ error: "Invalid billing cycle" });
     }
 
-    // Skip user lookup for direct checkout
-    console.log("✅ Proceeding with direct Stripe checkout");
+    const priceId = STRIPE_PRICES?.[plan]?.[billingCycle];
+    if (!priceId) return res.status(400).json({ error: "Price not configured" });
 
-    const priceId = STRIPE_PRICES[plan][billingCycle];
-    if (!priceId) {
-      return res.status(400).json({ error: "Price not configured" });
-    }
-
-    // Create checkout session without customer (Stripe will create one)
-    console.log("✅ Creating Stripe checkout session with price ID:", priceId);
-
-    // Create checkout session with trial
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
       mode: "subscription",
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      subscription_data: {
-        trial_period_days: 3, // 3-day free trial
-      },
-      metadata: {
-        plan: plan,
-        billingCycle: billingCycle,
-        clerkUserId: req.user?.userId || null // Include Clerk user ID if available
-      },
+      payment_method_types: ["card"],
+      line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: { trial_period_days: 3 },
+      metadata: { plan, billingCycle, clerkUserId },
       success_url: `https://reelpostly.com/app?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `https://reelpostly.com/pricing`,
       allow_promotion_codes: true,
     });
 
-    console.log("✅ Subscription checkout session created:", session.url);
-    res.status(200).json({ 
-      url: session.url,
-      sessionId: session.id
-    });
-
+    console.log("✅ subscription checkout (legacy) created:", session.id);
+    return res.status(200).json({ url: session.url, sessionId: session.id });
   } catch (err) {
-    console.error("❌ Stripe error:", err.message);
-    res.status(500).json({ error: "Failed to create checkout session" });
+    console.error("❌ Stripe error (create-subscription-session):", err);
+    return res.status(500).json({ error: "Failed to create checkout session" });
   }
 });
 
-// ✅ Get user subscription status (authenticated)
+/* =========================
+ *  CURRENT SUBSCRIPTION SNAPSHOT (AUTH)
+ * ========================= */
 router.get("/subscription", requireAuth(), async (req, res) => {
   try {
-    const clerkUserId = req.auth().userId;
+    const auth = getClerkAuth(req);
+    const clerkUserId = auth?.userId;
     const user = await User.findOne({ clerkUserId });
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    if (!user) return res.status(404).json({ error: "User not found" });
 
     let subscription = null;
     if (user.stripeSubscriptionId) {
       try {
         subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
-      } catch (error) {
-        console.error("Error retrieving subscription:", error);
+      } catch (e) {
+        console.warn("⚠️ Stripe subscription retrieve failed:", e?.message);
       }
     }
 
-    const trialDaysRemaining = user.calculateTrialDaysRemaining();
-    const planLimits = user.getPlanLimits();
+    const trialDaysRemaining =
+      typeof user.calculateTrialDaysRemaining === "function"
+        ? user.calculateTrialDaysRemaining()
+        : 0;
+
+    const planLimits =
+      typeof user.getPlanLimits === "function" ? user.getPlanLimits() : null;
 
     res.json({
       subscriptionStatus: user.subscriptionStatus,
@@ -241,192 +189,170 @@ router.get("/subscription", requireAuth(), async (req, res) => {
       trialDaysRemaining,
       planLimits,
       stripeSubscription: subscription,
-      canCreatePosts: user.canCreatePosts(),
+      hasActiveSubscription:
+        typeof user.canCreatePosts === "function"
+          ? user.canCreatePosts()
+          : ["active", "trialing", "past_due"].includes(user.subscriptionStatus),
       accountsConnected: user.accountsConnected,
       postsCreated: user.postsCreated,
-      hasActiveSubscription: user.canCreatePosts()
     });
-
-  } catch (error) {
-    console.error("❌ Error getting subscription:", error);
-    res.status(500).json({ error: "Failed to get subscription status" });
+  } catch (err) {
+    console.error("❌ Error getting subscription:", err);
+    return res.status(500).json({ error: "Failed to get subscription status" });
   }
 });
 
-// ✅ Check subscription status by session ID (no auth required)
+/* =========================
+ *  LOOKUP HELPERS
+ * ========================= */
 router.get("/subscription-by-session/:sessionId", async (req, res) => {
   try {
     const { sessionId } = req.params;
-    
-    // Find user by session ID (from webhook)
-    const user = await User.findOne({ 
+    const user = await User.findOne({
       $or: [
         { stripeSubscriptionId: { $exists: true, $ne: null } },
-        { 'subscriptionData.sessionId': sessionId }
-      ]
+        { "subscriptionData.sessionId": sessionId },
+      ],
     });
+    if (!user) return res.json({ hasActiveSubscription: false });
 
-    if (!user) {
-      return res.json({ hasActiveSubscription: false });
-    }
-
-    res.json({
-      hasActiveSubscription: user.canCreatePosts(),
-      subscriptionStatus: user.subscriptionStatus,
-      selectedPlan: user.selectedPlan,
-      billingCycle: user.billingCycle
-    });
-
-  } catch (error) {
-    console.error("❌ Error checking subscription by session:", error);
-    res.status(500).json({ error: "Failed to check subscription status" });
-  }
-});
-
-// ✅ Get user subscription status by email (simple approach)
-router.get("/subscription-by-email/:email", async (req, res) => {
-  try {
-    const { email } = req.params;
-    
-    // Simple email lookup
-    const user = await User.findOne({ email: email });
-
-    if (!user) {
-      return res.json({ hasActiveSubscription: false });
-    }
-
-    res.json({
-      hasActiveSubscription: user.canCreatePosts(),
+    return res.json({
+      hasActiveSubscription:
+        typeof user.canCreatePosts === "function"
+          ? user.canCreatePosts()
+          : ["active", "trialing", "past_due"].includes(user.subscriptionStatus),
       subscriptionStatus: user.subscriptionStatus,
       selectedPlan: user.selectedPlan,
       billingCycle: user.billingCycle,
-      email: user.email
     });
-
-  } catch (error) {
-    console.error("❌ Error checking subscription by email:", error);
-    res.status(500).json({ error: "Failed to check subscription status" });
+  } catch (err) {
+    console.error("❌ Error subscription-by-session:", err);
+    return res.status(500).json({ error: "Failed to check subscription status" });
   }
 });
 
-// ✅ Cancel subscription
+router.get("/subscription-by-email/:email", async (req, res) => {
+  try {
+    const { email } = req.params;
+    const user = await User.findOne({ email });
+    if (!user) return res.json({ hasActiveSubscription: false });
+
+    return res.json({
+      hasActiveSubscription:
+        typeof user.canCreatePosts === "function"
+          ? user.canCreatePosts()
+          : ["active", "trialing", "past_due"].includes(user.subscriptionStatus),
+      subscriptionStatus: user.subscriptionStatus,
+      selectedPlan: user.selectedPlan,
+      billingCycle: user.billingCycle,
+      email: user.email,
+    });
+  } catch (err) {
+    console.error("❌ Error subscription-by-email:", err);
+    return res.status(500).json({ error: "Failed to check subscription status" });
+  }
+});
+
+/* =========================
+ *  CANCEL / REACTIVATE (AUTH)
+ * ========================= */
 router.post("/cancel-subscription", requireAuth(), async (req, res) => {
   try {
-    const clerkUserId = req.auth().userId;
+    const auth = getClerkAuth(req);
+    const clerkUserId = auth?.userId;
     const user = await User.findOne({ clerkUserId });
-
     if (!user || !user.stripeSubscriptionId) {
       return res.status(404).json({ error: "No active subscription found" });
     }
 
-    // Cancel at period end
     const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
-      cancel_at_period_end: true
+      cancel_at_period_end: true,
     });
 
-    // Update user status
-    user.subscriptionStatus = 'canceled';
+    user.subscriptionStatus = "canceled";
     await user.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: "Subscription will be canceled at the end of the current period",
-      cancelAt: subscription.cancel_at
+      cancelAt: subscription.cancel_at,
     });
-
-  } catch (error) {
-    console.error("❌ Error canceling subscription:", error);
-    res.status(500).json({ error: "Failed to cancel subscription" });
+  } catch (err) {
+    console.error("❌ Error cancel-subscription:", err);
+    return res.status(500).json({ error: "Failed to cancel subscription" });
   }
 });
 
-// ✅ Reactivate subscription
 router.post("/reactivate-subscription", requireAuth(), async (req, res) => {
   try {
-    const clerkUserId = req.auth().userId;
+    const auth = getClerkAuth(req);
+    const clerkUserId = auth?.userId;
     const user = await User.findOne({ clerkUserId });
-
     if (!user || !user.stripeSubscriptionId) {
       return res.status(404).json({ error: "No subscription found" });
     }
 
-    // Reactivate subscription
     const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
-      cancel_at_period_end: false
+      cancel_at_period_end: false,
     });
 
-    // Update user status
     user.subscriptionStatus = subscription.status;
     await user.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: "Subscription reactivated successfully",
-      subscriptionStatus: user.subscriptionStatus
+      subscriptionStatus: user.subscriptionStatus,
     });
-
-  } catch (error) {
-    console.error("❌ Error reactivating subscription:", error);
-    res.status(500).json({ error: "Failed to reactivate subscription" });
+  } catch (err) {
+    console.error("❌ Error reactivate-subscription:", err);
+    return res.status(500).json({ error: "Failed to reactivate subscription" });
   }
 });
 
-// ✅ Update payment method
-router.post("/update-payment-method", requireAuth(), async (req, res) => {
+/* =========================
+ *  BILLING PORTAL (AUTH) — SINGLE, CONSOLIDATED
+ * ========================= */
+// routes/stripe.js  — replace ONLY the portal-session handler
+router.post("/portal-session", requireAuth(), async (req, res) => {
   try {
-    const { paymentMethodId } = req.body;
-    const clerkUserId = req.auth().userId;
-    const user = await User.findOne({ clerkUserId });
+    // Support both @clerk/express styles
+    const auth = typeof req.auth === "function" ? req.auth() : req.auth;
+    const clerkUserId = auth?.userId;
+    if (!clerkUserId) return res.status(401).json({ error: "Not authenticated" });
 
-    if (!user || !user.stripeCustomerId) {
-      return res.status(404).json({ error: "No customer found" });
+    const user = await User.findOne({ clerkUserId });
+    if (!user) return res.status(404).json({ error: "User not found in database" });
+    if (!user.stripeCustomerId) {
+      return res.status(409).json({
+        error: "Stripe customer not found. Complete checkout first.",
+      });
     }
 
-    // Attach payment method to customer
-    await stripe.paymentMethods.attach(paymentMethodId, {
+    const returnUrl =
+      (process.env.APP_URL && `${process.env.APP_URL}/app`) ||
+      `${process.env.FRONTEND_URL || "https://reelpostly.com"}/app`;
+
+    const params = {
       customer: user.stripeCustomerId,
-    });
+      return_url: returnUrl,
+    };
 
-    // Set as default payment method
-    await stripe.customers.update(user.stripeCustomerId, {
-      invoice_settings: {
-        default_payment_method: paymentMethodId,
-      },
-    });
-
-    res.json({
-      success: true,
-      message: "Payment method updated successfully"
-    });
-
-  } catch (error) {
-    console.error("❌ Error updating payment method:", error);
-    res.status(500).json({ error: "Failed to update payment method" });
-  }
-});
-
-// ✅ Get billing portal URL
-router.post("/billing-portal", requireAuth(), async (req, res) => {
-  try {
-    const clerkUserId = req.auth().userId;
-    const user = await User.findOne({ clerkUserId });
-
-    if (!user || !user.stripeCustomerId) {
-      return res.status(404).json({ error: "No customer found" });
+    // Optional: pin to a specific portal configuration if provided
+    if (process.env.STRIPE_BILLING_PORTAL_CONFIGURATION) {
+      params.configuration = process.env.STRIPE_BILLING_PORTAL_CONFIGURATION; // bpc_...
     }
 
-    const session = await stripe.billingPortal.sessions.create({
-      customer: user.stripeCustomerId,
-      return_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/app`,
-    });
-
-    res.json({
-      url: session.url
-    });
-
-  } catch (error) {
-    console.error("❌ Error creating billing portal session:", error);
-    res.status(500).json({ error: "Failed to create billing portal session" });
+    const session = await stripe.billingPortal.sessions.create(params);
+    return res.json({ url: session.url });
+  } catch (err) {
+    // Surface the exact Stripe message to help you debug in UI
+    console.error("❌ portal-session error:", err);
+    const msg =
+      err?.message ||
+      err?.raw?.message ||
+      "Failed to create billing portal session";
+    return res.status(500).json({ error: msg });
   }
 });
 
