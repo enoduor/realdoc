@@ -132,58 +132,14 @@ register_task_definition() {
   local image="$1"
 
   # Fetch current TD (or scaffold a minimal one if family not found)
+  # Always use jq update approach - single source of truth
   if ! aws ecs describe-task-definition --task-definition "$TASK_FAMILY" --region "$AWS_REGION" \
-       --query 'taskDefinition' >/dev/null 2>&1; then
-    cat > td.new.json <<JSON
-{
-  "family": "$TASK_FAMILY",
-  "networkMode": "awsvpc",
-  "requiresCompatibilities": ["FARGATE"],
-  "cpu": "1024",
-  "memory": "2048",
-  "executionRoleArn": "arn:aws:iam::$AWS_ACCOUNT_ID:role/ecsTaskExecutionRole",
-  "taskRoleArn": "arn:aws:iam::$AWS_ACCOUNT_ID:role/ecsTaskRole",
-  "containerDefinitions": [{
-    "name": "$REPO_NAME",
-    "image": "$image",
-    "essential": true,
-    "portMappings": [
-      {"containerPort": $PORT_WEB, "protocol":"tcp"},
-      {"containerPort": $PORT_API, "protocol":"tcp"},
-      {"containerPort": $PORT_AI,  "protocol":"tcp"}
-    ],
-    "logConfiguration": {
-      "logDriver": "awslogs",
-      "options": {
-        "awslogs-group": "/ecs/$REPO_NAME",
-        "awslogs-region": "$AWS_REGION",
-        "awslogs-stream-prefix": "ecs"
-      }
-    },
-        "environment": [
-          {"name":"NODE_ENV","value":"production"},
-          {"name":"PORT","value":"$PORT_API"},
-          {"name":"AWS_REGION","value":"$AWS_REGION"},
-          {"name":"AWS_BUCKET_NAME","value":"bigvideograb-media"},
-          {"name":"AI_ROOT_PATH","value":"/ai"}
-        ],
-    "secrets": [
-      {"name":"MONGODB_URI",      "valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/MONGODB_URI"},
-      {"name":"CLERK_SECRET_KEY", "valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/CLERK_SECRET_KEY"},
-      {"name":"OPENAI_API_KEY",   "valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/ai/OPENAI_API_KEY"},
-      {"name":"STRIPE_SECRET_KEY","valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/STRIPE_SECRET_KEY"},
-      {"name":"FACEBOOK_APP_ID",  "valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/FACEBOOK_APP_ID"},
-      {"name":"FACEBOOK_APP_SECRET","valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/FACEBOOK_APP_SECRET"},
-      {"name":"STATE_HMAC_SECRET","valueFrom":"arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/repostly/api/STATE_HMAC_SECRET"}
-    ],
-    "healthCheck": {
-      "command": ["CMD", "curl", "-fsS", "http://localhost:$PORT_API/health"],
-      "interval": 30, "timeout": 10, "retries": 3, "startPeriod": 60
-    }
-  }]
-}
-JSON
-  else
+       --query 'taskDefinition' > td.json 2>/dev/null; then
+    # Create minimal base task definition if family doesn't exist
+    echo '{"family":"'$TASK_FAMILY'","containerDefinitions":[{"name":"'$REPO_NAME'"}]}' > td.json
+  fi
+  
+  # Always use jq to build complete task definition
     aws ecs describe-task-definition \
       --task-definition "$TASK_FAMILY" \
       --region "$AWS_REGION" \
@@ -208,6 +164,11 @@ JSON
                    {"name":"CLERK_PUBLISHABLE_KEY", "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/CLERK_PUBLISHABLE_KEY")},
                    {"name":"OPENAI_API_KEY",   "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/ai/OPENAI_API_KEY")},
                    {"name":"STRIPE_SECRET_KEY","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_SECRET_KEY")},
+                   {"name":"STRIPE_WEBHOOK_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_WEBHOOK_SECRET")},
+                   {"name":"STRIPE_STARTER_MONTHLY_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_STARTER_MONTHLY_PRICE_ID")},
+                   {"name":"STRIPE_STARTER_YEARLY_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_STARTER_YEARLY_PRICE_ID")},
+                   {"name":"STRIPE_CREATOR_MONTHLY_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_CREATOR_MONTHLY_PRICE_ID")},
+                   {"name":"STRIPE_CREATOR_YEARLY_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_CREATOR_YEARLY_PRICE_ID")},
                    {"name":"FACEBOOK_APP_ID",  "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/FACEBOOK_APP_ID")},
                    {"name":"FACEBOOK_APP_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/FACEBOOK_APP_SECRET")},
                    {"name":"LINKEDIN_CLIENT_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/LINKEDIN_CLIENT_ID")},
@@ -222,7 +183,6 @@ JSON
                  ])
           else . end))
     ' td.json > td.new.json
-  fi
 
   aws ecs register-task-definition \
     --region "$AWS_REGION" \

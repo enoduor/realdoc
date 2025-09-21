@@ -131,28 +131,53 @@ export const publishNow = async (postData) => {
   }
 };
 
-export const getPriceId = async (plan, billingCycle) => {
-  try {
-    const response = await fetch(`${API_URL}/api/stripe/get-price-id`, {
-      method: 'POST',
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({ plan, billingCycle })
-    });
-    return await handleResponse(response);
-  } catch (error) {
-    console.error('Error getting price ID:', error);
-    throw error;
+export async function getPriceId(plan, cycle) {
+  const r = await fetch(`${API_URL}/api/billing/get-price-id`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan, cycle })
+  });
+  if (!r.ok) {
+    let errorData;
+    try {
+      errorData = await r.json();
+    } catch {
+      const txt = await r.text();
+      throw new Error(`getPriceId: ${r.status} ${txt}`);
+    }
+    
+    // Enhanced error message for missing price IDs
+    if (r.status === 400 && errorData.varName) {
+      throw new Error(`Pricing configuration error: ${errorData.error}. Please contact support.`);
+    }
+    
+    throw new Error(`getPriceId: ${r.status} ${errorData.error || 'Unknown error'}`);
   }
-};
+  return r.json(); // { priceId }
+}
 
-export const createSubscriptionSession = async (priceId) => {
+export async function getCheckoutSession(sessionId) {
+  const res = await fetch(`${API_URL}/api/billing/checkout-session?session_id=${sessionId}`);
+  if (!res.ok) throw new Error("Failed to fetch checkout session");
+  return res.json();
+}
+
+export const createSubscriptionSession = async (priceId, { clerkUserId, plan, billingCycle, promoCode } = {}) => {
   try {
-    const response = await fetch(`${API_URL}/api/stripe/create-checkout-session`, {
+    // Creating subscription session (logging removed for security)
+
+    const response = await fetch(`${API_URL}/api/billing/create-checkout-session`, {
       method: 'POST',
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({ priceId })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ priceId, clerkUserId, plan, billingCycle, promoCode })
     });
-    return await handleResponse(response);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText);
+    }
+    
+    return await response.json();
   } catch (error) {
     console.error('Error creating subscription session:', error);
     throw error;

@@ -3,227 +3,384 @@ const express = require("express");
 const router = express.Router();
 const Stripe = require("stripe");
 const User = require("../models/User");
-require("dotenv").config(); // ✅ Load environment variables
 
-// Stripe setup
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-router.post("/", express.raw({ type: "application/json" }), async (req, res) => {
+function logObj(label, obj) {
+  try {
+    console.log(label, JSON.stringify(obj, null, 2));
+  } catch (e) {
+    console.log(label, obj);
+  }
+}
+
+/**
+ * IMPORTANT MOUNT ORDER (in index.js):
+ *   app.use("/webhook", require("./webhooks/stripeWebhook")); // BEFORE express.json()
+ *   app.use(express.json());
+ *   app.use("/api/billing", require("./routes/billing"));
+ */
+router.post("/", express.raw({ type: "application/json" }), (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;
 
   try {
-    // Check if this is a test event (no signature verification)
-    if (sig === 'test_signature') {
-      console.log('🧪 Processing test webhook event');
-      console.log('🧪 Raw body:', req.body.toString());
-      // Parse the raw body for test events
-      event = JSON.parse(req.body.toString());
-      console.log('🧪 Parsed event type:', event.type);
-      console.log('🧪 Parsed event structure:', JSON.stringify(event, null, 2));
-    } else if (!sig) {
-      console.error("❌ No Stripe signature found");
-      return res.status(400).send(`Webhook Error: No signature found`);
-    } else {
-      // Real Stripe webhook with signature verification
-      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    if (!sig || !endpointSecret) {
+      console.error("❌ Missing stripe-signature or STRIPE_WEBHOOK_SECRET");
+      return res.status(400).send("Webhook signature missing");
     }
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
   } catch (err) {
     console.error("❌ Webhook signature error:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  console.log(`📬 Processing webhook event: ${event.type}`);
+  // Ack immediately so Stripe doesn't retry/time out
+  res.status(200).json({ received: true });
 
-  // ✅ Handle events
-  try {
+  // Process asynchronously
+  (async () => {
+    console.log("📬 Event:", event.type, "id:", event.id);
+
+    if (event.type?.startsWith("customer.subscription")) {
+      logObj("🧾 Raw subscription event payload:", {
+        id: event.data?.object?.id,
+        customer: event.data?.object?.customer,
+        status: event.data?.object?.status,
+        metadata: event.data?.object?.metadata,
+        itemsCount: event.data?.object?.items?.data?.length
+      });
+    }
+    if (event.type === "checkout.session.completed") {
+      logObj("🧾 Raw checkout.session payload:", {
+        id: event.data?.object?.id,
+        mode: event.data?.object?.mode,
+        customer: event.data?.object?.customer,
+        customer_email: event.data?.object?.customer_details?.email,
+        metadata: event.data?.object?.metadata,
+        subscription: event.data?.object?.subscription
+      });
+    }
+
     switch (event.type) {
-      case "checkout.session.completed":
-        await handleCheckoutSessionCompleted(event.data.object);
+      case "checkout.session.completed": {
+        const session = event.data.object;
+        await upsertUserFromSession(session);
         break;
+      }
 
       case "customer.subscription.created":
-        await handleSubscriptionCreated(event.data.object);
+      case "customer.subscription.updated": {
+        const sub = event.data.object;
+        await upsertUserFromSubscription(sub);
         break;
+      }
 
-      case "customer.subscription.updated":
-        await handleSubscriptionUpdated(event.data.object);
+      case "customer.subscription.deleted": {
+        const sub = event.data.object;
+        await markSubscriptionCanceled(sub);
         break;
+      }
 
-      case "customer.subscription.deleted":
-        await handleSubscriptionDeleted(event.data.object);
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object;
+        await onInvoicePaid(invoice);
         break;
+      }
 
-      case "customer.subscription.trial_will_end":
-        await handleTrialWillEnd(event.data.object);
+      case "invoice.payment_failed": {
+        const invoice = event.data.object;
+        await onInvoiceFailed(invoice);
         break;
-
-      case "invoice.payment_succeeded":
-        await handlePaymentSucceeded(event.data.object);
-        break;
-
-      case "invoice.payment_failed":
-        await handlePaymentFailed(event.data.object);
-        break;
+      }
 
       default:
-        console.log(`📬 Unhandled event type: ${event.type}`);
+        // ignore others
+        break;
     }
-
-    res.status(200).json({ received: true });
-  } catch (error) {
-    console.error("❌ Webhook processing error:", error);
-    res.status(500).json({ error: "Webhook processing failed" });
-  }
+  })().catch((e) => console.error("❌ Post-ack handler error:", e));
 });
 
-// Handle checkout session completion
-async function handleCheckoutSessionCompleted(session) {
-  console.log("✅ Checkout completed:", session.id);
-  
-  if (session.mode === 'subscription') {
-    const clerkUserId = session.subscription_data?.metadata?.clerkUserId;
-    const plan = session.subscription_data.metadata?.plan;
-    const billingCycle = session.subscription_data.metadata?.billingCycle;
-    
-    if (clerkUserId) {
-      // User was authenticated during payment
-      const user = await User.findOne({ clerkUserId });
-      if (user) {
-        user.selectedPlan = plan;
-        user.billingCycle = billingCycle;
-        user.subscriptionStatus = 'active'; // User has paid, so status should be active
-        await user.save();
-        console.log(`✅ Updated authenticated user ${clerkUserId} with plan: ${plan} and status: active`);
-      }
-    } else {
-      // User was not authenticated - create temporary record
-      console.log("📝 Creating temporary user record for non-authenticated payment");
-      const tempUser = new User({
-        stripeCustomerId: session.customer,
-        selectedPlan: plan,
-        billingCycle: billingCycle,
-        subscriptionStatus: 'active', // User has paid, so status should be active
-        trialStartDate: new Date(),
-        trialEndDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days
-        email: session.customer_details?.email || 'temp@example.com'
-      });
-      
-      await tempUser.save();
-      console.log(`✅ Created temporary user for customer ${session.customer} with plan: ${plan}`);
-    }
-  }
+/* ------------------------ Helpers ------------------------ */
+
+function normEmail(e) {
+  return (e || "").trim().toLowerCase() || null;
 }
 
-// Handle subscription creation
-async function handleSubscriptionCreated(subscription) {
-  console.log("✅ Subscription created:", subscription.id);
-  
-  const clerkUserId = subscription.metadata?.clerkUserId;
-  
+async function findUser({ clerkUserId, stripeCustomerId, email }) {
+  let user = null;
+
   if (clerkUserId) {
-    // Authenticated user
-    const user = await User.findOne({ clerkUserId });
-    if (user) {
-      user.stripeSubscriptionId = subscription.id;
-      user.subscriptionStatus = subscription.status;
-      user.trialStartDate = new Date(subscription.trial_start * 1000);
-      user.trialEndDate = new Date(subscription.trial_end * 1000);
-      user.selectedPlan = subscription.metadata?.plan || 'starter';
-      user.billingCycle = subscription.metadata?.billingCycle || 'monthly';
-      
-      await user.save();
-      console.log(`✅ Updated user ${clerkUserId} subscription status: ${user.subscriptionStatus}`);
+    user = await User.findOne({ clerkUserId });
+    if (user) console.log("🔎 Matched user by clerkUserId:", clerkUserId, "→", user._id.toString());
+    if (user) return user;
+  }
+
+  if (stripeCustomerId) {
+    user = await User.findOne({ stripeCustomerId });
+    if (user) console.log("🔎 Matched user by stripeCustomerId:", stripeCustomerId, "→", user._id.toString());
+    if (user) return user;
+  }
+
+  if (email) {
+    user = await User.findOne({ email: normEmail(email) });
+    if (user) console.log("🔎 Matched user by email:", normEmail(email), "→", user._id.toString());
+    if (user) return user;
+  }
+
+  return null;
+}
+
+function applySubscriptionFields(user, sub, meta = {}) {
+  logObj("🧩 Applying subscription fields", {
+    subId: sub?.id,
+    cust: sub?.customer,
+    status: sub?.status,
+    trial_start: sub?.trial_start,
+    trial_end: sub?.trial_end,
+    subMeta: sub?.metadata,
+    meta
+  });
+  // IDs
+  if (sub?.id) user.stripeSubscriptionId = sub.id;
+  if (sub?.customer) user.stripeCustomerId = sub.customer;
+
+  // Status + trial dates
+  if (sub?.status) user.subscriptionStatus = sub.status; // trialing/active/past_due/...
+  if (sub?.trial_start) user.trialStartDate = new Date(sub.trial_start * 1000);
+  if (sub?.trial_end) user.trialEndDate = new Date(sub.trial_end * 1000);
+
+  // Plan metadata
+  const plan = meta.plan ?? sub?.metadata?.plan;
+  const billingCycle = meta.billingCycle ?? sub?.metadata?.billingCycle;
+  if (plan) user.selectedPlan = plan;
+  if (billingCycle) user.billingCycle = billingCycle;
+}
+
+async function upsertUserFromSession(session) {
+  console.log("✅ checkout.session.completed:", {
+    id: session.id,
+    mode: session.mode,
+    customer: session.customer,
+    email: session.customer_details?.email,
+    metadata: session.metadata,
+    subscription: session.subscription,
+  });
+
+  // Metadata from session
+  const meta = {
+    clerkUserId: session.metadata?.clerkUserId || null,
+    plan: session.metadata?.plan || null,
+    billingCycle: session.metadata?.billingCycle || null,
+  };
+
+  // Retrieve subscription for authoritative status/metadata
+  let sub = null;
+  if (session.subscription) {
+    try {
+      sub = await stripe.subscriptions.retrieve(session.subscription, {
+        expand: ["items.data.price.product"]
+      });
+      if (sub) {
+        logObj("📦 Retrieved subscription (from session)", {
+          id: sub.id,
+          customer: sub.customer,
+          status: sub.status,
+          meta: sub.metadata,
+          items: sub.items?.data?.map(it => ({
+            price: it.price?.id,
+            product: typeof it.price?.product === "object" ? it.price.product?.name : it.price?.product
+          }))
+        });
+      }
+    } catch (e) {
+      console.error("⚠️ Could not retrieve subscription:", e.message);
     }
+  }
+
+  // Find user (prefer clerkUserId, then stripeCustomerId, then email)
+  const email = normEmail(session.customer_details?.email || null);
+  let user = await findUser({
+    clerkUserId: meta.clerkUserId,
+    stripeCustomerId: session.customer,
+    email,
+  });
+
+  // Snap identity on existing user if any identifiers are missing
+  if (user) {
+    if (meta.clerkUserId && !user.clerkUserId) user.clerkUserId = meta.clerkUserId;
+    if (session.customer && !user.stripeCustomerId) user.stripeCustomerId = session.customer;
+    if (email && !user.email) user.email = email;
+  }
+
+  // Create if missing (always capture brand-new payers)
+  if (!user) {
+    user = new User({
+      clerkUserId: meta.clerkUserId || undefined,
+      email: email || undefined,
+      stripeCustomerId: session.customer || undefined,
+      subscriptionStatus: "none",
+      selectedPlan: "none",
+      billingCycle: "none",
+    });
+  }
+
+  // Apply fields from subscription (preferred) or session fallback
+  if (sub) {
+    applySubscriptionFields(user, sub, meta);
   } else {
-    // Non-authenticated user - find by Stripe customer ID
-    const user = await User.findOne({ stripeCustomerId: subscription.customer });
-    if (user) {
-      user.stripeSubscriptionId = subscription.id;
-      user.subscriptionStatus = subscription.status;
-      user.trialStartDate = new Date(subscription.trial_start * 1000);
-      user.trialEndDate = new Date(subscription.trial_end * 1000);
-      user.selectedPlan = subscription.metadata?.plan || 'starter';
-      user.billingCycle = subscription.metadata?.billingCycle || 'monthly';
-      
-      await user.save();
-      console.log(`✅ Updated temporary user ${user._id} subscription status: ${user.subscriptionStatus}`);
-    }
+    if (meta.plan) user.selectedPlan = meta.plan;
+    if (meta.billingCycle) user.billingCycle = meta.billingCycle;
+    // Fallback; subsequent events will correct this
+    if (session.status === "complete") user.subscriptionStatus = "active";
   }
-}
 
-// Handle subscription updates
-async function handleSubscriptionUpdated(subscription) {
-  console.log("✅ Subscription updated:", subscription.id);
-  
-  const user = await User.findOne({ stripeSubscriptionId: subscription.id });
-  if (user) {
-    user.subscriptionStatus = subscription.status;
-    
-    // Update trial dates if they exist
-    if (subscription.trial_start) {
-      user.trialStartDate = new Date(subscription.trial_start * 1000);
-    }
-    if (subscription.trial_end) {
-      user.trialEndDate = new Date(subscription.trial_end * 1000);
-    }
-    
+  try {
     await user.save();
-    console.log(`✅ Updated user ${user.clerkUserId} subscription status: ${user.subscriptionStatus}`);
+    console.log("💾 User save OK");
+  } catch (e) {
+    console.error("❌ User save failed:", e);
+    throw e;
   }
+  console.log("👤 User synced (from session):", {
+    id: user._id.toString(),
+    email: user.email,
+    clerkUserId: user.clerkUserId,
+    stripeCustomerId: user.stripeCustomerId,
+    stripeSubscriptionId: user.stripeSubscriptionId,
+    status: user.subscriptionStatus,
+    plan: user.selectedPlan,
+    billingCycle: user.billingCycle,
+  });
 }
 
-// Handle subscription deletion
-async function handleSubscriptionDeleted(subscription) {
-  console.log("✅ Subscription deleted:", subscription.id);
-  
-  const user = await User.findOne({ stripeSubscriptionId: subscription.id });
-  if (user) {
-    user.subscriptionStatus = 'canceled';
+async function upsertUserFromSubscription(sub) {
+  console.log("✅ subscription.*:", {
+    id: sub.id,
+    customer: sub.customer,
+    status: sub.status,
+    metadata: sub.metadata,
+  });
+
+  try {
+    if (!sub.items?.data?.[0]?.price?.product || typeof sub.items.data[0].price.product !== "object") {
+      sub = await stripe.subscriptions.retrieve(sub.id, { expand: ["items.data.price.product"] });
+    }
+  } catch (e) {
+    console.error("⚠️ Could not re-retrieve subscription with expand:", e.message);
+  }
+
+  // Fallback plan/cycle from price/product when metadata missing
+  if (!sub.metadata || Object.keys(sub.metadata).length === 0) {
+    const firstItem = sub.items?.data?.[0];
+    const priceId = firstItem?.price?.id;
+    const productName = typeof firstItem?.price?.product === "object" ? firstItem.price.product?.name : null;
+    if (!sub.metadata) sub.metadata = {};
+    if (!sub.metadata.plan && productName) {
+      const nameLc = String(productName).toLowerCase();
+      if (nameLc.includes("starter")) sub.metadata.plan = "starter";
+      else if (nameLc.includes("creator")) sub.metadata.plan = "creator";
+      else if (nameLc.includes("pro")) sub.metadata.plan = "pro";
+      else if (nameLc.includes("enterprise")) sub.metadata.plan = "enterprise";
+    }
+    if (!sub.metadata.billingCycle && firstItem?.price?.recurring?.interval) {
+      sub.metadata.billingCycle = firstItem.price.recurring.interval; // "month" | "year"
+    }
+    logObj("🧭 Derived metadata from price/product", { priceId, productName, derived: sub.metadata });
+  }
+
+  // Try to fetch customer to get email (subscription doesn’t carry it)
+  let email = null;
+  try {
+    if (sub.customer) {
+      const cust = await stripe.customers.retrieve(sub.customer);
+      // Some customers may not have email
+      email = (cust.email || "").toLowerCase() || null;
+    }
+  } catch (e) {
+    console.error("⚠️ Could not retrieve customer:", e.message);
+  }
+
+  const norm = normEmail(email);
+
+  // Prefer clerkUserId from subscription metadata
+  const clerkUserId = sub.metadata?.clerkUserId || null;
+
+  // Find user by clerkUserId → stripeCustomerId → email
+  let user = await findUser({
+    clerkUserId,
+    stripeCustomerId: sub.customer,
+    email: norm,
+  });
+
+  if (!user) {
+    // Always create for brand-new payers (even if they weren't logged in)
+    user = new User({
+      clerkUserId: clerkUserId || undefined,
+      stripeCustomerId: sub.customer || undefined,
+      email: norm || undefined,
+      subscriptionStatus: "none",
+      selectedPlan: "none",
+      billingCycle: "none",
+    });
+  } else {
+    // Snap identity fields if missing
+    if (clerkUserId && !user.clerkUserId) user.clerkUserId = clerkUserId;
+    if (sub.customer && !user.stripeCustomerId) user.stripeCustomerId = sub.customer;
+    if (norm && !user.email) user.email = norm;
+  }
+
+  applySubscriptionFields(user, sub);
+  try {
     await user.save();
-    console.log(`✅ Marked user ${user.clerkUserId} subscription as canceled`);
+    console.log("💾 User save OK");
+  } catch (e) {
+    console.error("❌ User save failed:", e);
+    throw e;
   }
+  console.log("👤 User synced (from subscription):", {
+    id: user._id.toString(),
+    email: user.email,
+    clerkUserId: user.clerkUserId,
+    stripeCustomerId: user.stripeCustomerId,
+    stripeSubscriptionId: user.stripeSubscriptionId,
+    status: user.subscriptionStatus,
+    plan: user.selectedPlan,
+    billingCycle: user.billingCycle,
+  });
 }
 
-// Handle trial ending (3 days before)
-async function handleTrialWillEnd(subscription) {
-  console.log("⚠️ Trial will end soon:", subscription.id);
-  
-  const user = await User.findOne({ stripeSubscriptionId: subscription.id });
-  if (user) {
-    // Send notification to user about trial ending
-    console.log(`⚠️ Trial ending soon for user ${user.clerkUserId}`);
-    // TODO: Send email notification
-  }
+async function markSubscriptionCanceled(sub) {
+  const user = await User.findOne({ stripeSubscriptionId: sub.id });
+  if (!user) return;
+  user.subscriptionStatus = "canceled";
+  await user.save();
+  console.log("💾 User save OK");
+  console.log("👤 User marked canceled:", { id: user._id.toString(), email: user.email });
 }
 
-// Handle successful payment
-async function handlePaymentSucceeded(invoice) {
-  console.log("✅ Payment succeeded:", invoice.id);
-  
-  if (invoice.subscription) {
-    const user = await User.findOne({ stripeSubscriptionId: invoice.subscription });
-    if (user) {
-      user.subscriptionStatus = 'active';
-      await user.save();
-      console.log(`✅ Updated user ${user.clerkUserId} to active subscription`);
-    }
-  }
+async function onInvoicePaid(invoice) {
+  if (!invoice.subscription) return;
+  const user = await User.findOne({ stripeSubscriptionId: invoice.subscription });
+  if (!user) return;
+  user.subscriptionStatus = "active";
+  await user.save();
+  console.log("💾 User save OK");
+  console.log("👤 User marked active (invoice paid):", { id: user._id.toString(), email: user.email });
 }
 
-// Handle failed payment
-async function handlePaymentFailed(invoice) {
-  console.log("❌ Payment failed:", invoice.id);
-  
-  if (invoice.subscription) {
-    const user = await User.findOne({ stripeSubscriptionId: invoice.subscription });
-    if (user) {
-      user.subscriptionStatus = 'past_due';
-      await user.save();
-      console.log(`❌ Updated user ${user.clerkUserId} to past_due status`);
-    }
-  }
+async function onInvoiceFailed(invoice) {
+  if (!invoice.subscription) return;
+  const user = await User.findOne({ stripeSubscriptionId: invoice.subscription });
+  if (!user) return;
+  user.subscriptionStatus = "past_due";
+  await user.save();
+  console.log("💾 User save OK");
+  console.log("👤 User marked past_due (invoice failed):", { id: user._id.toString(), email: user.email });
 }
+
+// Quick probe for ALB path routing (should NOT be used by Stripe)
+router.get("/_ping", (req, res) => res.json({ ok: true, route: "/webhook/_ping" }));
 
 module.exports = router;

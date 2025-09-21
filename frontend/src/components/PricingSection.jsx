@@ -68,25 +68,23 @@ const PricingSection = () => {
     try {
       setLoading(true);
       
-      console.log(`🎯 Getting price ID for ${plan.name} (${billingCycle})...`);
+      // Debug logging (removed for security)
       
-      // Get Price ID from backend at runtime
-      const priceData = await getPriceId(plan.name.toLowerCase(), billingCycle);
-      const priceId = priceData.priceId;
+      // Get price ID from backend (not hardcoded)
+      const { priceId } = await getPriceId(plan.name.toLowerCase(), billingCycle);
+      const { id: clerkUserId } = window.Clerk?.user || {};  // or from your auth context
       
-      console.log(`✅ Got price ID: ${priceId}`);
+      const response = await createSubscriptionSession(priceId, {
+        clerkUserId,
+        plan: plan.name.toLowerCase(),
+        billingCycle,
+        // promoCode: 'FIRSTPURCHASE' // optional
+      });
       
-      // Create checkout session with the Price ID
-      const response = await createSubscriptionSession(priceId);
+      // API response received (logging removed for security)
       
-      if (response && response.url) {
-        console.log(`🚀 Redirecting to Stripe: ${response.url}`);
-        // Force full page redirect to Stripe checkout
-        window.location.replace(response.url);
-      } else {
-        console.error('❌ No checkout URL in response:', response);
-        throw new Error('No checkout URL received from Stripe');
-      }
+      // Redirect to Stripe checkout (browser will log navigation)
+      window.location.replace(response.url);
       
     } catch (error) {
       console.error('❌ Error starting trial:', error);

@@ -63,14 +63,54 @@ router.post("/get-price-id", async (req, res) => {
 // ✅ Create a checkout session with priceId (simple version)
 router.post("/create-checkout-session", async (req, res) => {
   try {
-    console.log("🎯 Creating checkout session with priceId...");
+    console.log("🎯 ===== STRIPE CHECKOUT SESSION START ======");
+    console.log("📋 Request body:", JSON.stringify(req.body, null, 2));
+    console.log("📋 Request headers:", JSON.stringify(req.headers, null, 2));
+    console.log("📋 User from req.user:", req.user);
+    console.log("📋 Auth token present:", !!req.headers.authorization);
+    
     const { priceId } = req.body;
     
     if (!priceId) {
+      console.log("❌ No price ID provided");
       return res.status(400).json({ error: "Price ID required" });
     }
 
     console.log("✅ Creating Stripe checkout session with price ID:", priceId);
+
+    // Determine plan and billing cycle from price ID
+    let plan = null;
+    let billingCycle = null;
+    
+    // Reverse lookup from STRIPE_PRICES
+    for (const [planName, prices] of Object.entries(STRIPE_PRICES)) {
+      for (const [cycle, id] of Object.entries(prices)) {
+        if (id === priceId) {
+          plan = planName;
+          billingCycle = cycle;
+          break;
+        }
+      }
+      if (plan) break;
+    }
+
+    console.log(`✅ Determined plan: ${plan}, billing cycle: ${billingCycle}`);
+
+    // 🔍 COMPREHENSIVE LOGGING - Stripe Session Creation
+    const sessionMetadata = {
+      priceId: priceId,
+      plan: plan,
+      billingCycle: billingCycle,
+      clerkUserId: req.user?.userId || null
+    };
+    
+    console.log("📤 ===== SENDING TO STRIPE START ======");
+    console.log("📤 Metadata being sent to Stripe:", JSON.stringify(sessionMetadata, null, 2));
+    console.log("📤 Clerk User ID being sent:", sessionMetadata.clerkUserId);
+    console.log("📤 Price ID being sent:", sessionMetadata.priceId);
+    console.log("📤 Plan being sent:", sessionMetadata.plan);
+    console.log("📤 Billing cycle being sent:", sessionMetadata.billingCycle);
+    console.log("📤 ===== SENDING TO STRIPE END ======");
 
     // Create checkout session with trial
     const session = await stripe.checkout.sessions.create({
@@ -84,17 +124,22 @@ router.post("/create-checkout-session", async (req, res) => {
       ],
       subscription_data: {
         trial_period_days: 3, // 3-day free trial
-        metadata: {
-          priceId: priceId,
-          clerkUserId: req.user?.userId || null
-        }
       },
-      success_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/app?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/pricing`,
+      metadata: sessionMetadata,
+      success_url: `https://reelpostly.com/app?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `https://reelpostly.com/pricing`,
       allow_promotion_codes: true,
     });
 
-    console.log("✅ Checkout session created:", session.url);
+    // 🔍 COMPREHENSIVE LOGGING - Stripe Response
+    console.log("📨 ===== STRIPE RESPONSE START ======");
+    console.log("📨 Stripe session created:", session.id);
+    console.log("📨 Session URL:", session.url);
+    console.log("📨 Customer ID:", session.customer);
+    console.log("📨 Full session object:", JSON.stringify(session, null, 2));
+    console.log("📨 ===== STRIPE RESPONSE END ======");
+
+    console.log("🎯 ===== STRIPE CHECKOUT SESSION END ======");
     res.status(200).json({ 
       url: session.url,
       sessionId: session.id
@@ -144,14 +189,14 @@ router.post("/create-subscription-session", async (req, res) => {
       ],
       subscription_data: {
         trial_period_days: 3, // 3-day free trial
-        metadata: {
-          plan: plan,
-          billingCycle: billingCycle,
-          clerkUserId: req.user?.userId || null // Include Clerk user ID if available
-        }
       },
-      success_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/app?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/pricing`,
+      metadata: {
+        plan: plan,
+        billingCycle: billingCycle,
+        clerkUserId: req.user?.userId || null // Include Clerk user ID if available
+      },
+      success_url: `https://reelpostly.com/app?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `https://reelpostly.com/pricing`,
       allow_promotion_codes: true,
     });
 

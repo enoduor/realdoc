@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+// User model: includes helpers for subscription-aware dashboard refresh
 
 const userSchema = new mongoose.Schema({
   // Clerk Integration
@@ -91,8 +92,13 @@ const userSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  // NOTE: no new persisted fields needed for dashboard refresh; helpers below expose a clean API shape
 });
+
+userSchema.index({ clerkUserId: 1 }, { sparse: true });
+userSchema.index({ stripeCustomerId: 1 }, { sparse: true });
+userSchema.index({ stripeSubscriptionId: 1 }, { sparse: true });
 
 // Update timestamp on save
 userSchema.pre('save', function(next) {
@@ -112,6 +118,67 @@ userSchema.methods.calculateTrialDaysRemaining = function() {
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
   return Math.max(0, diffDays);
+};
+
+// Virtuals & derived flags used by the dashboard
+userSchema.virtual('isSubscribed').get(function () {
+  return ['active', 'trialing', 'past_due'].includes(this.subscriptionStatus);
+});
+
+// Expose a consistent client-facing shape for `/api/auth/me`
+userSchema.methods.toClient = function toClient() {
+  return {
+    id: this._id?.toString(),
+    clerkUserId: this.clerkUserId || null,
+    email: this.email,
+    firstName: this.firstName || '',
+    lastName: this.lastName || '',
+    imageUrl: this.imageUrl || null,
+
+    // Subscription snapshot
+    subscriptionStatus: this.subscriptionStatus,
+    selectedPlan: this.selectedPlan,
+    billingCycle: this.billingCycle,
+    isSubscribed: this.isSubscribed, // virtual
+
+    // Stripe references (safe to expose to your own frontend)
+    stripeCustomerId: this.stripeCustomerId || null,
+    stripeSubscriptionId: this.stripeSubscriptionId || null,
+
+    // Trial info (derived)
+    trialStartDate: this.trialStartDate || null,
+    trialEndDate: this.trialEndDate || null,
+    trialDaysRemaining: this.calculateTrialDaysRemaining(),
+
+    // Usage & limits surface (unchanged persistence)
+    postsCreated: this.postsCreated,
+    accountsConnected: this.accountsConnected,
+    dailyPostsUsed: this.dailyPostsUsed,
+    lastPostDate: this.lastPostDate || null,
+    dailyLimitResetAt: this.dailyLimitResetAt || null,
+
+    // Timestamps
+    lastActiveDate: this.lastActiveDate || null,
+    createdAt: this.createdAt,
+    updatedAt: this.updatedAt,
+  };
+};
+
+// Ensure JSON responses are clean and include derived fields
+if (!userSchema.options.toJSON) userSchema.options.toJSON = {};
+userSchema.options.toJSON.transform = function (doc, ret) {
+  // Replace _id with id and drop __v
+  ret.id = ret._id?.toString();
+  delete ret._id;
+  delete ret.__v;
+
+  // Ensure trialDaysRemaining is always fresh
+  ret.trialDaysRemaining = doc.calculateTrialDaysRemaining();
+
+  // Mirror the virtual flag
+  ret.isSubscribed = ['active', 'trialing', 'past_due'].includes(ret.subscriptionStatus);
+
+  return ret;
 };
 
 // Check if user has active subscription

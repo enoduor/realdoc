@@ -140,11 +140,17 @@ app.use('/api/auth/tiktok',    tiktokAuthRoutes);
 // --- Regular auth + stripe + publisher ---
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/stripe", require("./routes/stripe"));
+app.use("/api/billing", require("./routes/billing"));
 app.use('/api/publisher', require('./routes/publisher'));
 
 // --- Simple root ---
 app.get("/", (_req, res) => {
   res.send("✅ Node backend is running");
+});
+
+// Temporary health route to test /api/* routing
+app.get("/api/test-health", (req, res) => {
+  res.json({ ok: true, message: "Node app is handling /api/* requests", timestamp: new Date().toISOString() });
 });
 
 // --- Protected examples ---

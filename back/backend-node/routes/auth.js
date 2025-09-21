@@ -5,6 +5,34 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { requireAuth } = require('@clerk/express');
 
+const { Clerk } = require('@clerk/clerk-sdk-node');
+
+// Normalize the shape returned to the dashboard
+function toClient(userDoc) {
+  if (!userDoc) return null;
+  const json = userDoc.toJSON ? userDoc.toJSON() : userDoc;
+  const status = json.subscriptionStatus || "none";
+  const hasActive = ["active", "trialing", "past_due"].includes(status);
+  return {
+    id: json._id?.toString?.() || json.id,
+    email: json.email || null,
+    clerkUserId: json.clerkUserId || null,
+    subscriptionStatus: status,
+    hasActiveSubscription: hasActive,
+    selectedPlan: json.selectedPlan || "none",
+    billingCycle: json.billingCycle || "none",
+    stripeCustomerId: json.stripeCustomerId || null,
+    stripeSubscriptionId: json.stripeSubscriptionId || null,
+    dailyPostsUsed: json.dailyPostsUsed ?? 0,
+    accountsConnected: json.accountsConnected ?? 0,
+    dailyLimitResetAt: json.dailyLimitResetAt || null,
+    trialStartDate: json.trialStartDate || null,
+    trialEndDate: json.trialEndDate || null,
+    updatedAt: json.updatedAt || null,
+    createdAt: json.createdAt || null,
+  };
+}
+
 // Register route
 router.post("/register", async (req, res) => {
   try {
@@ -75,6 +103,67 @@ router.post("/login", async (req, res) => {
   } catch (error) {
     console.error("❌ Login error:", error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ✅ Get current user profile (auto-create/link from Clerk if missing)
+router.get("/me", requireAuth(), async (req, res) => {
+  try {
+    const clerkUserId = req.auth().userId;
+    if (!clerkUserId) {
+      return res.status(401).json({ error: "Unauthenticated" });
+    }
+
+    // Try to find existing DB user
+    let user = await User.findOne({ clerkUserId });
+
+    // If missing, fetch from Clerk and create a DB user
+    if (!user) {
+      const clerk = Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
+      let email, firstName, lastName;
+
+      try {
+        const cUser = await clerk.users.getUser(clerkUserId);
+        // Prefer primary email, fallback to first email
+        if (cUser?.primaryEmailAddressId) {
+          const addr = await clerk.emailAddresses.getEmailAddress(cUser.primaryEmailAddressId);
+          email = addr?.emailAddress;
+        }
+        if (!email) {
+          email = cUser?.emailAddresses?.[0]?.emailAddress || null;
+        }
+        firstName = cUser?.firstName || "";
+        lastName = cUser?.lastName || "";
+      } catch (e) {
+        // If Clerk fetch fails, still create a minimal record
+        email = `${clerkUserId}@clerk.local`;
+        firstName = "";
+        lastName = "";
+        console.warn("⚠️ Clerk fetch failed in /auth/me; creating minimal user:", e.message);
+      }
+
+      user = new User({
+        clerkUserId,
+        email,
+        firstName,
+        lastName,
+        subscriptionStatus: "none",
+        selectedPlan: "none",
+        billingCycle: "none",
+        lastActiveDate: new Date(),
+      });
+      await user.save();
+      console.log("👤 Created DB user via /auth/me:", { clerkUserId, email });
+    } else {
+      // Touch lastActiveDate
+      user.lastActiveDate = new Date();
+      await user.save();
+    }
+
+    return res.json(toClient(user));
+  } catch (err) {
+    console.error("GET /auth/me error:", err);
+    return res.status(500).json({ error: "Failed to load profile" });
   }
 });
 

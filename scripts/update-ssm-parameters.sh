@@ -125,6 +125,43 @@ test_parameters() {
     done
 }
 
+validate_stripe_params() {
+    log "Validating Stripe price ID parameters..."
+    
+    local stripe_params=(
+        "/repostly/api/STRIPE_STARTER_MONTHLY_PRICE_ID"
+        "/repostly/api/STRIPE_STARTER_YEARLY_PRICE_ID"
+        "/repostly/api/STRIPE_CREATOR_MONTHLY_PRICE_ID"
+        "/repostly/api/STRIPE_CREATOR_YEARLY_PRICE_ID"
+    )
+    
+    local missing_count=0
+    
+    for param in "${stripe_params[@]}"; do
+        if aws ssm get-parameter --name "$param" --with-decryption >/dev/null 2>&1; then
+            local value=$(aws ssm get-parameter --name "$param" --with-decryption --query 'Parameter.Value' --output text)
+            if [[ $value == price_* ]]; then
+                success "✅ $param: ${value:0:20}..."
+            else
+                warning "⚠️  $param: Invalid format (should start with 'price_')"
+                ((missing_count++))
+            fi
+        else
+            error "❌ $param: Missing"
+            ((missing_count++))
+        fi
+    done
+    
+    if [ $missing_count -eq 0 ]; then
+        success "All Stripe price IDs are properly configured"
+        return 0
+    else
+        error "$missing_count Stripe price ID(s) missing or invalid"
+        warning "Run: $0 update to configure missing parameters"
+        return 1
+    fi
+}
+
 show_help() {
     echo "SSM Parameter Management Tool"
     echo "============================"
@@ -132,11 +169,12 @@ show_help() {
     echo "Usage: $0 [command]"
     echo ""
     echo "Commands:"
-    echo "  list     - List all current SSM parameters"
-    echo "  update   - Update SSM parameters interactively"
-    echo "  test     - Test SSM parameter access"
-    echo "  deploy   - Update parameters and deploy"
-    echo "  help     - Show this help message"
+    echo "  list           - List all current SSM parameters"
+    echo "  update         - Update SSM parameters interactively"
+    echo "  test           - Test SSM parameter access"
+    echo "  validate-stripe - Validate Stripe price ID parameters"
+    echo "  deploy         - Update parameters and deploy"
+    echo "  help           - Show this help message"
     echo ""
     echo "Environment Variables:"
     echo "  AWS_REGION     - AWS region (default: us-west-2)"
@@ -157,6 +195,9 @@ main() {
             ;;
         "test")
             test_parameters
+            ;;
+        "validate-stripe")
+            validate_stripe_params
             ;;
         "deploy")
             log "Updating parameters and deploying..."

@@ -3,12 +3,10 @@ import { Link } from 'react-router-dom';
 import ContentService from '../api/contentService';
 import { PLATFORMS, getCharacterLimit } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
-import SubscriptionCheck, { useSubscriptionCheck } from './SubscriptionCheck';
 
 const CaptionGenerator = () => {
     
     const { updateContent, content } = useContent();
-    const { hasSubscription, requireSubscription } = useSubscriptionCheck();
     const [formData, setFormData] = useState({
         platform: content?.platform || 'instagram',
         topic: content?.topic || '',
@@ -82,7 +80,6 @@ const CaptionGenerator = () => {
             </header>
 
             <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-                <SubscriptionCheck featureName="Caption Generator" />
                 
                 <div className="bg-white shadow rounded-lg p-6">
                     {/* Platform Requirements */}

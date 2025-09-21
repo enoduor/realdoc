@@ -141,7 +141,7 @@ const LandingPage = () => {
 
           <section id="videograb-funnel" className="rp-section">
             <h2>Free Video Downloader</h2>
-            <p>Start with <strong>Free public available videos</strong>, in case you don't have any content to repurpose. Repurpose your TikToks, YouTube Shorts, or Instagram Reels, then with a single click, send them straight to ReelPostly for multi-platform publishing.</p>
+            <p>In case you don't have any content to repurpose, you can start with <strong>free publicly available videos</strong> right away. Once you have your video,  repurpose your TikToks, Twitter Shorts, or Facebook Reels, then with a single click, send them straight to ReelPostly for multi-platform publishing.</p>
             <p>It's the fastest way to go from download → caption → share everywhere.</p>
             
             {/* VideoGrab Platform Button */}
@@ -164,7 +164,7 @@ const LandingPage = () => {
               <li>✨ <strong>AI-Powered</strong>: Smart captions & hashtags per platform.</li>
               <li>🔗 <strong>Direct Proof</strong>: See your post live with confirmation links.</li>
               <li>🧘 <strong>Simplicity</strong>: No extra noise, just effortless publishing.</li>
-              <li>🎥 <strong>Free Funnel</strong>: <a href="https://bigvideograb.com/" target="_blank" rel="noopener noreferrer">Download</a> → <a href="#hero-cta">Repurpose</a> → Publish everywhere.</li>
+              <li>🎥 <strong>Free Funnel</strong>: <a href="https://bigvideograb.com/" target="_blank" rel="noopener noreferrer">Download</a> → <a href="https://reelpostly.com/login">Repurpose</a> → Publish everywhere.</li>
             </ul>
             <Link to="/register" className="cta-button-large">Start Free Today</Link>
           </section>
