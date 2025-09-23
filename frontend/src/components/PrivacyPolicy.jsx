@@ -25,7 +25,7 @@ const PrivacyPolicy = () => {
           </div>
           <div className="nav-actions">
             <Link to="/login" className="nav-btn nav-btn-secondary">Sign In</Link>
-            <Link to="/register" className="nav-btn nav-btn-primary">Sign Up</Link>
+            <Link to="/register" className="nav-btn nav-btn-primary">Get Started Now</Link>
           </div>
         </div>
       </nav>
@@ -45,106 +45,153 @@ const PrivacyPolicy = () => {
       {/* Privacy Policy Content */}
       <section className="features-section">
         <div className="features-container">
-          <h2 className="section-title">Privacy and Data Protection</h2>
           <div className="legal-content">
-            <h2>1. Introduction</h2>
-            <p>Reelpostly ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our social media management platform and related services.</p>
+            <div className="legal-header">
+              <h2 className="legal-title">Privacy Policy</h2>
+              <p className="legal-intro">
+                <strong>Last Updated:</strong> {new Date().toLocaleDateString()}
+              </p>
+              <p className="legal-intro">
+                Reelpostly ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our social media management platform and related services.
+              </p>
+            </div>
 
-            <h2>2. Information We Collect</h2>
-            <h3>2.1 Personal Information</h3>
-            <p>We may collect personal information that you provide directly to us, including:</p>
-            <ul>
-              <li>Name and contact information (email address, phone number)</li>
-              <li>Account credentials and authentication information</li>
-              <li>Payment and billing information</li>
-              <li>Profile information and preferences</li>
-              <li>Content you create, upload, or share through our platform</li>
-            </ul>
+            <div className="legal-section">
+              <h3 className="legal-section-title">1. Information We Collect</h3>
+              
+              <div className="legal-subsection">
+                <h4 className="legal-subsection-title">1.1 Personal Information</h4>
+                <p>We may collect personal information that you provide directly to us, including:</p>
+                <ul className="legal-list">
+                  <li>Name and contact information (email address, phone number)</li>
+                  <li>Account credentials and authentication information</li>
+                  <li>Payment and billing information</li>
+                  <li>Profile information and preferences</li>
+                  <li>Content you create, upload, or share through our platform</li>
+                </ul>
+              </div>
 
-            <h3>2.2 Social Media Account Information</h3>
-            <p>To provide our services, we may collect:</p>
-            <ul>
-              <li>Social media account credentials (with your explicit consent)</li>
-              <li>Posts, images, videos, and other content from your connected accounts</li>
-              <li>Analytics and engagement data from your social media platforms</li>
-              <li>Follower and audience information</li>
-            </ul>
+              <div className="legal-subsection">
+                <h4 className="legal-subsection-title">1.2 Social Media Account Information</h4>
+                <p>To provide our services, we may collect:</p>
+                <ul className="legal-list">
+                  <li>Social media account credentials (with your explicit consent)</li>
+                  <li>Posts, images, videos, and other content from your connected accounts</li>
+                  <li>Analytics and engagement data from your social media platforms</li>
+                  <li>Follower and audience information</li>
+                </ul>
+              </div>
 
-            <h3>2.3 Technical Information</h3>
-            <p>We automatically collect certain technical information, including:</p>
-            <ul>
-              <li>Device information (IP address, browser type, operating system)</li>
-              <li>Usage data (pages visited, features used, time spent)</li>
-              <li>Cookies and similar tracking technologies</li>
-              <li>Log files and error reports</li>
-            </ul>
+              <div className="legal-subsection">
+                <h4 className="legal-subsection-title">1.3 Technical Information</h4>
+                <p>We automatically collect certain technical information, including:</p>
+                <ul className="legal-list">
+                  <li>Device information (IP address, browser type, operating system)</li>
+                  <li>Usage data (pages visited, features used, time spent)</li>
+                  <li>Cookies and similar tracking technologies</li>
+                  <li>Log files and error reports</li>
+                </ul>
+              </div>
+            </div>
 
-            <h2>3. How We Use Your Information</h2>
-            <p>We use the information we collect to:</p>
-            <ul>
-              <li>Provide, maintain, and improve our services</li>
-              <li>Process transactions and send related information</li>
-              <li>Send technical notices, updates, and support messages</li>
-              <li>Respond to your comments, questions, and requests</li>
-              <li>Monitor and analyze trends, usage, and activities</li>
-              <li>Personalize and improve user experience</li>
-              <li>Detect, prevent, and address technical issues and security threats</li>
-            </ul>
+            <div className="legal-section">
+              <h3 className="legal-section-title">2. How We Use Your Information</h3>
+              <p>We use the information we collect to:</p>
+              <ul className="legal-list">
+                <li>Provide, maintain, and improve our services</li>
+                <li>Process transactions and send related information</li>
+                <li>Send technical notices, updates, and support messages</li>
+                <li>Respond to your comments, questions, and requests</li>
+                <li>Monitor and analyze trends, usage, and activities</li>
+                <li>Personalize and improve user experience</li>
+                <li>Detect, prevent, and address technical issues and security threats</li>
+              </ul>
+            </div>
 
-            <h2>4. Information Sharing and Disclosure</h2>
-            <h3>4.1 Third-Party Services</h3>
-            <p>We may share your information with third-party service providers who assist us in operating our platform, including:</p>
-            <ul>
-              <li>Social media platforms (for publishing and analytics)</li>
-              <li>Payment processors</li>
-              <li>Cloud storage providers</li>
-              <li>Analytics services</li>
-              <li>Customer support tools</li>
-            </ul>
+            <div className="legal-section">
+              <h3 className="legal-section-title">3. Information Sharing and Disclosure</h3>
+              
+              <div className="legal-subsection">
+                <h4 className="legal-subsection-title">3.1 Third-Party Services</h4>
+                <p>We may share your information with third-party service providers who assist us in operating our platform, including:</p>
+                <ul className="legal-list">
+                  <li>Social media platforms (for publishing and analytics)</li>
+                  <li>Payment processors</li>
+                  <li>Cloud storage providers</li>
+                  <li>Analytics services</li>
+                  <li>Customer support tools</li>
+                </ul>
+              </div>
 
-            <h3>4.2 Legal Requirements</h3>
-            <p>We may disclose your information if required to do so by law or in response to valid requests by public authorities.</p>
+              <div className="legal-subsection">
+                <h4 className="legal-subsection-title">3.2 Legal Requirements</h4>
+                <p>We may disclose your information if required to do so by law or in response to valid requests by public authorities.</p>
+              </div>
 
-            <h3>4.3 Business Transfers</h3>
-            <p>In the event of a merger, acquisition, or sale of assets, your information may be transferred as part of that transaction.</p>
+              <div className="legal-subsection">
+                <h4 className="legal-subsection-title">3.3 Business Transfers</h4>
+                <p>In the event of a merger, acquisition, or sale of assets, your information may be transferred as part of that transaction.</p>
+              </div>
+            </div>
 
-            <h2>5. Data Security</h2>
-            <p>We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. However, no method of transmission over the internet or electronic storage is 100% secure.</p>
+            <div className="legal-section">
+              <h3 className="legal-section-title">4. Data Security</h3>
+              <p>We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. However, no method of transmission over the internet or electronic storage is 100% secure.</p>
+            </div>
 
-            <h2>6. Data Retention</h2>
-            <p>We retain your personal information for as long as necessary to provide our services and fulfill the purposes outlined in this Privacy Policy, unless a longer retention period is required or permitted by law.</p>
+            <div className="legal-section">
+              <h3 className="legal-section-title">5. Data Retention</h3>
+              <p>We retain your personal information for as long as necessary to provide our services and fulfill the purposes outlined in this Privacy Policy, unless a longer retention period is required or permitted by law.</p>
+            </div>
 
-            <h2>7. Your Rights and Choices</h2>
-            <p>Depending on your location, you may have certain rights regarding your personal information, including:</p>
-            <ul>
-              <li>Access to your personal information</li>
-              <li>Correction of inaccurate information</li>
-              <li>Deletion of your personal information</li>
-              <li>Restriction of processing</li>
-              <li>Data portability</li>
-              <li>Objection to processing</li>
-            </ul>
+            <div className="legal-section">
+              <h3 className="legal-section-title">6. Your Rights and Choices</h3>
+              <p>Depending on your location, you may have certain rights regarding your personal information, including:</p>
+              <ul className="legal-list">
+                <li>Access to your personal information</li>
+                <li>Correction of inaccurate information</li>
+                <li>Deletion of your personal information</li>
+                <li>Restriction of processing</li>
+                <li>Data portability</li>
+                <li>Objection to processing</li>
+              </ul>
+            </div>
 
-            <h2>8. Cookies and Tracking Technologies</h2>
-            <p>We use cookies and similar technologies to enhance your experience, analyze usage, and provide personalized content. You can control cookie settings through your browser preferences.</p>
+            <div className="legal-section">
+              <h3 className="legal-section-title">7. Cookies and Tracking Technologies</h3>
+              <p>We use cookies and similar technologies to enhance your experience, analyze usage, and provide personalized content. You can control cookie settings through your browser preferences.</p>
+            </div>
 
-            <h2>9. International Data Transfers</h2>
-            <p>Your information may be transferred to and processed in countries other than your own. We ensure appropriate safeguards are in place for such transfers.</p>
+            <div className="legal-section">
+              <h3 className="legal-section-title">8. International Data Transfers</h3>
+              <p>Your information may be transferred to and processed in countries other than your own. We ensure appropriate safeguards are in place for such transfers.</p>
+            </div>
 
-            <h2>10. Children's Privacy</h2>
-            <p>Our services are not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13.</p>
+            <div className="legal-section">
+              <h3 className="legal-section-title">9. Children's Privacy</h3>
+              <p>Our services are not intended for children under 13 years of age. We do not knowingly collect personal information from children under 13.</p>
+            </div>
 
-            <h2>11. Changes to This Privacy Policy</h2>
-            <p>We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last Updated" date.</p>
+            <div className="legal-section">
+              <h3 className="legal-section-title">10. Changes to This Privacy Policy</h3>
+              <p>We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last Updated" date.</p>
+            </div>
 
-            <h2>12. Contact Us</h2>
-            <p>If you have any questions about this Privacy Policy, please contact us at:</p>
-            <ul>
-              <li>Email: privacy@reelpostly.com</li>
-              <li>Website: <a href="https://reelpostly.com/help">https://reelpostly.com/help</a></li>
-            </ul>
-
-            <p><strong>Last Updated:</strong> {new Date().toLocaleDateString()}</p>
+            <div className="legal-section">
+              <h3 className="legal-section-title">11. Contact Us</h3>
+              <p>If you have any questions about this Privacy Policy, please contact us through our feedback form:</p>
+              <div style={{textAlign: 'center', marginTop: '1rem'}}>
+                <a 
+                  href="https://docs.google.com/forms/d/e/1FAIpQLSdXGiQBAVMQy3lXGkNdRwqgfWw20E_VlXODYloiMo7L3bwYCw/viewform"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="cta-button-large"
+                >
+                  Contact Us
+                </a>
+                <p className="cta-note">We'll respond to your privacy questions within 24 hours</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>

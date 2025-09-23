@@ -58,6 +58,7 @@ router.post("/", express.raw({ type: "application/json" }), (req, res) => {
         mode: event.data?.object?.mode,
         customer: event.data?.object?.customer,
         customer_email: event.data?.object?.customer_details?.email,
+        client_reference_id: event.data?.object?.client_reference_id,
         metadata: event.data?.object?.metadata,
         subscription: event.data?.object?.subscription
       });
@@ -95,6 +96,12 @@ router.post("/", express.raw({ type: "application/json" }), (req, res) => {
         break;
       }
 
+      case "customer.updated": {
+        const cust = event.data.object;
+        await onCustomerUpdated(cust);
+        break;
+      }
+
       default:
         // ignore others
         break;
@@ -108,14 +115,8 @@ function normEmail(e) {
   return (e || "").trim().toLowerCase() || null;
 }
 
-async function findUser({ clerkUserId, stripeCustomerId, email }) {
+async function findUser({ stripeCustomerId, clerkUserId, email }) {
   let user = null;
-
-  if (clerkUserId) {
-    user = await User.findOne({ clerkUserId });
-    if (user) console.log("🔎 Matched user by clerkUserId:", clerkUserId, "→", user._id.toString());
-    if (user) return user;
-  }
 
   if (stripeCustomerId) {
     user = await User.findOne({ stripeCustomerId });
@@ -123,9 +124,15 @@ async function findUser({ clerkUserId, stripeCustomerId, email }) {
     if (user) return user;
   }
 
+  if (clerkUserId) {
+    user = await User.findOne({ clerkUserId });
+    if (user) console.log("🔎 Matched user by clerkUserId:", clerkUserId, "→", user._id.toString());
+    if (user) return user;
+  }
+
   if (email) {
-    user = await User.findOne({ email: normEmail(email) });
-    if (user) console.log("🔎 Matched user by email:", normEmail(email), "→", user._id.toString());
+    user = await User.findOne({ email });
+    if (user) console.log("🔎 Matched user by email:", email, "→", user._id.toString());
     if (user) return user;
   }
 
@@ -164,13 +171,14 @@ async function upsertUserFromSession(session) {
     mode: session.mode,
     customer: session.customer,
     email: session.customer_details?.email,
+    client_reference_id: session.client_reference_id,
     metadata: session.metadata,
     subscription: session.subscription,
   });
 
   // Metadata from session
   const meta = {
-    clerkUserId: session.metadata?.clerkUserId || null,
+    clerkUserId: session.client_reference_id || session.metadata?.clerkUserId || null,
     plan: session.metadata?.plan || null,
     billingCycle: session.metadata?.billingCycle || null,
   };
@@ -199,11 +207,25 @@ async function upsertUserFromSession(session) {
     }
   }
 
-  // Find user (prefer clerkUserId, then stripeCustomerId, then email)
+  // Patch Stripe Customer email from Checkout if present (repairs fallback emails)
+  try {
+    if (session.customer && session.customer_details?.email) {
+      const trueEmail = normEmail(session.customer_details.email);
+      const cust = await stripe.customers.retrieve(session.customer);
+      if (trueEmail && cust && cust.email !== trueEmail) {
+        await stripe.customers.update(session.customer, { email: trueEmail });
+        console.log("🩹 Patched Stripe customer email:", { customer: session.customer, trueEmail });
+      }
+    }
+  } catch (e) {
+    console.error("⚠️ Could not patch customer email:", e.message);
+  }
+
+  // Find user (prefer stripeCustomerId, then clerkUserId, then email)
   const email = normEmail(session.customer_details?.email || null);
   let user = await findUser({
-    clerkUserId: meta.clerkUserId,
     stripeCustomerId: session.customer,
+    clerkUserId: meta.clerkUserId,
     email,
   });
 
@@ -284,33 +306,30 @@ async function upsertUserFromSubscription(sub) {
       else if (nameLc.includes("pro")) sub.metadata.plan = "pro";
       else if (nameLc.includes("enterprise")) sub.metadata.plan = "enterprise";
     }
-    if (!sub.metadata.billingCycle && firstItem?.price?.recurring?.interval) {
-      sub.metadata.billingCycle = firstItem.price.recurring.interval; // "month" | "year"
+    const interval = firstItem?.price?.recurring?.interval; // "day" | "week" | "month" | "year"
+    if (!sub.metadata.billingCycle && interval) {
+      sub.metadata.billingCycle = interval === "year" ? "yearly" : interval === "month" ? "monthly" : interval;
     }
     logObj("🧭 Derived metadata from price/product", { priceId, productName, derived: sub.metadata });
   }
 
-  // Try to fetch customer to get email (subscription doesn’t carry it)
-  let email = null;
+  // Optional: fetch customer email for storage (not for matching)
+  let norm = null;
   try {
     if (sub.customer) {
       const cust = await stripe.customers.retrieve(sub.customer);
-      // Some customers may not have email
-      email = (cust.email || "").toLowerCase() || null;
+      norm = normEmail(cust.email || null);
     }
   } catch (e) {
     console.error("⚠️ Could not retrieve customer:", e.message);
   }
 
-  const norm = normEmail(email);
-
-  // Prefer clerkUserId from subscription metadata
   const clerkUserId = sub.metadata?.clerkUserId || null;
 
-  // Find user by clerkUserId → stripeCustomerId → email
+  // Find user by stripeCustomerId → clerkUserId → email
   let user = await findUser({
-    clerkUserId,
     stripeCustomerId: sub.customer,
+    clerkUserId,
     email: norm,
   });
 
@@ -378,6 +397,49 @@ async function onInvoiceFailed(invoice) {
   await user.save();
   console.log("💾 User save OK");
   console.log("👤 User marked past_due (invoice failed):", { id: user._id.toString(), email: user.email });
+}
+
+async function onCustomerUpdated(cust) {
+  try {
+    const stripeCustomerId = cust.id;
+    const email = normEmail(cust.email || null);
+    const clerkUserId = cust.metadata?.clerkUserId || null;
+
+    // Prefer match by customer id
+    let user = await User.findOne({ stripeCustomerId });
+
+    // Fallback: try clerk id from metadata if present
+    if (!user && clerkUserId) {
+      user = await User.findOne({ clerkUserId });
+    }
+
+    if (!user) {
+      // Do not create on customer.updated; wait for checkout/sub events
+      console.log("ℹ️ customer.updated with no matching user; skipping create", { stripeCustomerId, clerkUserId, email });
+      return;
+    }
+
+    // Patch identifiers if missing
+    if (!user.stripeCustomerId) user.stripeCustomerId = stripeCustomerId;
+    if (clerkUserId && !user.clerkUserId) user.clerkUserId = clerkUserId;
+
+    // Sync email if changed (email is NOT a join key, but useful to keep up to date)
+    if (email && email !== user.email) {
+      user.email = email;
+    }
+
+    await user.save();
+    console.log("💾 User save OK");
+    console.log("👤 User synced (from customer.updated):", {
+      id: user._id.toString(),
+      email: user.email,
+      clerkUserId: user.clerkUserId,
+      stripeCustomerId: user.stripeCustomerId,
+    });
+  } catch (e) {
+    console.error("❌ onCustomerUpdated error:", e);
+    throw e;
+  }
 }
 
 // Quick probe for ALB path routing (should NOT be used by Stripe)

@@ -74,26 +74,31 @@ export const getCaption = async (text) => {
   }
 };
 
-export const createOrLinkClerkUser = async (clerkUserId, email) => {
+export const createOrLinkClerkUser = async (user) => {
   try {
-    const response = await fetch(`${API_URL}/api/auth/create-clerk-user`, {
+    const payload = {
+      clerkUserId: user?.id, // ✅ include Clerk user id for server-side linking
+      email: user?.primaryEmailAddress?.emailAddress,
+      firstName: user?.firstName,
+      lastName: user?.lastName
+    };
+
+    const response = await fetch(`${API_URL}/api/auth/sync-user`, {
       method: 'POST',
       headers: await getAuthHeaders(),
-      body: JSON.stringify({
-        clerkUserId,
-        email
-      })
+      body: JSON.stringify(payload)
     });
     return await handleResponse(response);
   } catch (error) {
-    console.error('Error creating/linking Clerk user:', error);
+    console.error('Error syncing user:', error);
     throw error;
   }
 };
 
 export const checkSubscriptionStatus = async (clerkUserId) => {
   try {
-    const response = await fetch(`${API_URL}/api/auth/subscription-status`, {
+    const qs = clerkUserId ? `?clerkUserId=${encodeURIComponent(clerkUserId)}` : "";
+    const response = await fetch(`${API_URL}/api/auth/subscription-status${qs}`, {
       method: 'GET',
       headers: await getAuthHeaders()
     });
@@ -132,52 +137,59 @@ export const publishNow = async (postData) => {
 };
 
 export async function getPriceId(plan, cycle) {
-  const r = await fetch(`${API_URL}/api/billing/get-price-id`, {
+  const r = await fetch(`${API_URL}/api/stripe/get-price-id`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ plan, cycle })
+    body: JSON.stringify({ plan, billingCycle: cycle })
   });
+
+  // Read ONCE
+  const text = await r.text();
+  const isJson = (r.headers.get("content-type") || "").includes("application/json");
+  const data = isJson ? JSON.parse(text) : text;
+
   if (!r.ok) {
-    let errorData;
-    try {
-      errorData = await r.json();
-    } catch {
-      const txt = await r.text();
-      throw new Error(`getPriceId: ${r.status} ${txt}`);
-    }
-    
     // Enhanced error message for missing price IDs
-    if (r.status === 400 && errorData.varName) {
-      throw new Error(`Pricing configuration error: ${errorData.error}. Please contact support.`);
+    if (r.status === 400 && typeof data === "object" && data.varName) {
+      throw new Error(`Pricing configuration error: ${data.error}. Please contact support.`);
     }
     
-    throw new Error(`getPriceId: ${r.status} ${errorData.error || 'Unknown error'}`);
+    throw new Error(`getPriceId: ${r.status} ${typeof data === "string" ? data : data?.error || 'Unknown error'}`);
   }
-  return r.json(); // { priceId }
+  return data; // { priceId }
 }
 
 export async function getCheckoutSession(sessionId) {
-  const res = await fetch(`${API_URL}/api/billing/checkout-session?session_id=${sessionId}`);
-  if (!res.ok) throw new Error("Failed to fetch checkout session");
-  return res.json();
+  const res = await fetch(`${API_URL}/api/stripe/subscription-by-session/${sessionId}`);
+  
+  // Read ONCE
+  const text = await res.text();
+  const isJson = (res.headers.get("content-type") || "").includes("application/json");
+  const data = isJson ? JSON.parse(text) : text;
+
+  if (!res.ok) {
+    throw new Error(typeof data === "string" ? data : data?.error || "Failed to fetch checkout session");
+  }
+  return data;
 }
 
-export const createSubscriptionSession = async (priceId, { clerkUserId, plan, billingCycle, promoCode } = {}) => {
+export const createSubscriptionSession = async (priceId, { clerkUserId, plan, billingCycle, promoCode, email } = {}) => {
   try {
-    // Creating subscription session (logging removed for security)
-
-    const response = await fetch(`${API_URL}/api/billing/create-checkout-session`, {
-      method: 'POST',
+    const res = await fetch(`${API_URL}/api/stripe/create-checkout-session`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priceId, clerkUserId, plan, billingCycle, promoCode })
+      body: JSON.stringify({ priceId, clerkUserId, plan, billingCycle, promoCode, email }),
     });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText);
+
+    // Read ONCE
+    const text = await res.text();
+    const isJson = (res.headers.get("content-type") || "").includes("application/json");
+    const data = isJson ? JSON.parse(text) : text;
+
+    if (!res.ok) {
+      throw new Error(typeof data === "string" ? data : data?.error || res.statusText);
     }
-    
-    return await response.json();
+    return data; // { url, sessionId }
   } catch (error) {
     console.error('Error creating subscription session:', error);
     throw error;

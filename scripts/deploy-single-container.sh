@@ -162,6 +162,7 @@ register_task_definition() {
                    {"name":"MONGODB_URI",      "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/MONGODB_URI")},
                    {"name":"CLERK_SECRET_KEY", "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/CLERK_SECRET_KEY")},
                    {"name":"CLERK_PUBLISHABLE_KEY", "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/CLERK_PUBLISHABLE_KEY")},
+                   {"name":"CLERK_ISSUER_URL", "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/CLERK_ISSUER_URL")},
                    {"name":"OPENAI_API_KEY",   "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/ai/OPENAI_API_KEY")},
                    {"name":"STRIPE_SECRET_KEY","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_SECRET_KEY")},
                    {"name":"STRIPE_WEBHOOK_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_WEBHOOK_SECRET")},

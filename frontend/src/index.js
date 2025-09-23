@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { ClerkProvider } from "@clerk/clerk-react";
+import { AuthProvider } from "./context/AuthContext";
 import { BrowserRouter } from "react-router-dom";
 import "./index.css";
 import App from "./App";
@@ -37,7 +38,7 @@ const clerkConfig = {
 
 // Only use custom frontendApi in production
 if (isProdHost) {
-  clerkConfig.frontendApi = "clerk.reelpostly.com";
+  clerkConfig.frontendApi = "https://clerk.reelpostly.com";
 }
 
 
@@ -45,9 +46,11 @@ if (isProdHost) {
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ClerkProvider {...clerkConfig}>
-      <BrowserRouter basename={BASENAME}>
-        <App />
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter basename={BASENAME}>
+          <App />
+        </BrowserRouter>
+      </AuthProvider>
     </ClerkProvider>
   </React.StrictMode>
 );

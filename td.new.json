@@ -2,7 +2,7 @@
   "containerDefinitions": [
     {
       "name": "repostly-unified",
-      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250921031522-c6ddb20",
+      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20250923051251-98d895f",
       "cpu": 0,
       "portMappings": [
         {
@@ -58,6 +58,10 @@
         {
           "name": "CLERK_PUBLISHABLE_KEY",
           "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_PUBLISHABLE_KEY"
+        },
+        {
+          "name": "CLERK_ISSUER_URL",
+          "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/CLERK_ISSUER_URL"
         },
         {
           "name": "OPENAI_API_KEY",
@@ -144,8 +148,8 @@
         "command": [
           "CMD",
           "curl",
-          "-f",
-          "http://localhost:3000/"
+          "-fsS",
+          "http://localhost:4001/api/health"
         ],
         "interval": 30,
         "timeout": 10,

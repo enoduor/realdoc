@@ -50,11 +50,14 @@ const PartnerWithUs = () => {
       {/* Social Media Etiquette Section */}
       <section className="features-section">
         <div className="features-container">
-          <h2 className="section-title">Social Media Growth with Integrity</h2>
-          <p style={{textAlign: 'center', marginBottom: '2rem', fontSize: '1.1rem'}}>
-            As social media tools become more powerful, it's crucial to use them responsibly. 
-            Here's how to grow your audience ethically and sustainably.
-          </p>
+          <div className="legal-content">
+            <div className="legal-header">
+              <h2 className="legal-title">Social Media Growth with Integrity</h2>
+              <p className="legal-intro">
+                As social media tools become more powerful, it's crucial to use them responsibly. 
+                Here's how to grow your audience ethically and sustainably.
+              </p>
+            </div>
           
           <div className="features-grid">
             <div className="feature-card">
@@ -88,18 +91,22 @@ const PartnerWithUs = () => {
               <p>Be honest about your growth and metrics. Authentic growth takes time, and your audience will respect your transparency.</p>
             </div>
           </div>
+          </div>
         </div>
       </section>
 
       {/* Partnership Opportunities */}
       <section className="cta-section">
         <div className="cta-container">
-          <h2>Partnership Opportunities</h2>
-          <p>
-            We're looking for creators, agencies, and businesses who share our vision of 
-            ethical social media growth. Join us in building a community that values 
-            authenticity and meaningful connections.
-          </p>
+          <div className="legal-content">
+            <div className="legal-header">
+              <h2 className="legal-title">Partnership Opportunities</h2>
+              <p className="legal-intro">
+                We're looking for creators, agencies, and businesses who share our vision of 
+                ethical social media growth. Join us in building a community that values 
+                authenticity and meaningful connections.
+              </p>
+            </div>
           
           <div className="features-grid" style={{marginTop: '2rem'}}>
             <div className="feature-card">
@@ -123,13 +130,17 @@ const PartnerWithUs = () => {
               <p>Collaborate with us to create comprehensive learning resources, courses, and workshops for social media creators and marketers.</p>
             </div>
           </div>
+          </div>
         </div>
       </section>
 
       {/* Best Practices Section */}
       <section className="features-section">
         <div className="features-container">
-          <h2 className="section-title">Best Practices for Social Media Growth</h2>
+          <div className="legal-content">
+            <div className="legal-header">
+              <h2 className="legal-title">Best Practices for Social Media Growth</h2>
+            </div>
           
           <div className="features-grid">
             <div className="feature-card">
@@ -163,17 +174,21 @@ const PartnerWithUs = () => {
               <p>Make it clear what value you provide to your audience. Whether it's entertainment, education, or inspiration, be consistent in your value delivery.</p>
             </div>
           </div>
+          </div>
         </div>
       </section>
 
       {/* Contact Section */}
       <section className="cta-section">
         <div className="cta-container">
-          <h2>Ready to Partner with Us?</h2>
-          <p>
-            If you're interested in partnering with Reelpostly or have ideas for how we can 
-            better serve the creator community, we'd love to hear from you.
-          </p>
+          <div className="legal-content">
+            <div className="legal-header">
+              <h2 className="legal-title">Ready to Partner with Us?</h2>
+              <p className="legal-intro">
+                If you're interested in partnering with Reelpostly or have ideas for how we can 
+                better serve the creator community, we'd love to hear from you.
+              </p>
+            </div>
           <a 
             href="https://docs.google.com/forms/d/e/1FAIpQLSdXGiQBAVMQy3lXGkNdRwqgfWw20E_VlXODYloiMo7L3bwYCw/viewform"
             target="_blank"
@@ -183,6 +198,7 @@ const PartnerWithUs = () => {
             Get in Touch
           </a>
           <p className="cta-note">Let's build the future of social media together</p>
+          </div>
         </div>
       </section>
 

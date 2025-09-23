@@ -30,7 +30,7 @@ const HelpCenter = () => {
           </div>
           <div className="nav-actions">
             <Link to="/login" className="nav-btn nav-btn-secondary">Sign In</Link>
-            <Link to="/register" className="nav-btn nav-btn-primary">Sign Up</Link>
+            <Link to="/register" className="nav-btn nav-btn-primary">Get Started Now</Link>
           </div>
         </div>
       </nav>
@@ -50,42 +50,67 @@ const HelpCenter = () => {
       {/* Help Content */}
       <section className="features-section">
         <div className="features-container">
-          <div className="features-grid">
-            <div className="feature-card">
-              <div className="feature-icon">📚</div>
-              <h3>Getting Started</h3>
-              <p>Learn how to create your first post and connect your social media accounts</p>
-              <Link to="/register" className="cta-secondary">Get Started</Link>
+          <div className="legal-content">
+            <div className="legal-header">
+              <h2 className="legal-title">Help Center</h2>
+              <p className="legal-intro">
+                Get support, find answers, and help us improve Reelpostly for you. 
+                We're here to help you succeed with your social media management.
+              </p>
             </div>
-            <div className="feature-card">
-              <div className="feature-icon">🔧</div>
-              <h3>Platform Setup</h3>
-              <p>Step-by-step guides for connecting Instagram, TikTok, LinkedIn, Twitter, Facebook, and YouTube</p>
-              <Link to="/register" className="cta-secondary">Connect Platforms</Link>
+
+            <div className="legal-section">
+              <h3 className="legal-section-title">Getting Started</h3>
+              <div className="legal-subsection">
+                <h4 className="legal-subsection-title">📚 First Steps</h4>
+                <p>Learn how to create your first post and connect your social media accounts</p>
+                <Link to="/register" className="legal-link">Get Started →</Link>
+              </div>
             </div>
-            <div className="feature-card">
-              <div className="feature-icon">🤖</div>
-              <h3>AI Features</h3>
-              <p>Learn how to use our AI-powered caption and hashtag generation tools</p>
-              <Link to="/register" className="cta-secondary">Try AI Features</Link>
+
+            <div className="legal-section">
+              <h3 className="legal-section-title">Platform Setup</h3>
+              <div className="legal-subsection">
+                <h4 className="legal-subsection-title">🔧 Connect Your Platforms</h4>
+                <p>Step-by-step guides for connecting Instagram, TikTok, LinkedIn, Twitter, Facebook, and YouTube</p>
+                <Link to="/register" className="legal-link">Connect Platforms →</Link>
+              </div>
             </div>
-            <div className="feature-card">
-              <div className="feature-icon">📱</div>
-              <h3>Mobile Support</h3>
-              <p>Tips for using Reelpostly on mobile devices and troubleshooting common issues</p>
-              <Link to="/register" className="cta-secondary">Mobile Guide</Link>
+
+            <div className="legal-section">
+              <h3 className="legal-section-title">AI Features</h3>
+              <div className="legal-subsection">
+                <h4 className="legal-subsection-title">🤖 AI-Powered Tools</h4>
+                <p>Learn how to use our AI-powered caption and hashtag generation tools</p>
+                <Link to="/register" className="legal-link">Try AI Features →</Link>
+              </div>
             </div>
-            <div className="feature-card">
-              <div className="feature-icon">💳</div>
-              <h3>Billing & Subscriptions</h3>
-              <p>Manage your subscription, update payment methods, and understand billing cycles</p>
-              <Link to="/register" className="cta-secondary">Manage Billing</Link>
+
+            <div className="legal-section">
+              <h3 className="legal-section-title">Mobile Support</h3>
+              <div className="legal-subsection">
+                <h4 className="legal-subsection-title">📱 Mobile Usage</h4>
+                <p>Tips for using Reelpostly on mobile devices and troubleshooting common issues</p>
+                <Link to="/register" className="legal-link">Mobile Guide →</Link>
+              </div>
             </div>
-            <div className="feature-card">
-              <div className="feature-icon">🔒</div>
-              <h3>Account Security</h3>
-              <p>Secure your account, manage passwords, and understand our privacy and security measures</p>
-              <Link to="/register" className="cta-secondary">Security Guide</Link>
+
+            <div className="legal-section">
+              <h3 className="legal-section-title">Billing & Subscriptions</h3>
+              <div className="legal-subsection">
+                <h4 className="legal-subsection-title">💳 Payment Management</h4>
+                <p>Manage your subscription, update payment methods, and understand billing cycles</p>
+                <Link to="/register" className="legal-link">Manage Billing →</Link>
+              </div>
+            </div>
+
+            <div className="legal-section">
+              <h3 className="legal-section-title">Account Security</h3>
+              <div className="legal-subsection">
+                <h4 className="legal-subsection-title">🔒 Security & Privacy</h4>
+                <p>Secure your account, manage passwords, and understand our privacy and security measures</p>
+                <Link to="/privacy" className="legal-link">Security Guide →</Link>
+              </div>
             </div>
           </div>
         </div>

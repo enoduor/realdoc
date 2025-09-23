@@ -50,7 +50,7 @@
         {"name": "FACEBOOK_REDIRECT_URI", "valueFrom": "arn:aws:ssm:us-west-2:657053005765:parameter/repostly/api/FACEBOOK_REDIRECT_URI"}
       ],
       "healthCheck": {
-        "command": ["CMD", "curl", "-fsS", "http://localhost:4001/health"],
+        "command": ["CMD", "curl", "-fsS", "http://localhost:4001/api/health"],
         "interval": 30,
         "timeout": 10,
         "retries": 3,

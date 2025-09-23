@@ -5,7 +5,23 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { requireAuth } = require('@clerk/express');
 
+
 const { Clerk } = require('@clerk/clerk-sdk-node');
+
+// ---- helpers ----
+function normEmail(v) {
+  return typeof v === "string" ? v.trim().toLowerCase() : null;
+}
+
+async function getClerkPrimaryEmail(clerk, clerkUserId) {
+  const cUser = await clerk.users.getUser(clerkUserId);
+  if (cUser?.primaryEmailAddressId) {
+    const addr = await clerk.emailAddresses.getEmailAddress(cUser.primaryEmailAddressId);
+    return normEmail(addr?.emailAddress || null);
+  }
+  const first = cUser?.emailAddresses?.[0]?.emailAddress || null;
+  return normEmail(first);
+}
 
 // Normalize the shape returned to the dashboard
 function toClient(userDoc) {
@@ -106,7 +122,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ✅ Get current user profile (auto-create/link from Clerk if missing)
+// ✅ Get current user profile
 router.get("/me", requireAuth(), async (req, res) => {
   try {
     const clerkUserId = req.auth().userId;
@@ -114,37 +130,78 @@ router.get("/me", requireAuth(), async (req, res) => {
       return res.status(401).json({ error: "Unauthenticated" });
     }
 
-    // Try to find existing DB user
-    let user = await User.findOne({ clerkUserId });
-
-    // If missing, fetch from Clerk and create a DB user
+    // Just find the user in the database by clerkUserId
+    const user = await User.findOne({ clerkUserId });
     if (!user) {
-      const clerk = Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
-      let email, firstName, lastName;
+      return res.json(null);
+    }
 
-      try {
-        const cUser = await clerk.users.getUser(clerkUserId);
-        // Prefer primary email, fallback to first email
-        if (cUser?.primaryEmailAddressId) {
-          const addr = await clerk.emailAddresses.getEmailAddress(cUser.primaryEmailAddressId);
-          email = addr?.emailAddress;
-        }
-        if (!email) {
-          email = cUser?.emailAddresses?.[0]?.emailAddress || null;
-        }
-        firstName = cUser?.firstName || "";
-        lastName = cUser?.lastName || "";
-      } catch (e) {
-        // If Clerk fetch fails, still create a minimal record
-        email = `${clerkUserId}@clerk.local`;
-        firstName = "";
-        lastName = "";
-        console.warn("⚠️ Clerk fetch failed in /auth/me; creating minimal user:", e.message);
+    return res.json(toClient(user));
+
+    // CASE A: both exist and are different docs → merge
+    if (uById && uByEmail && !uById._id.equals(uByEmail._id)) {
+      const session = await User.startSession();
+      await session.withTransaction(async () => {
+        // choose keeper = email row (stable key)
+        const keeper = uByEmail;
+        const discard = uById;
+
+        // transfer fields we care about (only if missing on keeper)
+        if (!keeper.clerkUserId) keeper.clerkUserId = clerkUserId;
+        if (firstName && !keeper.firstName) keeper.firstName = firstName;
+        if (lastName  && !keeper.lastName)  keeper.lastName  = lastName;
+        keeper.lastActiveDate = new Date();
+
+        await keeper.save({ session });
+
+        // OPTIONAL: if you have foreign refs that point to discard._id,
+        // migrate them here (Posts.updateMany({ userId: discard._id }, { userId: keeper._id }, { session }))
+        // ...
+
+        // remove discard or neutralize (removing avoids future collisions)
+        await User.deleteOne({ _id: discard._id }, { session });
+      });
+      await session.endSession();
+
+      user = await User.findOne({ email: email.toLowerCase() }); // now the keeper
+      console.log("🔀 Merged duplicate users in /auth/me:", {
+        keeperId: user._id.toString(),
+        clerkUserId,
+        email: user.email
+      });
+    }
+
+    // CASE B: only email row exists → link clerkUserId to it
+    else if (!uById && uByEmail) {
+      uByEmail.clerkUserId = uByEmail.clerkUserId || clerkUserId;
+      if (firstName && !uByEmail.firstName) uByEmail.firstName = firstName;
+      if (lastName  && !uByEmail.lastName)  uByEmail.lastName  = lastName;
+      uByEmail.lastActiveDate = new Date();
+      await uByEmail.save();
+      user = uByEmail;
+      console.log("🔗 Linked existing user by email:", { userId: user._id.toString(), email: user.email });
+    }
+
+    // CASE C: only id row exists → set email if not taken
+    else if (uById && !uByEmail) {
+      // Only set email if it's not used by anyone else
+      if (email) {
+        const dup = await User.exists({ email: email.toLowerCase(), _id: { $ne: uById._id } });
+        if (!dup) uById.email = email.toLowerCase();
       }
+      if (firstName && !uById.firstName) uById.firstName = firstName;
+      if (lastName  && !uById.lastName)  uById.lastName  = lastName;
+      uById.lastActiveDate = new Date();
+      await uById.save();
+      user = uById;
+      console.log("✅ Updated existing clerkUserId row:", { userId: user._id.toString(), email: user.email || "(none)" });
+    }
 
+    // CASE D: neither exists → create fresh (email optional)
+    else if (!uById && !uByEmail) {
       user = new User({
         clerkUserId,
-        email,
+        ...(email ? { email: email.toLowerCase() } : {}),
         firstName,
         lastName,
         subscriptionStatus: "none",
@@ -152,18 +209,123 @@ router.get("/me", requireAuth(), async (req, res) => {
         billingCycle: "none",
         lastActiveDate: new Date(),
       });
+      try {
       await user.save();
-      console.log("👤 Created DB user via /auth/me:", { clerkUserId, email });
+        console.log("👤 Created user in /auth/me:", { id: user._id.toString(), email: user.email || "(none)" });
+      } catch (saveErr) {
+        // Handle parallel creations or unique index collisions
+        if (saveErr && saveErr.code === 11000) {
+          const isClerkIdDup =
+            (saveErr.keyPattern && saveErr.keyPattern.clerkUserId) ||
+            /clerkUserId/i.test(String(saveErr.errmsg || ""));
+          const isEmailDup =
+            (saveErr.keyPattern && saveErr.keyPattern.email) ||
+            /email/i.test(String(saveErr.errmsg || ""));
+
+          // If another request created the clerkUserId doc in parallel
+          if (isClerkIdDup) {
+            const existing = await User.findOne({ clerkUserId });
+            if (existing) {
+              // Soft-merge fields onto the existing doc
+              let changed = false;
+              if (email) {
+                const lower = email.toLowerCase();
+                if (!existing.email) {
+                  // only set if not used elsewhere
+                  const taken = await User.exists({ email: lower, _id: { $ne: existing._id } });
+                  if (!taken) { existing.email = lower; changed = true; }
+                }
+              }
+              if (firstName && !existing.firstName) { existing.firstName = firstName; changed = true; }
+              if (lastName  && !existing.lastName)  { existing.lastName  = lastName;  changed = true; }
+              existing.lastActiveDate = new Date();
+              await existing.save();
+              user = existing;
+              console.log("🧷 Resolved race on clerkUserId by using existing doc:", {
+                id: user._id.toString(), clerkUserId, email: user.email || "(none)"
+              });
+            } else if (email) {
+              // Fallback: try linking to email row if it popped up
+              const byEmail = await User.findOne({ email: email.toLowerCase() });
+              if (byEmail) {
+                byEmail.clerkUserId = clerkUserId;
+                byEmail.lastActiveDate = new Date();
+                await byEmail.save();
+                user = byEmail;
+                console.log("🧩 Linked to email user after clerk dup:", { id: user._id.toString() });
+              } else {
+                throw saveErr;
+              }
+            } else {
+              throw saveErr;
+            }
+          }
+          // Email duplicate (someone created the email row first)
+          else if (isEmailDup && email) {
+            const fallback = await User.findOne({ email: email.toLowerCase() });
+            if (fallback) {
+              fallback.clerkUserId = clerkUserId;
+              fallback.lastActiveDate = new Date();
+              await fallback.save();
+              user = fallback;
+              console.log("🧩 Resolved race by linking to existing email user:", { id: user._id.toString() });
+            } else {
+              throw saveErr;
+            }
+          } else {
+            throw saveErr;
+          }
     } else {
-      // Touch lastActiveDate
-      user.lastActiveDate = new Date();
-      await user.save();
+          throw saveErr;
+        }
+      }
     }
 
     return res.json(toClient(user));
   } catch (err) {
     console.error("GET /auth/me error:", err);
     return res.status(500).json({ error: "Failed to load profile" });
+  }
+});
+
+// ✅ Subscription status for dashboard banners & limits
+router.get("/subscription-status", requireAuth(), async (req, res) => {
+  try {
+    const clerkUserId = typeof req.auth === "function" ? req.auth()?.userId : req.auth?.userId;
+    if (!clerkUserId) return res.status(401).json({ error: "Unauthenticated" });
+
+    const user = await User.findOne({ clerkUserId });
+
+    // If the user row is missing (should be rare), return safe defaults
+    if (!user) {
+      return res.json({
+        clerkUserId,
+        subscriptionStatus: "none",
+        hasActiveSubscription: false,
+        isTrialing: false,
+        selectedPlan: "none",
+        billingCycle: "none",
+        trialStartDate: null,
+        trialEndDate: null,
+        stripeCustomerId: null,
+        stripeSubscriptionId: null,
+        dailyPostsUsed: 0,
+        accountsConnected: 0,
+      });
+    }
+
+    // Normalize to your client shape and add helpful flags
+    const payload = toClient(user);
+    payload.isTrialing = payload.subscriptionStatus === "trialing";
+    payload.isActive = ["active", "trialing", "past_due"].includes(payload.subscriptionStatus);
+    payload.plan = payload.selectedPlan;
+    payload.trialStartDate = user.trialStartDate || null;
+    payload.trialEndDate = user.trialEndDate || null;
+
+    return res.json(payload);
+  } catch (e) {
+    console.error("GET /auth/subscription-status error:", e);
+    return res.status(500).json({ error: "Failed to load subscription status" });
   }
 });
 
@@ -184,8 +346,9 @@ router.post("/link-temp-user", requireAuth(), async (req, res) => {
       return res.status(404).json({ error: "No user found with this Clerk ID" });
     }
 
-    // Update the user's email if it's currently a fallback email
-    if (user.email.includes('@clerk.local') && email !== user.email) {
+    // Update the user's email if it's currently missing or a known placeholder
+    const isPlaceholder = !user.email || /@clerk\.local$/i.test(user.email);
+    if (isPlaceholder && email !== user.email) {
       console.log(`🔄 Updating user email from ${user.email} to ${email}`);
       
       // Check if another user already has this email
@@ -244,161 +407,117 @@ router.post("/link-temp-user", requireAuth(), async (req, res) => {
   }
 });
 
-// ✅ Create or link Clerk user with database user
-router.post("/create-clerk-user", requireAuth(), async (req, res) => {
+// ✅ Idempotent create-or-link (safe under concurrency, avoids dupes)
+// Prefers merging an existing email-only row, else upserts by clerkUserId.
+// Never overwrites subscription fields; Stripe webhooks own those.
+router.post('/create-or-link', requireAuth(), async (req, res) => {
   try {
-    console.log('🔍 create-clerk-user route hit');
-    console.log('🔍 req.auth():', req.auth());
-    console.log('🔍 req.headers.authorization:', req.headers.authorization ? 'Present' : 'Missing');
-    
-    const clerkUserId = req.auth().userId;
-    
-    // Fetch complete user profile from Clerk API
-    console.log('📞 Fetching user profile from Clerk API...');
-    const { Clerk } = require('@clerk/clerk-sdk-node');
-    const clerk = Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
-    
-        let userEmail, firstName, lastName;
-        try {
-          const clerkUser = await clerk.users.getUser(clerkUserId);
-          console.log('🔍 Full Clerk user object:', JSON.stringify(clerkUser, null, 2));
-          
-          // Get primary email address using the correct Clerk API method
-          if (clerkUser.primaryEmailAddressId) {
-            const emailAddress = await clerk.emailAddresses.getEmailAddress(clerkUser.primaryEmailAddressId);
-            userEmail = emailAddress.emailAddress;
-            console.log('📧 Primary email fetched:', userEmail);
-          } else {
-            // Fallback to first email address if no primary
-            userEmail = clerkUser.emailAddresses?.[0]?.emailAddress;
-            console.log('📧 Fallback email from emailAddresses:', userEmail);
-          }
-          
-          firstName = clerkUser.firstName;
-          lastName = clerkUser.lastName;
-          console.log('✅ Clerk user profile fetched:', { userEmail, firstName, lastName });
-        } catch (clerkError) {
-          console.error('❌ Error fetching Clerk user profile:', clerkError);
-          userEmail = firstName = lastName = undefined;
-        }
+    const authObj = typeof req.auth === 'function' ? req.auth() : req.auth;
+    const clerkUserId = authObj?.userId;
+    if (!clerkUserId) return res.status(401).json({ error: 'No Clerk user' });
 
-    console.log(`🔗 Creating/linking Clerk user: ${clerkUserId} (${userEmail || 'no email'})`);
-    console.log('🔍 Full req.auth object:', JSON.stringify(req.auth(), null, 2));
+    // Normalize inputs from client (if provided)
+    const email = normEmail(req.body?.email);
+    const firstName = req.body?.firstName;
+    const lastName  = req.body?.lastName;
+    const now = new Date();
 
-    // 1) Check if user already exists with this Clerk ID
-    let user = await User.findOne({ clerkUserId: clerkUserId });
-    
-    if (user) {
-      console.log(`✅ User already linked: ${user.email}`);
-      return res.json({
-        success: true,
-        message: "User already linked",
-        user: {
-          subscriptionStatus: user.subscriptionStatus,
-          selectedPlan: user.selectedPlan,
-          billingCycle: user.billingCycle,
-          hasActiveSubscription: user.canCreatePosts()
-        }
+    // 1) If a temp user exists by email (no clerkUserId yet), link that doc
+    if (email) {
+      const temp = await User.findOne({
+        email,
+        $or: [
+          { clerkUserId: { $exists: false } },
+          { clerkUserId: null },
+          { clerkUserId: '' },
+        ],
       });
+
+      if (temp) {
+        // Ensure we don't end up with two docs for same clerk user.
+        const clash = await User.findOne({ clerkUserId });
+        if (clash && String(clash._id) !== String(temp._id)) {
+          // Keep the email row (stable key) and remove the clerk-only row.
+          await User.deleteOne({ _id: clash._id });
+        }
+
+        if (!temp.clerkUserId) temp.clerkUserId = clerkUserId;
+        if (firstName && !temp.firstName) temp.firstName = firstName;
+        if (lastName  && !temp.lastName)  temp.lastName  = lastName;
+        temp.lastActiveDate = now;
+        await temp.save();
+        return res.json({ ok: true, user: temp.toJSON ? temp.toJSON() : temp });
+      }
     }
 
-    // 2) If a user exists by email, link it
-    console.log(`🔍 Looking for user with email: "${userEmail}"`);
-    user = userEmail ? await User.findOne({ email: userEmail }) : null;
-    
-    if (user) {
-      // Check if this user is already linked to a different Clerk user
-      if (user.clerkUserId && user.clerkUserId !== clerkUserId) {
-        console.log(`⚠️ User ${user.email} is already linked to different Clerk user: ${user.clerkUserId}`);
-        return res.status(409).json({ 
-          error: "User already linked to different account",
-          message: "This email is already associated with another account"
-        });
-      }
-      
-      // Link existing user to Clerk
-      console.log(`🔗 Linking existing user ${user.email} to Clerk user ${clerkUserId}`);
-      console.log(`📝 Before linking - clerkUserId: ${user.clerkUserId}`);
-      console.log(`📋 Current plan: ${user.selectedPlan}, status: ${user.subscriptionStatus}`);
-      
-      user.clerkUserId = clerkUserId;
-      user.firstName = firstName;
-      user.lastName = lastName;
-      
-      // Update subscription status based on selected plan
-      // If user has selected a plan, they have paid through Stripe, so status should be 'active'
-      if (['starter', 'creator', 'pro'].includes(user.selectedPlan) && user.subscriptionStatus === 'none') {
-        console.log(`🔄 Updating subscription status to 'active' for paid plan: ${user.selectedPlan}`);
-        user.subscriptionStatus = 'active';
-      }
-      
-      await user.save();
-      console.log(`✅ After linking - clerkUserId: ${user.clerkUserId}, status: ${user.subscriptionStatus}`);
-      
-      return res.json({
-        success: true,
-        message: "Existing user linked to Clerk",
-        user: {
-          subscriptionStatus: user.subscriptionStatus,
-          selectedPlan: user.selectedPlan,
-          billingCycle: user.billingCycle,
-          hasActiveSubscription: user.canCreatePosts()
-        }
-      });
-    }
+    // 2) Otherwise upsert by clerkUserId; set fields only if provided.
+    const $setOnInsert = { clerkUserId };
+    if (email)     $setOnInsert.email = email;
+    if (firstName) $setOnInsert.firstName = firstName;
+    if (lastName)  $setOnInsert.lastName = lastName;
 
-    // 3) Create new user (with or without email)
-    const emailToUse = userEmail || `${clerkUserId}@clerk.local`;
-    console.log(`📝 Creating new user for Clerk: ${emailToUse}`);
-    
+    const $set = { lastActiveDate: now, updatedAt: now };
+
     try {
-      user = new User({
-        email: emailToUse,
-        clerkUserId: clerkUserId,
-        firstName: firstName,
-        lastName: lastName,
-        subscriptionStatus: 'none',
-        selectedPlan: 'none',
-        billingCycle: 'none'
-      });
+      await User.updateOne(
+        { clerkUserId },
+        { $setOnInsert, $set },
+        { upsert: true }
+      );
+    } catch (err) {
+      // If another request inserted the same clerkUserId concurrently, ignore and read back.
+      if (err?.code !== 11000) throw err;
+    }
 
-      await user.save();
-      console.log(`✅ Created new user for Clerk: ${user.email}`);
-    } catch (saveError) {
-      if (saveError.code === 11000) {
-        // Duplicate key error - email already exists
-        console.log(`⚠️ Duplicate email error when creating user. Attempting to find and link existing user...`);
-        const existingUser = await User.findOne({ email: emailToUse });
-        if (existingUser) {
-          // Link the existing user to this Clerk user
-          existingUser.clerkUserId = clerkUserId;
-          existingUser.firstName = firstName;
-          existingUser.lastName = lastName;
-          await existingUser.save();
-          user = existingUser;
-          console.log(`✅ Linked existing user ${user.email} to Clerk user ${clerkUserId}`);
-        } else {
-          throw saveError; // Re-throw if we can't find the existing user
-        }
-      } else {
-        throw saveError; // Re-throw other errors
+    // 3) Read back definitive row
+    let doc = await User.findOne({ clerkUserId }).lean();
+    if (!doc) return res.status(500).json({ error: 'User linkage failed' });
+
+    // 4) Optional: if doc has no email but request has one, set it if not taken
+    if (!doc.email && email) {
+      const taken = await User.exists({ email, _id: { $ne: doc._id } });
+      if (!taken) {
+        await User.updateOne({ _id: doc._id }, { $set: { email, updatedAt: now } });
+        doc.email = email;
       }
     }
 
-    res.json({
-      success: true,
-      message: "New user created for Clerk",
-      user: {
-        subscriptionStatus: user.subscriptionStatus,
-        selectedPlan: user.selectedPlan,
-        billingCycle: user.billingCycle,
-        hasActiveSubscription: user.canCreatePosts()
-      }
-    });
+    return res.json({ ok: true, user: doc });
+  } catch (e) {
+    console.error('create-or-link error:', e);
+    return res.status(500).json({ error: e.message || 'create-or-link failed' });
+  }
+});
 
-  } catch (error) {
-    console.error("❌ Error creating/linking Clerk user:", error);
-    res.status(500).json({ error: "Failed to create/link Clerk user" });
+// ✅ Sync user with database (no Clerk API calls)
+router.post("/sync-user", requireAuth(), async (req, res) => {
+  try {
+    // Clerk session is already valid here:
+    const clerkUserId = req.auth().userId;
+    // Optional: if you fetch profile from Clerk frontend, pass it in body:
+    const { email, firstName, lastName } = req.body || {};
+
+    // Upsert Mongo user strictly by clerkUserId (NOT by email)
+    const user = await User.findOneAndUpdate(
+      { clerkUserId },
+      {
+        $setOnInsert: {
+          clerkUserId,
+          subscriptionStatus: "none",
+          selectedPlan: "none",
+          billingCycle: "none",
+        },
+        ...(email ? { email: String(email).trim().toLowerCase() } : {}),
+        ...(firstName ? { firstName } : {}),
+        ...(lastName ? { lastName } : {})
+      },
+      { new: true, upsert: true }
+    );
+
+    return res.json({ ok: true, userId: user._id, clerkUserId: user.clerkUserId });
+  } catch (e) {
+    console.error("sync-user error:", e);
+    return res.status(500).json({ ok: false, error: "sync-failed" });
   }
 });
 

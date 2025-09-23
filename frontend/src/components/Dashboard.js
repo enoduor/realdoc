@@ -1,75 +1,41 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUser, useSession, useAuth } from '@clerk/clerk-react';
-import { 
-  Linkedin, 
-  Twitter, 
-  Instagram, 
-  Youtube, 
-  Music,
-  Facebook
-} from 'lucide-react';
+import { Linkedin, Twitter, Instagram, Youtube, Music, Facebook } from 'lucide-react';
 import ClerkUserProfile from './Auth/ClerkUserProfile';
-import { 
-  createOrLinkClerkUser, 
-  getUserUsageStatus, 
-  getCheckoutSession 
-} from '../api';
-
-/**
- * Small helper to fetch JSON with credentials and friendlier errors
- * Supports Authorization header and defaults to /api paths.
- */
-async function getJSON(url, token) {
-  const isAbsolute = /^https?:/i.test(url);
-  const fullUrl = isAbsolute ? url : (url.startsWith('/api') ? url : `/api${url.startsWith('/') ? '' : '/'}${url}`);
-  const res = await fetch(fullUrl, {
-    credentials: 'include',
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
-  if (!res.ok) {
-    let msg = `HTTP ${res.status}`;
-    try {
-      const j = await res.json();
-      if (j?.error) msg += `: ${j.error}`;
-    } catch {}
-    throw new Error(msg);
-  }
-  return res.json();
-}
+import ErrorModal from './ErrorModal';
+import { getUserUsageStatus, getCheckoutSession } from '../api';
+import { useAuthContext } from '../context/AuthContext';
 
 const Dashboard = () => {
-  const [hasSubscription, setHasSubscription] = useState(null); // null = loading, true/false afterwards
+  const navigate = useNavigate();
+  const { isSignedIn, getToken } = useAuth();
+  const { user } = useUser();
+
+  // 🔌 from AuthContext (DB-backed)
+  const { me, loading, refresh } = useAuthContext();
+
+  // local UI state
   const [usageStatus, setUsageStatus] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [welcomeMsg, setWelcomeMsg] = useState('');
   const [checking, setChecking] = useState(false);
-  const [errorModal, setErrorModal] = useState({ show: false, title: '', message: '' });
-  const [me, setMe] = useState(null); // full /auth/me snapshot for banner/detail
-  const navigate = useNavigate();
-  const { user } = useUser();
-  const { session } = useSession();
-  const { getToken, isSignedIn } = useAuth();
+  const [errorModal, setErrorModal] = useState({ 
+    show: false, 
+    title: '', 
+    message: '', 
+    type: 'error',
+    onConfirm: null,
+    confirmText: 'OK',
+    showCancel: false,
+    cancelText: 'Cancel'
+  });
 
-  /**
-   * Load /auth/me (fresh DB-backed snapshot)
-   * Decides hasSubscription based on subscriptionStatus from DB synced by webhook.
-   * Uses Clerk token for Authorization.
-   */
-  const loadMe = useCallback(async () => {
-    const token = await getToken().catch(() => undefined);
-    const data = await getJSON('/auth/me', token); // becomes /api/auth/me via helper
-    setMe(data);
-    const status = (data?.subscriptionStatus || 'none').toLowerCase();
-    setHasSubscription(status === 'active' || status === 'trialing');
-    return data;
-  }, [getToken]);
+  // Convenience: derive hasSubscription from /auth/me snapshot
+  const sub = (me?.subscriptionStatus || 'none').toLowerCase();
+  const hasSubscription = sub === 'active' || sub === 'trialing';
+  
 
-  /**
-   * 1) Handle successful checkout session banner + light polling while webhook writes.
-   * If a user lands on /app?session_id=..., show a friendly message using
-   * GET /api/billing/checkout-session and then poll /auth/me until we see the update.
-   */
+  // 1) Handle ?session_id banner + refresh DB snapshot afterward
   useEffect(() => {
     const url = new URL(window.location.href);
     const sessionId = url.searchParams.get('session_id');
@@ -77,7 +43,6 @@ const Dashboard = () => {
 
     const shownKey = `welcome_for_${sessionId}`;
     if (sessionStorage.getItem(shownKey)) {
-      // Clean URL to drop the param if user refreshes
       url.searchParams.delete('session_id');
       window.history.replaceState({}, '', url.toString());
       return;
@@ -85,7 +50,7 @@ const Dashboard = () => {
 
     setChecking(true);
     getCheckoutSession(sessionId)
-      .then((data) => {
+      .then(async (data) => {
         if (data.subscriptionStatus === 'trialing') {
           setWelcomeMsg(`🎉 Welcome to the ${data.plan} plan! Your trial is active.`);
         } else if (data.subscriptionStatus === 'active') {
@@ -93,91 +58,71 @@ const Dashboard = () => {
         } else {
           setWelcomeMsg('⏳ Processing your subscription… this may take a moment.');
         }
-        // Mark as shown & clean URL
+        // mark as shown + clean URL
         sessionStorage.setItem(shownKey, '1');
         url.searchParams.delete('session_id');
         window.history.replaceState({}, '', url.toString());
+
+        // 📥 pull latest DB state after Stripe redirect
+        await refresh();
       })
       .catch(() => {
         setWelcomeMsg("⚠️ We couldn't confirm your subscription yet. Please refresh in a minute.");
       })
       .finally(() => setChecking(false));
-  }, []);
+  }, [refresh]);
 
-  /**
-   * 2) Bootstrap: link Clerk user → DB (idempotent) then fetch /auth/me,
-   * and if subscribed, also fetch usage.
-   */
+  // 2) Bootstrap: once signed-in, ensure we have fresh /auth/me and usage (if subscribed)
   useEffect(() => {
     const boot = async () => {
-      if (!isSignedIn || !user) {
-        setLoading(false);
-        return;
-      }
-      try {
-        // Ensure DB user exists / is linked (no-op if already exists)
-        await createOrLinkClerkUser().catch(() => {});
-        // Pull latest DB state
-        const snapshot = await loadMe();
-
-        // Load usage if subscribed
-        const status = (snapshot?.subscriptionStatus || 'none').toLowerCase();
-        if (status === 'active' || status === 'trialing') {
-          try {
-            const usage = await getUserUsageStatus();
-            setUsageStatus(usage);
-          } catch (e) {
-            console.error('Error getting usage status:', e);
-          }
-        } else {
-          setUsageStatus(null);
+      if (!isSignedIn || !user) return;
+      await refresh(); // pulls /auth/me into context
+      const status = (me?.subscriptionStatus || 'none').toLowerCase();
+      if (status === 'active' || status === 'trialing') {
+        try {
+          const usage = await getUserUsageStatus();
+          setUsageStatus(usage);
+        } catch (e) {
+          console.error('Error getting usage status:', e);
         }
-      } catch (e) {
-        console.error('Error during dashboard bootstrap:', e);
-        setHasSubscription(false);
-      } finally {
-        setLoading(false);
+      } else {
+        setUsageStatus(null);
       }
     };
+    // run after first render + whenever `isSignedIn` changes
+    // also run when `me` changes to populate usage after webhook
     boot();
-  }, [user, isSignedIn, loadMe]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn, user, me?.subscriptionStatus]);
 
-  /**
-   * 3) Refresh /auth/me whenever the tab regains focus (keeps UI in sync after webhooks)
-   */
+  // 3) Refresh /auth/me on tab focus (stay in sync with webhooks)
   useEffect(() => {
     const onFocus = async () => {
       try {
-        const snapshot = await loadMe();
-        const status = (snapshot?.subscriptionStatus || 'none').toLowerCase();
+        await refresh();
+        const status = (me?.subscriptionStatus || 'none').toLowerCase();
         if (status === 'active' || status === 'trialing') {
           const usage = await getUserUsageStatus().catch(() => null);
           if (usage) setUsageStatus(usage);
         }
-      } catch (e) {
-        // ignore transient errors
-      }
+      } catch {}
     };
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, [loadMe]);
+  }, [refresh, me?.subscriptionStatus]);
 
-  /**
-   * 4) Gentle polling for 20s after mount if we are not yet subscribed
-   *    (helps bridge the short delay between checkout redirect and webhook write)
-   */
+  // 4) Gentle polling for ~20s if we don’t yet see the sub (bridges webhook delay)
   useEffect(() => {
     let tries = 0;
-    const maxTries = 10; // 10 * 2s = ~20s
+    const maxTries = 10;
     let timer = null;
 
     const tick = async () => {
       try {
-        const snapshot = await loadMe();
-        const status = (snapshot?.subscriptionStatus || 'none').toLowerCase();
+        await refresh();
+        const status = (me?.subscriptionStatus || 'none').toLowerCase();
         if (status === 'active' || status === 'trialing') {
           clearInterval(timer);
-          // load usage once we're subscribed
           const usage = await getUserUsageStatus().catch(() => null);
           if (usage) setUsageStatus(usage);
           return;
@@ -187,23 +132,29 @@ const Dashboard = () => {
       if (tries >= maxTries && timer) clearInterval(timer);
     };
 
-    // Start polling only if we don't yet have a subscription
-    if (hasSubscription === false || hasSubscription === null) {
+    if (!hasSubscription) {
       timer = setInterval(tick, 2000);
     }
     return () => timer && clearInterval(timer);
-  }, [hasSubscription, loadMe]);
+  }, [hasSubscription, refresh, me?.subscriptionStatus]);
 
-  /**
-   * Click-guard for gated features:
-   * - If hasSubscription === false -> block and redirect to pricing
-   * - If null (loading) or true -> allow
-   */
-  const handleFeatureClick = (e, feature) => {
-    if (hasSubscription === false) {
+  // Gate features if not subscribed
+  const handleFeatureClick = (e) => {
+    if (!hasSubscription) {
       e.preventDefault();
-      alert('You must subscribe to use this feature. Redirecting to pricing...');
-      navigate('/pricing');
+      setErrorModal({
+        show: true,
+        title: 'Subscription Required',
+        message: 'You need an active subscription to access this feature. Would you like to view our pricing plans?',
+        type: 'warning',
+        onConfirm: () => {
+          setErrorModal({ show: false, title: '', message: '' });
+          navigate('/pricing');
+        },
+        confirmText: 'View Pricing',
+        showCancel: true,
+        cancelText: 'Cancel'
+      });
     }
   };
 
@@ -215,25 +166,13 @@ const Dashboard = () => {
     { name: 'Publish Now', description: 'Publish posts immediately across multiple platforms', icon: '🚀', link: '/app/scheduler' }
   ];
 
-  // Render
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Welcome message from checkout-session */}
       {welcomeMsg && (
-        <div style={{
-          margin: '12px auto',
-          maxWidth: '1200px',
-          padding: '12px 16px',
-          borderRadius: 10,
-          background: '#e8f5e9',
-          border: '1px solid #c8e6c9',
-          textAlign: 'center'
-        }}>
+        <div style={{ margin: '12px auto', maxWidth: '1200px', padding: '12px 16px', borderRadius: 10, background: '#e8f5e9', border: '1px solid #c8e6c9', textAlign: 'center' }}>
           {welcomeMsg}
         </div>
       )}
-
- 
 
       <nav className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -252,9 +191,17 @@ const Dashboard = () => {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <h2 className="text-2xl font-bold mb-8">Welcome to Reelpostly</h2>
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl font-bold">Welcome to Reelpostly</h2>
+            <button 
+              onClick={() => refresh()} 
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Refresh Status
+            </button>
+          </div>
 
-          {/* Daily Usage Status (only when subscribed) */}
+          {/* Daily Usage */}
           {hasSubscription && usageStatus && (
             <div className="mb-6 bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
@@ -282,21 +229,19 @@ const Dashboard = () => {
                   <span>{usageStatus.usage.remaining} remaining</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
+                  <div
                     className={`h-2 rounded-full ${
-                      usageStatus.usage.remaining === 0 ? 'bg-red-500' : 
+                      usageStatus.usage.remaining === 0 ? 'bg-red-500' :
                       usageStatus.usage.remaining <= 1 ? 'bg-yellow-500' : 'bg-green-500'
                     }`}
-                    style={{ 
-                      width: `${(usageStatus.usage.used / usageStatus.usage.limit) * 100}%` 
-                    }}
+                    style={{ width: `${(usageStatus.usage.used / usageStatus.usage.limit) * 100}%` }}
                   />
                 </div>
               </div>
             </div>
           )}
 
-          {/* Realtime subscription banner from /auth/me */}
+          {/* Subscription banner */}
           {!loading && me && (
             <div
               style={{
@@ -305,32 +250,22 @@ const Dashboard = () => {
                 padding: '12px 16px',
                 borderRadius: 10,
                 border: '1px solid',
-                background:
-                  (me.subscriptionStatus === 'active' || me.subscriptionStatus === 'trialing')
-                    ? '#e8f5e9'
-                    : '#fff8e1',
-                borderColor:
-                  (me.subscriptionStatus === 'active' || me.subscriptionStatus === 'trialing')
-                    ? '#c8e6c9'
-                    : '#ffe0b2',
-                color:
-                  (me.subscriptionStatus === 'active' || me.subscriptionStatus === 'trialing')
-                    ? '#1b5e20'
-                    : '#8d6e63',
+                background: hasSubscription ? '#e8f5e9' : '#fff8e1',
+                borderColor: hasSubscription ? '#c8e6c9' : '#ffe0b2',
+                color: hasSubscription ? '#1b5e20' : '#8d6e63',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: 12,
               }}
             >
-              {/* Left: status text */}
               <div>
-                {me.subscriptionStatus === 'active' && (
+                {sub === 'active' && (
                   <span>
                     ✅ Subscription active — <strong>{me.selectedPlan ?? '—'}</strong> ({me.billingCycle ?? '—'})
                   </span>
                 )}
-                {me.subscriptionStatus === 'trialing' && (
+                {sub === 'trialing' && (
                   <span>
                     🎉 Trialing — <strong>{me.selectedPlan ?? '—'}</strong> ({me.billingCycle ?? '—'})
                     {Number.isFinite(me.trialDaysRemaining)
@@ -338,52 +273,43 @@ const Dashboard = () => {
                       : ''}
                   </span>
                 )}
-                {me.subscriptionStatus === 'past_due' && (
-                  <span>⚠️ Past due — please update your payment method.</span>
-                )}
-                {(me.subscriptionStatus === 'none' || !me.subscriptionStatus) && (
-                  <span>⚠️ No active subscription.</span>
-                )}
+                {sub === 'past_due' && <span>⚠️ Past due — please update your payment method.</span>}
+                {(sub === 'none' || !me.subscriptionStatus) && <span>⚠️ No active subscription.</span>}
               </div>
 
-              {/* Right: Manage Billing button (only show if we have a customer or an active/trial sub) */}
               {(me.stripeCustomerId || me.hasActiveSubscription) && (
                 <button
-                onClick={async () => {
-                  try {
-                    // get Clerk session token
-                    const token = await getToken();
-                
-                    const res = await fetch('/api/stripe/portal-session', {
-                      method: 'POST',
-                      credentials: 'include',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`, // 👈 REQUIRED for requireAuth()
-                      },
-                    });
-                
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data?.error || 'Failed to create billing portal session');
-                    window.location.href = data.url;
-                  } catch (err) {
-                    console.error('Unable to open billing portal:', err);
-                    setErrorModal({
-                      show: true,
-                      title: 'Unable to Open Billing Portal',
-                      message: err.message || 'An unexpected error occurred while trying to access your billing information. Please try again later.'
-                    });
-                  }
-                }}
-                  style={{
-                    background: '#0ea5e9',
-                    color: 'white',
-                    border: 0,
-                    borderRadius: 8,
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
+                  onClick={async () => {
+                    try {
+                      const token = await getToken();
+                      const res = await fetch('/api/stripe/portal-session', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          Authorization: `Bearer ${token}`,
+                        },
+                      });
+                      const text = await res.text();
+                      const isJson = (res.headers.get('content-type') || '').includes('application/json');
+                      const data = isJson ? JSON.parse(text) : text;
+                      if (!res.ok) throw new Error(typeof data === 'string' ? data : data?.error || 'Failed to create billing portal session');
+                      window.location.href = data.url;
+                    } catch (err) {
+                      console.error('Unable to open billing portal:', err);
+                      setErrorModal({
+                        show: true,
+                        title: 'Unable to Open Billing Portal',
+                        message: err.message || 'An unexpected error occurred while trying to access your billing information. Please try again later.',
+                        type: 'error',
+                        onConfirm: () => setErrorModal({ show: false, title: '', message: '', type: 'error', onConfirm: null, confirmText: 'OK', showCancel: false, cancelText: 'Cancel' }),
+                        confirmText: 'OK',
+                        showCancel: false,
+                        cancelText: 'Cancel'
+                      });
+                    }
                   }}
+                  style={{ background: '#0ea5e9', color: 'white', border: 0, borderRadius: 8, padding: '8px 12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
                 >
                   Manage Billing
                 </button>
@@ -391,65 +317,47 @@ const Dashboard = () => {
             </div>
           )}
 
-          {/* OAuth Connection Buttons */}
+          {/* OAuth Connections */}
           <div className="mb-8 p-6 bg-white rounded-lg shadow text-center">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Connect Your Social Media Accounts</h3>
             <p className="text-sm text-gray-600 mb-4">Connect your accounts to start publishing content across platforms.</p>
             <div className="flex flex-wrap gap-4 justify-center">
-              <a
-                href={`/api/auth/linkedin/oauth2/start/linkedin?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`}
-                className="inline-flex items-center justify-center w-12 h-12 bg-[#0A66C2] text-white rounded-lg hover:bg-[#004182] transition-colors"
-                title="Connect LinkedIn"
-              >
+              <a href={`/api/auth/linkedin/oauth2/start/linkedin?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-[#0A66C2] text-white rounded-lg hover:bg-[#004182] transition-colors" title="Connect LinkedIn">
                 <Linkedin size={24} />
               </a>
-              <a
-                href={`/api/auth/twitter/oauth/start/twitter?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`}
-                className="inline-flex items-center justify-center w-12 h-12 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                title="Connect Twitter"
-              >
+              <a href={`/api/auth/twitter/oauth/start/twitter?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors" title="Connect Twitter">
                 <Twitter size={24} />
               </a>
-              <a
-                href={`/api/auth/facebook/oauth/start/facebook?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`}
-                className="inline-flex items-center justify-center w-12 h-12 bg-[#1877F2] text-white rounded-lg hover:bg-[#0d5dbf] transition-colors"
-                title="Connect Facebook"
-              >
+              <a href={`/api/auth/facebook/oauth/start/facebook?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-[#1877F2] text-white rounded-lg hover:bg-[#0d5dbf] transition-colors" title="Connect Facebook">
                 <Facebook size={24} />
               </a>
-              <a
-                href={`/api/auth/instagram/oauth/start/instagram?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`}
-                className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors"
-                title="Connect Instagram"
-              >
+              <a href={`/api/auth/instagram/oauth/start/instagram?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors" title="Connect Instagram">
                 <Instagram size={24} />
               </a>
-              <a
-                href={`/api/auth/youtube/oauth2/start/google?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`}
-                className="inline-flex items-center justify-center w-12 h-12 bg-[#FF0000] text-white rounded-lg hover:bg-[#cc0000] transition-colors"
-                title="Connect YouTube"
-              >
+              <a href={`/api/auth/youtube/oauth2/start/google?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-[#FF0000] text-white rounded-lg hover:bg-[#cc0000] transition-colors" title="Connect YouTube">
                 <Youtube size={24} />
               </a>
-              <div
-                className="inline-flex items-center justify-center w-12 h-12 bg-gray-400 text-white rounded-lg cursor-not-allowed"
-                title="TikTok - Coming Soon"
-              >
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-400 text-white rounded-lg cursor-not-allowed" title="TikTok - Coming Soon">
                 <Music size={24} />
               </div>
             </div>
           </div>
 
+          {/* Feature cards */}
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            {features.map((feature) => (
+            {[
+              { name: 'Generate Captions', description: 'Create engaging AI-powered captions for your social media posts', icon: '✍️', link: '/app/caption-generator' },
+              { name: 'Generate Hashtags', description: 'Generate relevant hashtags to increase your content reach', icon: '#️⃣', link: '/app/hashtag-generator' },
+              { name: 'Upload Media', description: 'Upload and manage your media content', icon: '📸', link: '/app/media-upload' },
+              { name: 'Edit & Publish', description: 'Preview and publish your content to different platforms', icon: '🚀', link: '/app/platform-preview' },
+              { name: 'Publish Now', description: 'Publish posts immediately across multiple platforms', icon: '🚀', link: '/app/scheduler' }
+            ].map((feature) => (
               <Link
                 key={feature.name}
                 to={feature.link}
-                onClick={(e) => handleFeatureClick(e, feature)}
+                onClick={(e) => handleFeatureClick(e)}
                 className={`block p-6 rounded-lg shadow transition-shadow ${
-                  hasSubscription 
-                    ? 'bg-white hover:shadow-md cursor-pointer' 
-                    : 'bg-gray-100 cursor-not-allowed opacity-75'
+                  hasSubscription ? 'bg-white hover:shadow-md cursor-pointer' : 'bg-gray-100 cursor-not-allowed opacity-75'
                 }`}
               >
                 <div className="flex items-center">
@@ -459,14 +367,8 @@ const Dashboard = () => {
                       {feature.name}
                       {hasSubscription && <span className="ml-2 text-green-500">✅</span>}
                     </h3>
-                    <p className="mt-1 text-gray-500">
-                      {feature.description}
-                    </p>
-                    {!hasSubscription && (
-                      <p className="mt-2 text-sm text-red-500">
-                        ⚠️ Subscription required
-                      </p>
-                    )}
+                    <p className="mt-1 text-gray-500">{feature.description}</p>
+                    {!hasSubscription && <p className="mt-2 text-sm text-red-500">⚠️ Subscription required</p>}
                   </div>
                 </div>
               </Link>
@@ -475,109 +377,19 @@ const Dashboard = () => {
         </div>
       </main>
 
-      {/* Beautiful Error Modal */}
-      {errorModal.show && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '24px',
-            maxWidth: '400px',
-            width: '100%',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-            animation: 'modalSlideIn 0.2s ease-out'
-          }}>
-            {/* Header */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              marginBottom: '16px'
-            }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                backgroundColor: '#fee2e2',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: '12px'
-              }}>
-                <span style={{ fontSize: '20px' }}>⚠️</span>
-              </div>
-              <h3 style={{
-                margin: 0,
-                fontSize: '18px',
-                fontWeight: '600',
-                color: '#374151'
-              }}>
-                {errorModal.title}
-              </h3>
-            </div>
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={errorModal.show}
+        onClose={() => setErrorModal({ show: false, title: '', message: '', type: 'error', onConfirm: null, confirmText: 'OK', showCancel: false, cancelText: 'Cancel' })}
+        title={errorModal.title}
+        message={errorModal.message}
+        type={errorModal.type}
+        onConfirm={errorModal.onConfirm}
+        confirmText={errorModal.confirmText}
+        showCancel={errorModal.showCancel}
+        cancelText={errorModal.cancelText}
+      />
 
-            {/* Message */}
-            <p style={{
-              margin: '0 0 20px 0',
-              color: '#6b7280',
-              lineHeight: '1.5',
-              fontSize: '14px'
-            }}>
-              {errorModal.message}
-            </p>
-
-            {/* Actions */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '12px'
-            }}>
-              <button
-                onClick={() => setErrorModal({ show: false, title: '', message: '' })}
-                style={{
-                  background: '#0ea5e9',
-                  color: 'white',
-                  border: 0,
-                  borderRadius: '8px',
-                  padding: '10px 20px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  transition: 'background-color 0.2s'
-                }}
-                onMouseOver={(e) => e.target.style.background = '#0284c7'}
-                onMouseOut={(e) => e.target.style.background = '#0ea5e9'}
-              >
-                Got it
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style jsx>{`
-        @keyframes modalSlideIn {
-          from {
-            opacity: 0;
-            transform: translateY(-10px) scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-      `}</style>
     </div>
   );
 };
