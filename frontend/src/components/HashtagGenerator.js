@@ -176,12 +176,20 @@ const HashtagGenerator = () => {
                                     Count: {hashtags.length} / {platformLimits.maxHashtags}
                                 </div>
                             </div>
-                            <button
-                                onClick={() => navigator.clipboard.writeText(hashtags.join(' '))}
-                                className="mt-2 px-4 py-2 text-sm text-blue-600 hover:text-blue-800"
-                            >
-                                Copy All Hashtags
-                            </button>
+                            <div className="mt-4 flex gap-3">
+                                <button
+                                    onClick={() => navigator.clipboard.writeText(hashtags.join(' '))}
+                                    className="px-4 py-2 text-sm text-blue-600 hover:text-blue-800 border border-blue-600 rounded"
+                                >
+                                    Copy All Hashtags
+                                </button>
+                                <Link
+                                    to="/app/media-upload"
+                                    className="px-4 py-2 text-sm bg-green-600 text-white hover:bg-green-700 rounded"
+                                >
+                                    Upload Media
+                                </Link>
+                            </div>
                         </div>
                     )}
                 </div>

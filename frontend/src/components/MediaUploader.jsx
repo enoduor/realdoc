@@ -450,6 +450,24 @@ const MediaUploader = () => {
               </div>
             </div>
           )}
+
+          {/* Navigation Buttons */}
+          {(formData.preview || content.mediaUrl) && (
+            <div className="mt-6 flex justify-between">
+              <Link
+                to="/app/platform-preview"
+                className="px-6 py-3 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-medium"
+              >
+                Preview & Publish
+              </Link>
+              <Link
+                to="/app/scheduler"
+                className="px-6 py-3 bg-green-600 text-white hover:bg-green-700 rounded-lg font-medium"
+              >
+                Schedule Post
+              </Link>
+            </div>
+          )}
         </div>
       </main>
     </div>

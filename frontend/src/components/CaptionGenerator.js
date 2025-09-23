@@ -222,12 +222,20 @@ const CaptionGenerator = () => {
                                     Characters: {caption.length} / {platformLimits.maxCharacters}
                                 </div>
                             </div>
-                            <button
-                                onClick={() => navigator.clipboard.writeText(caption)}
-                                className="mt-2 px-4 py-2 text-sm text-blue-600 hover:text-blue-800"
-                            >
-                                Copy to Clipboard
-                            </button>
+                            <div className="mt-4 flex justify-between">
+                                <Link
+                                    to="/app/hashtag-generator"
+                                    className="px-4 py-2 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded"
+                                >
+                                    Generate Hashtags
+                                </Link>
+                                <Link
+                                    to="/app/media-upload"
+                                    className="px-4 py-2 text-sm bg-green-600 text-white hover:bg-green-700 rounded"
+                                >
+                                    Upload Media
+                                </Link>
+                            </div>
                         </div>
                     )}
                 </div>
