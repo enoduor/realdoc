@@ -272,20 +272,12 @@ const MediaUploader = () => {
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">Media Upload</h1>
-          <div className="space-x-4">
-            <Link
-              to="/app/platform-preview"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
-            >
-              Go to Preview
-            </Link>
-            <Link
-              to="/app"
-              className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md"
-            >
-              Back to Dashboard
-            </Link>
-          </div>
+          <Link
+            to="/app"
+            className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md"
+          >
+            Back to Dashboard
+          </Link>
         </div>
       </header>
 
@@ -381,7 +373,7 @@ const MediaUploader = () => {
                     <img
                       src={content.mediaUrl || formData.preview}
                       alt="Upload preview"
-                      className={`rounded-lg shadow ${
+                      className={`rounded-lg shadow mx-auto object-cover ${
                         content?.platform === 'instagram' ? 'aspect-square max-h-[500px]' :
                         content?.platform === 'facebook' ? 'aspect-[1200/630] max-h-[500px]' :
                         content?.platform === 'linkedin' ? 'aspect-[1200/627] max-h-[500px]' :

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useContent } from '../context/ContentContext';
 import { publishNow } from '../api';
 import PlatformPreviewPanel from './PlatformPreviewPanel';
+import ErrorModal from './ErrorModal';
 
 const PlatformPreviewPage = () => {
   
@@ -10,6 +11,12 @@ const PlatformPreviewPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [errorModal, setErrorModal] = useState({ 
+    show: false, 
+    title: '', 
+    message: '', 
+    type: 'error'
+  });
   // Tracker removed for Platform Preview; only edit/preview panel remains
 
   const getAuthToken = useCallback(async () => {
@@ -36,7 +43,12 @@ const PlatformPreviewPage = () => {
       return response;
     } catch (err) {
       const msg = err.message || 'Failed to publish post';
-      setError(msg);
+      setErrorModal({
+        show: true,
+        title: 'Publish Failed',
+        message: msg,
+        type: 'error'
+      });
       throw err;
     } finally {
       setIsLoading(false);
@@ -64,9 +76,6 @@ const PlatformPreviewPage = () => {
         {success && (
           <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">{success}</div>
         )}
-        {error && (
-          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">{error}</div>
-        )}
 
         <div className="grid grid-cols-1 gap-8">
           <div>
@@ -74,6 +83,15 @@ const PlatformPreviewPage = () => {
           </div>
         </div>
       </main>
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={errorModal.show}
+        onClose={() => setErrorModal({ show: false, title: '', message: '', type: 'error' })}
+        title={errorModal.title}
+        message={errorModal.message}
+        type={errorModal.type}
+      />
     </div>
   );
 };

@@ -1,9 +1,16 @@
 import React, { useState } from 'react';
 import { createSubscriptionSession, getPriceId } from '../api';
+import ErrorModal from './ErrorModal';
 import './PricingSection.css';
 
 const PricingSection = () => {
   const [billingCycle, setBillingCycle] = useState('monthly');
+  const [errorModal, setErrorModal] = useState({ 
+    show: false, 
+    title: '', 
+    message: '', 
+    type: 'error'
+  });
 
   const plans = [
     {
@@ -88,7 +95,12 @@ const PricingSection = () => {
     } catch (error) {
       console.error('❌ Error starting trial:', error);
       console.error('❌ Error details:', error.message, error.stack);
-      alert(`Failed to start trial: ${error.message}`);
+      setErrorModal({
+        show: true,
+        title: 'Trial Start Failed',
+        message: `Failed to start trial: ${error.message}`,
+        type: 'error'
+      });
     } finally {
       setLoading(false);
     }
@@ -220,6 +232,15 @@ const PricingSection = () => {
           </p>
         </div>
       </div>
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={errorModal.show}
+        onClose={() => setErrorModal({ show: false, title: '', message: '', type: 'error' })}
+        title={errorModal.title}
+        message={errorModal.message}
+        type={errorModal.type}
+      />
     </section>
   );
 };

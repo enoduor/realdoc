@@ -159,11 +159,12 @@ const Dashboard = () => {
   };
 
   const features = [
-    { name: 'Generate Captions', description: 'Create engaging AI-powered captions for your social media posts', icon: '✍️', link: '/app/caption-generator' },
-    { name: 'Generate Hashtags', description: 'Generate relevant hashtags to increase your content reach', icon: '#️⃣', link: '/app/hashtag-generator' },
-    { name: 'Upload Media', description: 'Upload and manage your media content', icon: '📸', link: '/app/media-upload' },
-    { name: 'Edit & Publish', description: 'Preview and publish your content to different platforms', icon: '🚀', link: '/app/platform-preview' },
-    { name: 'Publish Now', description: 'Publish posts immediately across multiple platforms', icon: '🚀', link: '/app/scheduler' }
+    { name: 'Start Creating', description: 'Complete content creation workflow - captions, hashtags, media, and publishing', icon: '🎯', link: '/app/caption-generator' },
+    { name: 'Generate Captions', description: 'Create engaging AI-powered captions for your social media posts', icon: '✍️', link: '/app/caption-generator', hidden: true },
+    { name: 'Generate Hashtags', description: 'Generate relevant hashtags to increase your content reach', icon: '#️⃣', link: '/app/hashtag-generator', hidden: true },
+    { name: 'Upload Media', description: 'Upload and manage your media content', icon: '📸', link: '/app/media-upload', hidden: true },
+    { name: 'Edit & Publish', description: 'Preview and publish your content to different platforms', icon: '🚀', link: '/app/platform-preview', hidden: true },
+    { name: 'Publish Now', description: 'Publish posts immediately across multiple platforms', icon: '🚀', link: '/app/scheduler', hidden: true }
   ];
 
   return (
@@ -191,19 +192,13 @@ const Dashboard = () => {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <div className="flex items-center justify-between mb-8">
+          <div className="mb-8">
             <h2 className="text-2xl font-bold">Welcome to Reelpostly</h2>
-            <button 
-              onClick={() => refresh()} 
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Refresh Status
-            </button>
           </div>
 
           {/* Daily Usage */}
           {hasSubscription && usageStatus && (
-            <div className="mb-6 bg-white rounded-lg shadow p-6">
+            <div className="mb-6 bg-white rounded-lg shadow p-6 overflow-hidden">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Daily Usage</h3>
@@ -224,17 +219,20 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="mt-4">
-                <div className="flex justify-between text-sm text-gray-600 mb-1">
-                  <span>Posts Used</span>
-                  <span>{usageStatus.usage.remaining} remaining</span>
+                <div className="flex justify-between text-sm text-gray-600 mb-1 min-w-0">
+                  <span className="truncate flex-1 mr-2">Posts Used</span>
+                  <span className="truncate flex-shrink-0">{usageStatus.usage.remaining} remaining</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-gray-200 rounded-full h-1 overflow-hidden">
                   <div
-                    className={`h-2 rounded-full ${
+                    className={`h-1 rounded-full ${
                       usageStatus.usage.remaining === 0 ? 'bg-red-500' :
                       usageStatus.usage.remaining <= 1 ? 'bg-yellow-500' : 'bg-green-500'
                     }`}
-                    style={{ width: `${(usageStatus.usage.used / usageStatus.usage.limit) * 100}%` }}
+                    style={{ 
+                      width: `${Math.min((usageStatus.usage.used / usageStatus.usage.limit) * 100, 100)}%`,
+                      maxWidth: '100%'
+                    }}
                   />
                 </div>
               </div>
@@ -344,35 +342,40 @@ const Dashboard = () => {
           </div>
 
           {/* Feature cards */}
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            {[
-              { name: 'Generate Captions', description: 'Create engaging AI-powered captions for your social media posts', icon: '✍️', link: '/app/caption-generator' },
-              { name: 'Generate Hashtags', description: 'Generate relevant hashtags to increase your content reach', icon: '#️⃣', link: '/app/hashtag-generator' },
-              { name: 'Upload Media', description: 'Upload and manage your media content', icon: '📸', link: '/app/media-upload' },
-              { name: 'Edit & Publish', description: 'Preview and publish your content to different platforms', icon: '🚀', link: '/app/platform-preview' },
-              { name: 'Publish Now', description: 'Publish posts immediately across multiple platforms', icon: '🚀', link: '/app/scheduler' }
-            ].map((feature) => (
+          {/* Center the single card */}
+          <div className="flex justify-center">
+            <div className="grid grid-cols-1 gap-6 w-full max-w-md">
+            {features.filter(feature => !feature.hidden).map((feature) => (
               <Link
                 key={feature.name}
                 to={feature.link}
                 onClick={(e) => handleFeatureClick(e)}
                 className={`block p-6 rounded-lg shadow transition-shadow ${
-                  hasSubscription ? 'bg-white hover:shadow-md cursor-pointer' : 'bg-gray-100 cursor-not-allowed opacity-75'
+                  feature.name === 'Start Creating' 
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white cursor-pointer' 
+                    : hasSubscription 
+                      ? 'bg-white hover:shadow-md cursor-pointer' 
+                      : 'bg-gray-100 cursor-not-allowed opacity-75'
                 }`}
               >
                 <div className="flex items-center">
                   <span className="text-4xl mr-4">{feature.icon}</span>
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">
+                    <h3 className={`text-lg font-medium ${
+                      feature.name === 'Start Creating' ? 'text-white' : 'text-gray-900'
+                    }`}>
                       {feature.name}
                       {hasSubscription && <span className="ml-2 text-green-500">✅</span>}
                     </h3>
-                    <p className="mt-1 text-gray-500">{feature.description}</p>
+                    <p className={`mt-1 ${
+                      feature.name === 'Start Creating' ? 'text-blue-100' : 'text-gray-500'
+                    }`}>{feature.description}</p>
                     {!hasSubscription && <p className="mt-2 text-sm text-red-500">⚠️ Subscription required</p>}
                   </div>
                 </div>
               </Link>
             ))}
+            </div>
           </div>
         </div>
       </main>

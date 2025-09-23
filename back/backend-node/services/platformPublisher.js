@@ -133,7 +133,8 @@ class PlatformPublisher {
       const platformToken = userTokens[platform];
 
       if (!platformToken) {
-        throw new Error(`No ${platform} token found for user ${clerkUserId}`);
+        const platformName = platform.charAt(0).toUpperCase() + platform.slice(1);
+        throw new Error(`${platformName} account not connected. Please connect your ${platformName} account first.`);
       }
 
       switch (platform) {

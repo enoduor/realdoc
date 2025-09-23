@@ -4,6 +4,7 @@ import { useContent } from '../context/ContentContext';
 import { publishNow } from '../api';
 import Scheduler from './Scheduler';
 import PostStatusTracker from './PostStatusTracker';
+import ErrorModal from './ErrorModal';
 
 const SchedulerPage = () => {
     const { content } = useContent();
@@ -12,6 +13,12 @@ const SchedulerPage = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [errorModal, setErrorModal] = useState({ 
+        show: false, 
+        title: '', 
+        message: '', 
+        type: 'error'
+    });
 
     // Helper function to get auth token
     const getAuthToken = useCallback(async () => {
@@ -46,7 +53,12 @@ const SchedulerPage = () => {
             return response;
         } catch (err) {
             const errorMessage = err.message || 'Failed to publish post';
-            setError(errorMessage);
+            setErrorModal({
+                show: true,
+                title: 'Publish Failed',
+                message: errorMessage,
+                type: 'error'
+            });
             throw err;
         } finally {
             setIsLoading(false);
@@ -107,11 +119,6 @@ const SchedulerPage = () => {
                     </div>
                 )}
 
-                {error && (
-                    <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-                        {error}
-                    </div>
-                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Publisher Component */}
@@ -144,6 +151,15 @@ const SchedulerPage = () => {
                     </div>
                 </div>
             </main>
+
+            {/* Error Modal */}
+            <ErrorModal
+                isOpen={errorModal.show}
+                onClose={() => setErrorModal({ show: false, title: '', message: '', type: 'error' })}
+                title={errorModal.title}
+                message={errorModal.message}
+                type={errorModal.type}
+            />
         </div>
     );
 };

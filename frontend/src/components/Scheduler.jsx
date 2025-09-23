@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PLATFORMS } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
 import { useUser } from '@clerk/clerk-react';
+import ErrorModal from './ErrorModal';
 
 // Helper function to convert platform names to IDs
 const toPlatformId = (name) => {
@@ -18,6 +19,12 @@ const Scheduler = ({ onPublishNow }) => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [publishResults, setPublishResults] = useState(null);
+    const [errorModal, setErrorModal] = useState({ 
+        show: false, 
+        title: '', 
+        message: '', 
+        type: 'error'
+    });
 
     // Clear only error messages after 5 seconds (keep success messages)
     useEffect(() => {
@@ -130,7 +137,12 @@ const Scheduler = ({ onPublishNow }) => {
             // Reset form after successful publishing
             setPlatforms([]);
         } catch (err) {
-            setError('Failed to publish post: ' + err.message);
+            setErrorModal({
+                show: true,
+                title: 'Publish Failed',
+                message: 'Failed to publish post: ' + err.message,
+                type: 'error'
+            });
         } finally {
             setIsPublishing(false);
         }
@@ -150,12 +162,6 @@ const Scheduler = ({ onPublishNow }) => {
                 </div>
             )}
 
-            {/* Error Message */}
-            {error && (
-                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                    {error}
-                </div>
-            )}
 
             {/* Platform Selection */}
             <div className="mb-6">
@@ -245,6 +251,15 @@ const Scheduler = ({ onPublishNow }) => {
                     </ul>
                 </div>
             )}
+
+            {/* Error Modal */}
+            <ErrorModal
+                isOpen={errorModal.show}
+                onClose={() => setErrorModal({ show: false, title: '', message: '', type: 'error' })}
+                title={errorModal.title}
+                message={errorModal.message}
+                type={errorModal.type}
+            />
         </div>
     );
 };

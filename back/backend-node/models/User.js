@@ -200,6 +200,7 @@ UserSchema.methods.incrementDailyUsage = async function () {
   this.resetDailyCountersIfNeeded(now);
   this.dailyPostsUsed = (this.dailyPostsUsed || 0) + 1;
   this.postsCreated = (this.postsCreated || 0) + 1;
+  this.lastPostDate = now; // Set the last post date
   await this.save();
 };
 
