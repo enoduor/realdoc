@@ -1465,10 +1465,16 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                         )}
 
                                                 {/* Action Buttons - Fixed positioning to avoid hashtag overlay */}
-                        <div className="flex mt-6">
+                        <div className="flex justify-between mt-6">
+                            <Link
+                                to="/app/media-upload"
+                                className="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
+                            >
+                                Back to Media Upload
+                            </Link>
                             <button
                                 onClick={handlePublishPost}
-                                className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                                className="px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                                 disabled={isPublishing || platforms.length === 0 || (!editableContent.captions[0] && editableContent.hashtags.filter(tag => tag.trim() !== '').length === 0 && !content.mediaUrl) || (usageStatus && !usageStatus.usage.canPublish)}
                             >
                                 {isPublishing ? (

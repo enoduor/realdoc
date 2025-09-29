@@ -103,7 +103,7 @@ router.get('/callback', async (req, res) => {
 
     const YouTubeToken = require('../models/YouTubeToken');
     await YouTubeToken.findOneAndUpdate(
-      { channelId: channel.id },
+      { clerkUserId: userInfo.userId, provider: 'youtube' },
       {
         clerkUserId: userInfo.userId || null,
         email: userInfo.email || null,
@@ -149,7 +149,7 @@ router.get('/status', requireAuth(), async (req, res) => {
   try {
     const clerkUserId = req.auth().userId;
     const YouTubeToken = require('../models/YouTubeToken');
-    const token = await YouTubeToken.findOne({ clerkUserId });
+    const token = await YouTubeToken.findOne({ clerkUserId, isActive: true });
     if (!token || !token.accessToken) return res.json({ connected: false });
 
     return res.json({

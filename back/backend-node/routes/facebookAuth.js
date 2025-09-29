@@ -116,7 +116,7 @@ router.get('/callback', async (req, res) => {
     } catch {}
 
     await FacebookToken.findOneAndUpdate(
-      { facebookUserId: facebookUser.id },
+      { clerkUserId: userInfo.userId, provider: 'facebook' },
       {
         clerkUserId: userInfo.userId,
         userId: userInfo.userId,
@@ -126,6 +126,7 @@ router.get('/callback', async (req, res) => {
         name: facebookUser.name,
         isActive: true,
         expiresAt,
+        provider: 'facebook',
         ...(pageId && { pageId, pageName, pageAccessToken }),
       },
       { upsert: true, new: true }

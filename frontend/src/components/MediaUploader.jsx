@@ -395,7 +395,7 @@ const MediaUploader = () => {
                     <video
                       src={formData.preview}
                       controls
-                      className={`rounded-lg shadow ${
+                      className={`rounded-lg shadow mx-auto object-cover ${
                         content?.platform === 'instagram' ? 'aspect-[4/5] max-h-[500px]' :
                         content?.platform === 'facebook' ? 'aspect-[16/9] max-h-[500px]' :
                         content?.platform === 'linkedin' ? 'aspect-[16/9] max-h-[500px]' :

@@ -144,7 +144,7 @@ router.get('/callback', async (req, res) => {
       : undefined;
 
     const doc = await LinkedInToken.findOneAndUpdate(
-      { linkedinUserId },
+      { clerkUserId: userId, provider: 'linkedin' },
       {
         clerkUserId: userId || null,
         userId: userId || null,
@@ -176,7 +176,7 @@ router.get('/callback', async (req, res) => {
 router.get('/status', requireAuth(), async (req, res) => {
   try {
     const clerkUserId = req.auth().userId;
-    const token = await LinkedInToken.findOne({ clerkUserId });
+    const token = await LinkedInToken.findOne({ clerkUserId, isActive: true });
     if (!token || !token.accessToken) return res.json({ connected: false });
     return res.json({
       connected: true,

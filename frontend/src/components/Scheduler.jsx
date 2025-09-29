@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { PLATFORMS } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
 import { useUser } from '@clerk/clerk-react';
@@ -212,11 +213,17 @@ const Scheduler = ({ onPublishNow }) => {
             )}
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex justify-between gap-3">
+                <Link
+                    to="/app/media-upload"
+                    className="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
+                >
+                    Back to Media Upload
+                </Link>
                 <button
                     onClick={handlePublishNow}
                     disabled={!canPublish}
-                    className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center justify-center"
+                    className="px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center justify-center"
                 >
                     {isPublishing ? (
                         <>

@@ -59,7 +59,7 @@ router.get('/callback', async (req, res) => {
     const { accessToken, accessSecret, userId, screenName } = await tempClient.login(oauth_verifier);
 
     await TwitterToken.findOneAndUpdate(
-      { twitterUserId: userId },
+      { clerkUserId: stored.userId, provider: 'twitter' },
       {
         clerkUserId: stored.userId,
         userId: stored.userId,
@@ -69,6 +69,7 @@ router.get('/callback', async (req, res) => {
         oauthToken: accessToken,
         oauthTokenSecret: accessSecret,
         provider: 'twitter',
+        isActive: true,
         updatedAt: new Date(),
       },
       { upsert: true, new: true }
@@ -84,7 +85,7 @@ router.get('/callback', async (req, res) => {
 router.get('/status', requireAuth(), async (req, res) => {
   try {
     const clerkUserId = req.auth().userId;
-    const token = await TwitterToken.findOne({ clerkUserId });
+    const token = await TwitterToken.findOne({ clerkUserId, isActive: true });
     if (!token || !token.oauthToken || !token.oauthTokenSecret) return res.json({ connected: false });
 
     return res.json({

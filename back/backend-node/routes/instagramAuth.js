@@ -96,22 +96,37 @@ router.get('/callback', async (req, res) => {
     // Resolve IG business account (optional)
     let pageId = null, pageName = null, igUserId = null, name = null;
     try {
+      console.log('🔍 [Instagram OAuth] Fetching Facebook pages...');
       const pagesResp = await axios.get(`${FACEBOOK_API_URL}/me/accounts`, {
         params: { access_token: longLived, fields: 'id,name' }, timeout: 15000,
       });
+      console.log('📄 [Instagram OAuth] Pages response:', pagesResp.data);
       const firstPage = pagesResp.data?.data?.[0];
       if (firstPage?.id) {
         pageId = firstPage.id; pageName = firstPage.name;
+        console.log('📄 [Instagram OAuth] Found page:', { pageId, pageName });
         const igResp = await axios.get(`${FACEBOOK_API_URL}/${pageId}`, {
           params: { access_token: longLived, fields: 'instagram_business_account{name}' }, timeout: 15000,
         });
+        console.log('📄 [Instagram OAuth] Instagram account response:', igResp.data);
         igUserId = igResp.data?.instagram_business_account?.id || null;
         name = igResp.data?.instagram_business_account?.name || pageName || null;
+        console.log('📄 [Instagram OAuth] Instagram account info:', { igUserId, name });
+      } else {
+        console.log('⚠️ [Instagram OAuth] No Facebook pages found');
       }
-    } catch {}
+    } catch (error) {
+      console.error('❌ [Instagram OAuth] Error fetching Instagram business account:', error.response?.data || error.message);
+    }
+
+    // Only save token if we have Instagram Business Account info
+    if (!igUserId) {
+      console.error('❌ [Instagram OAuth] No Instagram Business Account found. User must have Instagram Business/Creator account connected to Facebook Page.');
+      return res.redirect(abs('app?error=instagram_business_account_required'));
+    }
 
     await InstagramToken.findOneAndUpdate(
-      { clerkUserId: userId },
+      { clerkUserId: userId, provider: 'instagram' },
       { $set: {
           clerkUserId: userId,
           userId: userId,
@@ -119,9 +134,12 @@ router.get('/callback', async (req, res) => {
           accessToken: longLived,
           isActive: true,
           pageId, pageName, igUserId, name,
+          provider: 'instagram',
         } },
       { upsert: true, new: true }
     );
+
+    console.log('✅ [Instagram OAuth] Token saved successfully for user:', userId);
 
     return res.redirect(abs('app?connected=instagram'));
   } catch (e) {

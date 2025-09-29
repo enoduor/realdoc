@@ -1,5 +1,4 @@
 const User = require('../models/User');
-const PostUsage = require('../models/PostUsage');
 
 // Middleware to check daily post limits
 const checkDailyUsage = async (req, res, next) => {

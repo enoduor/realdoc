@@ -244,4 +244,173 @@ UserSchema.methods.canCreatePosts = function() {
   return this.hasActiveSubscription();
 };
 
+/**
+ * Helper method to delete all user tokens
+ */
+UserSchema.methods.deleteAllTokens = async function() {
+  const email = this.email;
+  
+  if (!email) {
+    console.log('⚠️ No email found, skipping token deletion');
+    return;
+  }
+  
+  try {
+    console.log(`🗑️ Deleting all tokens for user email: ${email}`);
+    
+    // Import token models
+    const TwitterToken = require('./TwitterToken');
+    const LinkedInToken = require('./LinkedInToken');
+    const InstagramToken = require('./InstagramToken');
+    const FacebookToken = require('./FacebookToken');
+    const TikTokToken = require('./TikTokToken');
+    const YouTubeToken = require('./YouTubeToken');
+    const ScheduledPost = require('./ScheduledPost');
+    
+    // Delete all platform tokens by email
+    const tokenDeletions = await Promise.allSettled([
+      TwitterToken.deleteMany({ email }),
+      LinkedInToken.deleteMany({ email }),
+      InstagramToken.deleteMany({ email }),
+      FacebookToken.deleteMany({ email }),
+      TikTokToken.deleteMany({ email }),
+      YouTubeToken.deleteMany({ email }),
+      ScheduledPost.deleteMany({ email })
+    ]);
+    
+    // Log results
+    const platforms = ['Twitter', 'LinkedIn', 'Instagram', 'Facebook', 'TikTok', 'YouTube', 'ScheduledPost'];
+    tokenDeletions.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        console.log(`✅ Deleted ${result.value.deletedCount} ${platforms[index]} records`);
+      } else {
+        console.error(`❌ Failed to delete ${platforms[index]}:`, result.reason);
+      }
+    });
+    
+    console.log(`🎉 Token cleanup completed for user email: ${email}`);
+  } catch (error) {
+    console.error('❌ Error deleting user tokens:', error);
+    throw error; // Re-throw to let caller handle
+  }
+};
+
+/**
+ * Pre-delete hook: Delete all associated tokens when user is deleted (document-based)
+ */
+UserSchema.pre('deleteOne', { document: true, query: false }, async function() {
+  await this.deleteAllTokens();
+});
+
+/**
+ * Pre-delete hook: Delete all associated tokens when user is deleted (query-based)
+ */
+UserSchema.pre('deleteOne', { document: false, query: true }, async function() {
+  const query = this.getQuery();
+  const email = query.email;
+  const clerkUserId = query.clerkUserId;
+  
+  if (!email && !clerkUserId) return;
+  
+  // If we have clerkUserId but no email, get the user's email first
+  let userEmail = email;
+  if (!userEmail && clerkUserId) {
+    const user = await this.model.findOne({ clerkUserId });
+    if (user) userEmail = user.email;
+  }
+  
+  if (!userEmail) {
+    console.log('⚠️ No email found for user deletion, skipping token cleanup');
+    return;
+  }
+  
+  try {
+    console.log(`🗑️ Deleting all tokens for user email: ${userEmail}`);
+    
+    // Import token models
+    const TwitterToken = require('./TwitterToken');
+    const LinkedInToken = require('./LinkedInToken');
+    const InstagramToken = require('./InstagramToken');
+    const FacebookToken = require('./FacebookToken');
+    const TikTokToken = require('./TikTokToken');
+    const YouTubeToken = require('./YouTubeToken');
+    const ScheduledPost = require('./ScheduledPost');
+    
+    // Delete all platform tokens by email
+    const tokenDeletions = await Promise.allSettled([
+      TwitterToken.deleteMany({ email: userEmail }),
+      LinkedInToken.deleteMany({ email: userEmail }),
+      InstagramToken.deleteMany({ email: userEmail }),
+      FacebookToken.deleteMany({ email: userEmail }),
+      TikTokToken.deleteMany({ email: userEmail }),
+      YouTubeToken.deleteMany({ email: userEmail }),
+      ScheduledPost.deleteMany({ email: userEmail })
+    ]);
+    
+    // Log results
+    const platforms = ['Twitter', 'LinkedIn', 'Instagram', 'Facebook', 'TikTok', 'YouTube', 'ScheduledPost'];
+    tokenDeletions.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        console.log(`✅ Deleted ${result.value.deletedCount} ${platforms[index]} records`);
+      } else {
+        console.error(`❌ Failed to delete ${platforms[index]}:`, result.reason);
+      }
+    });
+    
+    console.log(`🎉 Token cleanup completed for user email: ${userEmail}`);
+  } catch (error) {
+    console.error('❌ Error deleting user tokens:', error);
+    // Don't throw error to prevent user deletion from failing
+  }
+});
+
+/**
+ * Pre-delete hook for findOneAndDelete and deleteOne queries
+ */
+UserSchema.pre('findOneAndDelete', async function() {
+  const query = this.getQuery();
+  const email = query.email;
+  
+  if (!email) return;
+  
+  try {
+    console.log(`🗑️ Deleting all tokens for user email: ${email}`);
+    
+    // Import token models
+    const TwitterToken = require('./TwitterToken');
+    const LinkedInToken = require('./LinkedInToken');
+    const InstagramToken = require('./InstagramToken');
+    const FacebookToken = require('./FacebookToken');
+    const TikTokToken = require('./TikTokToken');
+    const YouTubeToken = require('./YouTubeToken');
+    const ScheduledPost = require('./ScheduledPost');
+    
+    // Delete all platform tokens by email
+    const tokenDeletions = await Promise.allSettled([
+      TwitterToken.deleteMany({ email }),
+      LinkedInToken.deleteMany({ email }),
+      InstagramToken.deleteMany({ email }),
+      FacebookToken.deleteMany({ email }),
+      TikTokToken.deleteMany({ email }),
+      YouTubeToken.deleteMany({ email }),
+      ScheduledPost.deleteMany({ email })
+    ]);
+    
+    // Log results
+    const platforms = ['Twitter', 'LinkedIn', 'Instagram', 'Facebook', 'TikTok', 'YouTube', 'ScheduledPost'];
+    tokenDeletions.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        console.log(`✅ Deleted ${result.value.deletedCount} ${platforms[index]} records`);
+      } else {
+        console.error(`❌ Failed to delete ${platforms[index]}:`, result.reason);
+      }
+    });
+    
+    console.log(`🎉 Token cleanup completed for user email: ${email}`);
+  } catch (error) {
+    console.error('❌ Error deleting user tokens:', error);
+    // Don't throw error to prevent user deletion from failing
+  }
+});
+
 module.exports = mongoose.model("User", UserSchema);

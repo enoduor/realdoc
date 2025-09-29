@@ -21,14 +21,14 @@ const LandingPage = () => {
             <a href="#features" className="nav-link">Features</a>
             <a href="#pricing" className="nav-link">Pricing</a>
             <Link to="/about" className="nav-link">About</Link>
-            <a 
+            {/* <a 
               href="https://bigvideograb.com/" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="nav-link"
             >
               Grab videos
-            </a>
+            </a> */}
           </div>
           <div className="nav-actions">
             <Link to="/login" className="nav-btn nav-btn-secondary">Sign In</Link>
@@ -43,8 +43,7 @@ const LandingPage = () => {
           <div className="hero-content">
             <h1 className="hero-title">Create Once, Publish Everywhere!</h1>
             <p className="hero-subtitle">
-            Creators are overwhelmed by too many tools and endless complexity. We're here to make things simple, so you can focus on creating, not juggling.
-            </p>
+            Creators are overwhelmed by too many tools and endless complexity. That’s why we want you to join us in building an all-in-one platform so you can create, edit, and publish without ever leaving the app. We make it simple, so you can focus on creating, not juggling.  </p>
             <div className="hero-benefits">
                 <ul className="space-y-3 text-left">
                     <li className="flex items-start">
@@ -80,15 +79,26 @@ const LandingPage = () => {
             <div className="hero-stats">
               <div className="stat">
                 <span className="stat-number">Lifetime</span>
-                <span className="stat-label">One-time payment</span>
+                <a 
+                  href="https://docs.google.com/forms/d/e/1FAIpQLSdXGiQBAVMQy3lXGkNdRwqgfWw20E_VlXODYloiMo7L3bwYCw/viewform"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="stat-label text-white font-bold"
+                >
+                 Fill this form
+                </a>
               </div>
+            
               <div className="stat">
-                <span className="stat-number">Referrals</span>
-                <span className="stat-label">Free Subscription</span>
-              </div>
-              <div className="stat">
-                <span className="stat-number">Launch</span>
-                <span className="stat-label">Friendly Pricing</span>
+                <span className="stat-number">Launch Day </span>
+                <a 
+                  href="https://docs.google.com/forms/d/e/1FAIpQLSdXGiQBAVMQy3lXGkNdRwqgfWw20E_VlXODYloiMo7L3bwYCw/viewform"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="stat-label text-white font-bold"
+                >
+                 Get 30% Discount
+                </a>
               </div>
             </div>
           </div>
@@ -139,12 +149,11 @@ const LandingPage = () => {
             </ul>
           </section>
 
-          <section id="videograb-funnel" className="rp-section">
+          {/* <section id="videograb-funnel" className="rp-section">
             <h2>Free Video Downloader</h2>
             <p>In case you don't have any content to repurpose, you can start with <strong>free publicly available videos</strong> right away. Once you have your video,  repurpose your TikToks, Twitter Shorts, or Facebook Reels, then with a single click, send them straight to ReelPostly for multi-platform publishing.</p>
             <p>It's the fastest way to go from download → caption → share everywhere.</p>
             
-            {/* VideoGrab Platform Button */}
             <div className="videograb-platform-section">
               <a 
                 href="https://bigvideograb.com/" 
@@ -155,7 +164,7 @@ const LandingPage = () => {
                 Grab Free Videos
               </a>
             </div>
-          </section>
+          </section> */}
 
           <section id="why-reelpostly" className="rp-section">
             <h2>Why Choose ReelPostly?</h2>
@@ -166,7 +175,7 @@ const LandingPage = () => {
               <li>🧘 <strong>Simplicity</strong>: No extra noise, just effortless publishing.</li>
               <li>🎥 <strong>Free Funnel</strong>: <a href="https://bigvideograb.com/" target="_blank" rel="noopener noreferrer">Download</a> → <a href="https://reelpostly.com/login">Repurpose</a> → Publish everywhere.</li>
             </ul>
-            <Link to="/register" className="cta-button-large">Start Free Today</Link>
+            <Link to="/register" className="cta-button-large">Sign Up</Link>
           </section>
 
         </div>
@@ -182,9 +191,9 @@ const LandingPage = () => {
         <div className="cta-container">
           <h2>Ready to Transform Your Social Media?</h2>
           <p>Start creating and publishing content across all platforms with Reelpostly</p>
-          <Link to="/register" className="cta-button-large">
-            Sign Up
-          </Link>
+          <Link to="/register" className="cta-primary">
+                Sign Up
+              </Link>
           <p className="cta-note">Start your 3-day free trial and cancel anytime</p>
         </div>
       </section>

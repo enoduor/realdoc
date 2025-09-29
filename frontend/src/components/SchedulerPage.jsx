@@ -120,15 +120,15 @@ const SchedulerPage = () => {
                 )}
 
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Publisher Component */}
+                <div className="space-y-8">
+                    {/* Publisher Component - Full Width */}
                     <div>
                         <Scheduler 
                             onPublishNow={handlePublishNow}
                         />
                     </div>
 
-                    {/* Published Posts Tracker */}
+                    {/* Published Posts Tracker - Full Width */}
                     <div>
                         <div className="bg-white rounded-lg shadow p-6">
                             <div className="flex justify-between items-center mb-6">

@@ -335,9 +335,9 @@ const Dashboard = () => {
               <a href={`/api/auth/youtube/oauth2/start/google?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-[#FF0000] text-white rounded-lg hover:bg-[#cc0000] transition-colors" title="Connect YouTube">
                 <Youtube size={24} />
               </a>
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-400 text-white rounded-lg cursor-not-allowed" title="TikTok - Coming Soon">
+              <a href={`/api/auth/tiktok/oauth/start/tiktok?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors" title="Connect TikTok">
                 <Music size={24} />
-              </div>
+              </a>
             </div>
           </div>
 
