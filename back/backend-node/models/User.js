@@ -249,14 +249,15 @@ UserSchema.methods.canCreatePosts = function() {
  */
 UserSchema.methods.deleteAllTokens = async function() {
   const email = this.email;
+  const clerkUserId = this.clerkUserId;
   
-  if (!email) {
-    console.log('⚠️ No email found, skipping token deletion');
+  if (!email && !clerkUserId) {
+    console.log('⚠️ No email or clerkUserId found, skipping token deletion');
     return;
   }
   
   try {
-    console.log(`🗑️ Deleting all tokens for user email: ${email}`);
+    console.log(`🗑️ Deleting all tokens for user - email: ${email}, clerkUserId: ${clerkUserId}`);
     
     // Import token models
     const TwitterToken = require('./TwitterToken');
@@ -267,15 +268,18 @@ UserSchema.methods.deleteAllTokens = async function() {
     const YouTubeToken = require('./YouTubeToken');
     const ScheduledPost = require('./ScheduledPost');
     
-    // Delete all platform tokens by email
+    // Build query conditions - use both email and clerkUserId for comprehensive deletion
+    const combinedCondition = { $or: [{ email }, { clerkUserId }] };
+    
+    // Delete all platform tokens by email OR clerkUserId
     const tokenDeletions = await Promise.allSettled([
-      TwitterToken.deleteMany({ email }),
-      LinkedInToken.deleteMany({ email }),
-      InstagramToken.deleteMany({ email }),
-      FacebookToken.deleteMany({ email }),
-      TikTokToken.deleteMany({ email }),
-      YouTubeToken.deleteMany({ email }),
-      ScheduledPost.deleteMany({ email })
+      TwitterToken.deleteMany(combinedCondition),
+      LinkedInToken.deleteMany(combinedCondition),
+      InstagramToken.deleteMany(combinedCondition),
+      FacebookToken.deleteMany(combinedCondition),
+      TikTokToken.deleteMany(combinedCondition),
+      YouTubeToken.deleteMany(combinedCondition),
+      ScheduledPost.deleteMany(combinedCondition)
     ]);
     
     // Log results
@@ -288,7 +292,7 @@ UserSchema.methods.deleteAllTokens = async function() {
       }
     });
     
-    console.log(`🎉 Token cleanup completed for user email: ${email}`);
+    console.log(`🎉 Token cleanup completed for user - email: ${email}, clerkUserId: ${clerkUserId}`);
   } catch (error) {
     console.error('❌ Error deleting user tokens:', error);
     throw error; // Re-throw to let caller handle
@@ -296,14 +300,7 @@ UserSchema.methods.deleteAllTokens = async function() {
 };
 
 /**
- * Pre-delete hook: Delete all associated tokens when user is deleted (document-based)
- */
-UserSchema.pre('deleteOne', { document: true, query: false }, async function() {
-  await this.deleteAllTokens();
-});
-
-/**
- * Pre-delete hook: Delete all associated tokens when user is deleted (query-based)
+ * Pre-delete hook: Delete all associated tokens when user is deleted
  */
 UserSchema.pre('deleteOne', { document: false, query: true }, async function() {
   const query = this.getQuery();
@@ -325,7 +322,7 @@ UserSchema.pre('deleteOne', { document: false, query: true }, async function() {
   }
   
   try {
-    console.log(`🗑️ Deleting all tokens for user email: ${userEmail}`);
+    console.log(`🗑️ Deleting all tokens for user - email: ${userEmail}, clerkUserId: ${clerkUserId}`);
     
     // Import token models
     const TwitterToken = require('./TwitterToken');
@@ -336,15 +333,18 @@ UserSchema.pre('deleteOne', { document: false, query: true }, async function() {
     const YouTubeToken = require('./YouTubeToken');
     const ScheduledPost = require('./ScheduledPost');
     
-    // Delete all platform tokens by email
+    // Build query conditions - use both email and clerkUserId for comprehensive deletion
+    const combinedCondition = { $or: [{ email: userEmail }, { clerkUserId }] };
+    
+    // Delete all platform tokens by email OR clerkUserId
     const tokenDeletions = await Promise.allSettled([
-      TwitterToken.deleteMany({ email: userEmail }),
-      LinkedInToken.deleteMany({ email: userEmail }),
-      InstagramToken.deleteMany({ email: userEmail }),
-      FacebookToken.deleteMany({ email: userEmail }),
-      TikTokToken.deleteMany({ email: userEmail }),
-      YouTubeToken.deleteMany({ email: userEmail }),
-      ScheduledPost.deleteMany({ email: userEmail })
+      TwitterToken.deleteMany(combinedCondition),
+      LinkedInToken.deleteMany(combinedCondition),
+      InstagramToken.deleteMany(combinedCondition),
+      FacebookToken.deleteMany(combinedCondition),
+      TikTokToken.deleteMany(combinedCondition),
+      YouTubeToken.deleteMany(combinedCondition),
+      ScheduledPost.deleteMany(combinedCondition)
     ]);
     
     // Log results
@@ -357,7 +357,7 @@ UserSchema.pre('deleteOne', { document: false, query: true }, async function() {
       }
     });
     
-    console.log(`🎉 Token cleanup completed for user email: ${userEmail}`);
+    console.log(`🎉 Token cleanup completed for user - email: ${userEmail}, clerkUserId: ${clerkUserId}`);
   } catch (error) {
     console.error('❌ Error deleting user tokens:', error);
     // Don't throw error to prevent user deletion from failing
@@ -370,11 +370,27 @@ UserSchema.pre('deleteOne', { document: false, query: true }, async function() {
 UserSchema.pre('findOneAndDelete', async function() {
   const query = this.getQuery();
   const email = query.email;
+  const clerkUserId = query.clerkUserId;
   
-  if (!email) return;
+  if (!email && !clerkUserId) {
+    console.log('⚠️ No email or clerkUserId found for user deletion, skipping token cleanup');
+    return;
+  }
+  
+  // If we have clerkUserId but no email, get the user's email first
+  let userEmail = email;
+  if (!userEmail && clerkUserId) {
+    const user = await this.model.findOne({ clerkUserId });
+    if (user) userEmail = user.email;
+  }
+  
+  if (!userEmail && !clerkUserId) {
+    console.log('⚠️ No email or clerkUserId found for user deletion, skipping token cleanup');
+    return;
+  }
   
   try {
-    console.log(`🗑️ Deleting all tokens for user email: ${email}`);
+    console.log(`🗑️ Deleting all tokens for user - email: ${userEmail}, clerkUserId: ${clerkUserId}`);
     
     // Import token models
     const TwitterToken = require('./TwitterToken');
@@ -385,15 +401,18 @@ UserSchema.pre('findOneAndDelete', async function() {
     const YouTubeToken = require('./YouTubeToken');
     const ScheduledPost = require('./ScheduledPost');
     
-    // Delete all platform tokens by email
+    // Build query conditions - use both email and clerkUserId for comprehensive deletion
+    const combinedCondition = { $or: [{ email: userEmail }, { clerkUserId }] };
+    
+    // Delete all platform tokens by email OR clerkUserId
     const tokenDeletions = await Promise.allSettled([
-      TwitterToken.deleteMany({ email }),
-      LinkedInToken.deleteMany({ email }),
-      InstagramToken.deleteMany({ email }),
-      FacebookToken.deleteMany({ email }),
-      TikTokToken.deleteMany({ email }),
-      YouTubeToken.deleteMany({ email }),
-      ScheduledPost.deleteMany({ email })
+      TwitterToken.deleteMany(combinedCondition),
+      LinkedInToken.deleteMany(combinedCondition),
+      InstagramToken.deleteMany(combinedCondition),
+      FacebookToken.deleteMany(combinedCondition),
+      TikTokToken.deleteMany(combinedCondition),
+      YouTubeToken.deleteMany(combinedCondition),
+      ScheduledPost.deleteMany(combinedCondition)
     ]);
     
     // Log results
@@ -406,7 +425,7 @@ UserSchema.pre('findOneAndDelete', async function() {
       }
     });
     
-    console.log(`🎉 Token cleanup completed for user email: ${email}`);
+    console.log(`🎉 Token cleanup completed for user - email: ${userEmail}, clerkUserId: ${clerkUserId}`);
   } catch (error) {
     console.error('❌ Error deleting user tokens:', error);
     // Don't throw error to prevent user deletion from failing

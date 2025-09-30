@@ -9,7 +9,7 @@ const TikTokTokenSchema = new mongoose.Schema(
     email: { type: String, default: null },
 
     // Back-compat reference to User document (may be absent going forward)
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
+    userId: { type: String, default: null }, // optional app user id
 
     // TikTok account info (fill after first fetch)
     tiktokUserOpenId: { type: String, index: true }, // TikTok's user identifier

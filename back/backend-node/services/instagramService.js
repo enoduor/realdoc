@@ -69,11 +69,27 @@ class InstagramService {
   }
 
   async createContainerImage(accessToken, igUserId, imageUrl, caption) {
-    const resp = await axios.post(`${FACEBOOK_API_URL}/${igUserId}/media`, null, {
-      params: { image_url: imageUrl, caption, access_token: accessToken },
-      timeout: 20000,
-    });
-    return resp.data; // { id: creation_id }
+    try {
+      const resp = await axios.post(`${FACEBOOK_API_URL}/${igUserId}/media`, null, {
+        params: { 
+          image_url: imageUrl, 
+          caption, 
+          access_token: accessToken,
+          media_type: 'IMAGE'  // Explicitly specify media type for images
+        },
+        timeout: 20000,
+      });
+      return resp.data; // { id: creation_id }
+    } catch (error) {
+      console.error('❌ Instagram Container Creation Error:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        url: imageUrl,
+        captionLength: caption?.length,
+        igUserId
+      });
+      throw error;
+    }
   }
 
   async createContainerVideo(accessToken, igUserId, videoUrl, caption) {
@@ -93,11 +109,21 @@ class InstagramService {
   }
 
   async publishMedia(accessToken, igUserId, creationId) {
-    const resp = await axios.post(`${FACEBOOK_API_URL}/${igUserId}/media_publish`, null, {
-      params: { creation_id: creationId, access_token: accessToken },
-      timeout: 60000, // Increased from 15s to 60s for video processing
-    });
-    return resp.data; // { id: ig_media_id }
+    try {
+      const resp = await axios.post(`${FACEBOOK_API_URL}/${igUserId}/media_publish`, null, {
+        params: { creation_id: creationId, access_token: accessToken },
+        timeout: 60000, // Increased from 15s to 60s for video processing
+      });
+      return resp.data; // { id: ig_media_id }
+    } catch (error) {
+      console.error('❌ Instagram Publish Error:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        creationId,
+        igUserId
+      });
+      throw error;
+    }
   }
 
   async getPermalink(accessToken, mediaId) {

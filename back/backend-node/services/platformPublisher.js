@@ -290,27 +290,26 @@ case 'youtube': {
 
         // ------------ INSTAGRAM ------------
         case 'instagram': {
-          const { captions, text, mediaUrl, mediaType, hashtags } = postData || {};
+          console.log('[Publisher] Executing Instagram case');
+          const { captions, text, mediaUrl, mediaType } = postData || {};
           
           // Use the platform token we already retrieved
           const identifier = { clerkUserId: clerkUserId };
 
-          // Handle both string and array inputs for captions
+          // Handle both string and array inputs for captions (same as LinkedIn/Facebook)
           const captionText = Array.isArray(captions) ? captions[0] || '' : captions || '';
-          const safeCaption = (captionText || text || '').toString().trim();
-          const tagString = Array.isArray(hashtags) && hashtags.length
-            ? hashtags.map(t => `#${(t ?? '').toString().replace(/^#+/, '')}`).join(' ')
-            : '';
-          const message = [safeCaption, tagString].filter(Boolean).join(' ').trim();
-
+          const message = (captionText || text || '').trim();
           if (!message) throw new Error('Instagram post text is empty');
           if (!mediaUrl) throw new Error('Instagram requires mediaUrl (publicly reachable)');
+
+          console.log('[Publisher][Instagram] message.preview =', message.slice(0, 140));
+          console.log('[Publisher][Instagram] mediaUrl =', mediaUrl);
 
           const isVideo = String(mediaType || '').toLowerCase() === 'video' || /\.(mp4|mov|m4v)(\?|$)/i.test(mediaUrl);
 
           const result = await this.instagramService.postToInstagram(identifier, message, mediaUrl, isVideo);
 
-          // Instagram service now returns structured object like LinkedIn and Twitter
+          // Instagram service now returns structured object like LinkedIn and Facebook
           return {
             success: true,
             platform,
@@ -353,6 +352,16 @@ case 'youtube': {
       }
     } catch (error) {
       console.error(`❌ Failed to publish to ${platform}:`, error.message);
+      
+      // Add specific error handling for Instagram 400 errors
+      if (platform === 'instagram' && error.response?.status === 400) {
+        console.error('❌ Instagram 400 Error Details:', {
+          status: error.response?.status,
+          data: error.response?.data,
+          message: error.message
+        });
+      }
+      
       return {
         success: false,
         platform,

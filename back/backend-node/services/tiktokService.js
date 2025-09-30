@@ -270,6 +270,22 @@ class TikTokService {
       throw new Error('TikTok post text is empty');
     }
 
+    // Check if we have the required scopes for video posting
+    const tokenDoc = await TikTokToken.findOne({ clerkUserId, provider: 'tiktok' });
+    if (!tokenDoc) {
+      throw new Error('TikTok not connected. Please connect your TikTok account first.');
+    }
+
+    // Check if token has video posting scopes
+    const hasVideoScopes = tokenDoc.scope && (
+      tokenDoc.scope.includes('video.upload') && 
+      tokenDoc.scope.includes('video.publish')
+    );
+
+    if (!hasVideoScopes) {
+      throw new Error('TikTok posting unavailable. Waiting for approval. Check back in two days.');
+    }
+
     // Get profile information (matches tiktokAuth.js pattern)
     const profile = await this.getTikTokProfile(identifier);
     console.log('[TikTok] Posting as:', profile.displayName || profile.username || 'TikTok User');
@@ -300,10 +316,19 @@ class TikTokService {
 
       return result;
     } catch (error) {
-      // If we get a scope/permission error, provide a helpful message
-      if (error.message.includes('scope') || error.message.includes('permission') || error.message.includes('403')) {
-        throw new Error('TikTok posting requires additional permissions. Please contact support to enable video posting for your TikTok app.');
+      // Handle specific TikTok API errors
+      if (error.response?.status === 401) {
+        console.error('❌ TikTok 401 Error - Token/Scope Issue:', error.response?.data);
+        throw new Error('TikTok posting unavailable. Waiting for approval. Check back in two days.');
       }
+      if (error.response?.status === 403) {
+        console.error('❌ TikTok 403 Error - Permission Issue:', error.response?.data);
+        throw new Error('TikTok posting unavailable. Waiting for approval. Check back in two days.');
+      }
+      if (error.message.includes('scope') || error.message.includes('permission')) {
+        throw new Error('TikTok posting unavailable. Waiting for approval. Check back in two days.');
+      }
+      console.error('❌ TikTok API Error:', error.response?.data || error.message);
       throw error;
     }
   }

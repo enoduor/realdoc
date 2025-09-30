@@ -41,7 +41,7 @@ function verifyState(signed) {
 function buildAuthorizeRedirect(state) {
   const params = new URLSearchParams({
     client_key: TIKTOK_CLIENT_KEY || '',
-    // TikTok v2 expects space-separated scopes - only basic info needed for login
+    // TikTok v2 expects space-separated scopes - request video scopes but fallback to basic if not approved
     scope: 'user.info.basic,video.upload,video.publish',
     response_type: 'code',
     redirect_uri: TIKTOK_REDIRECT_URI,

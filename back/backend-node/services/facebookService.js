@@ -6,12 +6,18 @@ const FacebookToken = require('../models/FacebookToken');
 
 const {
   FACEBOOK_APP_ID,
-  FACEBOOK_APP_SECRET
+  FACEBOOK_APP_SECRET,
+  ENABLE_LOGS = 'true'
 } = process.env;
 
 const FACEBOOK_API_URL = process.env.FACEBOOK_API_URL || 'https://graph.facebook.com/v18.0';
 const PYTHON_API_BASE_URL = process.env.PYTHON_API_BASE_URL || 'http://localhost:5001';
 const MediaManagerService = require('./mediaManagerService');
+
+const LOG_ENABLED = String(ENABLE_LOGS).toLowerCase() !== 'false';
+const log = (...args) => { if (LOG_ENABLED) console.log(...args); };
+const warn = (...args) => { if (LOG_ENABLED) console.warn(...args); };
+const error = (...args) => console.error(...args);
 
 class FacebookService {
   constructor(config = {}) {
@@ -23,7 +29,7 @@ class FacebookService {
    * Download media from external URL to buffer
    */
   async downloadToBuffer(url) {
-    console.log('[Facebook] Downloading media from external URL:', url);
+    log('[Facebook] Downloading media from external URL:', url);
     try {
       const response = await axios.get(url, {
         responseType: 'arraybuffer',
@@ -33,10 +39,10 @@ class FacebookService {
         headers: { 'User-Agent': 'Repostly/1.0' }
       });
       const buffer = Buffer.from(response.data);
-      console.log('[Facebook] Media downloaded successfully, size:', buffer.length, 'bytes');
+      log('[Facebook] Media downloaded successfully, size:', buffer.length, 'bytes');
       return buffer;
-    } catch (error) {
-      console.error('[Facebook] Failed to download media:', error.message);
+    } catch (e) {
+      error('[Facebook] Failed to download media:', e.message);
       throw new Error('Failed to download media from external URL');
     }
   }
@@ -44,13 +50,14 @@ class FacebookService {
   /**
    * Rehost media to S3 for reliable Facebook access
    */
-  async rehostToS3(buffer, originalUrl) {
-    console.log('[Facebook] Rehosting media to S3 for reliable Facebook access...');
+  async rehostToS3(buffer, originalNameOrUrl = 'media') {
+    log('[Facebook] Rehosting media to S3 for reliable Facebook access...');
     try {
       const form = new FormData();
-      const filename = path.basename(originalUrl.split('?')[0]) || 'media';
-      const contentType = 'video/mp4'; // Will be overridden by detectMedia
-      
+      const filename = path.basename(String(originalNameOrUrl).split('?')[0]) || 'media';
+      // Default to mp4; FB will fetch by URL anyway; our S3 object should have correct Content-Type
+      const contentType = this._mimeFromFilename(filename) || 'application/octet-stream';
+
       form.append('file', buffer, { filename, contentType });
       form.append('platform', 'facebook');
 
@@ -58,23 +65,25 @@ class FacebookService {
         headers: form.getHeaders(),
         timeout: 60000,
       });
-      
       if (!resp.data?.url) throw new Error('S3 rehost failed: no URL returned');
-      
-      console.log('[Facebook] Media rehosted to S3:', resp.data.url);
+
+      log('[Facebook] Media rehosted to S3:', resp.data.url);
       return resp.data.url;
-    } catch (error) {
-      console.error('[Facebook] Failed to rehost media to S3:', error.message);
+    } catch (e) {
+      error('[Facebook] Failed to rehost media to S3:', e.message);
       throw new Error('Failed to rehost media to S3');
     }
   }
 
   /**
-   * Find a token doc by { facebookUserId }, { clerkUserId }, { userId }, or { email }
+   * Find a token doc by identifiers; always prefer latest active token
    */
   async findToken(identifier = {}) {
     if (identifier.facebookUserId) {
-      return FacebookToken.findOne({ facebookUserId: identifier.facebookUserId });
+      return FacebookToken.findOne({
+        facebookUserId: identifier.facebookUserId,
+        isActive: true
+      }).sort({ updatedAt: -1 });
     }
     if (identifier.clerkUserId) {
       return FacebookToken.findOne({
@@ -98,7 +107,7 @@ class FacebookService {
   }
 
   /**
-   * Get Facebook user info and cache handle
+   * Get Facebook user info and cache handle (Page token expected)
    */
   async getFacebookHandle(identifier) {
     const doc = await this.findToken(identifier);
@@ -108,34 +117,34 @@ class FacebookService {
     const CACHE_MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
 
     if (doc.handle && handleCacheAge < CACHE_MAX_AGE) {
-      console.log('[Facebook] Using cached handle (age:', Math.round(handleCacheAge / 1000 / 60), 'min):', doc.handle);
+      log('[Facebook] Using cached handle (age:', Math.round(handleCacheAge / 60000), 'min):', doc.handle);
       return doc.handle;
     }
 
-    console.log('[Facebook] Handle cache stale/missing, making API call to get user info...');
-
+    log('[Facebook] Handle cache stale/missing, making API call to get user info...');
     try {
+      // Prefer page token if available; otherwise user token (still for /me but just to read)
+      const tokenForInfo = doc.pageAccessToken || doc.accessToken;
       const response = await axios.get(`${FACEBOOK_API_URL}/me`, {
         params: {
-          access_token: doc.accessToken,
+          access_token: tokenForInfo,
           fields: 'id,name,username'
         },
         timeout: 15000
       });
 
-      console.log('[FB] me success - data:', response.data);
-
+      log('[FB] /me success - data:', response.data);
       const handle = response.data?.username || response.data?.name || `fb_${response.data?.id}`;
       if (handle) {
         doc.handle = handle;
         doc.name = response.data?.name || doc.name;
         doc.handleUpdatedAt = new Date();
         await doc.save();
-        console.log('[Facebook] Cached handle:', handle);
+        log('[Facebook] Cached handle:', handle);
       }
       return handle || null;
     } catch (e) {
-      console.error('[FB ERR] me failed:', e.response?.data || e.message);
+      error('[FB ERR] /me failed:', e.response?.data || e.message);
       const fbErr = e.response?.data;
       if (fbErr?.error?.code === 190) {
         throw new Error('Facebook token expired or invalid. Please reconnect Facebook.');
@@ -145,11 +154,11 @@ class FacebookService {
   }
 
   /**
-   * Internal: detect media type from Buffer or filename
-   * Returns { type: 'IMAGE'|'IMAGE_GIF'|'VIDEO', mimeType: string, filename: string }
+   * Detect media type by buffer signature or filename
+   * Returns { type: 'IMAGE'|'IMAGE_GIF'|'VIDEO', mimeType, filename }
    */
   detectMedia(input, filenameHint = null) {
-    // Default
+    // Default assumption
     let out = { type: 'VIDEO', mimeType: 'video/mp4', filename: 'video.mp4' };
 
     if (Buffer.isBuffer(input) && input.length >= 12) {
@@ -183,181 +192,176 @@ class FacebookService {
     return out;
   }
 
+  _mimeFromFilename(name) {
+    const low = String(name).toLowerCase();
+    if (low.endsWith('.jpg') || low.endsWith('.jpeg')) return 'image/jpeg';
+    if (low.endsWith('.png')) return 'image/png';
+    if (low.endsWith('.gif')) return 'image/gif';
+    if (low.endsWith('.mp4')) return 'video/mp4';
+    if (low.endsWith('.mov')) return 'video/quicktime';
+    if (low.endsWith('.webm')) return 'video/webm';
+    return null;
+  }
+
   /**
-   * Upload media to Facebook with text
+   * Upload media with text to a Facebook Page (required). Uses URL-based upload.
    */
   async uploadMediaWithText(identifier, mediaUrlOrBuffer, text, explicitType = null) {
     const doc = await this.findToken(identifier);
     if (!doc) throw new Error('Facebook not connected for this user');
 
-    let input;
-    let filenameHint = null;
-    let s3Url = null;
+    // ✅ Require Page context (API does not allow posting to personal timeline)
+    if (!doc.pageId || !doc.pageAccessToken) {
+      throw new Error('Facebook Page not connected. Please connect a Facebook Page to publish.');
+    }
+    const targetId = doc.pageId;
+    const tokenForPost = doc.pageAccessToken;
 
-    // Handle URL string by using centralized media manager
+    // Normalize input to a URL that Facebook can pull (S3)
+    let inputUrl;
+    let detectedFrom = 'default';
+    let filenameHint = null;
+
     if (typeof mediaUrlOrBuffer === 'string') {
-      console.log('[Facebook] Getting consistent media URL via centralized manager...');
-      try {
-        // Get consistent S3 URL (or create if doesn't exist)
-        const s3Url = await this.mediaManager.getConsistentMediaUrl(mediaUrlOrBuffer, 'video');
-        
-        // Use S3 URL for Facebook upload (Facebook API accepts URL references)
-        input = s3Url;
-        filenameHint = mediaUrlOrBuffer;
-        console.log('[Facebook] Using consistent S3 URL via centralized manager:', s3Url);
-      } catch (error) {
-        console.error('[Facebook] Failed to prepare media via centralized manager:', error.message);
-        throw new Error('Failed to prepare media for Facebook');
-      }
+      filenameHint = mediaUrlOrBuffer;
+      // Provisional detect from filename
+      const typeFromName = this.detectMedia(null, filenameHint).type; // IMAGE | IMAGE_GIF | VIDEO
+      const kindFromName = (explicitType?.toUpperCase() === 'IMAGE' || typeFromName.startsWith('IMAGE')) ? 'image' : 'video';
+      inputUrl = await this.mediaManager.getConsistentMediaUrl(mediaUrlOrBuffer, kindFromName);
+      detectedFrom = 'url';
     } else if (Buffer.isBuffer(mediaUrlOrBuffer)) {
-      input = mediaUrlOrBuffer;
+      const info = this.detectMedia(mediaUrlOrBuffer);
+      filenameHint = info.filename;
+      // Rehost buffers to S3; FB will ingest by URL
+      inputUrl = await this.rehostToS3(mediaUrlOrBuffer, info.filename);
+      detectedFrom = 'buffer';
     } else {
       throw new Error('uploadMediaWithText requires a Buffer or URL string input.');
     }
 
-    // Detect type (explicitType overrides)
-    let info;
+    // Final media type
+    let infoFinal;
     if (explicitType) {
       const t = String(explicitType).toUpperCase();
-      if (t === 'IMAGE') info = { type: 'IMAGE', mimeType: 'image/jpeg', filename: 'image.jpg' };
-      else if (t === 'IMAGE_GIF' || t === 'GIF') info = { type: 'IMAGE_GIF', mimeType: 'image/gif', filename: 'image.gif' };
-      else info = { type: 'VIDEO', mimeType: 'video/mp4', filename: 'video.mp4' };
+      if (t === 'IMAGE') infoFinal = { type: 'IMAGE' };
+      else if (t === 'IMAGE_GIF' || t === 'GIF') infoFinal = { type: 'IMAGE_GIF' };
+      else infoFinal = { type: 'VIDEO' };
     } else {
-      info = this.detectMedia(input, filenameHint);
+      infoFinal = this.detectMedia(null, filenameHint);
     }
+    const isImage = infoFinal.type === 'IMAGE' || infoFinal.type === 'IMAGE_GIF';
 
-    const isImage = info.type === 'IMAGE' || info.type === 'IMAGE_GIF';
-
-    // Resolve target and token
-    const targetId = doc.pageAccessToken && doc.pageId ? doc.pageId : 'me';
-    const tokenForPost = doc.pageAccessToken && doc.pageId ? doc.pageAccessToken : doc.accessToken;
+    // Caption/message
+    const captionText = Array.isArray(text) ? (text[0] || '') : (text || '');
+    const message = String(captionText).trim().slice(0, 63206); // FB limit
 
     try {
       if (isImage) {
-        console.log('[Facebook] Posting image with text...');
-
+        log('[Facebook] Posting IMAGE (source:', detectedFrom, ')…');
         const formData = new FormData();
-        // Always use S3 URL for Facebook (LinkedIn/Instagram approach)
-        formData.append('url', input); // input is now the S3 URL
-        console.log('[Facebook] Using S3 URL for image upload:', input);
-        formData.append('message', text || '');
+        formData.append('url', inputUrl); // URL path for photos
+        if (message) formData.append('message', message);
         formData.append('access_token', tokenForPost);
 
         const response = await axios.post(`${FACEBOOK_API_URL}/${targetId}/photos`, formData, {
-          headers: {
-            ...formData.getHeaders()
-          },
+          headers: formData.getHeaders(),
           maxContentLength: Infinity,
           maxBodyLength: Infinity,
           timeout: 120000
         });
 
-        console.log('[FB] photo post success - id:', response.data.id);
-        // Try to fetch a permalink URL for the created object
-        let url = null;
+        log('[FB] photo post success - id:', response.data.id);
+        let url = `https://www.facebook.com/${response.data.id}`;
         try {
           const linkResp = await axios.get(`${FACEBOOK_API_URL}/${response.data.id}`, {
             params: { access_token: tokenForPost, fields: 'permalink_url,link' },
             timeout: 15000
           });
-          url = linkResp.data?.permalink_url || linkResp.data?.link || null;
+          url = linkResp.data?.permalink_url || linkResp.data?.link || url;
         } catch (e2) {
-          // Fallback for photos
-          url = `https://www.facebook.com/${response.data.id}`;
+          warn('[FB] Could not fetch photo permalink, falling back to ID URL.');
         }
-        return {
-          success: true,
-          postId: response.data.id,
-          url: url,
-          message: 'Successfully published to Facebook'
-        };
-      } else {
-        console.log('[Facebook] Posting video with text...');
+        return { success: true, postId: response.data.id, url, message: 'Successfully published to Facebook' };
 
+      } else {
+        log('[Facebook] Posting VIDEO (source:', detectedFrom, ')…');
         const formData = new FormData();
-        // Always use S3 URL for Facebook (LinkedIn/Instagram approach)
-        formData.append('file_url', input); // input is now the S3 URL
-        console.log('[Facebook] Using S3 URL for video upload:', input);
-        formData.append('description', text || '');
+        formData.append('file_url', inputUrl); // URL path for videos
+        if (message) formData.append('description', message);
         formData.append('access_token', tokenForPost);
 
         const response = await axios.post(`${FACEBOOK_API_URL}/${targetId}/videos`, formData, {
-          headers: {
-            ...formData.getHeaders()
-          },
+          headers: formData.getHeaders(),
           maxContentLength: Infinity,
           maxBodyLength: Infinity,
           timeout: 300000
         });
 
-        console.log('[FB] video post success - id:', response.data.id);
-        // Try to fetch a permalink URL for the created video
-        let url = null;
+        log('[FB] video post success - id:', response.data.id);
+        let url = `https://www.facebook.com/watch?v=${response.data.id}`;
         try {
           const linkResp = await axios.get(`${FACEBOOK_API_URL}/${response.data.id}`, {
             params: { access_token: tokenForPost, fields: 'permalink_url,link' },
             timeout: 15000
           });
-          url = linkResp.data?.permalink_url || linkResp.data?.link || null;
+          url = linkResp.data?.permalink_url || linkResp.data?.link || url;
         } catch (e2) {
-          // Fallback for videos
-          url = `https://www.facebook.com/watch?v=${response.data.id}`;
+          warn('[FB] Could not fetch video permalink, falling back to watch URL.');
         }
-        return {
-          success: true,
-          postId: response.data.id,
-          url: url,
-          message: 'Successfully published to Facebook'
-        };
+        return { success: true, postId: response.data.id, url, message: 'Successfully published to Facebook' };
       }
     } catch (e) {
-      console.error('[FB ERR] media post failed:', e.response?.data || e.message);
-      const fbErr = e.response?.data;
-      if (fbErr?.error?.code === 190) {
+      error('[FB ERR] media post failed:', e.response?.data || e.message);
+      const fbErr = e.response?.data?.error;
+
+      // Token expired/invalid
+      if (fbErr?.code === 190) {
         throw new Error('Facebook token expired or invalid. Please reconnect Facebook.');
+      }
+      // Permissions missing (common codes)
+      if (fbErr?.code === 10 || fbErr?.code === 200 || fbErr?.type === 'OAuthException') {
+        throw new Error('Facebook permissions missing (pages_manage_posts and pages_read_engagement). Verify app review and scopes.');
+      }
+      // Page access issues
+      if (fbErr?.code === 32 || fbErr?.code === 803) {
+        throw new Error('Facebook Page access error. Ensure the Page is connected and the token has page-level permissions.');
       }
       throw new Error('Facebook media post failed');
     }
   }
 
   /**
-   * Post to Facebook
+   * Post to Facebook Page (media required)
    */
   async postToFacebook(identifier, text, mediaUrlOrBuffer = null) {
     const doc = await this.findToken(identifier);
     if (!doc) throw new Error('Facebook not connected for this user');
 
-    // Resolve target and token
-    const targetId = doc.pageAccessToken && doc.pageId ? doc.pageId : 'me';
-    const tokenForPost = doc.pageAccessToken && doc.pageId ? doc.pageAccessToken : doc.accessToken;
-
-    // Handle both string and array inputs for captions
-    const captionText = Array.isArray(text) ? text[0] || '' : text || '';
-    const message = String(captionText).trim().slice(0, 63206); // Facebook limit
+    if (!doc.pageId || !doc.pageAccessToken) {
+      throw new Error('Facebook Page not connected. Please connect a Facebook Page to publish.');
+    }
 
     if (!mediaUrlOrBuffer) {
       throw new Error('Facebook requires media content for posting');
     }
 
     try {
-      console.log('[Facebook] Posting media with text using LinkedIn-style approach...');
-      const result = await this.uploadMediaWithText(identifier, mediaUrlOrBuffer, message);
-      console.log('[Facebook] Media post successful');
-      
-      // Return structured object like other platforms
+      log('[Facebook] Posting media with text via unified flow…');
+      const result = await this.uploadMediaWithText(identifier, mediaUrlOrBuffer, text);
+      log('[Facebook] Media post successful');
       return {
         success: true,
         postId: result.postId,
         url: result.url,
         message: 'Successfully published to Facebook'
       };
-    } catch (error) {
-      console.error('[FB ERR] media post failed:', error.response?.data || error.message);
-      const fbErr = error.response?.data;
-      if (fbErr?.error?.code === 190) {
+    } catch (e) {
+      error('[FB ERR] media post failed:', e.response?.data || e.message);
+      const fbErr = e.response?.data?.error;
+      if (fbErr?.code === 190) {
         throw new Error('Facebook token expired or invalid. Please reconnect Facebook.');
       }
-      throw new Error(`Facebook media post failed: ${error.message}`);
+      throw new Error(`Facebook media post failed: ${e.message}`);
     }
   }
 }
