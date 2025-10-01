@@ -29,10 +29,70 @@ const Dashboard = () => {
     showCancel: false,
     cancelText: 'Cancel'
   });
+  const [successModal, setSuccessModal] = useState({
+    show: false,
+    title: '',
+    message: '',
+    type: 'success'
+  });
 
   // Convenience: derive hasSubscription from /auth/me snapshot
   const sub = (me?.subscriptionStatus || 'none').toLowerCase();
   const hasSubscription = sub === 'active' || sub === 'trialing';
+
+  // Handle URL parameters for success/error messages
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const connected = urlParams.get('connected');
+    const error = urlParams.get('error');
+
+    if (connected) {
+      const platformNames = {
+        'linkedin': 'LinkedIn',
+        'twitter': 'Twitter', 
+        'youtube': 'YouTube',
+        'tiktok': 'TikTok',
+        'facebook': 'Facebook',
+        'instagram': 'Instagram'
+      };
+      
+      const platformName = platformNames[connected] || connected;
+      setSuccessModal({
+        show: true,
+        title: 'Success!',
+        message: `${platformName} account connected successfully!`,
+        type: 'success'
+      });
+      
+      // Clean up URL parameters
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+
+    if (error) {
+      const errorMessages = {
+        'linkedin_auth_failed': 'LinkedIn connection failed. Please try again.',
+        'twitter_auth_failed': 'Twitter connection failed. Please try again.',
+        'youtube_auth_failed': 'YouTube connection failed. Please try again.',
+        'tiktok_auth_failed': 'TikTok connection failed. Please try again.',
+        'facebook_auth_failed': 'Facebook connection failed. Please try again.',
+        'instagram_auth_failed': 'Instagram connection failed. Please try again.'
+      };
+      
+      setErrorModal({
+        show: true,
+        title: 'Connection Failed',
+        message: errorMessages[error] || 'Connection failed. Please try again.',
+        type: 'error',
+        onConfirm: () => setErrorModal({ ...errorModal, show: false }),
+        confirmText: 'OK'
+      });
+      
+      // Clean up URL parameters
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, []);
 
   // Handle account deletion
   const handleDeleteAccount = async () => {
@@ -430,10 +490,8 @@ const Dashboard = () => {
 
           {/* Account Settings */}
           <div className="mb-8 p-6 bg-white rounded-lg shadow">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Account Settings</h3>
             <div className="flex justify-between items-center">
-              <div>
-              </div>
+              <span className="text-gray-600 text-sm">This will clear your data from the app database</span>
               <button
                 onClick={() => setErrorModal({
                   show: true,
@@ -465,6 +523,19 @@ const Dashboard = () => {
         confirmText={errorModal.confirmText}
         showCancel={errorModal.showCancel}
         cancelText={errorModal.cancelText}
+      />
+
+      {/* Success Modal */}
+      <ErrorModal
+        isOpen={successModal.show}
+        onClose={() => setSuccessModal({ show: false, title: '', message: '', type: 'success' })}
+        title={successModal.title}
+        message={successModal.message}
+        type={successModal.type}
+        onConfirm={() => setSuccessModal({ show: false, title: '', message: '', type: 'success' })}
+        confirmText="OK"
+        showCancel={false}
+        cancelText="Cancel"
       />
 
     </div>

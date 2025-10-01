@@ -64,11 +64,22 @@ router.get('/oauth/start/facebook', async (req, res) => {
 // Callback
 router.get('/callback', async (req, res) => {
   try {
+    console.log('🔍 [Facebook OAuth Callback] Starting callback processing...');
     const { code, state } = req.query;
-    if (!code || !state) return res.redirect(abs('app?error=facebook_auth_failed'));
+    console.log('🔍 [Facebook OAuth Callback] Query params:', { code: code ? 'SET' : 'MISSING', state: state ? 'SET' : 'MISSING' });
+    
+    if (!code || !state) {
+      console.error('❌ [Facebook OAuth Callback] Missing code or state');
+      return res.redirect(abs('app?error=facebook_auth_failed'));
+    }
 
     const userInfo = verifyState(state);
-    if (!userInfo?.userId) return res.redirect(abs('app?error=facebook_auth_failed'));
+    console.log('🔍 [Facebook OAuth Callback] User info from state:', { userId: userInfo?.userId || 'MISSING', email: userInfo?.email || 'MISSING' });
+    
+    if (!userInfo?.userId) {
+      console.error('❌ [Facebook OAuth Callback] No userId in state');
+      return res.redirect(abs('app?error=facebook_auth_failed'));
+    }
 
     const tokenResponse = await axios.get(`${FACEBOOK_API_URL}/oauth/access_token`, {
       params: {
@@ -184,14 +195,25 @@ router.get('/callback', async (req, res) => {
       pageName: tokenData.pageName
     });
     
-    await FacebookToken.findOneAndUpdate(
+    console.log('🔍 [Facebook OAuth Callback] Attempting to save to database...');
+    const savedToken = await FacebookToken.findOneAndUpdate(
       { clerkUserId: userInfo.userId, provider: 'facebook' },
       tokenData,
       { upsert: true, new: true }
     );
+    console.log('✅ [Facebook OAuth Callback] Token saved successfully:', {
+      id: savedToken._id,
+      clerkUserId: savedToken.clerkUserId,
+      facebookUserId: savedToken.facebookUserId
+    });
 
     return res.redirect(abs('app?connected=facebook'));
   } catch (error) {
+    console.error('❌ [Facebook OAuth Callback] Error during callback:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     return res.redirect(abs('app?error=facebook_auth_failed'));
   }
 });

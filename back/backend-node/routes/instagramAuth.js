@@ -71,13 +71,23 @@ router.get('/oauth/start/instagram', async (req, res) => {
 // Callback
 router.get('/callback', async (req, res) => {
   try {
+    console.log('🔍 [Instagram OAuth Callback] Starting callback processing...');
     const { code, state, error } = req.query;
-    if (error) return res.redirect(abs('app?error=instagram_auth_failed'));
-    if (!code || !state) return res.redirect(abs('app?error=instagram_auth_failed'));
+    console.log('🔍 [Instagram OAuth Callback] Query params:', { code: code ? 'SET' : 'MISSING', state: state ? 'SET' : 'MISSING', error: error || 'NONE' });
+    
+    if (error) {
+      console.error('❌ [Instagram OAuth Callback] Error in callback:', error);
+      return res.redirect(abs('app?error=instagram_auth_failed'));
+    }
+    if (!code || !state) {
+      console.error('❌ [Instagram OAuth Callback] Missing code or state');
+      return res.redirect(abs('app?error=instagram_auth_failed'));
+    }
 
     const decoded = verifyState(state);
     const userId = decoded.userId;
     const email  = decoded.email || null;
+    console.log('🔍 [Instagram OAuth Callback] User info from state:', { userId: userId || 'MISSING', email: email || 'MISSING' });
 
     const tokenResp = await axios.get(`${FACEBOOK_API_URL}/oauth/access_token`, {
       params: { client_id: FACEBOOK_APP_ID, client_secret: FACEBOOK_APP_SECRET, redirect_uri: IG_REDIRECT_URI, code },
@@ -176,7 +186,8 @@ router.get('/callback', async (req, res) => {
       return res.redirect(abs('app?error=instagram_business_account_required'));
     }
 
-    await InstagramToken.findOneAndUpdate(
+    console.log('🔍 [Instagram OAuth Callback] Attempting to save to database...');
+    const savedToken = await InstagramToken.findOneAndUpdate(
       { clerkUserId: userId, provider: 'instagram' },
       { $set: {
           clerkUserId: userId,
@@ -193,11 +204,19 @@ router.get('/callback', async (req, res) => {
         } },
       { upsert: true, new: true }
     );
-
-    console.log('✅ [Instagram OAuth] Token saved successfully for user:', userId);
+    console.log('✅ [Instagram OAuth Callback] Token saved successfully:', {
+      id: savedToken._id,
+      clerkUserId: savedToken.clerkUserId,
+      igUserId: savedToken.igUserId
+    });
 
     return res.redirect(abs('app?connected=instagram'));
   } catch (e) {
+    console.error('❌ [Instagram OAuth Callback] Error during callback:', {
+      message: e.message,
+      stack: e.stack,
+      name: e.name
+    });
     return res.redirect(abs('app?error=instagram_auth_failed'));
   }
 });
