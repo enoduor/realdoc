@@ -51,7 +51,7 @@ router.get('/oauth/start/facebook', async (req, res) => {
       `https://www.facebook.com/v18.0/dialog/oauth` +
       `?client_id=${FACEBOOK_APP_ID}` +
       `&redirect_uri=${encodeURIComponent(FACEBOOK_REDIRECT_URI)}` +
-      `&scope=${encodeURIComponent('public_profile,email,pages_manage_posts,pages_read_engagement,pages_show_list')}` +
+      `&scope=${encodeURIComponent('public_profile,email,pages_manage_metadata,pages_manage_posts,instagram_content_publish')}` +
       `&response_type=code` +
       `&state=${encodeURIComponent(state)}`;
 
@@ -97,38 +97,96 @@ router.get('/callback', async (req, res) => {
     const expiresAt = ttlSecs ? new Date(Date.now() + ttlSecs * 1000) : undefined;
 
     const userResponse = await axios.get(`${FACEBOOK_API_URL}/me`, {
-      params: { access_token: longLived, fields: 'id,name,email' }
+      params: { access_token: longLived, fields: 'id,name,email,first_name,last_name,username' }
     });
     const facebookUser = userResponse.data;
 
     let pageId, pageName, pageAccessToken;
     try {
+      console.log('Facebook: Fetching user pages...');
       const pagesResp = await axios.get(`${FACEBOOK_API_URL}/me/accounts`, {
         params: { access_token: longLived, fields: 'id,name,access_token' },
         timeout: 15000,
       });
-      const firstPage = pagesResp.data?.data?.[0];
-      if (firstPage?.access_token) {
-        pageId = firstPage.id;
-        pageName = firstPage.name;
-        pageAccessToken = firstPage.access_token;
+      console.log('Facebook: Pages response:', JSON.stringify(pagesResp.data, null, 2));
+      const pages = pagesResp.data?.data || [];
+      console.log('Facebook: Found', pages.length, 'pages');
+      
+      if (pages.length > 0) {
+        const firstPage = pages[0];
+        if (firstPage?.access_token) {
+          pageId = firstPage.id;
+          pageName = firstPage.name;
+          pageAccessToken = firstPage.access_token;
+          console.log('Facebook: Using page:', pageName, 'ID:', pageId);
+        } else {
+          console.warn('Facebook: First page has no access token');
+        }
+      } else {
+        console.warn('Facebook: No pages found for user');
       }
-    } catch {}
+    } catch (pageError) {
+      console.error('Facebook: Failed to fetch pages:', pageError.message);
+    }
 
+    // Check granted permissions
+    let grantedPermissions = [];
+    try {
+      console.log('Facebook: Checking granted permissions...');
+      const permissionsResp = await axios.get(`${FACEBOOK_API_URL}/me/permissions`, {
+        params: { access_token: longLived },
+        timeout: 15000,
+      });
+      console.log('Facebook: Permissions response:', JSON.stringify(permissionsResp.data, null, 2));
+      const permissions = permissionsResp.data?.data || [];
+      grantedPermissions = permissions
+        .filter(p => p.status === 'granted')
+        .map(p => p.permission);
+      console.log('Facebook: Granted permissions:', grantedPermissions);
+    } catch (permError) {
+      console.error('Facebook: Failed to fetch permissions:', permError.message);
+    }
+
+    // Parse name into first/last
+    const displayName = facebookUser.name || '';
+    let firstName = facebookUser.first_name || null;
+    let lastName = facebookUser.last_name || null;
+    
+    // If Facebook doesn't provide first_name/last_name, parse from name
+    if (!firstName && !lastName && displayName) {
+      const parts = displayName.trim().split(/\s+/);
+      firstName = parts[0] || null;
+      lastName = parts.length > 1 ? parts.slice(1).join(' ') : null;
+    }
+
+    const tokenData = {
+      clerkUserId: userInfo.userId,
+      userId: userInfo.userId,
+      email: userInfo.email || null,
+      facebookUserId: facebookUser.id,
+      accessToken: longLived,
+      name: facebookUser.name,
+      firstName: firstName,
+      lastName: lastName,
+      handle: facebookUser.username || null,
+      grantedPermissions: grantedPermissions,
+      isActive: true,
+      expiresAt,
+      provider: 'facebook',
+      ...(pageId && { pageId, pageName, pageAccessToken }),
+    };
+    
+    console.log('Facebook: Saving token data:', {
+      clerkUserId: tokenData.clerkUserId,
+      facebookUserId: tokenData.facebookUserId,
+      hasPageId: !!tokenData.pageId,
+      hasPageAccessToken: !!tokenData.pageAccessToken,
+      pageName: tokenData.pageName
+    });
+    
     await FacebookToken.findOneAndUpdate(
       { clerkUserId: userInfo.userId, provider: 'facebook' },
-      {
-        clerkUserId: userInfo.userId,
-        userId: userInfo.userId,
-        email: userInfo.email || null,
-        facebookUserId: facebookUser.id,
-        accessToken: longLived,
-        name: facebookUser.name,
-        isActive: true,
-        expiresAt,
-        provider: 'facebook',
-        ...(pageId && { pageId, pageName, pageAccessToken }),
-      },
+      tokenData,
       { upsert: true, new: true }
     );
 
@@ -162,11 +220,13 @@ router.get('/status', requireAuth(), async (req, res) => {
     if (!token) return res.json({ connected: false });
     res.json({
       connected: true,
-      oauthToken: token.accessToken,
       facebookUserId: token.facebookUserId,
+      pageId: token.pageId || null,
+      pageName: token.pageName || null,
       firstName: token.firstName || null,
       lastName: token.lastName || null,
       handle: token.handle || null,
+      grantedPermissions: token.grantedPermissions || [],
       isActive: token.isActive ?? true
     });
   } catch (error) {

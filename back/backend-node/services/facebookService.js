@@ -332,6 +332,7 @@ class FacebookService {
 
   /**
    * Post to Facebook Page (media required)
+   * NOTE: Requires pages_manage_posts permission for actual posting
    */
   async postToFacebook(identifier, text, mediaUrlOrBuffer = null) {
     const doc = await this.findToken(identifier);
@@ -339,6 +340,11 @@ class FacebookService {
 
     if (!doc.pageId || !doc.pageAccessToken) {
       throw new Error('Facebook Page not connected. Please connect a Facebook Page to publish.');
+    }
+
+    // Check if we have the required permission for posting
+    if (!doc.grantedPermissions || !doc.grantedPermissions.includes('pages_manage_posts')) {
+      throw new Error('Facebook posting requires pages_manage_posts permission. Please request this permission in Facebook App Review.');
     }
 
     if (!mediaUrlOrBuffer) {
@@ -360,6 +366,9 @@ class FacebookService {
       const fbErr = e.response?.data?.error;
       if (fbErr?.code === 190) {
         throw new Error('Facebook token expired or invalid. Please reconnect Facebook.');
+      }
+      if (fbErr?.code === 200) {
+        throw new Error('Facebook posting requires pages_manage_posts permission. Please request this permission in Facebook App Review.');
       }
       throw new Error(`Facebook media post failed: ${e.message}`);
     }

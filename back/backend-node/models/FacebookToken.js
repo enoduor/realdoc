@@ -23,8 +23,11 @@ const facebookTokenSchema = new mongoose.Schema({
   pageName: { type: String },
   pageAccessToken: { type: String },        // page token (stronger perms)
   name: { type: String },
+  firstName: { type: String },
+  lastName: { type: String },
   handle: { type: String },
   handleUpdatedAt: { type: Date },
+  grantedPermissions: { type: [String], default: [] },
 
   // OAuth tokens
   accessToken: {

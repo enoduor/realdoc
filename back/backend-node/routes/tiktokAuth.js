@@ -75,23 +75,50 @@ router.get('/connect', requireAuth(), async (req, res) => {
 });
 
 // OAuth Start (for consistency with other platforms)
-router.get('/oauth/start/tiktok', requireAuth(), async (req, res) => {
+router.get('/oauth/start/tiktok', async (req, res) => {
   try {
+    console.log('🔍 [TikTok OAuth Start] New user attempting TikTok OAuth');
+    
     let userId = req.auth?.().userId;
     let email  = req.auth?.().email;
+
+    console.log('🔍 [TikTok OAuth Start] Initial values:', {
+      userId: userId || 'MISSING',
+      email: email || 'MISSING',
+      headers: {
+        'x-clerk-user-id': req.headers['x-clerk-user-id'] || 'MISSING',
+        'x-clerk-user-email': req.headers['x-clerk-user-email'] || 'MISSING'
+      },
+      query: {
+        userId: req.query.userId || 'MISSING',
+        email: req.query.email || 'MISSING'
+      }
+    });
 
     if (!userId && req.headers['x-clerk-user-id']) userId = String(req.headers['x-clerk-user-id']);
     if (!email  && req.headers['x-clerk-user-email']) email  = String(req.headers['x-clerk-user-email']);
     if (!userId && req.query.userId) userId = String(req.query.userId);
     if (!email  && req.query.email)  email  = String(req.query.email);
 
+    console.log('🔍 [TikTok OAuth Start] After header/query extraction:', {
+      userId: userId || 'MISSING',
+      email: email || 'MISSING'
+    });
+
     if (!email && userId) {
       try { const u = await User.findOne({ clerkUserId: userId }); if (u?.email) email = u.email; } catch {}
     }
 
+    console.log('🔍 [TikTok OAuth Start] Final values:', {
+      userId: userId || 'MISSING',
+      email: email || 'MISSING'
+    });
+
     const state = signState({ userId: userId || null, email: email || null, ts: Date.now() });
+    console.log('🔍 [TikTok OAuth Start] Generated state, redirecting to TikTok...');
     return res.redirect(buildAuthorizeRedirect(state));
   } catch (error) {
+    console.error('❌ [TikTok OAuth Start] Error:', error.message);
     return res.redirect(abs('app?error=tiktok_auth_failed'));
   }
 });

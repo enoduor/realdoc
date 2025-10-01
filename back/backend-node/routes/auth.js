@@ -646,4 +646,49 @@ router.post("/test-link-temp-user", async (req, res) => {
   }
 });
 
+// Delete account route
+router.delete('/delete-account', requireAuth(), async (req, res) => {
+  try {
+    const clerkUserId = req.auth().userId;
+    console.log(`🗑️ [Delete Account] Starting account deletion for clerkUserId: ${clerkUserId}`);
+    
+    if (!clerkUserId) {
+      return res.status(400).json({ error: 'User ID not found' });
+    }
+
+    // Find the user first
+    const user = await User.findOne({ clerkUserId });
+    if (!user) {
+      console.log(`❌ [Delete Account] User not found for clerkUserId: ${clerkUserId}`);
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log(`👤 [Delete Account] Found user: ${user.email || 'No email'}`);
+
+    // Delete all associated tokens using the user's deleteAllTokens method
+    await user.deleteAllTokens();
+    console.log(`✅ [Delete Account] Token cleanup completed for user: ${clerkUserId}`);
+
+    // Delete the user
+    const userDeletion = await User.deleteOne({ clerkUserId });
+    console.log(`✅ [Delete Account] User deletion result: ${userDeletion.deletedCount} user(s) deleted`);
+
+    if (userDeletion.deletedCount === 0) {
+      console.error(`❌ [Delete Account] No user was deleted for clerkUserId: ${clerkUserId}`);
+      return res.status(500).json({ error: 'Failed to delete user account' });
+    }
+
+    console.log(`🎉 [Delete Account] Account deletion completed successfully for clerkUserId: ${clerkUserId}`);
+    res.json({ success: true, message: 'Account deleted successfully' });
+
+  } catch (error) {
+    console.error('❌ [Delete Account] Error deleting account:', {
+      error: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
 module.exports = router;

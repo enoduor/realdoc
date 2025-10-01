@@ -14,6 +14,10 @@ const instagramTokenSchema = new mongoose.Schema({
   pageName: { type: String },
   igUserId: { type: String },
   name: { type: String },
+  firstName: { type: String },
+  lastName: { type: String },
+  handle: { type: String },
+  grantedPermissions: { type: [String], default: [] },
 
   // Facebook Graph token (long-lived)
   accessToken: { type: String, required: true },

@@ -36,13 +36,46 @@ class TikTokService {
       redirect_uri: abs('api/auth/tiktok/callback'),
     };
 
-    const { data } = await axios.post(url, payload, {
-      headers: { 'Content-Type': 'application/json' },
+    console.log('🔄 [TikTok Token Exchange] Request:', {
+      url,
+      client_key: CLIENT_KEY ? 'SET' : 'MISSING',
+      client_secret: CLIENT_SECRET ? 'SET' : 'MISSING',
+      code: code ? 'SET' : 'MISSING',
+      redirect_uri: abs('api/auth/tiktok/callback')
     });
 
-    // data: { access_token, refresh_token, expires_in, token_type, scope }
-    const expiresAt = dayjs().add(data.expires_in, 'second').toDate();
-    return { ...data, expiresAt };
+    try {
+      // Try with form-encoded data (TikTok might expect this format)
+      const formData = new URLSearchParams(payload).toString();
+      console.log('🔍 [TikTok Token Exchange] Form data:', formData);
+      
+      const { data } = await axios.post(url, formData, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+
+      console.log('✅ [TikTok Token Exchange] Success:', {
+        access_token: data.access_token ? 'SET' : 'MISSING',
+        refresh_token: data.refresh_token ? 'SET' : 'MISSING',
+        expires_in: data.expires_in,
+        token_type: data.token_type,
+        scope: data.scope
+      });
+
+      // 🔍 DEBUG: Log the full response to see what TikTok is actually returning
+      console.log('🔍 [TikTok Token Exchange] Full response:', JSON.stringify(data, null, 2));
+
+      // data: { access_token, refresh_token, expires_in, token_type, scope }
+      const expiresAt = dayjs().add(data.expires_in, 'second').toDate();
+      return { ...data, expiresAt };
+    } catch (error) {
+      console.error('❌ [TikTok Token Exchange] Failed:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      });
+      throw error;
+    }
   }
 
   async refreshAccessToken(doc) {

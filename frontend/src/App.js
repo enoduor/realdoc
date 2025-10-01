@@ -18,6 +18,7 @@ import TermsOfService from "./components/TermsOfService";
 import PrivacyPolicy from "./components/PrivacyPolicy";
 import PartnerWithUs from "./components/PartnerWithUs";
 import APIsPage from "./components/APIsPage";
+import AccountDeleted from "./components/AccountDeleted";
 import "./App.css";
 
 export default function App() {
@@ -38,6 +39,7 @@ export default function App() {
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/partner" element={<PartnerWithUs />} />
               <Route path="/apis" element={<APIsPage />} />
+              <Route path="/account-deleted" element={<AccountDeleted />} />
 
           {/* Protected */}
           <Route

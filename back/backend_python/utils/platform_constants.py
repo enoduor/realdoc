@@ -2,7 +2,7 @@
 PLATFORM_LIMITS = {
     "instagram": {
         "max_characters": 2200,
-        "max_hashtags": 30,
+        "max_hashtags": 5,
         "recommended_hashtags": 20,
         "prompt_style": "engaging and visual-focused",
         "supported_media": ["image", "video", "carousel"],
@@ -11,7 +11,7 @@ PLATFORM_LIMITS = {
     },
     "twitter": {
         "max_characters": 280,
-        "max_hashtags": 10,
+        "max_hashtags": 5,
         "recommended_hashtags": 5,
         "prompt_style": "concise and engaging",
         "supported_media": ["image", "video", "gif"],
@@ -20,7 +20,7 @@ PLATFORM_LIMITS = {
     },
     "facebook": {
         "max_characters": 63206,
-        "max_hashtags": 30,
+        "max_hashtags": 5,
         "recommended_hashtags": 15,
         "prompt_style": "detailed and conversational",
         "supported_media": ["image", "video", "carousel", "link"],
@@ -29,7 +29,7 @@ PLATFORM_LIMITS = {
     },
     "linkedin": {
         "max_characters": 3000,
-        "max_hashtags": 15,
+        "max_hashtags": 5,
         "recommended_hashtags": 10,
         "prompt_style": "professional and industry-focused",
         "supported_media": ["image", "video", "document"],
@@ -38,7 +38,7 @@ PLATFORM_LIMITS = {
     },
     "tiktok": {
         "max_characters": 150,
-        "max_hashtags": 30,
+        "max_hashtags": 5,
         "recommended_hashtags": 20,
         "prompt_style": "trendy and entertaining",
         "supported_media": ["video"],
@@ -47,7 +47,7 @@ PLATFORM_LIMITS = {
     },
     "youtube": {
         "max_characters": 5000,
-        "max_hashtags": 15,
+        "max_hashtags": 5,
         "recommended_hashtags": 10,
         "prompt_style": "descriptive and SEO-friendly",
         "supported_media": ["video"],

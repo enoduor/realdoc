@@ -506,12 +506,12 @@ case 'youtube': {
   // ===== Limits (used by UI) =====
   getPlatformLimits(platform) {
     const limits = {
-      instagram: { maxCharacters: 2200, maxHashtags: 30, requiresMedia: true },
-      tiktok:    { maxCharacters: 150,  maxHashtags: 20, requiresMedia: true, mediaType: 'video' },
-      linkedin:  { maxCharacters: 3000, maxHashtags: 50, requiresMedia: false },
-      twitter:   { maxCharacters: 280,  maxHashtags: 25, requiresMedia: false },
-      youtube:   { maxCharacters: 5000, maxHashtags: 100, requiresMedia: true, mediaType: 'video' },
-      facebook:  { maxCharacters: 63206, maxHashtags: 100, requiresMedia: false }
+      instagram: { maxCharacters: 2200, maxHashtags: 5, requiresMedia: true },
+      tiktok:    { maxCharacters: 150,  maxHashtags: 5, requiresMedia: true, mediaType: 'video' },
+      linkedin:  { maxCharacters: 3000, maxHashtags: 5, requiresMedia: false },
+      twitter:   { maxCharacters: 280,  maxHashtags: 5, requiresMedia: false },
+      youtube:   { maxCharacters: 5000, maxHashtags: 5, requiresMedia: true, mediaType: 'video' },
+      facebook:  { maxCharacters: 63206, maxHashtags: 5, requiresMedia: false }
     };
     return limits[platform] || {};
   }

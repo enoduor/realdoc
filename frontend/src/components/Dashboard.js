@@ -33,6 +33,57 @@ const Dashboard = () => {
   // Convenience: derive hasSubscription from /auth/me snapshot
   const sub = (me?.subscriptionStatus || 'none').toLowerCase();
   const hasSubscription = sub === 'active' || sub === 'trialing';
+
+  // Handle account deletion
+  const handleDeleteAccount = async () => {
+    try {
+      const token = await getToken();
+      if (!token) {
+        setErrorModal({
+          show: true,
+          title: 'Error',
+          message: 'Authentication required to delete account.',
+          type: 'error',
+          onConfirm: () => setErrorModal({ ...errorModal, show: false }),
+          confirmText: 'OK'
+        });
+        return;
+      }
+
+      const response = await fetch('/api/auth/delete-account', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        // Account deleted successfully, redirect to confirmation page
+        window.location.href = '/account-deleted';
+      } else {
+        const errorData = await response.json();
+        setErrorModal({
+          show: true,
+          title: 'Error',
+          message: errorData.error || 'Failed to delete account. Please try again.',
+          type: 'error',
+          onConfirm: () => setErrorModal({ ...errorModal, show: false }),
+          confirmText: 'OK'
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      setErrorModal({
+        show: true,
+        title: 'Error',
+        message: 'An error occurred while deleting your account. Please try again.',
+        type: 'error',
+        onConfirm: () => setErrorModal({ ...errorModal, show: false }),
+        confirmText: 'OK'
+      });
+    }
+  };
   
 
   // 1) Handle ?session_id banner + refresh DB snapshot afterward
@@ -341,9 +392,8 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Feature cards */}
-          {/* Center the single card */}
-          <div className="flex justify-center">
+          {/* Feature cards - Centered both horizontally and vertically */}
+          <div className="flex justify-center items-center min-h-[400px]">
             <div className="grid grid-cols-1 gap-6 w-full max-w-md">
             {features.filter(feature => !feature.hidden).map((feature) => (
               <Link
@@ -375,6 +425,30 @@ const Dashboard = () => {
                 </div>
               </Link>
             ))}
+            </div>
+          </div>
+
+          {/* Account Settings */}
+          <div className="mb-8 p-6 bg-white rounded-lg shadow">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Account Settings</h3>
+            <div className="flex justify-between items-center">
+              <div>
+              </div>
+              <button
+                onClick={() => setErrorModal({
+                  show: true,
+                  title: 'Delete Account',
+                  message: 'Are you sure you want to delete your account? This action cannot be undone and will remove all your data, including connected social media accounts and posts.',
+                  type: 'warning',
+                  onConfirm: handleDeleteAccount,
+                  confirmText: 'Delete Account',
+                  showCancel: true,
+                  cancelText: 'Cancel'
+                })}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+              >
+                Delete Account
+              </button>
             </div>
           </div>
         </div>

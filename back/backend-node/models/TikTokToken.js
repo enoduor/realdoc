@@ -14,6 +14,8 @@ const TikTokTokenSchema = new mongoose.Schema(
     // TikTok account info (fill after first fetch)
     tiktokUserOpenId: { type: String, index: true }, // TikTok's user identifier
     username: { type: String }, // optional, if fetched
+    firstName: { type: String }, // optional, if fetched
+    lastName: { type: String }, // optional, if fetched
 
     // OAuth2 token set
     accessToken: { type: String, required: true },

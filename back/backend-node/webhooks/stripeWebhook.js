@@ -4,8 +4,16 @@ const router = express.Router();
 const Stripe = require("stripe");
 const User = require("../models/User");
 
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+// Initialize Stripe when needed, not at module load time
+let stripe, endpointSecret;
+
+function getStripe() {
+  if (!stripe) {
+    stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+    endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  }
+  return { stripe, endpointSecret };
+}
 
 function logObj(label, obj) {
   try {

@@ -50,10 +50,10 @@ router.get('/oauth/start/instagram', async (req, res) => {
     const scopes = [
       'public_profile',
       'email',
-      'pages_show_list',
-      'pages_read_engagement',
-      'instagram_basic',
-      'instagram_content_publish'
+      'pages_manage_metadata',
+      'pages_manage_posts',
+      'instagram_content_publish',
+      'instagram_manage_comments'
     ].join(',');
 
     const authUrl = `https://www.facebook.com/v18.0/dialog/oauth` +
@@ -93,6 +93,52 @@ router.get('/callback', async (req, res) => {
     const longLived = longResp.data?.access_token;
     if (!longLived) throw new Error('No long-lived token');
 
+    // Get user profile information first
+    let firstName = null, lastName = null, handle = null;
+    try {
+      console.log('🔍 [Instagram OAuth] Fetching user profile...');
+      const userResp = await axios.get(`${FACEBOOK_API_URL}/me`, {
+        params: { access_token: longLived, fields: 'id,name,first_name,last_name,username' },
+        timeout: 15000,
+      });
+      console.log('📄 [Instagram OAuth] User profile response:', userResp.data);
+      const user = userResp.data;
+      
+      // Parse name information
+      firstName = user.first_name || null;
+      lastName = user.last_name || null;
+      handle = user.username || null;
+      
+      // If Facebook doesn't provide first_name/last_name, parse from name
+      if (!firstName && !lastName && user.name) {
+        const parts = user.name.trim().split(/\s+/);
+        firstName = parts[0] || null;
+        lastName = parts.length > 1 ? parts.slice(1).join(' ') : null;
+      }
+      
+      console.log('📄 [Instagram OAuth] User profile parsed:', { firstName, lastName, handle });
+    } catch (error) {
+      console.error('❌ [Instagram OAuth] Error fetching user profile:', error.response?.data || error.message);
+    }
+
+    // Check granted permissions
+    let grantedPermissions = [];
+    try {
+      console.log('🔍 [Instagram OAuth] Checking granted permissions...');
+      const permissionsResp = await axios.get(`${FACEBOOK_API_URL}/me/permissions`, {
+        params: { access_token: longLived },
+        timeout: 15000,
+      });
+      console.log('📄 [Instagram OAuth] Permissions response:', permissionsResp.data);
+      const permissions = permissionsResp.data?.data || [];
+      grantedPermissions = permissions
+        .filter(p => p.status === 'granted')
+        .map(p => p.permission);
+      console.log('📄 [Instagram OAuth] Granted permissions:', grantedPermissions);
+    } catch (error) {
+      console.error('❌ [Instagram OAuth] Error fetching permissions:', error.response?.data || error.message);
+    }
+
     // Resolve IG business account (optional)
     let pageId = null, pageName = null, igUserId = null, name = null;
     try {
@@ -106,12 +152,17 @@ router.get('/callback', async (req, res) => {
         pageId = firstPage.id; pageName = firstPage.name;
         console.log('📄 [Instagram OAuth] Found page:', { pageId, pageName });
         const igResp = await axios.get(`${FACEBOOK_API_URL}/${pageId}`, {
-          params: { access_token: longLived, fields: 'instagram_business_account{name}' }, timeout: 15000,
+          params: { access_token: longLived, fields: 'instagram_business_account{name,username}' }, timeout: 15000,
         });
         console.log('📄 [Instagram OAuth] Instagram account response:', igResp.data);
-        igUserId = igResp.data?.instagram_business_account?.id || null;
-        name = igResp.data?.instagram_business_account?.name || pageName || null;
-        console.log('📄 [Instagram OAuth] Instagram account info:', { igUserId, name });
+        const igAccount = igResp.data?.instagram_business_account;
+        igUserId = igAccount?.id || null;
+        name = igAccount?.name || pageName || null;
+        // Use Instagram username if available, otherwise keep existing handle
+        if (igAccount?.username) {
+          handle = igAccount.username;
+        }
+        console.log('📄 [Instagram OAuth] Instagram account info:', { igUserId, name, handle });
       } else {
         console.log('⚠️ [Instagram OAuth] No Facebook pages found');
       }
@@ -132,6 +183,10 @@ router.get('/callback', async (req, res) => {
           userId: userId,
           email,
           accessToken: longLived,
+          firstName,
+          lastName,
+          handle,
+          grantedPermissions,
           isActive: true,
           pageId, pageName, igUserId, name,
           provider: 'instagram',
@@ -160,6 +215,7 @@ router.get('/status', requireAuth(), async (req, res) => {
       firstName: token.firstName || null,
       lastName: token.lastName || null,
       handle: token.handle || null,
+      grantedPermissions: token.grantedPermissions || [],
       isActive: token.isActive ?? true
     });
   } catch (e) {
