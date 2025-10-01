@@ -37,7 +37,7 @@ PLATFORM_LIMITS = {
         "recommended_video_length": "Up to 10 minutes"
     },
     "tiktok": {
-        "max_characters": 2200,
+        "max_characters": 150,
         "max_hashtags": 30,
         "recommended_hashtags": 20,
         "prompt_style": "trendy and entertaining",
