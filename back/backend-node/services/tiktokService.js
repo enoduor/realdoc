@@ -316,7 +316,7 @@ class TikTokService {
     );
 
     if (!hasVideoScopes) {
-      throw new Error('TikTok posting unavailable. Waiting for approval. Check back in two days.');
+      throw new Error('TikTok posting unavailable. Missing required scopes.');
     }
 
     // Get profile information (matches tiktokAuth.js pattern)
@@ -352,14 +352,14 @@ class TikTokService {
       // Handle specific TikTok API errors
       if (error.response?.status === 401) {
         console.error('❌ TikTok 401 Error - Token/Scope Issue:', error.response?.data);
-        throw new Error('TikTok posting unavailable. Waiting for approval. Check back in two days.');
+        throw new Error('TikTok posting unavailable. Authentication failed.');
       }
       if (error.response?.status === 403) {
         console.error('❌ TikTok 403 Error - Permission Issue:', error.response?.data);
-        throw new Error('TikTok posting unavailable. Waiting for approval. Check back in two days.');
+        throw new Error('TikTok posting unavailable. Permission denied.');
       }
       if (error.message.includes('scope') || error.message.includes('permission')) {
-        throw new Error('TikTok posting unavailable. Waiting for approval. Check back in two days.');
+        throw new Error('TikTok posting unavailable. Scope or permission issue.');
       }
       console.error('❌ TikTok API Error:', error.response?.data || error.message);
       throw error;
