@@ -21,9 +21,12 @@ CreatorSync is a multi-platform social media publishing application that allows 
 - **Scheduling**: Post scheduling functionality (planned)
 
 ### Current Status
+- **Facebook**: ✅ Fully working - OAuth, publishing, page tokens
+- **Instagram**: ✅ Fully working - OAuth, publishing, Business Account linking
 - **LinkedIn**: ✅ Fully working - OAuth, publishing, URL generation
-- **Twitter**: 🔧 In development - OAuth working, publishing needs testing
-- **Other Platforms**: 📋 Planned (Instagram, Facebook, TikTok, YouTube)
+- **Twitter**: ✅ Fully working - OAuth, publishing
+- **YouTube**: ✅ Fully working - OAuth, publishing
+- **TikTok**: 🔧 In development - OAuth working, publishing needs testing
 
 ### File Structure
 ```
@@ -56,23 +59,56 @@ creatorsync/
 3. **Testing**: Test thoroughly before committing
 4. **Merge**: Merge to main only when stable
 
-## Platform Isolation Rules
+## 🚨 CRITICAL PLATFORM PROTECTION RULES 🚨
 
-### CRITICAL: When working on one platform, DO NOT modify others
+### ⚠️ ABSOLUTE PROHIBITION - NO MODIFICATIONS WITHOUT EXPLICIT PERMISSION ⚠️
 
-**LinkedIn Platform - OFF LIMITS (Working Perfectly):**
-- DO NOT modify `back/backend-node/routes/linkedinAuth.js`
-- DO NOT modify `back/backend-node/services/linkedinUserService.js`
-- DO NOT modify `back/backend-node/models/LinkedInToken.js`
-- DO NOT modify LinkedIn-related parts of `platformPublisher.js`
-- DO NOT modify LinkedIn publishing routes
-- LinkedIn is working perfectly - LEAVE IT ALONE
+**ALL WORKING SOCIAL MEDIA PLATFORMS ARE NOW OFF-LIMITS:**
 
-**Twitter Platform - Safe to Modify:**
-- Safe to modify `back/backend-node/routes/twitterAuth.js`
-- Safe to modify `back/backend-node/services/twitterService.js`
-- Safe to modify `back/backend-node/models/TwitterToken.js`
-- Safe to modify Twitter-related parts of `platformPublisher.js`
+**🔒 FACEBOOK PLATFORM - ABSOLUTELY FORBIDDEN:**
+- ❌ DO NOT modify `back/backend-node/routes/facebookAuth.js`
+- ❌ DO NOT modify `back/backend-node/services/facebookService.js`
+- ❌ DO NOT modify `back/backend-node/models/FacebookToken.js`
+- ❌ DO NOT modify Facebook-related parts of `platformPublisher.js`
+- ❌ Facebook is working perfectly - NEVER TOUCH IT
+
+**🔒 INSTAGRAM PLATFORM - ABSOLUTELY FORBIDDEN:**
+- ❌ DO NOT modify `back/backend-node/routes/instagramAuth.js`
+- ❌ DO NOT modify `back/backend-node/services/instagramService.js`
+- ❌ DO NOT modify `back/backend-node/models/InstagramToken.js`
+- ❌ DO NOT modify Instagram-related parts of `platformPublisher.js`
+- ❌ Instagram is working perfectly - NEVER TOUCH IT
+
+**🔒 LINKEDIN PLATFORM - ABSOLUTELY FORBIDDEN:**
+- ❌ DO NOT modify `back/backend-node/routes/linkedinAuth.js`
+- ❌ DO NOT modify `back/backend-node/services/linkedinUserService.js`
+- ❌ DO NOT modify `back/backend-node/models/LinkedInToken.js`
+- ❌ DO NOT modify LinkedIn-related parts of `platformPublisher.js`
+- ❌ LinkedIn is working perfectly - NEVER TOUCH IT
+
+**🔒 TWITTER PLATFORM - ABSOLUTELY FORBIDDEN:**
+- ❌ DO NOT modify `back/backend-node/routes/twitterAuth.js`
+- ❌ DO NOT modify `back/backend-node/services/twitterService.js`
+- ❌ DO NOT modify `back/backend-node/models/TwitterToken.js`
+- ❌ DO NOT modify Twitter-related parts of `platformPublisher.js`
+- ❌ Twitter is working perfectly - NEVER TOUCH IT
+
+**🔒 YOUTUBE PLATFORM - ABSOLUTELY FORBIDDEN:**
+- ❌ DO NOT modify `back/backend-node/routes/googleAuth.js`
+- ❌ DO NOT modify `back/backend-node/services/youtubeService.js`
+- ❌ DO NOT modify `back/backend-node/models/YouTubeToken.js`
+- ❌ DO NOT modify YouTube-related parts of `platformPublisher.js`
+- ❌ YouTube is working perfectly - NEVER TOUCH IT
+
+### 🚨 MANDATORY PERMISSION REQUIREMENT 🚨
+
+**BEFORE MODIFYING ANY SOCIAL MEDIA PLATFORM FILES:**
+1. **MUST ASK USER FOR EXPLICIT PERMISSION FIRST**
+2. **EXPLAIN EXACTLY WHAT YOU WANT TO CHANGE AND WHY**
+3. **WAIT FOR USER APPROVAL BEFORE MAKING ANY CHANGES**
+4. **IF USER SAYS NO, DO NOT PROCEED**
+
+**VIOLATION OF THESE RULES WILL RESULT IN IMMEDIATE STOPPAGE**
 
 **Frontend Components - Multi-platform Safe:**
 - Safe to modify `frontend/src/components/PlatformPreviewPanel.jsx` (UI improvements)
