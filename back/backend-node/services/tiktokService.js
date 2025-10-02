@@ -1,6 +1,5 @@
 /* back/backend-node/services/tiktokService.js */
 const axios = require('axios');
-const qs = require('qs');
 const dayjs = require('dayjs');
 const TikTokToken = require('../models/TikTokToken');
 const FormData = require('form-data');
@@ -17,7 +16,6 @@ const MediaManagerService = require('./mediaManagerService');
 
 class TikTokService {
   constructor(config = {}) {
-    // Configuration can be added here if needed
     this.mediaManager = MediaManagerService.getInstance();
   }
 
@@ -45,10 +43,9 @@ class TikTokService {
     });
 
     try {
-      // Try with form-encoded data (TikTok might expect this format)
       const formData = new URLSearchParams(payload).toString();
       console.log('🔍 [TikTok Token Exchange] Form data:', formData);
-      
+
       const { data } = await axios.post(url, formData, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
@@ -61,10 +58,8 @@ class TikTokService {
         scope: data.scope
       });
 
-      // 🔍 DEBUG: Log the full response to see what TikTok is actually returning
       console.log('🔍 [TikTok Token Exchange] Full response:', JSON.stringify(data, null, 2));
 
-      // data: { access_token, refresh_token, expires_in, token_type, scope }
       const expiresAt = dayjs().add(data.expires_in, 'second').toDate();
       return { ...data, expiresAt };
     } catch (error) {
@@ -80,15 +75,16 @@ class TikTokService {
 
   async refreshAccessToken(doc) {
     const url = `${TIKTOK_API_BASE}/oauth/token/`;
-    const payload = {
+    // TikTok expects x-www-form-urlencoded for refresh too
+    const formData = new URLSearchParams({
       client_key: CLIENT_KEY,
       client_secret: CLIENT_SECRET,
       grant_type: 'refresh_token',
       refresh_token: doc.refreshToken,
-    };
+    }).toString();
 
-    const { data } = await axios.post(url, payload, {
-      headers: { 'Content-Type': 'application/json' },
+    const { data } = await axios.post(url, formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     });
 
     // TikTok rotates refresh_token!
@@ -111,7 +107,6 @@ class TikTokService {
       try {
         return await this.refreshAccessToken(doc);
       } catch (e) {
-        // bubble up so caller can re-auth if needed
         throw new Error(`TikTok token refresh failed: ${e.message}`);
       }
     }
@@ -125,231 +120,222 @@ class TikTokService {
     const { clerkUserId } = identifier;
     const doc = await TikTokToken.findOne({ clerkUserId });
     if (!doc) throw new Error('TikTok not connected for this user');
-    
+
     return {
       tiktokUserOpenId: doc.tiktokUserOpenId,
       username: doc.username,
       firstName: doc.firstName,
       lastName: doc.lastName,
-      displayName: doc.firstName && doc.lastName ? `${doc.firstName} ${doc.lastName}` : doc.firstName || doc.lastName
+      displayName:
+        doc.firstName && doc.lastName
+          ? `${doc.firstName} ${doc.lastName}`
+          : doc.firstName || doc.lastName
     };
   }
 
   /**
-   * Initialize video upload to TikTok using the correct API flow.
-   * This follows the official TikTok Content Posting API documentation.
+   * Initialize + upload video to TikTok using the correct API flow.
    */
   async uploadVideo({ clerkUserId, fileBuffer, mimeType = 'video/mp4' }) {
     const accessToken = await this.getValidAccessTokenByClerk(clerkUserId);
-    const url = `${TIKTOK_API_BASE}/post/publish/inbox/video/init/`;
+    const url = `${TIKTOK_API_BASE}/post/publish/video/init/`;
 
-    // Detect if this is an image or video based on MIME type
-    const isImage = mimeType.startsWith('image/');
+    // Enforce video-only for now (image uses different endpoints)
     const isVideo = mimeType.startsWith('video/');
-    
-    if (!isImage && !isVideo) {
-      throw new Error(`Unsupported media type: ${mimeType}. TikTok supports images and videos.`);
+    if (!isVideo) {
+      throw new Error(`Unsupported media type for TikTok video flow: ${mimeType}`);
     }
 
-    let sourceInfo;
-    
-    // Handle URL string by using centralized media manager
+    // Handle URL string by downloading to buffer (avoid PULL_FROM_URL)
     if (typeof fileBuffer === 'string') {
-      console.log('[TikTok] Getting consistent media URL via centralized manager...');
+      console.log('[TikTok] Downloading media file to buffer for multipart upload...');
       try {
-        // Get consistent S3 URL (or create if doesn't exist)
-        const s3Url = await this.mediaManager.getConsistentMediaUrl(fileBuffer, mimeType.startsWith('image/') ? 'image' : 'video');
-        console.log('[TikTok] Using consistent S3 URL via centralized manager:', s3Url);
-        
-        // Use PULL_FROM_URL for TikTok upload
-        sourceInfo = {
-          source: "PULL_FROM_URL",
-          video_url: s3Url
-        };
+        fileBuffer = await this.downloadToBuffer(fileBuffer);
+        console.log('[TikTok] Downloaded file to buffer, size:', fileBuffer.length, 'bytes');
       } catch (error) {
-        console.error('[TikTok] Failed to prepare media via centralized manager:', error.message);
-        throw new Error('Failed to prepare media for TikTok');
+        console.error('[TikTok] Failed to download media file:', error.message);
+        throw new Error('Failed to download media for TikTok');
       }
-    } else if (Buffer.isBuffer(fileBuffer)) {
-      // For buffer uploads, we need to use FILE_UPLOAD
-      const videoSize = fileBuffer.length;
-      sourceInfo = {
-        source: "FILE_UPLOAD",
-        video_size: videoSize,
-        chunk_size: videoSize,
-        total_chunk_count: 1
-      };
-    } else {
+    } else if (!Buffer.isBuffer(fileBuffer)) {
       throw new Error('uploadVideo requires a Buffer or URL string input.');
     }
 
-    // Initialize upload with TikTok API
-    const { data } = await axios.post(url, {
-      source_info: sourceInfo
-    }, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
+    // Step 1: Initialize upload with TikTok API
+    console.log('[TikTok] Step 1: Initializing upload...');
+    const videoSize = fileBuffer.length;
+    const initPayload = {
+      source_info: {
+        source: 'FILE_UPLOAD',
+        video_size: videoSize,
+        chunk_size: videoSize,
+        total_chunk_count: 1
+      }
+    };
+    
+    console.log('[TikTok] Init payload:', initPayload);
+    
+    const { data: initData } = await axios.post(
+      url,
+      initPayload,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    console.log('[TikTok] Init response:', initData);
+    const uploadId = initData?.data?.upload_id;
+
+    if (!uploadId) {
+      throw new Error(`TikTok init response missing upload ID: ${JSON.stringify(initData)}`);
+    }
+
+    console.log('[TikTok] Got upload_id:', uploadId);
+
+    // Step 2: Upload bytes using FormData
+    console.log('[TikTok] Uploading file bytes to TikTok servers...');
+    console.log('[TikTok] Upload details:', {
+      uploadId,
+      fileSize: fileBuffer.length,
+      mimeType,
+      filename: `video.${mimeType.split('/')[1]}`
     });
 
-    // Expected: { data: { publish_id: "...", upload_url: "..." } }
-    const publishId = data?.data?.publish_id;
-    const uploadUrl = data?.data?.upload_url;
-    
-    if (!publishId) {
-      throw new Error(`TikTok upload response missing publish ID: ${JSON.stringify(data)}`);
-    }
+    const form = new FormData();
+    form.append('upload_id', uploadId);
+    form.append('video', fileBuffer, {
+      filename: `video.${mimeType.split('/')[1]}`,
+      contentType: mimeType
+    });
 
-    // If we have a buffer and upload URL, upload the file
-    if (Buffer.isBuffer(fileBuffer) && uploadUrl) {
-      console.log('[TikTok] Uploading file to TikTok servers...');
-      await axios.put(uploadUrl, fileBuffer, {
+    const uploadResponse = await axios.post(
+      `${TIKTOK_API_BASE}/post/publish/video/upload/`,
+      form,
+      {
         headers: {
-          'Content-Type': mimeType,
-          'Content-Range': `bytes 0-${fileBuffer.length - 1}/${fileBuffer.length}`
-        }
-      });
-    }
+          Authorization: `Bearer ${accessToken}`,
+          ...form.getHeaders()
+        },
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+        timeout: 180000
+      }
+    );
 
-    return { 
-      publish_id: publishId,
-      mediaType: isImage ? 'image' : 'video'
+    console.log('[TikTok] Upload response:', uploadResponse.data);
+
+    return {
+      upload_id: uploadId,
+      mediaType: 'video'
     };
   }
 
   /**
-   * Publish a previously uploaded video by video_id with a title/caption
-   * This will request video.publish scope when needed during the publish process
+   * Publish a previously uploaded video with a title/caption
    */
-  async publishVideo({ clerkUserId, publishId, title }) {
+  async publishVideo({ clerkUserId, uploadId, title }) {
     const accessToken = await this.getValidAccessTokenByClerk(clerkUserId);
-    const url = `${TIKTOK_API_BASE}/post/publish/status/fetch/`;
+    const url = `${TIKTOK_API_BASE}/post/publish/video/`;
 
+    // Step 3: Publish with caption
+    console.log('[TikTok] Step 3: Publishing video with caption...');
     const payload = {
-      publish_id: publishId
+      post_info: {
+        caption: title
+      },
+      upload_id: uploadId
     };
+
+    console.log('[TikTok] Publish payload:', payload);
 
     const { data } = await axios.post(url, payload, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
+      timeout: 60000
     });
 
-    // Check the status from TikTok API response
+    console.log('[TikTok] Publish response:', data);
+
+    // Safer handling: prefer share_url if present; then status
     const status = data?.data?.status;
     const shareUrl = data?.data?.share_url;
-    
-    if (status === 'PROCESSING') {
-      // Still processing, return a pending status
-      return {
-        success: false,
-        platform: 'tiktok',
-        postId: publishId,
-        message: 'TikTok video is still processing. User will be notified when ready.'
-      };
-    } else if (status === 'PUBLISHED' && shareUrl) {
-      // Successfully published
+
+    if (shareUrl) {
       return {
         success: true,
         platform: 'tiktok',
-        postId: publishId,
+        postId: uploadId,
         url: shareUrl,
         message: `Successfully published to TikTok: ${shareUrl}`
       };
-    } else if (status === 'FAILED') {
-      // Upload failed
-      const errorMessage = data?.data?.error_message || 'Unknown error';
+    }
+
+    if (status === 'PROCESSING') {
       return {
         success: false,
         platform: 'tiktok',
-        postId: publishId,
-        message: `Failed to publish to TikTok: ${errorMessage}`
-      };
-    } else {
-      // Unknown status
-      return {
-        success: false,
-        platform: 'tiktok',
-        postId: publishId,
-        message: `TikTok upload status unknown: ${status}`
+        postId: uploadId,
+        message: 'TikTok video is still processing. User will be notified when ready.'
       };
     }
+
+    const errorMessage = data?.data?.error_message || data?.error?.message || status || 'Unknown error';
+    return {
+      success: false,
+      platform: 'tiktok',
+      postId: uploadId,
+      message: `TikTok publish pending/unknown: ${errorMessage}`
+    };
   }
 
   /**
    * Posts content to TikTok (combines upload + publish steps).
-   * Same pattern as other platforms: postTo[Platform]
-   * @param {Object} identifier  { clerkUserId } - same pattern as other platforms
-   * @param {string|Array} message  Caption/text for the post (can be string or array)
-   * @param {string} mediaUrl  URL to media file
-   * @param {string} mediaType  'video' or 'image'
    */
   async postToTikTok(identifier, message, mediaUrl, mediaType = 'video') {
-    // Handle both string and array inputs for captions
     const captionText = Array.isArray(message) ? message[0] || '' : message || '';
     const { clerkUserId } = identifier;
-    
-    if (!clerkUserId) {
-      throw new Error('TikTok requires authenticated clerkUserId');
-    }
 
-    if (!mediaUrl) {
-      throw new Error('TikTok requires media content: mediaUrl (HTTPS URL)');
-    }
+    if (!clerkUserId) throw new Error('TikTok requires authenticated clerkUserId');
+    if (!mediaUrl) throw new Error('TikTok requires media content: mediaUrl (HTTPS URL)');
+    if (!captionText) throw new Error('TikTok post text is empty');
 
-    if (!captionText) {
-      throw new Error('TikTok post text is empty');
-    }
-
-    // Check if we have the required scopes for video posting
     const tokenDoc = await TikTokToken.findOne({ clerkUserId, provider: 'tiktok' });
-    if (!tokenDoc) {
-      throw new Error('TikTok not connected. Please connect your TikTok account first.');
-    }
+    if (!tokenDoc) throw new Error('TikTok not connected. Please connect your TikTok account first.');
 
-    // Check if token has video posting scopes
-    const hasVideoScopes = tokenDoc.scope && (
-      tokenDoc.scope.includes('video.upload') && 
-      tokenDoc.scope.includes('video.publish')
-    );
-
+    // Robust scope check (string or array)
+    const scopeStr = Array.isArray(tokenDoc.scope) ? tokenDoc.scope.join(' ') : (tokenDoc.scope || '');
+    const hasVideoScopes = /\bvideo\.upload\b/.test(scopeStr) && /\bvideo\.publish\b/.test(scopeStr);
     if (!hasVideoScopes) {
       throw new Error('TikTok posting unavailable. Missing required scopes.');
     }
 
-    // Get profile information (matches tiktokAuth.js pattern)
     const profile = await this.getTikTokProfile(identifier);
     console.log('[TikTok] Posting as:', profile.displayName || profile.username || 'TikTok User');
 
-    // Check if we have the required scopes for posting
     try {
-      // Determine MIME type based on mediaType
-      let mimeType = 'video/mp4'; // default
-      if (mediaType === 'image') {
-        mimeType = 'image/jpeg'; // TikTok will handle different image formats
-      } else if (mediaType === 'video') {
-        mimeType = 'video/mp4';
-      }
+      // Enforce video flow only
+      const mimeType = 'video/mp4';
 
-      // 1) Initialize upload and get publish_id
-      const { publish_id } = await this.uploadVideo({
-        clerkUserId: clerkUserId,
+      // 1) Initialize + upload, get upload_id
+      const { upload_id } = await this.uploadVideo({
+        clerkUserId,
         fileBuffer: mediaUrl, // S3 URL - TikTok service will download it
-        mimeType: mimeType,
+        mimeType
       });
 
-      // 2) Check status of the upload
+      // 2) Publish the video with caption
       const result = await this.publishVideo({
-        clerkUserId: clerkUserId,
-        publishId: publish_id,
-        title: captionText,
+        clerkUserId,
+        uploadId: upload_id,
+        title: captionText
       });
 
       return result;
     } catch (error) {
-      // Handle specific TikTok API errors
       if (error.response?.status === 401) {
         console.error('❌ TikTok 401 Error - Token/Scope Issue:', error.response?.data);
         throw new Error('TikTok posting unavailable. Authentication failed.');
@@ -358,7 +344,7 @@ class TikTokService {
         console.error('❌ TikTok 403 Error - Permission Issue:', error.response?.data);
         throw new Error('TikTok posting unavailable. Permission denied.');
       }
-      if (error.message.includes('scope') || error.message.includes('permission')) {
+      if (error.message?.toLowerCase().includes('scope') || error.message?.toLowerCase().includes('permission')) {
         throw new Error('TikTok posting unavailable. Scope or permission issue.');
       }
       console.error('❌ TikTok API Error:', error.response?.data || error.message);
@@ -367,7 +353,7 @@ class TikTokService {
   }
 
   /**
-   * Download media from external URL to buffer
+   * Download media from external URL to buffer (hardened)
    */
   async downloadToBuffer(url) {
     console.log('[TikTok] Downloading media from external URL:', url);
@@ -396,8 +382,8 @@ class TikTokService {
     try {
       const form = new FormData();
       const filename = path.basename(originalUrl.split('?')[0]) || 'media';
-      const contentType = 'video/mp4'; // Will be overridden by detectMedia
-      
+      const contentType = 'video/mp4';
+
       form.append('file', buffer, { filename, contentType });
       form.append('platform', 'tiktok');
 
@@ -405,9 +391,9 @@ class TikTokService {
         headers: form.getHeaders(),
         timeout: 60000,
       });
-      
+
       if (!resp.data?.url) throw new Error('S3 rehost failed: no URL returned');
-      
+
       console.log('[TikTok] Media rehosted to S3:', resp.data.url);
       return resp.data.url;
     } catch (error) {
