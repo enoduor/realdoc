@@ -1,290 +1,306 @@
-// routes/facebookAuth.js
 const express = require('express');
 const axios = require('axios');
-const crypto = require('crypto');
-const { requireAuth } = require('@clerk/express');
-const FacebookToken = require('../models/FacebookToken');
-const User = require('../models/User');
-const { abs } = require('../config/url');  // ✅ only import abs()
-
 const router = express.Router();
 
-// Facebook Graph API constants
-const FB_GRAPH_VERSION = 'v23.0'; // stop using v18; it's auto-upgraded anyway
-const FB_GRAPH = `https://graph.facebook.com/${FB_GRAPH_VERSION}`;
-const FACEBOOK_API_URL = process.env.FACEBOOK_API_URL || FB_GRAPH;
-const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID;
-const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
-const STATE_HMAC_SECRET = process.env.STATE_HMAC_SECRET || 'change-me';
+const FB_APP_ID = process.env.FACEBOOK_APP_ID;
+const FB_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
+const APP_BASE_URL = process.env.APP_BASE_URL || 'https://reelpostly.com';
 
-console.log('🔍 [Facebook Auth] Environment check:', {
-  FACEBOOK_APP_ID: FACEBOOK_APP_ID ? 'SET' : 'MISSING',
-  FACEBOOK_APP_SECRET: FACEBOOK_APP_SECRET ? 'SET' : 'MISSING',
-  FACEBOOK_API_URL: FACEBOOK_API_URL
+const abs = (p) => `${APP_BASE_URL.replace(/\/+$/, '')}/${p.replace(/^\/+/, '')}`;
+const buildState = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+const parseState = (s) => { try { return JSON.parse(Buffer.from(s, 'base64url').toString('utf8')); } catch { return {}; } };
+
+/**
+ * START: /api/auth/facebook/oauth/start
+ * Initiates Facebook OAuth flow with required permissions
+ */
+router.get('/oauth/start', (req, res) => {
+  const { userId, email } = req.query;
+  if (!userId) return res.status(400).json({ error: 'Missing userId' });
+
+  const state = buildState({ userId, email: email || null, ts: Date.now() });
+
+  const scopes = [
+    'public_profile',
+    'email',
+    'pages_show_list',
+    'pages_read_engagement',
+    'pages_read_user_content',
+    'pages_manage_posts',
+    'pages_manage_metadata',
+    'instagram_basic',
+    'instagram_content_publish',
+    'instagram_manage_comments',
+    'instagram_manage_insights',
+    'publish_video',
+    'ads_management',
+    'business_management',
+  ];
+
+  const params = new URLSearchParams({
+    client_id: FB_APP_ID,
+    redirect_uri: abs('/api/auth/facebook/callback'),
+    scope: scopes.join(','),
+    response_type: 'code',
+    state,
+  });
+
+  const authUrl = `https://www.facebook.com/v23.0/dialog/oauth?${params.toString()}`;
+  return res.redirect(302, authUrl);
 });
 
-// APP_URL is already imported as BASE from config/url
-const FACEBOOK_REDIRECT_URI = abs('api/auth/facebook/callback');
+/**
+ * START: /api/auth/facebook/oauth/start/facebook
+ * Dashboard compatibility route
+ */
+router.get('/oauth/start/facebook', (req, res) => {
+  const { userId, email } = req.query;
+  if (!userId) return res.status(400).json({ error: 'Missing userId' });
 
-function signState(payload) {
-  const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const sig = crypto.createHmac('sha256', STATE_HMAC_SECRET).update(data).digest('base64url');
-  return `${data}.${sig}`;
-}
-function verifyState(signed) {
-  const [data, sig] = (signed || '').split('.');
-  if (!data || !sig) return null;
-  const expected = crypto.createHmac('sha256', STATE_HMAC_SECRET).update(data).digest('base64url');
-  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-  try { return JSON.parse(Buffer.from(data, 'base64url').toString()); } catch { return null; }
-}
+  const state = buildState({ userId, email: email || null, ts: Date.now() });
 
-// Start
-router.get('/oauth/start/facebook', async (req, res) => {
-  try {
-    console.log('🔍 [Facebook OAuth Start] Starting Facebook OAuth process...');
-    let userId = req.auth?.().userId;
-    let email  = req.auth?.().email;
-    console.log('🔍 [Facebook OAuth Start] Initial values:', { userId: userId || 'MISSING', email: email || 'MISSING' });
+  const scopes = [
+    'public_profile',
+    'email',
+    'pages_show_list',
+    'pages_read_engagement',
+    'pages_read_user_content',
+    'pages_manage_posts',
+    'pages_manage_metadata',
+    'instagram_basic',
+    'instagram_content_publish',
+    'instagram_manage_comments',
+    'instagram_manage_insights',
+    'publish_video',
+    'ads_management',
+    'business_management',
+  ];
 
-    if (!userId && req.headers['x-clerk-user-id']) userId = String(req.headers['x-clerk-user-id']);
-    if (!email  && req.headers['x-clerk-user-email']) email  = String(req.headers['x-clerk-user-email']);
-    if (!userId && req.query.userId) userId = String(req.query.userId);
-    if (!email  && req.query.email)  email  = String(req.query.email);
+  const params = new URLSearchParams({
+    client_id: FB_APP_ID,
+    redirect_uri: abs('/api/auth/facebook/callback'),
+    scope: scopes.join(','),
+    response_type: 'code',
+    state,
+  });
 
-    if (!email && userId) {
-      try { const u = await User.findOne({ clerkUserId: userId }); if (u?.email) email = u.email; } catch {}
-    }
+  const authUrl = `https://www.facebook.com/v23.0/dialog/oauth?${params.toString()}`;
+  return res.redirect(302, authUrl);
+});
 
-    const state = signState({ userId: userId || null, email: email || null, ts: Date.now() });
+// ---- Page fetching function ----
+async function hydrateFacebookPages({ clerkUserId, userAccessToken }) {
+  // 1) Get pages
+  const { data: pagesResp } = await axios.get(
+    'https://graph.facebook.com/v23.0/me/accounts',
+    { params: { access_token: userAccessToken, fields: 'id,name,access_token' } }
+  );
 
-    const authUrl =
-      `https://www.facebook.com/v18.0/dialog/oauth` +
-      `?client_id=${FACEBOOK_APP_ID}` +
-      `&redirect_uri=${encodeURIComponent(FACEBOOK_REDIRECT_URI)}` +
-      `&scope=${encodeURIComponent('public_profile,email,pages_manage_metadata,pages_manage_posts,instagram_content_publish')}` +
-      `&response_type=code` +
-      `&state=${encodeURIComponent(state)}`;
-
-    console.log('🔍 [Facebook OAuth Start] Generated auth URL:', authUrl);
-    console.log('🔍 [Facebook OAuth Start] Redirecting to Facebook...');
-    return res.redirect(authUrl);
-  } catch (error) {
-    return res.redirect(abs('app?error=facebook_auth_failed'));
+  const pages = pagesResp.data || [];
+  if (!pages.length) {
+    console.warn('[FB OAuth] No pages returned from /me/accounts');
+    return null;
   }
-});
 
-// Callback
+  // 2) Pick a page (or present choices to the user in UI)
+  const page = pages[0]; // or find by name/id
+  const pageId = page.id;
+  const pageName = page.name;
+  const pageAccessToken = page.access_token;
+
+  // 3) Optional: get Instagram Business Account ID
+  let igBusinessId = null;
+  try {
+    const { data: igResp } = await axios.get(
+      `https://graph.facebook.com/v23.0/${pageId}`,
+      { params: { fields: 'instagram_business_account', access_token: pageAccessToken } }
+    );
+    igBusinessId = igResp?.instagram_business_account?.id || null;
+  } catch (e) {
+    console.warn('[FB OAuth] No instagram_business_account linked to this page.');
+  }
+
+  console.log('✅ [FB OAuth] Found page data:', { pageId, pageName, igBusinessId: igBusinessId || 'none' });
+  return { pageId, pageName, pageAccessToken, igBusinessId };
+}
+
+// ---- Database persistence ----
+async function upsertFacebookToken({
+  clerkUserId,
+  facebookUserId,
+  name,
+  email,
+  userAccessToken,
+  userTokenType,
+  grantedPermissions,
+  pageId,
+  pageName,
+  pageAccessToken,
+  instagramBusinessAccountId
+}) {
+  const FacebookToken = require('../models/FacebookToken');
+  
+  const doc = await FacebookToken.findOneAndUpdate(
+    { clerkUserId, provider: 'facebook' },
+    {
+      provider: 'facebook',
+      clerkUserId,
+      userId: clerkUserId,
+      facebookUserId,
+      name,
+      email,
+      accessToken: userAccessToken,
+      tokenType: 'user',
+      grantedPermissions,
+      isActive: true,
+      pageId: pageId || undefined,
+      pageName: pageName || undefined,
+      pageAccessToken: pageAccessToken || undefined,
+      instagramBusinessAccountId: instagramBusinessAccountId || undefined
+    },
+    { upsert: true, new: true }
+  );
+  return doc;
+}
+
+/**
+ * CALLBACK: /api/auth/facebook/callback
+ * - exchange code → user access token (then long-lived)
+ * - fetch profile + granted permissions
+ * - fetch pages (w/ access_token, IG business linkage)
+ * - choose a publishable page (if any)
+ * - save to DB
+ */
 router.get('/callback', async (req, res) => {
   try {
-    console.log('🔍 [Facebook OAuth Callback] Starting callback processing...');
     const { code, state } = req.query;
-    console.log('🔍 [Facebook OAuth Callback] Query params:', { code: code ? 'SET' : 'MISSING', state: state ? 'SET' : 'MISSING' });
-    
-    if (!code || !state) {
-      console.error('❌ [Facebook OAuth Callback] Missing code or state');
-      return res.redirect(abs('app?error=facebook_auth_failed'));
-    }
+    if (!code) return res.redirect('/app?error=facebook_auth_failed');
 
-    const userInfo = verifyState(state);
-    console.log('🔍 [Facebook OAuth Callback] User info from state:', { userId: userInfo?.userId || 'MISSING', email: userInfo?.email || 'MISSING' });
-    
-    if (!userInfo?.userId) {
-      console.error('❌ [Facebook OAuth Callback] No userId in state');
-      return res.redirect(abs('app?error=facebook_auth_failed'));
-    }
+    const meta = parseState(state || '');
+    const clerkUserId = meta.userId;
+    if (!clerkUserId) return res.redirect('/app?error=missing_user');
 
-    const tokenResp = await axios.get(`${FB_GRAPH}/oauth/access_token`, {
-      params: {
-        client_id: FACEBOOK_APP_ID,
-        client_secret: FACEBOOK_APP_SECRET,
-        redirect_uri: 'https://reelpostly.com/api/auth/facebook/callback',
-        code
-      },
-      timeout: 15000
+    console.log('🔍 [Facebook OAuth Callback] Starting. Clerk user:', clerkUserId);
+
+    // 1) short-lived user token
+    const tokenParams = new URLSearchParams({
+      client_id: FB_APP_ID,
+      client_secret: FB_APP_SECRET,
+      redirect_uri: abs('/api/auth/facebook/callback'),
+      code,
     });
-    console.log('🔍 [Facebook OAuth] Token exchange response:', tokenResp.data);
-    const { access_token, token_type, expires_in } = tokenResp.data || {};
-    if (!access_token) throw new Error('No access token from Facebook');
+    const tokenUrl = `https://graph.facebook.com/v23.0/oauth/access_token?${tokenParams.toString()}`;
+    const shortResp = await axios.get(tokenUrl);
+    const shortToken = shortResp.data?.access_token;
+    if (!shortToken) throw new Error('No short-lived access_token from Facebook');
+    console.log('✅ [FB OAuth] Got short-lived user token.');
 
-    const exchangeResp = await axios.get(`${FB_GRAPH}/oauth/access_token`, {
-      params: {
+    // 2) long-lived user token
+    const llParams = new URLSearchParams({
         grant_type: 'fb_exchange_token',
-        client_id: FACEBOOK_APP_ID,
-        client_secret: FACEBOOK_APP_SECRET,
-        fb_exchange_token: access_token,
-      },
-      timeout: 15000,
+      client_id: FB_APP_ID,
+      client_secret: FB_APP_SECRET,
+      fb_exchange_token: shortToken,
     });
-    const longLived = exchangeResp.data?.access_token || access_token;
-    const ttlSecs = exchangeResp.data?.expires_in;
-    const expiresAt = ttlSecs ? new Date(Date.now() + ttlSecs * 1000) : undefined;
+    const llUrl = `https://graph.facebook.com/v23.0/oauth/access_token?${llParams.toString()}`;
+    const longResp = await axios.get(llUrl);
+    const userAccessToken = longResp.data?.access_token || shortToken; // fallback
+    console.log('✅ [FB OAuth] Got long-lived user token.');
 
-    const profile = await axios.get(`${FB_GRAPH}/me`, {
-      params: {
-        access_token: longLived,
-        // DO NOT ask for 'username' on the user object
-        fields: 'id,name,email' // email returns only if permission granted and email exists
-      },
-      timeout: 10000
+    // 3) user profile
+    const meResp = await axios.get(
+      `https://graph.facebook.com/v23.0/me`,
+      { params: { fields: 'id,name,email', access_token: userAccessToken } }
+    );
+    const me = meResp.data || {};
+    console.log('👤 [FB OAuth] Profile:', me);
+
+    // 4) granted permissions
+    const permsResp = await axios.get(
+      `https://graph.facebook.com/v23.0/me/permissions`,
+      { params: { access_token: userAccessToken } }
+    );
+    const grantedPermissions = (permsResp.data?.data || [])
+      .filter(p => p.status === 'granted')
+      .map(p => p.permission);
+    console.log('🔑 [FB OAuth] Granted permissions:', grantedPermissions);
+
+    // 5) pages (include IG business linkage + page tokens)
+    //    Request the fields we need in one call
+    // Use the new hydrateFacebookPages function
+    const pageData = await hydrateFacebookPages({ 
+      clerkUserId: clerkUserId, 
+      userAccessToken 
     });
-    const facebookUser = profile.data;
+    let pageId, pageName, pageAccessToken, instagramBusinessAccountId;
+    if (pageData) {
+      pageId = pageData.pageId;
+      pageName = pageData.pageName;
+      pageAccessToken = pageData.pageAccessToken;
+      instagramBusinessAccountId = pageData.igBusinessId;
 
-    let pageId, pageName, pageAccessToken;
-    try {
-      console.log('Facebook: Fetching user pages...');
-      const accounts = await axios.get(`${FB_GRAPH}/me/accounts`, {
-        params: {
-          access_token: longLived,
-          fields: 'id,name,access_token,instagram_business_account{id,username}' // page/IGB username is OK
-        },
-        timeout: 10000
+      console.log('✅ [FB OAuth] Selected page:', {
+        pageId, pageName,
+        hasPageAccessToken: !!pageAccessToken,
+        instagramBusinessAccountId
       });
-      console.log('Facebook: Pages response:', JSON.stringify(accounts.data, null, 2));
-      const pages = accounts.data?.data || [];
-      console.log('Facebook: Found', pages.length, 'pages');
+    } else {
+      console.warn('⚠️ [FB OAuth] No pages found for this user.');
+      // Still save the user token for personal profile posting
+      const tokenData = await upsertFacebookToken({
+        clerkUserId: clerkUserId,
+        facebookUserId: me.id,
+        name: me.name,
+        email: me.email,
+        userAccessToken,
+        userTokenType: 'user',
+        grantedPermissions,
+        pageId: null,
+        pageName: null,
+        pageAccessToken: null,
+        instagramBusinessAccountId: null
+      });
       
-      if (pages.length > 0) {
-        const firstPage = pages[0];
-        if (firstPage?.access_token) {
-          pageId = firstPage.id;
-          pageName = firstPage.name;
-          pageAccessToken = firstPage.access_token;
-          console.log('Facebook: Using page:', pageName, 'ID:', pageId);
-        } else {
-          console.warn('Facebook: First page has no access token');
-        }
-      } else {
-        console.warn('Facebook: No pages found for user');
-      }
-    } catch (pageError) {
-      console.error('Facebook: Failed to fetch pages:', pageError.message);
+      console.log('💾 [FB OAuth] Saved token record:', tokenData);
+      return res.redirect(abs('app?warning=no_pages'));
     }
 
-    // Check granted permissions
-    let grantedPermissions = [];
-    try {
-      console.log('Facebook: Checking granted permissions...');
-      const permissionsResp = await axios.get(`${FB_GRAPH}/me/permissions`, {
-        params: { access_token: longLived },
-        timeout: 10000,
-      });
-      console.log('Facebook: Permissions response:', JSON.stringify(permissionsResp.data, null, 2));
-      const permissions = permissionsResp.data?.data || [];
-      grantedPermissions = permissions
-        .filter(p => p.status === 'granted')
-        .map(p => p.permission);
-      console.log('Facebook: Granted permissions:', grantedPermissions);
-    } catch (permError) {
-      console.error('Facebook: Failed to fetch permissions:', permError.message);
+    // 6) persist
+    const saved = await upsertFacebookToken({
+      clerkUserId: clerkUserId,
+      facebookUserId: me.id,
+      name: me.name,
+      email: me.email,
+      userAccessToken,
+      userTokenType: 'user',
+      grantedPermissions,
+      pageId,
+      pageName,
+      pageAccessToken,
+      instagramBusinessAccountId
+    });
+    console.log('💾 [FB OAuth] Saved token record:', saved);
+
+    // 7) redirect with context
+    if (!pageId) {
+      return res.redirect('/app?connected=facebook&warning=no_pages');
     }
-
-    // Parse name into first/last
-    const displayName = facebookUser.name || '';
-    let firstName = facebookUser.first_name || null;
-    let lastName = facebookUser.last_name || null;
-    
-    // If Facebook doesn't provide first_name/last_name, parse from name
-    if (!firstName && !lastName && displayName) {
-      const parts = displayName.trim().split(/\s+/);
-      firstName = parts[0] || null;
-      lastName = parts.length > 1 ? parts.slice(1).join(' ') : null;
+    if (pageId && !pageAccessToken) {
+      return res.redirect('/app?connected=facebook&warning=no_page_token');
     }
-
-    const tokenData = {
-      clerkUserId: userInfo.userId,
-      userId: userInfo.userId,
-      email: userInfo.email || null,
-      facebookUserId: facebookUser.id,
-      accessToken: longLived,
-      name: facebookUser.name,
-      firstName: firstName,
-      lastName: lastName,
-      handle: null, // username field deprecated in Facebook API v2.0+
-      grantedPermissions: grantedPermissions,
-      isActive: true,
-      expiresAt,
-      provider: 'facebook',
-      ...(pageId && { pageId, pageName, pageAccessToken }),
-    };
-    
-    console.log('Facebook: Saving token data:', {
-      clerkUserId: tokenData.clerkUserId,
-      facebookUserId: tokenData.facebookUserId,
-      hasPageId: !!tokenData.pageId,
-      hasPageAccessToken: !!tokenData.pageAccessToken,
-      pageName: tokenData.pageName
-    });
-    
-    console.log('🔍 [Facebook OAuth Callback] Attempting to save to database...');
-    const savedToken = await FacebookToken.findOneAndUpdate(
-      { clerkUserId: userInfo.userId, provider: 'facebook' },
-      tokenData,
-      { upsert: true, new: true }
-    );
-    console.log('✅ [Facebook OAuth Callback] Token saved successfully:', {
-      id: savedToken._id,
-      clerkUserId: savedToken.clerkUserId,
-      facebookUserId: savedToken.facebookUserId
-    });
-
-    return res.redirect(abs('app?connected=facebook'));
-  } catch (error) {
-    console.error('❌ [Facebook OAuth Callback] Error during callback:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-    
-    // Log detailed Facebook API error if available
-    if (error.response) {
+    return res.redirect('/app?connected=facebook');
+  } catch (err) {
+    if (err.response) {
       console.error('🚨 [Facebook OAuth Callback] Facebook API Error Response:', {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data,
-        headers: error.response.headers
+        status: err.response.status,
+        statusText: err.response.statusText,
+        data: err.response.data,
+        headers: err.response.headers,
       });
+    } else {
+      console.error('❌ [Facebook OAuth Callback] Error during callback:', err);
     }
-    
-    return res.redirect(abs('app?error=facebook_auth_failed'));
-  }
-});
-
-// Disconnect
-router.delete('/disconnect', requireAuth(), async (req, res) => {
-  try {
-    const clerkUserId = req.auth().userId;
-    const result = await FacebookToken.findOneAndUpdate(
-      { clerkUserId, isActive: true },
-      { isActive: false },
-      { new: true }
-    );
-    if (!result) return res.status(404).json({ error: 'Facebook account not found' });
-    res.json({ message: 'Facebook account disconnected successfully' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to disconnect Facebook account' });
-  }
-});
-
-// Status
-router.get('/status', requireAuth(), async (req, res) => {
-  try {
-    const clerkUserId = req.auth().userId;
-    const token = await FacebookToken.findOne({ clerkUserId, isActive: true });
-    if (!token) return res.json({ connected: false });
-    res.json({
-      connected: true,
-      facebookUserId: token.facebookUserId,
-      pageId: token.pageId || null,
-      pageName: token.pageName || null,
-      firstName: token.firstName || null,
-      lastName: token.lastName || null,
-      handle: token.handle || null,
-      grantedPermissions: token.grantedPermissions || [],
-      isActive: token.isActive ?? true
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get Facebook status' });
+    return res.redirect('/app?error=facebook_auth_failed');
   }
 });
 
