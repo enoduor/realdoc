@@ -12,6 +12,7 @@ const instagramTokenSchema = new mongoose.Schema({
   // Instagram account info
   pageId: { type: String },
   pageName: { type: String },
+  pageAccessToken: { type: String },
   igUserId: { type: String },
   name: { type: String },
   firstName: { type: String },

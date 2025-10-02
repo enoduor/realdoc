@@ -4,7 +4,7 @@ const FormData = require('form-data');
 const path = require('path');
 const InstagramToken = require('../models/InstagramToken');
 
-const FACEBOOK_API_URL = process.env.FACEBOOK_API_URL || 'https://graph.facebook.com/v18.0';
+const FACEBOOK_API_URL = process.env.FACEBOOK_API_URL || 'https://graph.facebook.com/v23.0';
 const PYTHON_API_BASE_URL = process.env.PYTHON_API_BASE_URL || 'http://localhost:5001';
 const MediaManagerService = require('./mediaManagerService');
 

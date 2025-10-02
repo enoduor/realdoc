@@ -33,6 +33,50 @@ function verifyState(state) {
   return JSON.parse(Buffer.from(payload, 'base64url').toString());
 }
 
+// ---- Instagram page fetching function ----
+async function hydrateInstagramPages({ clerkUserId, userAccessToken }) {
+  // 1) Get pages
+  const { data: pagesResp } = await axios.get(
+    'https://graph.facebook.com/v23.0/me/accounts',
+    { params: { access_token: userAccessToken, fields: 'id,name,access_token,instagram_business_account{id,name}' } }
+  );
+
+  const pages = pagesResp.data || [];
+  if (!pages.length) {
+    console.warn('[IG OAuth] No pages returned from /me/accounts');
+    return null;
+  }
+
+  // 2) Pick a page with Instagram Business Account
+  let selectedPage = null;
+  for (const page of pages) {
+    if (page.instagram_business_account?.id) {
+      selectedPage = page;
+      break;
+    }
+  }
+
+  if (!selectedPage) {
+    console.warn('[IG OAuth] No pages with Instagram Business Account found');
+    return null;
+  }
+
+  const pageId = selectedPage.id;
+  const pageName = selectedPage.name;
+  const pageAccessToken = selectedPage.access_token;
+  const igBusinessId = selectedPage.instagram_business_account.id;
+  const igBusinessName = selectedPage.instagram_business_account.name;
+
+  console.log('✅ [IG OAuth] Found Instagram page data:', { 
+    pageId, 
+    pageName, 
+    igBusinessId, 
+    igBusinessName: igBusinessName || 'none' 
+  });
+  
+  return { pageId, pageName, pageAccessToken, igBusinessId, igBusinessName };
+}
+
 // Start
 router.get('/oauth/start/instagram', async (req, res) => {
   try {
@@ -53,13 +97,21 @@ router.get('/oauth/start/instagram', async (req, res) => {
     const scopes = [
       'public_profile',
       'email',
-      'pages_manage_metadata',
+      'pages_show_list',
+      'pages_read_engagement',
+      'pages_read_user_content',
       'pages_manage_posts',
+      'pages_manage_metadata',
+      'instagram_basic',
       'instagram_content_publish',
-      'instagram_manage_comments'
+      'instagram_manage_comments',
+      'instagram_manage_insights',
+      'publish_video',
+      'ads_management',
+      'business_management',
     ].join(',');
 
-    const authUrl = `https://www.facebook.com/v18.0/dialog/oauth` +
+    const authUrl = `https://www.facebook.com/v23.0/dialog/oauth` +
       `?client_id=${FACEBOOK_APP_ID}` +
       `&redirect_uri=${encodeURIComponent(IG_REDIRECT_URI)}` +
       `&state=${encodeURIComponent(state)}` +
@@ -162,37 +214,25 @@ router.get('/callback', async (req, res) => {
       console.error('❌ [Instagram OAuth] Error fetching permissions:', error.response?.data || error.message);
     }
 
-    // Resolve IG business account (optional)
-    let pageId = null, pageName = null, igUserId = null, name = null;
-    try {
-      console.log('🔍 [Instagram OAuth] Fetching Facebook pages...');
-      const accounts = await axios.get(`${FB_GRAPH}/me/accounts`, {
-        params: {
-          access_token: longLived,
-          fields: 'id,name,access_token,instagram_business_account{id,username}' // page/IGB username is OK
-        },
-        timeout: 10000
+    // Fetch Instagram pages using the new function
+    const pageData = await hydrateInstagramPages({ 
+      clerkUserId: userId, 
+      userAccessToken: longLived 
+    });
+
+    let pageId, pageName, igUserId, name;
+    if (pageData) {
+      pageId = pageData.pageId;
+      pageName = pageData.pageName;
+      igUserId = pageData.igBusinessId;
+      name = pageData.igBusinessName;
+
+      console.log('✅ [Instagram OAuth] Selected Instagram page:', {
+        pageId, pageName,
+        igUserId, name
       });
-      console.log('📄 [Instagram OAuth] Pages response:', accounts.data);
-      const firstPage = accounts.data?.data?.[0];
-      if (firstPage?.id) {
-        pageId = firstPage.id; pageName = firstPage.name;
-        console.log('📄 [Instagram OAuth] Found page:', { pageId, pageName });
-        const igResp = await axios.get(`${FB_GRAPH}/${pageId}`, {
-          params: { access_token: longLived, fields: 'instagram_business_account{name}' }, timeout: 10000,
-        });
-        console.log('📄 [Instagram OAuth] Instagram account response:', igResp.data);
-        const igAccount = igResp.data?.instagram_business_account;
-        igUserId = igAccount?.id || null;
-        name = igAccount?.name || pageName || null;
-        // Instagram username field is deprecated in Facebook API v2.0+
-        // Keep existing handle (which is null)
-        console.log('📄 [Instagram OAuth] Instagram account info:', { igUserId, name, handle });
-      } else {
-        console.log('⚠️ [Instagram OAuth] No Facebook pages found');
-      }
-    } catch (error) {
-      console.error('❌ [Instagram OAuth] Error fetching Instagram business account:', error.response?.data || error.message);
+    } else {
+      console.warn('⚠️ [Instagram OAuth] No Instagram Business Account found.');
     }
 
     // Only save token if we have Instagram Business Account info
@@ -214,7 +254,11 @@ router.get('/callback', async (req, res) => {
           handle,
           grantedPermissions,
           isActive: true,
-          pageId, pageName, igUserId, name,
+          pageId, 
+          pageName, 
+          pageAccessToken: pageData?.pageAccessToken || null,
+          igUserId, 
+          name,
           provider: 'instagram',
         } },
       { upsert: true, new: true }
