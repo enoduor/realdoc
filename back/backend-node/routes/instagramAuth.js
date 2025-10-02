@@ -9,7 +9,10 @@ const { abs } = require('../config/url');  // ✅ only abs needed
 
 const router = express.Router();
 
-const FACEBOOK_API_URL = process.env.FACEBOOK_API_URL || 'https://graph.facebook.com/v18.0';
+// Facebook Graph API constants
+const FB_GRAPH_VERSION = 'v23.0'; // stop using v18; it's auto-upgraded anyway
+const FB_GRAPH = `https://graph.facebook.com/${FB_GRAPH_VERSION}`;
+const FACEBOOK_API_URL = process.env.FACEBOOK_API_URL || FB_GRAPH;
 const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID;
 const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
 const STATE_HMAC_SECRET = process.env.STATE_HMAC_SECRET || 'dev_state_secret';
@@ -89,14 +92,20 @@ router.get('/callback', async (req, res) => {
     const email  = decoded.email || null;
     console.log('🔍 [Instagram OAuth Callback] User info from state:', { userId: userId || 'MISSING', email: email || 'MISSING' });
 
-    const tokenResp = await axios.get(`${FACEBOOK_API_URL}/oauth/access_token`, {
-      params: { client_id: FACEBOOK_APP_ID, client_secret: FACEBOOK_APP_SECRET, redirect_uri: IG_REDIRECT_URI, code },
-      timeout: 15000,
+    const tokenResp = await axios.get(`${FB_GRAPH}/oauth/access_token`, {
+      params: {
+        client_id: FACEBOOK_APP_ID,
+        client_secret: FACEBOOK_APP_SECRET,
+        redirect_uri: 'https://reelpostly.com/api/auth/instagram/callback',
+        code
+      },
+      timeout: 15000
     });
-    const shortLived = tokenResp.data?.access_token;
+    console.log('🔍 [Instagram OAuth] Token exchange response:', tokenResp.data);
+    const { access_token: shortLived, token_type, expires_in } = tokenResp.data || {};
     if (!shortLived) throw new Error('No short-lived token');
 
-    const longResp = await axios.get(`${FACEBOOK_API_URL}/oauth/access_token`, {
+    const longResp = await axios.get(`${FB_GRAPH}/oauth/access_token`, {
       params: { grant_type: 'fb_exchange_token', client_id: FACEBOOK_APP_ID, client_secret: FACEBOOK_APP_SECRET, fb_exchange_token: shortLived },
       timeout: 15000,
     });
@@ -107,17 +116,21 @@ router.get('/callback', async (req, res) => {
     let firstName = null, lastName = null, handle = null;
     try {
       console.log('🔍 [Instagram OAuth] Fetching user profile...');
-      const userResp = await axios.get(`${FACEBOOK_API_URL}/me`, {
-        params: { access_token: longLived, fields: 'id,name,first_name,last_name,username' },
-        timeout: 15000,
+      const profile = await axios.get(`${FB_GRAPH}/me`, {
+        params: {
+          access_token: longLived,
+          // DO NOT ask for 'username' on the user object
+          fields: 'id,name,email' // email returns only if permission granted and email exists
+        },
+        timeout: 10000
       });
-      console.log('📄 [Instagram OAuth] User profile response:', userResp.data);
-      const user = userResp.data;
+      console.log('📄 [Instagram OAuth] User profile response:', profile.data);
+      const user = profile.data;
       
       // Parse name information
       firstName = user.first_name || null;
       lastName = user.last_name || null;
-      handle = user.username || null;
+      handle = null; // username field deprecated in Facebook API v2.0+
       
       // If Facebook doesn't provide first_name/last_name, parse from name
       if (!firstName && !lastName && user.name) {
@@ -135,9 +148,9 @@ router.get('/callback', async (req, res) => {
     let grantedPermissions = [];
     try {
       console.log('🔍 [Instagram OAuth] Checking granted permissions...');
-      const permissionsResp = await axios.get(`${FACEBOOK_API_URL}/me/permissions`, {
+      const permissionsResp = await axios.get(`${FB_GRAPH}/me/permissions`, {
         params: { access_token: longLived },
-        timeout: 15000,
+        timeout: 10000,
       });
       console.log('📄 [Instagram OAuth] Permissions response:', permissionsResp.data);
       const permissions = permissionsResp.data?.data || [];
@@ -153,25 +166,27 @@ router.get('/callback', async (req, res) => {
     let pageId = null, pageName = null, igUserId = null, name = null;
     try {
       console.log('🔍 [Instagram OAuth] Fetching Facebook pages...');
-      const pagesResp = await axios.get(`${FACEBOOK_API_URL}/me/accounts`, {
-        params: { access_token: longLived, fields: 'id,name' }, timeout: 15000,
+      const accounts = await axios.get(`${FB_GRAPH}/me/accounts`, {
+        params: {
+          access_token: longLived,
+          fields: 'id,name,access_token,instagram_business_account{id,username}' // page/IGB username is OK
+        },
+        timeout: 10000
       });
-      console.log('📄 [Instagram OAuth] Pages response:', pagesResp.data);
-      const firstPage = pagesResp.data?.data?.[0];
+      console.log('📄 [Instagram OAuth] Pages response:', accounts.data);
+      const firstPage = accounts.data?.data?.[0];
       if (firstPage?.id) {
         pageId = firstPage.id; pageName = firstPage.name;
         console.log('📄 [Instagram OAuth] Found page:', { pageId, pageName });
-        const igResp = await axios.get(`${FACEBOOK_API_URL}/${pageId}`, {
-          params: { access_token: longLived, fields: 'instagram_business_account{name,username}' }, timeout: 15000,
+        const igResp = await axios.get(`${FB_GRAPH}/${pageId}`, {
+          params: { access_token: longLived, fields: 'instagram_business_account{name}' }, timeout: 10000,
         });
         console.log('📄 [Instagram OAuth] Instagram account response:', igResp.data);
         const igAccount = igResp.data?.instagram_business_account;
         igUserId = igAccount?.id || null;
         name = igAccount?.name || pageName || null;
-        // Use Instagram username if available, otherwise keep existing handle
-        if (igAccount?.username) {
-          handle = igAccount.username;
-        }
+        // Instagram username field is deprecated in Facebook API v2.0+
+        // Keep existing handle (which is null)
         console.log('📄 [Instagram OAuth] Instagram account info:', { igUserId, name, handle });
       } else {
         console.log('⚠️ [Instagram OAuth] No Facebook pages found');
@@ -217,6 +232,17 @@ router.get('/callback', async (req, res) => {
       stack: e.stack,
       name: e.name
     });
+    
+    // Log detailed Facebook API error if available
+    if (e.response) {
+      console.error('🚨 [Instagram OAuth Callback] Facebook API Error Response:', {
+        status: e.response.status,
+        statusText: e.response.statusText,
+        data: e.response.data,
+        headers: e.response.headers
+      });
+    }
+    
     return res.redirect(abs('app?error=instagram_auth_failed'));
   }
 });

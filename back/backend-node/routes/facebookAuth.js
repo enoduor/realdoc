@@ -9,10 +9,19 @@ const { abs } = require('../config/url');  // ✅ only import abs()
 
 const router = express.Router();
 
-const FACEBOOK_API_URL = process.env.FACEBOOK_API_URL || 'https://graph.facebook.com/v18.0';
+// Facebook Graph API constants
+const FB_GRAPH_VERSION = 'v23.0'; // stop using v18; it's auto-upgraded anyway
+const FB_GRAPH = `https://graph.facebook.com/${FB_GRAPH_VERSION}`;
+const FACEBOOK_API_URL = process.env.FACEBOOK_API_URL || FB_GRAPH;
 const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID;
 const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
 const STATE_HMAC_SECRET = process.env.STATE_HMAC_SECRET || 'change-me';
+
+console.log('🔍 [Facebook Auth] Environment check:', {
+  FACEBOOK_APP_ID: FACEBOOK_APP_ID ? 'SET' : 'MISSING',
+  FACEBOOK_APP_SECRET: FACEBOOK_APP_SECRET ? 'SET' : 'MISSING',
+  FACEBOOK_API_URL: FACEBOOK_API_URL
+});
 
 // APP_URL is already imported as BASE from config/url
 const FACEBOOK_REDIRECT_URI = abs('api/auth/facebook/callback');
@@ -33,8 +42,10 @@ function verifyState(signed) {
 // Start
 router.get('/oauth/start/facebook', async (req, res) => {
   try {
+    console.log('🔍 [Facebook OAuth Start] Starting Facebook OAuth process...');
     let userId = req.auth?.().userId;
     let email  = req.auth?.().email;
+    console.log('🔍 [Facebook OAuth Start] Initial values:', { userId: userId || 'MISSING', email: email || 'MISSING' });
 
     if (!userId && req.headers['x-clerk-user-id']) userId = String(req.headers['x-clerk-user-id']);
     if (!email  && req.headers['x-clerk-user-email']) email  = String(req.headers['x-clerk-user-email']);
@@ -55,6 +66,8 @@ router.get('/oauth/start/facebook', async (req, res) => {
       `&response_type=code` +
       `&state=${encodeURIComponent(state)}`;
 
+    console.log('🔍 [Facebook OAuth Start] Generated auth URL:', authUrl);
+    console.log('🔍 [Facebook OAuth Start] Redirecting to Facebook...');
     return res.redirect(authUrl);
   } catch (error) {
     return res.redirect(abs('app?error=facebook_auth_failed'));
@@ -81,20 +94,20 @@ router.get('/callback', async (req, res) => {
       return res.redirect(abs('app?error=facebook_auth_failed'));
     }
 
-    const tokenResponse = await axios.get(`${FACEBOOK_API_URL}/oauth/access_token`, {
+    const tokenResp = await axios.get(`${FB_GRAPH}/oauth/access_token`, {
       params: {
         client_id: FACEBOOK_APP_ID,
         client_secret: FACEBOOK_APP_SECRET,
-        redirect_uri: FACEBOOK_REDIRECT_URI,
+        redirect_uri: 'https://reelpostly.com/api/auth/facebook/callback',
         code
       },
       timeout: 15000
     });
-
-    const { access_token } = tokenResponse.data;
+    console.log('🔍 [Facebook OAuth] Token exchange response:', tokenResp.data);
+    const { access_token, token_type, expires_in } = tokenResp.data || {};
     if (!access_token) throw new Error('No access token from Facebook');
 
-    const exchangeResp = await axios.get(`${FACEBOOK_API_URL}/oauth/access_token`, {
+    const exchangeResp = await axios.get(`${FB_GRAPH}/oauth/access_token`, {
       params: {
         grant_type: 'fb_exchange_token',
         client_id: FACEBOOK_APP_ID,
@@ -107,20 +120,28 @@ router.get('/callback', async (req, res) => {
     const ttlSecs = exchangeResp.data?.expires_in;
     const expiresAt = ttlSecs ? new Date(Date.now() + ttlSecs * 1000) : undefined;
 
-    const userResponse = await axios.get(`${FACEBOOK_API_URL}/me`, {
-      params: { access_token: longLived, fields: 'id,name,email,first_name,last_name,username' }
+    const profile = await axios.get(`${FB_GRAPH}/me`, {
+      params: {
+        access_token: longLived,
+        // DO NOT ask for 'username' on the user object
+        fields: 'id,name,email' // email returns only if permission granted and email exists
+      },
+      timeout: 10000
     });
-    const facebookUser = userResponse.data;
+    const facebookUser = profile.data;
 
     let pageId, pageName, pageAccessToken;
     try {
       console.log('Facebook: Fetching user pages...');
-      const pagesResp = await axios.get(`${FACEBOOK_API_URL}/me/accounts`, {
-        params: { access_token: longLived, fields: 'id,name,access_token' },
-        timeout: 15000,
+      const accounts = await axios.get(`${FB_GRAPH}/me/accounts`, {
+        params: {
+          access_token: longLived,
+          fields: 'id,name,access_token,instagram_business_account{id,username}' // page/IGB username is OK
+        },
+        timeout: 10000
       });
-      console.log('Facebook: Pages response:', JSON.stringify(pagesResp.data, null, 2));
-      const pages = pagesResp.data?.data || [];
+      console.log('Facebook: Pages response:', JSON.stringify(accounts.data, null, 2));
+      const pages = accounts.data?.data || [];
       console.log('Facebook: Found', pages.length, 'pages');
       
       if (pages.length > 0) {
@@ -144,9 +165,9 @@ router.get('/callback', async (req, res) => {
     let grantedPermissions = [];
     try {
       console.log('Facebook: Checking granted permissions...');
-      const permissionsResp = await axios.get(`${FACEBOOK_API_URL}/me/permissions`, {
+      const permissionsResp = await axios.get(`${FB_GRAPH}/me/permissions`, {
         params: { access_token: longLived },
-        timeout: 15000,
+        timeout: 10000,
       });
       console.log('Facebook: Permissions response:', JSON.stringify(permissionsResp.data, null, 2));
       const permissions = permissionsResp.data?.data || [];
@@ -179,7 +200,7 @@ router.get('/callback', async (req, res) => {
       name: facebookUser.name,
       firstName: firstName,
       lastName: lastName,
-      handle: facebookUser.username || null,
+      handle: null, // username field deprecated in Facebook API v2.0+
       grantedPermissions: grantedPermissions,
       isActive: true,
       expiresAt,
@@ -214,6 +235,17 @@ router.get('/callback', async (req, res) => {
       stack: error.stack,
       name: error.name
     });
+    
+    // Log detailed Facebook API error if available
+    if (error.response) {
+      console.error('🚨 [Facebook OAuth Callback] Facebook API Error Response:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        headers: error.response.headers
+      });
+    }
+    
     return res.redirect(abs('app?error=facebook_auth_failed'));
   }
 });

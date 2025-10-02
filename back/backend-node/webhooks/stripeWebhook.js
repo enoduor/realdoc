@@ -4,6 +4,8 @@ const router = express.Router();
 const Stripe = require("stripe");
 const User = require("../models/User");
 
+
+
 // Initialize Stripe when needed, not at module load time
 let stripe, endpointSecret;
 
@@ -33,9 +35,28 @@ router.post("/", express.raw({ type: "application/json" }), (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;
 
+  const { stripe, endpointSecret } = getStripe();
+
+  console.log("🔍 [Stripe Webhook] Received webhook request");
+  console.log("🔍 [Stripe Webhook] Headers:", {
+    'stripe-signature': sig ? 'SET' : 'MISSING',
+    'content-type': req.headers['content-type'],
+    'user-agent': req.headers['user-agent']
+  });
+  console.log("🔍 [Stripe Webhook] Environment check:", {
+    'STRIPE_WEBHOOK_SECRET': endpointSecret ? 'SET' : 'MISSING',
+    'STRIPE_SECRET_KEY': process.env.STRIPE_SECRET_KEY ? 'SET' : 'MISSING'
+  });
+
   try {
     if (!sig || !endpointSecret) {
       console.error("❌ Missing stripe-signature or STRIPE_WEBHOOK_SECRET");
+      console.error("❌ Debug info:", {
+        hasSignature: !!sig,
+        hasEndpointSecret: !!endpointSecret,
+        signatureValue: sig,
+        endpointSecretValue: endpointSecret ? 'SET' : 'MISSING'
+      });
       return res.status(400).send("Webhook signature missing");
     }
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
@@ -46,6 +67,9 @@ router.post("/", express.raw({ type: "application/json" }), (req, res) => {
 
   // Ack immediately so Stripe doesn't retry/time out
   res.status(200).json({ received: true });
+
+  console.log("🔍 [Stripe Webhook] Event type:", event.type);
+  console.log("🔍 [Stripe Webhook] Event ID:", event.id);
 
   // Process asynchronously
   (async () => {
@@ -183,6 +207,8 @@ async function upsertUserFromSession(session) {
     metadata: session.metadata,
     subscription: session.subscription,
   });
+  
+  console.log("🔍 [Session Processing] Starting user upsert from session...");
 
   // Metadata from session
   const meta = {

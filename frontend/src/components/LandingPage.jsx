@@ -188,18 +188,18 @@ const LandingPage = () => {
 
       {/* Message from the Founder */}
       <section className="rp-section">
-        <h2>A Message from Us at ReelPostly</h2>
+        <h2>Hello Creators!</h2>
         <p>Most platforms claim to simplify content posting, but in reality, they just give you another calendar and a queue. You're still left writing captions, brainstorming hashtags, and adjusting copy for each platform.</p>
         
-        <p>ReelPostly is different. Unlike other platforms, we're built around AI. Our system doesn't just schedule your posts — it actually generates the captions and hashtags for you, then adapts them to each platform so your message stays uniform, consistent, and on-brand everywhere.</p>
+        <p><strong style={{color: '#87CEEB'}}>ReelPostly is different. Unlike other platforms, we're built around AI. Our system doesn't just schedule your posts, it actually generates the captions and hashtags for you, then adapts them to each platform so your message stays uniform, consistent, and on-brand everywhere.</strong></p>
         
         <p>The result? You save hours every week, cut out the need for expensive third-party tools, and reduce costs that quickly pile up to hundreds of dollars a month. Instead of juggling 5–10 apps, you can focus on what you do best: creating.</p>
         
-        <p>And we're just getting started. We're actively building the future of AI-powered video publishing — from editing to post-tracking — and we want your input.</p>
+        <p>And we're just getting started. We're actively building the future of AI-powered content publishing, from editing to post-tracking  and we want your input on what you would like us to implement next.</p>
         
-        <p>👉 Subscribe to our channel and share your ideas on social media. Together, we'll shape ReelPostly into the AI-powered publishing platform creators have been waiting for.</p>
+        <p>👉 Subscribe to our social media channels and share your ideas. First 100 subscribers get extra posts after their trial. Together, we'll shape ReelPostly into the AI-powered publishing platform creators need.</p>
         
-        <p style={{ textAlign: 'center', fontStyle: 'italic', marginTop: '2rem', color: '#667eea', fontWeight: '600' }}>— The ReelPostly Team</p>
+        <p style={{ textAlign: 'center', marginTop: '2rem', color: '#667eea', fontWeight: '600' }}>— The ReelPostly Team</p>
       </section>
 
       {/* CTA Section */}

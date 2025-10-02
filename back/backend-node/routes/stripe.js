@@ -70,11 +70,12 @@ router.post("/get-price-id", async (req, res) => {
  * ========================= */
 router.post("/create-checkout-session", async (req, res) => {
   try {
-    const { priceId } = req.body || {};
+    const { priceId, email } = req.body || {};
     const auth = getClerkAuth(req);
     const clerkUserId = auth?.userId || null;
 
     if (!priceId) return res.status(400).json({ error: "Price ID required" });
+    if (!clerkUserId) return res.status(401).json({ error: "User authentication required" });
 
     // reverse-lookup plan/cycle for metadata (nice-to-have)
     let plan = null;
@@ -90,11 +91,47 @@ router.post("/create-checkout-session", async (req, res) => {
       if (plan) break;
     }
 
+    // ✅ FIX: Ensure a Stripe Customer exists for this Clerk user (prevents duplicate subscriptions)
+    let stripeCustomerId;
+    const user = await User.findOne({ clerkUserId });
+    if (user && user.stripeCustomerId) {
+      stripeCustomerId = user.stripeCustomerId;
+      console.log("✅ Found existing Stripe customer:", stripeCustomerId);
+    } else {
+      // Create new Stripe customer
+      const customer = await stripe.customers.create({
+        email: email || undefined,
+        metadata: { clerkUserId },
+      });
+      stripeCustomerId = customer.id;
+      
+      // Save to database
+      if (user) {
+        user.stripeCustomerId = stripeCustomerId;
+        await user.save();
+      } else {
+        await User.create({
+          clerkUserId,
+          email: email || undefined,
+          stripeCustomerId,
+          subscriptionStatus: "none",
+          selectedPlan: "none",
+          billingCycle: "none",
+        });
+      }
+      console.log("✅ Created new Stripe customer:", stripeCustomerId);
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
-      subscription_data: { trial_period_days: 3 },
+      customer: stripeCustomerId,  // ✅ ALWAYS pass customer to prevent duplicates
+      client_reference_id: clerkUserId,  // ✅ Join key for webhooks
+      subscription_data: { 
+        trial_period_days: 3,
+        metadata: { clerkUserId, plan, billingCycle }
+      },
       metadata: { clerkUserId, plan, billingCycle, priceId },
       success_url: `https://reelpostly.com/app?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `https://reelpostly.com/pricing`,
@@ -104,7 +141,7 @@ router.post("/create-checkout-session", async (req, res) => {
     console.log("✅ checkout session created:", {
       id: session.id,
       url: session.url,
-      customer: session.customer,
+      customer: stripeCustomerId,
       clerkUserId,
       plan,
       billingCycle,
@@ -122,7 +159,7 @@ router.post("/create-checkout-session", async (req, res) => {
  * ========================= */
 router.post("/create-subscription-session", async (req, res) => {
   try {
-    const { plan, billingCycle } = req.body || {};
+    const { plan, billingCycle, email } = req.body || {};
     const auth = getClerkAuth(req);
     const clerkUserId = auth?.userId || null;
 
@@ -132,15 +169,48 @@ router.post("/create-subscription-session", async (req, res) => {
     if (!["monthly", "yearly"].includes(billingCycle)) {
       return res.status(400).json({ error: "Invalid billing cycle" });
     }
+    if (!clerkUserId) return res.status(401).json({ error: "User authentication required" });
 
     const priceId = STRIPE_PRICES?.[plan]?.[billingCycle];
     if (!priceId) return res.status(400).json({ error: "Price not configured" });
+
+    // ✅ FIX: Ensure a Stripe Customer exists for this Clerk user (prevents duplicate subscriptions)
+    let stripeCustomerId;
+    const user = await User.findOne({ clerkUserId });
+    if (user && user.stripeCustomerId) {
+      stripeCustomerId = user.stripeCustomerId;
+    } else {
+      const customer = await stripe.customers.create({
+        email: email || undefined,
+        metadata: { clerkUserId },
+      });
+      stripeCustomerId = customer.id;
+      
+      if (user) {
+        user.stripeCustomerId = stripeCustomerId;
+        await user.save();
+      } else {
+        await User.create({
+          clerkUserId,
+          email: email || undefined,
+          stripeCustomerId,
+          subscriptionStatus: "none",
+          selectedPlan: "none",
+          billingCycle: "none",
+        });
+      }
+    }
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
-      subscription_data: { trial_period_days: 3 },
+      customer: stripeCustomerId,  // ✅ ALWAYS pass customer
+      client_reference_id: clerkUserId,  // ✅ Join key for webhooks
+      subscription_data: { 
+        trial_period_days: 3,
+        metadata: { plan, billingCycle, clerkUserId }
+      },
       metadata: { plan, billingCycle, clerkUserId },
       success_url: `https://reelpostly.com/app?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `https://reelpostly.com/pricing`,
