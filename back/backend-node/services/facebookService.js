@@ -210,12 +210,9 @@ class FacebookService {
     const doc = await this.findToken(identifier);
     if (!doc) throw new Error('Facebook not connected for this user');
 
-    // ✅ Require Page context (API does not allow posting to personal timeline)
-    if (!doc.pageId || !doc.pageAccessToken) {
-      throw new Error('Facebook Page not connected. Please connect a Facebook Page to publish.');
-    }
-    const targetId = doc.pageId;
-    const tokenForPost = doc.pageAccessToken;
+    // Use page token if available, otherwise fall back to user token
+    const targetId = doc.pageAccessToken && doc.pageId ? doc.pageId : 'me';
+    const tokenForPost = doc.pageAccessToken && doc.pageId ? doc.pageAccessToken : doc.accessToken;
 
     // Normalize input to a URL that Facebook can pull (S3)
     let inputUrl;
@@ -338,14 +335,13 @@ class FacebookService {
     const doc = await this.findToken(identifier);
     if (!doc) throw new Error('Facebook not connected for this user');
 
-    if (!doc.pageId || !doc.pageAccessToken) {
-      throw new Error('Facebook Page not connected. Please connect a Facebook Page to publish.');
-    }
+    // Use page token if available, otherwise fall back to user token
+    const targetId = doc.pageAccessToken && doc.pageId ? doc.pageId : 'me';
+    const tokenForPost = doc.pageAccessToken && doc.pageId ? doc.pageAccessToken : doc.accessToken;
 
-    // Check if we have the required permission for posting
-    if (!doc.grantedPermissions || !doc.grantedPermissions.includes('pages_manage_posts')) {
-      throw new Error('Facebook posting requires pages_manage_posts permission. Please request this permission in Facebook App Review.');
-    }
+    // Handle both string and array inputs for captions
+    const captionText = Array.isArray(text) ? text[0] || '' : text || '';
+    const message = String(captionText).trim().slice(0, 63206); // Facebook limit
 
     if (!mediaUrlOrBuffer) {
       throw new Error('Facebook requires media content for posting');

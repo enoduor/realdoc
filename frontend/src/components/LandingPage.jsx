@@ -43,7 +43,7 @@ const LandingPage = () => {
           <div className="hero-content">
             <h1 className="hero-title">Create Once, Publish Everywhere!</h1>
             <p className="hero-subtitle">
-            Creators are overwhelmed by too many tools and endless complexity. That’s why we want you to join us in building an all-in-one platform so you can create, edit, and publish without ever leaving the app. We make it simple, so you can focus on creating, not juggling.  </p>
+            Creators are overwhelmed by too many tools and endless complexity. That's why we want you to join us in building an all-in-one platform so you can create, edit, and publish without ever leaving the app. We make it simple, so you can focus on creating, not juggling.  </p>
             <div className="hero-benefits">
                 <ul className="space-y-3 text-left">
                     <li className="flex items-start">
@@ -188,16 +188,25 @@ const LandingPage = () => {
 
       {/* Message from the Founder */}
       <section className="rp-section">
-        <h2>Hello Creators!</h2>
-        <p>Most platforms claim to simplify content posting, but in reality, they just give you another calendar and a queue. You're still left writing captions, brainstorming hashtags, and adjusting copy for each platform.</p>
+        <h2>Hello Creators,</h2>
+        <p>At ReelPostly, we understand how challenging it can be to keep track of multiple social media accounts while trying to deliver a consistent message. What began as a personal need to simplify video posting across platforms has now grown into a solution built for creators like you.</p>
         
-        <p><strong style={{color: '#87CEEB'}}>ReelPostly is different. Unlike other platforms, we're built around AI. Our system doesn't just schedule your posts, it actually generates the captions and hashtags for you, then adapts them to each platform so your message stays uniform, consistent, and on-brand everywhere.</strong></p>
+        <p>ReelPostly was designed to make multi-platform publishing seamless. Instead of juggling separate tools and accounts, our platform allows you to publish consistent content across six major platforms—all in one place.</p>
         
-        <p>The result? You save hours every week, cut out the need for expensive third-party tools, and reduce costs that quickly pile up to hundreds of dollars a month. Instead of juggling 5–10 apps, you can focus on what you do best: creating.</p>
+        <p>Unlike most posting tools, ReelPostly is built around automation. It generates captions and hashtags for you, adapts them for each platform, and ensures that your message stays uniform, consistent, and on-brand everywhere.</p>
         
-        <p>And we're just getting started. We're actively building the future of AI-powered content publishing, from editing to post-tracking  and we want your input on what you would like us to implement next.</p>
+        <p>If you'd like to explore before committing, you can start by grabbing publicly available videos through our platform and take advantage of our three-day free trial.</p>
         
-        <p>👉 Subscribe to our social media channels and share your ideas. First 100 subscribers get extra posts after their trial. Together, we'll shape ReelPostly into the AI-powered publishing platform creators need.</p>
+        <h3>Why ReelPostly?</h3>
+        <ul>
+          <li><strong>Save time:</strong> Eliminate the hours spent manually posting and managing multiple accounts.</li>
+          <li><strong>Reduce costs:</strong> Say goodbye to stacking third-party tools that quickly add up to hundreds of dollars a month.</li>
+          <li><strong>Focus on creating:</strong> Let ReelPostly handle distribution so you can concentrate on what you do best.</li>
+        </ul>
+        
+        <p>We're excited to welcome you to our growing community of creators. To celebrate our launch, 10 of the first 100 subscribers across all six platforms will receive a one-month coupon at no cost.</p>
+        
+        <p>Follow us on our social channels, share your feedback, and join us in shaping the future of effortless, automated content publishing.</p>
         
         <p style={{ textAlign: 'center', marginTop: '2rem', color: '#667eea', fontWeight: '600' }}>— The ReelPostly Team</p>
       </section>

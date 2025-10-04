@@ -98,7 +98,7 @@ const CaptionGenerator = () => {
                                 name="platform"
                                 value={formData.platform}
                                 onChange={handleInputChange}
-                                className="w-full p-2 border rounded"
+                                className="w-full p-3 border rounded-lg"
                             >
                                 {Object.values(PLATFORMS).map((platform) => (
                                     <option key={platform.id} value={platform.id}>
@@ -109,14 +109,14 @@ const CaptionGenerator = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1">Topic</label>
-                            <input
-                                type="text"
+                            <label className="block text-sm font-medium mb-1">Describe your post below</label>
+                            <textarea
                                 name="topic"
                                 value={formData.topic}
                                 onChange={handleInputChange}
-                                placeholder="What's your post about?"
-                                className="w-full p-2 border rounded"
+                                placeholder="Describe your post content, what it's about, key points you want to highlight, or any specific details you'd like to include..."
+                                className="w-full p-3 border rounded-lg resize-none"
+                                rows="4"
                                 required
                             />
                         </div>
@@ -127,7 +127,7 @@ const CaptionGenerator = () => {
                                 name="tone"
                                 value={formData.tone}
                                 onChange={handleInputChange}
-                                className="w-full p-2 border rounded"
+                                className="w-full p-3 border rounded-lg"
                             >
                                 <option value="professional">Professional</option>
                                 <option value="casual">Casual</option>
@@ -143,7 +143,7 @@ const CaptionGenerator = () => {
                                 name="language"
                                 value={formData.language}
                                 onChange={handleInputChange}
-                                className="w-full p-2 border rounded"
+                                className="w-full p-3 border rounded-lg"
                             >
                                 <option value="en">English</option>
                                 <option value="es">Spanish</option>

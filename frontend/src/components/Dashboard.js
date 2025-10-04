@@ -4,6 +4,7 @@ import { useUser, useSession, useAuth } from '@clerk/clerk-react';
 import { Linkedin, Twitter, Instagram, Youtube, Music, Facebook } from 'lucide-react';
 import ClerkUserProfile from './Auth/ClerkUserProfile';
 import ErrorModal from './ErrorModal';
+import VideoDownloader from './VideoDownloader';
 import { getUserUsageStatus, getCheckoutSession } from '../api';
 import { useAuthContext } from '../context/AuthContext';
 
@@ -19,6 +20,7 @@ const Dashboard = () => {
   const [usageStatus, setUsageStatus] = useState(null);
   const [welcomeMsg, setWelcomeMsg] = useState('');
   const [checking, setChecking] = useState(false);
+  const [showVideoDownloader, setShowVideoDownloader] = useState(false);
   const [errorModal, setErrorModal] = useState({ 
     show: false, 
     title: '', 
@@ -271,6 +273,7 @@ const Dashboard = () => {
 
   const features = [
     { name: 'Start Creating', description: 'Complete content creation workflow - captions, hashtags, media, and publishing', icon: '🎯', link: '/app/caption-generator' },
+    // { name: 'Download Videos', description: 'Video Editor (TBD)', icon: '📥', action: () => setShowVideoDownloader(true) },
     { name: 'Generate Captions', description: 'Create engaging AI-powered captions for your social media posts', icon: '✍️', link: '/app/caption-generator', hidden: true },
     { name: 'Generate Hashtags', description: 'Generate relevant hashtags to increase your content reach', icon: '#️⃣', link: '/app/hashtag-generator', hidden: true },
     { name: 'Upload Media', description: 'Upload and manage your media content', icon: '📸', link: '/app/media-upload', hidden: true },
@@ -437,56 +440,99 @@ const Dashboard = () => {
               <a href={`/api/auth/twitter/oauth/start/twitter?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors" title="Connect Twitter">
                 <Twitter size={24} />
               </a>
-              <a href={`/api/auth/facebook/oauth/start/facebook?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-[#1877F2] text-white rounded-lg hover:bg-[#0d5dbf] transition-colors" title="Connect Facebook">
-                <Facebook size={24} />
-              </a>
-              <a href={`/api/auth/instagram/oauth/start/instagram?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors" title="Connect Instagram">
-                <Instagram size={24} />
-              </a>
               <a href={`/api/auth/youtube/oauth2/start/google?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-[#FF0000] text-white rounded-lg hover:bg-[#cc0000] transition-colors" title="Connect YouTube">
                 <Youtube size={24} />
               </a>
-              <a href={`/api/auth/tiktok/oauth/start/tiktok?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors" title="Connect TikTok">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-400 text-white rounded-lg cursor-not-allowed opacity-50" title="Facebook - Temporarily unavailable">
+                <Facebook size={24} />
+              </div>
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-400 text-white rounded-lg cursor-not-allowed opacity-50" title="Instagram - Temporarily unavailable">
+                <Instagram size={24} />
+              </div>
+              
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-400 text-white rounded-lg cursor-not-allowed opacity-50" title="TikTok - Temporarily unavailable">
                 <Music size={24} />
-              </a>
+              </div>
             </div>
           </div>
 
           {/* Feature cards - Centered both horizontally and vertically */}
           <div className="flex justify-center items-center min-h-[400px]">
             <div className="grid grid-cols-1 gap-6 w-full max-w-md">
-            {features.filter(feature => !feature.hidden).map((feature) => (
-              <Link
-                key={feature.name}
-                to={feature.link}
-                onClick={(e) => handleFeatureClick(e)}
-                className={`block p-6 rounded-lg shadow transition-shadow ${
-                  feature.name === 'Start Creating' 
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white cursor-pointer' 
-                    : hasSubscription 
-                      ? 'bg-white hover:shadow-md cursor-pointer' 
-                      : 'bg-gray-100 cursor-not-allowed opacity-75'
-                }`}
-              >
-                <div className="flex items-center">
-                  <span className="text-4xl mr-4">{feature.icon}</span>
-                  <div>
-                    <h3 className={`text-lg font-medium ${
-                      feature.name === 'Start Creating' ? 'text-white' : 'text-gray-900'
-                    }`}>
-                      {feature.name}
-                      {hasSubscription && <span className="ml-2 text-green-500">✅</span>}
-                    </h3>
-                    <p className={`mt-1 ${
-                      feature.name === 'Start Creating' ? 'text-blue-100' : 'text-gray-500'
-                    }`}>{feature.description}</p>
-                    {!hasSubscription && <p className="mt-2 text-sm text-red-500">⚠️ Subscription required</p>}
+            {features.filter(feature => !feature.hidden).map((feature) => {
+              const isAction = feature.action && !feature.link;
+              const Component = isAction ? 'div' : Link;
+              const props = isAction 
+                ? { 
+                    onClick: (e) => {
+                      if (!hasSubscription) {
+                        handleFeatureClick(e);
+                        return;
+                      }
+                      feature.action();
+                    },
+                    className: `block p-6 rounded-lg shadow transition-shadow cursor-pointer ${
+                      feature.name === 'Start Creating' 
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white' 
+                        : hasSubscription 
+                          ? 'bg-white hover:shadow-md' 
+                          : 'bg-gray-100 cursor-not-allowed opacity-75'
+                    }`
+                  }
+                : {
+                    to: feature.link,
+                    onClick: (e) => handleFeatureClick(e),
+                    className: `block p-6 rounded-lg shadow transition-shadow ${
+                      feature.name === 'Start Creating' 
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white cursor-pointer' 
+                        : hasSubscription 
+                          ? 'bg-white hover:shadow-md cursor-pointer' 
+                          : 'bg-gray-100 cursor-not-allowed opacity-75'
+                    }`
+                  };
+
+              return (
+                <Component key={feature.name} {...props}>
+                  <div className="flex items-center">
+                    <span className="text-4xl mr-4">{feature.icon}</span>
+                    <div>
+                      <h3 className={`text-lg font-medium ${
+                        feature.name === 'Start Creating' ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {feature.name}
+                        {hasSubscription && <span className="ml-2 text-green-500">✅</span>}
+                      </h3>
+                      <p className={`mt-1 ${
+                        feature.name === 'Start Creating' ? 'text-blue-100' : 'text-gray-500'
+                      }`}>{feature.description}</p>
+                      {!hasSubscription && <p className="mt-2 text-sm text-red-500">⚠️ Subscription required</p>}
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Component>
+              );
+            })}
             </div>
           </div>
+
+          {/* Video Downloader Modal */}
+          {showVideoDownloader && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center p-4 border-b">
+                  <h3 className="text-lg font-semibold">Video Downloader</h3>
+                  <button
+                    onClick={() => setShowVideoDownloader(false)}
+                    className="text-gray-500 hover:text-gray-700 text-xl"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="p-4">
+                  <VideoDownloader />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Account Settings */}
           <div className="mb-8 p-6 bg-white rounded-lg shadow">

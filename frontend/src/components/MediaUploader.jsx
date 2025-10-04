@@ -295,7 +295,7 @@ const MediaUploader = () => {
                 name="platform"
                 value={formData.platform}
                 onChange={handleInputChange}
-                className="w-full p-2 border rounded"
+                className="w-full p-3 border rounded-lg"
               >
                 {Object.values(PLATFORMS).map((platform) => (
                   <option key={platform.id} value={platform.id}>

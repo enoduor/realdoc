@@ -142,6 +142,7 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/stripe", require("./routes/stripe"));
 app.use("/api/billing", require("./routes/billing"));
 app.use('/api/publisher', require('./routes/publisher'));
+app.use('/api/video-downloader', require('./routes/videoDownloader'));
 
 // --- Simple root ---
 app.get("/", (_req, res) => {
