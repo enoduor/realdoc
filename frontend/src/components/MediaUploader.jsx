@@ -363,8 +363,31 @@ const MediaUploader = () => {
             </div>
           </form>
 
+          {/* Downloaded Videos Section */}
+          {content.mediaUrl && content.mediaType === 'video' && (
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h3 className="text-lg font-medium mb-2 text-blue-800">📥 Downloaded Video Available</h3>
+              <p className="text-sm text-blue-600 mb-3">You have a downloaded video ready for publishing.</p>
+              <div className="flex items-center space-x-4">
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Video Source: {content.mediaFilename || 'Downloaded Video'}</p>
+                  <p className="text-xs text-gray-500">Ready to use in your post</p>
+                </div>
+                <div className="text-green-600">
+                  <span className="text-lg">✅</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Preview Area */}
           {(formData.preview || content.mediaUrl) && (
+            console.log('🎬 MediaUploader Preview - content:', {
+              mediaUrl: content.mediaUrl,
+              mediaType: content.mediaType,
+              mediaFilename: content.mediaFilename,
+              formDataPreview: formData.preview
+            }),
             <div className="mt-6">
               <h3 className="text-lg font-medium mb-2">Preview:</h3>
               <div className="relative">
@@ -393,7 +416,7 @@ const MediaUploader = () => {
                 {content.mediaType === 'video' && (
                   <div className="relative">
                     <video
-                      src={formData.preview}
+                      src={content.mediaUrl || formData.preview}
                       controls
                       className={`rounded-lg shadow mx-auto object-cover ${
                         content?.platform === 'instagram' ? 'aspect-[4/5] max-h-[500px]' :

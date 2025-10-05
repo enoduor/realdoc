@@ -273,7 +273,7 @@ const Dashboard = () => {
 
   const features = [
     { name: 'Start Creating', description: 'Complete content creation workflow - captions, hashtags, media, and publishing', icon: '🎯', link: '/app/caption-generator' },
-    // { name: 'Download Videos', description: 'Video Editor (TBD)', icon: '📥', action: () => setShowVideoDownloader(true) },
+    { name: 'Download Videos', description: 'Find Videos to download and repurpose', icon: '📥', action: () => setShowVideoDownloader(true) },
     { name: 'Generate Captions', description: 'Create engaging AI-powered captions for your social media posts', icon: '✍️', link: '/app/caption-generator', hidden: true },
     { name: 'Generate Hashtags', description: 'Generate relevant hashtags to increase your content reach', icon: '#️⃣', link: '/app/hashtag-generator', hidden: true },
     { name: 'Upload Media', description: 'Upload and manage your media content', icon: '📸', link: '/app/media-upload', hidden: true },
