@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useContent } from '../context/ContentContext';
 
 const VideoDownloader = () => {
+  const navigate = useNavigate();
   const { updateContent } = useContent();
   const [videoUrl, setVideoUrl] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,10 +33,19 @@ const VideoDownloader = () => {
 
       // Handle video file download
       if (response.headers.get('content-type')?.includes('video/')) {
-        // Create download link for video file
+        // Save video to uploads section instead of local download
         const blob = await response.blob();
-        const downloadUrl = URL.createObjectURL(blob);
-        setResult(downloadUrl);
+        const videoFile = new File([blob], 'downloaded-video.mp4', { type: 'video/mp4' });
+        
+        // Update content context with the video
+        updateContent({
+          mediaUrl: URL.createObjectURL(blob),
+          mediaType: 'video',
+          mediaFile: videoFile,
+          mediaFilename: 'downloaded-video.mp4'
+        });
+        
+        setResult('Video saved to uploads section!');
       } else {
         // Handle JSON response (fallback)
         const data = await response.json();
@@ -84,19 +95,20 @@ const VideoDownloader = () => {
 
       {result && (
         <div className="mt-6">
-          <h3 className="text-lg font-medium mb-2">Video Ready!</h3>
+          <h3 className="text-lg font-medium mb-2">Video Saved!</h3>
           
           <div className="mt-4 p-3 bg-green-100 text-green-700 rounded-lg">
-            <p className="font-medium">✅ Video downloaded successfully!</p>
-            <p className="text-sm mb-3">Your video is ready to download.</p>
+            <p className="font-medium">✅ Video saved to uploads section!</p>
+            <p className="text-sm mb-3">Your video is now available in the Media Upload section for publishing.</p>
             
-            <a 
-              href={result} 
-              download="video.mp4"
-              className="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-            >
-              📥 Download Video
-            </a>
+            <div className="mt-4">
+              <button 
+                onClick={() => navigate('/app/caption-generator')}
+                className="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 font-medium"
+              >
+                🎯 Generate Captions Now
+              </button>
+            </div>
           </div>
         </div>
       )}

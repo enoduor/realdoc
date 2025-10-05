@@ -189,19 +189,9 @@ const LandingPage = () => {
       {/* Message from the Founder */}
       <section className="rp-section">
         <h2>Hello Creators,</h2>
-        <p>At ReelPostly, we understand how challenging it can be to keep track of multiple social media accounts while trying to deliver a consistent message. What began as a personal need to simplify video posting across platforms has now grown into a solution built for creators like you.</p>
+        <p><strong>Download your free videos from any social media platform and post them everywhere instantly.</strong> ReelPostly lets you grab videos from any social platform, then publish them across all six platforms with AI-generated captions and hashtags.</p>
         
-        <p>ReelPostly was designed to make multi-platform publishing seamless. Instead of juggling separate tools and accounts, our platform allows you to publish consistent content across six major platforms—all in one place.</p>
-
-      
-        <h3>Why ReelPostly?</h3>
-        <ul>
-          <li><strong>Save time:</strong> Eliminate the hours spent manually posting and managing multiple accounts.</li>
-          <li><strong>Reduce costs:</strong> Say goodbye to stacking third-party tools that quickly add up to hundreds of dollars a month.</li>
-          <li><strong>Focus on creating:</strong> Let ReelPostly handle distribution so you can concentrate on what you do best.</li>
-        </ul>
-        
-        <p>Follow us on our social channels, share your feedback, and join us in shaping the future of effortless, automated content publishing.</p>
+        <p><strong>One video. Six platforms. Zero hassle.</strong> Stop juggling multiple tools and start creating content that works everywhere.</p>
         
         <p style={{ textAlign: 'center', marginTop: '2rem', color: '#667eea', fontWeight: '600' }}>— The ReelPostly Team</p>
       </section>
