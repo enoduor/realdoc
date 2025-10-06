@@ -443,14 +443,14 @@ const Dashboard = () => {
               <a href={`/api/auth/youtube/oauth2/start/google?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-[#FF0000] text-white rounded-lg hover:bg-[#cc0000] transition-colors" title="Connect YouTube">
                 <Youtube size={24} />
               </a>
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-400 text-white rounded-lg cursor-not-allowed opacity-50" title="Facebook - Temporarily unavailable">
+              <a href={`/api/auth/facebook/oauth/start/facebook?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-[#1877F2] text-white rounded-lg hover:bg-[#166FE5] transition-colors" title="Connect Facebook">
                 <Facebook size={24} />
-              </div>
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-400 text-white rounded-lg cursor-not-allowed opacity-50" title="Instagram - Temporarily unavailable">
+              </a>
+              <a href={`/api/auth/instagram/oauth/start/instagram?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors" title="Connect Instagram">
                 <Instagram size={24} />
-              </div>
+              </a>
               
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-400 text-white rounded-lg cursor-not-allowed opacity-50" title="TikTok - Temporarily unavailable">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-400 text-white rounded-lg cursor-not-allowed opacity-50" title="TikTok - Coming Soon">
                 <Music size={24} />
               </div>
             </div>
@@ -458,7 +458,7 @@ const Dashboard = () => {
 
           {/* Feature cards - Centered both horizontally and vertically */}
           <div className="flex justify-center items-center min-h-[400px]">
-            <div className="grid grid-cols-1 gap-6 w-full max-w-md">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
             {features.filter(feature => !feature.hidden).map((feature) => {
               const isAction = feature.action && !feature.link;
               const Component = isAction ? 'div' : Link;
@@ -471,23 +471,27 @@ const Dashboard = () => {
                       }
                       feature.action();
                     },
-                    className: `block p-6 rounded-lg shadow transition-shadow cursor-pointer ${
+                    className: `block p-8 rounded-2xl border shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
                       feature.name === 'Start Creating' 
-                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white' 
-                        : hasSubscription 
-                          ? 'bg-white hover:shadow-md' 
-                          : 'bg-gray-100 cursor-not-allowed opacity-75'
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-transparent' 
+                        : feature.name === 'Download Videos'
+                          ? 'bg-white hover:border-blue-200 border-blue-100'
+                          : hasSubscription 
+                            ? 'bg-white hover:border-gray-300 border-gray-200' 
+                            : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
                     }`
                   }
                 : {
                     to: feature.link,
                     onClick: (e) => handleFeatureClick(e),
-                    className: `block p-6 rounded-lg shadow transition-shadow ${
+                    className: `block p-8 rounded-2xl border shadow-sm hover:shadow-md transition-all duration-300 ${
                       feature.name === 'Start Creating' 
-                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white cursor-pointer' 
-                        : hasSubscription 
-                          ? 'bg-white hover:shadow-md cursor-pointer' 
-                          : 'bg-gray-100 cursor-not-allowed opacity-75'
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white cursor-pointer border-transparent' 
+                        : feature.name === 'Download Videos'
+                          ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer'
+                          : hasSubscription 
+                            ? 'bg-white hover:border-gray-300 border-gray-200 cursor-pointer' 
+                            : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
                     }`
                   };
 
@@ -496,14 +500,22 @@ const Dashboard = () => {
                   <div className="flex items-center">
                     <span className="text-4xl mr-4">{feature.icon}</span>
                     <div>
-                      <h3 className={`text-lg font-medium ${
-                        feature.name === 'Start Creating' ? 'text-white' : 'text-gray-900'
+                      <h3 className={`text-lg font-semibold ${
+                        feature.name === 'Start Creating' 
+                          ? 'text-white' 
+                          : feature.name === 'Download Videos'
+                            ? 'text-gray-900'
+                            : 'text-gray-900'
                       }`}>
                         {feature.name}
                         {hasSubscription && <span className="ml-2 text-green-500">✅</span>}
                       </h3>
-                      <p className={`mt-1 ${
-                        feature.name === 'Start Creating' ? 'text-blue-100' : 'text-gray-500'
+                      <p className={`text-sm mt-1 ${
+                        feature.name === 'Start Creating' 
+                          ? 'text-white/80' 
+                          : feature.name === 'Download Videos'
+                            ? 'text-gray-600'
+                            : 'text-gray-600'
                       }`}>{feature.description}</p>
                       {!hasSubscription && <p className="mt-2 text-sm text-red-500">⚠️ Subscription required</p>}
                     </div>

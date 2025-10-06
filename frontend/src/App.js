@@ -8,6 +8,7 @@ import CaptionGenerator from "./components/CaptionGenerator";
 import HashtagGenerator from "./components/HashtagGenerator";
 import Dashboard from "./components/Dashboard";
 import MediaUploader from "./components/MediaUploader";
+import VideoDownloader from "./components/VideoDownloader";
 import PlatformPreviewPage from "./components/PlatformPreviewPage";
 import SchedulerPage from "./components/SchedulerPage";
 import LandingPage from "./components/LandingPage";
@@ -71,6 +72,14 @@ export default function App() {
             element={
               <ClerkProtectedRoute>
                 <MediaUploader />
+              </ClerkProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/video-downloader"
+            element={
+              <ClerkProtectedRoute>
+                <VideoDownloader />
               </ClerkProtectedRoute>
             }
           />

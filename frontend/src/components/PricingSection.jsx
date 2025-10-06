@@ -171,7 +171,7 @@ const PricingSection = () => {
               ) : (
                 <div className="plan-pricing enterprise-pricing">
                   <div className="enterprise-price">
-                    <span className="custom-text">Custom Pricing</span>
+                    <span className="custom-text">Custom</span>
                     <p className="enterprise-subtitle">Tailored to your organization's needs</p>
                   </div>
                 </div>

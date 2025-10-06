@@ -110,74 +110,153 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="features-section">
-        <div className="features-container">
-          
-          <section id="multi-platform-posting" className="rp-section">
-            <h2>One Post. Six Platforms. Zero Stress.</h2>
-            <p>With ReelPostly, you don't need to repeat the same upload six times. Publish your content to Instagram, TikTok, YouTube, Facebook, LinkedIn, and Twitter, all in one go. One dashboard, one post, one publish.</p>
-            <ul>
-              <li>✅ Save hours every week</li>
-              <li>✅ Stay consistent across all channels</li>
-              <li>✅ Focus on creating, not copy-pasting</li>
-            </ul>
-          </section>
-
-          <section id="ai-workflow" className="rp-section">
-            <h2>Smarter Publishing with AI</h2>
-
-            <h3 id="ai-captions">Generate Captions & Hashtags Instantly</h3>
-            <p>Let our <strong>AI captions and hashtags generator</strong> do the heavy lifting. With one click, ReelPostly creates tailored copy for each platform so your post feels natural whether it's on TikTok or LinkedIn.</p>
-
-            <h3 id="toggle-customize">Toggle & Customize Per Platform</h3>
-            <p>Need to tweak tone or length? Use our simple toggle editor to adjust content per channel, then publish everything at once.</p>
-          </section>
-
-          <section id="confirmation-links" className="rp-section">
-            <h2>Instant Post Confirmation</h2>
-            <p>No second guessing. After you publish, ReelPostly gives you a direct, hyperlinked preview of your live post on every platform so you know your message went out exactly as planned.</p>
-          </section>
-
-          <section id="simplicity" className="rp-section">
-            <h2>Simplicity Without the Noise</h2>
-            <p>Unlike other <strong>social media posting tools</strong>, ReelPostly doesn't drown you in dashboards and charts. We don't track your posts after publishing, we help you focus on creating and keeping your message consistent across every platform.</p>
-            <ul>
-              <li>✅ No confusing analytics clutter</li>
-              <li>✅ One-click publishing workflow</li>
-              <li>✅ Grow faster with less effort</li>
-            </ul>
-          </section>
-
-          {/* <section id="videograb-funnel" className="rp-section">
-            <h2>Free Video Downloader</h2>
-            <p>In case you don't have any content to repurpose, you can start with <strong>free publicly available videos</strong> right away. Once you have your video,  repurpose your TikToks, Twitter Shorts, or Facebook Reels, then with a single click, send them straight to ReelPostly for multi-platform publishing.</p>
-            <p>It's the fastest way to go from download → caption → share everywhere.</p>
-            
-            <div className="videograb-platform-section">
-              <a 
-                href="https://bigvideograb.com/" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="cta-button-large videograb-platform-btn"
-              >
-                Grab Free Videos
-              </a>
+      {/* Official Cards Section */}
+      <section className="official-cards-section">
+        <div className="official-cards-container">
+          <div className="official-cards-grid">
+            {/* Start Creating Card */}
+            <div className="official-card start-creating-card">
+              <div className="card-icon">🎯</div>
+              <h3 className="card-title">Start with Captions</h3>
+              <p className="card-description">
+                Complete content creation workflow - captions, hashtags, media, and publishing
+              </p>
+              <Link to="/register" className="card-button start-creating-button">
+                Get Started
+              </Link>
             </div>
-          </section> */}
 
-          <section id="why-reelpostly" className="rp-section">
-            <h2>Why Choose ReelPostly?</h2>
-            <ul>
-              <li>🚀 <strong>Time Saved</strong>: One workflow replaces six uploads.</li>
-              <li>✨ <strong>AI-Powered</strong>: Smart captions & hashtags per platform.</li>
-              <li>🔗 <strong>Direct Proof</strong>: See your post live with confirmation links.</li>
-              <li>🧘 <strong>Simplicity</strong>: No extra noise, just effortless publishing.</li>
-              <li>🎥 <strong>Free Funnel</strong>: <a href="https://bigvideograb.com/" target="_blank" rel="noopener noreferrer">Download</a> → <a href="https://reelpostly.com/login">Repurpose</a> → Publish everywhere.</li>
-            </ul>
-            <Link to="/register" className="cta-button-large">Sign Up</Link>
-          </section>
+            {/* Download Videos Card */}
+            {/* <div className="official-card download-videos-card">
+              <div className="card-icon">📥</div>
+              <h3 className="card-title">Start with Videos</h3>
+              <p className="card-description">
+                Find Videos to download and repurpose
+              </p>
+              <div className="platform-status">
+                <span className="status-badge">TikTok, Facebook & Twitter</span>
+              </div>
+              <Link to="/register" className="card-button download-videos-button">
+                Download Now
+              </Link>
+            </div> */}
+          </div>
+        </div>
+      </section>
 
+      {/* Features Section */}
+      <section id="features" className="rp-section">
+        <div className="features-container">
+          <h2>How ReelPostly Works</h2>
+          <p className="features-subtitle">Transform your content creation workflow with intelligent automation</p>
+          
+          <div className="features-grid">
+            <div className="feature-card">
+              <div className="feature-icon">🤖</div>
+              <h3>AI-Powered Content Generation</h3>
+              <p>Our intelligent system creates platform-specific captions and hashtags that feel natural on every channel. No more generic content—each post is tailored for maximum engagement.</p>
+            </div>
+            
+            <div className="feature-card">
+              <div className="feature-icon">⚙️</div>
+              <h3>Smart Platform Customization</h3>
+              <p>Fine-tune your content for each platform with our intuitive editor. Adjust tone, length, and style to match each channel's unique audience and format requirements.</p>
+            </div>
+            
+            <div className="feature-card">
+              <div className="feature-icon">✅</div>
+              <h3>Instant Confirmation & Tracking</h3>
+              <p>Get immediate confirmation with direct links to your live posts across all platforms. Track performance and engagement with built-in analytics and post monitoring.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pain Points Section */}
+      <section id="pain-points" className="rp-section">
+        <div className="pain-points-container">
+          <h2>Stop Struggling With These Common Problems</h2>
+          <p className="pain-points-subtitle">We built ReelPostly to solve the biggest frustrations in social media publishing</p>
+          
+          <div className="pain-points-grid">
+            <div className="pain-point-card">
+              <div className="pain-point-icon">⏰</div>
+              <h3>Manual Posting Takes Forever</h3>
+              <p>You spend hours uploading the same content to multiple platforms, tweaking formats, and managing different posting schedules. ReelPostly simplifies it with one upload shared everywhere.</p>
+              <div className="pain-point-solution">
+                <strong>Save valuable time and stay consistent across all your social channels.</strong>
+              </div>
+            </div>
+            
+            <div className="pain-point-card">
+              <div className="pain-point-icon">💰</div>
+              <h3>Overpriced Tools</h3>
+              <p>Most social media tools charge enterprise-level prices for basic posting features that should be affordable for everyone. ReelPostly is built for individuals and small teams.</p>
+              <div className="pain-point-solution">
+                <strong>Get professional-grade automation without the heavy cost.</strong>
+              </div>
+            </div>
+            
+            <div className="pain-point-card">
+              <div className="pain-point-icon">🎯</div>
+              <h3>Too Many Unnecessary Features</h3>
+              <p>Many tools are packed with complex options you'll never use, making simple posting feel overwhelming. ReelPostly focuses on what matters most.</p>
+              <div className="pain-point-solution">
+                <strong>No clutter, just a clean workflow that gets your content live faster.</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Benefits Section */}
+      <section id="benefits" className="rp-section">
+        <div className="benefits-container">
+          <h2>Why Creators Choose ReelPostly</h2>
+          <p className="benefits-subtitle">Join thousands of content creators who've streamlined their workflow</p>
+          
+          <div className="benefits-list">
+            <div className="benefit-item">
+              <div className="benefit-icon">⏱️</div>
+              <div className="benefit-content">
+                <h4>Save Hours Every Week</h4>
+                <p>One workflow replaces six separate uploads. What used to take hours now takes minutes.</p>
+              </div>
+            </div>
+            
+            <div className="benefit-item">
+              <div className="benefit-icon">🎯</div>
+              <div className="benefit-content">
+                <h4>Platform-Optimized Content</h4>
+                <p>AI generates content that performs better on each platform, increasing your reach and engagement.</p>
+              </div>
+            </div>
+            
+            <div className="benefit-item">
+              <div className="benefit-icon">📊</div>
+              <div className="benefit-content">
+                <h4>Real-Time Performance Tracking</h4>
+                <p>Monitor your posts across all platforms with instant confirmation links and engagement metrics.</p>
+              </div>
+            </div>
+            
+            <div className="benefit-item">
+              <div className="benefit-icon">🚀</div>
+              <div className="benefit-content">
+                <h4>Effortless Publishing</h4>
+                <p>Focus on creating great content while we handle the technical details of multi-platform publishing.</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="benefits-cta">
+            <Link to="/register" className="cta-primary">
+              Start Creating Today
+            </Link>
+            <Link to="/login" className="cta-secondary">
+              Sign In
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -189,9 +268,9 @@ const LandingPage = () => {
       {/* Message from the Founder */}
       <section className="rp-section">
         <h2>Hello Creators,</h2>
-        <p><strong>Download your free videos from any social media platform and post them everywhere instantly.</strong> ReelPostly lets you grab videos from any social platform, then publish them across all six platforms with AI-generated captions and hashtags.</p>
+        <p><strong>Create once, publish everywhere with intelligent automation.</strong> ReelPostly transforms your content creation workflow by publishing across all six major platforms with AI-generated captions and hashtags tailored for each audience.</p>
         
-        <p><strong>One video. Six platforms. Zero hassle.</strong> Stop juggling multiple tools and start creating content that works everywhere.</p>
+        <p><strong>One workflow. Six platforms. Zero hassle.</strong> Stop juggling multiple tools and start creating content that works everywhere.</p>
         
         <p style={{ textAlign: 'center', marginTop: '2rem', color: '#667eea', fontWeight: '600' }}>— The ReelPostly Team</p>
       </section>

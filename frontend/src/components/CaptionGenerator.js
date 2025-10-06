@@ -235,6 +235,12 @@ const CaptionGenerator = () => {
                                 >
                                     Upload Media
                                 </Link>
+                                <Link
+                                    to="/app/media-upload"
+                                    className="px-4 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded"
+                                >
+                                    Access Download
+                                </Link>
                             </div>
                         </div>
                     )}

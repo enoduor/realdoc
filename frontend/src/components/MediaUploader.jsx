@@ -28,6 +28,38 @@ const MediaUploader = () => {
     }
   }, [content?.platform, formData.platform]);
 
+  // Detect downloaded videos and auto-populate form data
+  useEffect(() => {
+    if (content?.mediaFile && content?.mediaType === 'video' && !formData.files) {
+      console.log('🎬 MediaUploader: Detected downloaded video, auto-populating form data');
+      
+      // Create a FileList-like object from the downloaded video
+      const videoFile = content.mediaFile;
+      const fileList = {
+        0: videoFile,
+        length: 1,
+        item: (index) => index === 0 ? videoFile : null,
+        [Symbol.iterator]: function* () {
+          yield videoFile;
+        }
+      };
+      
+      // Auto-populate form data with downloaded video
+      setFormData(prev => ({
+        ...prev,
+        files: fileList,
+        preview: content.mediaUrl,
+        error: null
+      }));
+      
+      console.log('🎬 MediaUploader: Auto-populated with downloaded video:', {
+        filename: content.mediaFilename,
+        mediaType: content.mediaType,
+        mediaUrl: content.mediaUrl
+      });
+    }
+  }, [content?.mediaFile, content?.mediaType, content?.mediaUrl, content?.mediaFilename, formData.files]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -373,7 +405,14 @@ const MediaUploader = () => {
               formDataPreview: formData.preview
             }),
             <div className="mt-6">
-              <h3 className="text-lg font-medium mb-2">Preview:</h3>
+              <h3 className="text-lg font-medium mb-2">
+                Preview:
+                {content.mediaFilename && content.mediaFilename.includes('downloaded-video') && (
+                  <span className="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                    📥 Downloaded Video
+                  </span>
+                )}
+              </h3>
               <div className="relative">
                 {content.mediaType === 'image' && (
                   <div className="relative">
