@@ -473,7 +473,7 @@ const Dashboard = () => {
                     },
                     className: `block p-8 rounded-2xl border shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
                       feature.name === 'Start Creating' 
-                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-transparent' 
+                        ? 'bg-white hover:border-blue-200 border-blue-100' 
                         : feature.name === 'Download Videos'
                           ? 'bg-white hover:border-blue-200 border-blue-100'
                           : hasSubscription 
@@ -486,7 +486,7 @@ const Dashboard = () => {
                     onClick: (e) => handleFeatureClick(e),
                     className: `block p-8 rounded-2xl border shadow-sm hover:shadow-md transition-all duration-300 ${
                       feature.name === 'Start Creating' 
-                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white cursor-pointer border-transparent' 
+                        ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer' 
                         : feature.name === 'Download Videos'
                           ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer'
                           : hasSubscription 
@@ -502,7 +502,7 @@ const Dashboard = () => {
                     <div>
                       <h3 className={`text-lg font-semibold ${
                         feature.name === 'Start Creating' 
-                          ? 'text-white' 
+                          ? 'text-gray-900' 
                           : feature.name === 'Download Videos'
                             ? 'text-gray-900'
                             : 'text-gray-900'
@@ -512,7 +512,7 @@ const Dashboard = () => {
                       </h3>
                       <p className={`text-sm mt-1 ${
                         feature.name === 'Start Creating' 
-                          ? 'text-white/80' 
+                          ? 'text-gray-600' 
                           : feature.name === 'Download Videos'
                             ? 'text-gray-600'
                             : 'text-gray-600'
