@@ -21,12 +21,12 @@ const PricingSection = () => {
       yearlyTotal: 64,
       yearlySavings: 44,
       features: [
-        'Free public video downloads',
-        '6 connected social accounts',
+        'Social media downloads',
         '1 Post → 6 platform posts',
         'AI captions & hashtags',
         '1 post per day limit',
-        '6 platform posts per day'
+        '6 platform posts per day',
+        '3MB video upload limit'
         
       ],
       popular: false,
@@ -40,13 +40,12 @@ const PricingSection = () => {
       yearlyTotal: 129,
       yearlySavings: 87,
       features: [
-        'Free public video downloads',
-        '6 connected social accounts',
-        '1 Post → 6 platform posts',
+        'Social media downloads',
         'AI captions & hashtags',
         'Content studio access',
         '5 posts per day limit',
-        '30 platform posts per day'
+        '30 platform posts per day',
+        '50MB video upload limit'
       ],
       popular: true,
       bestDeal: false
@@ -57,11 +56,11 @@ const PricingSection = () => {
       isEnterprise: true,
       features: [
         'Custom integrations & workflows',
-        'Dedicated account manager',
         'White-label solutions',
         'Customized analytics & reporting',
         'Custom training & onboarding',
-        'Priority technical support'
+        'Priority technical support',
+        'Full platform upload limits'
       ],
       popular: false,
       bestDeal: false

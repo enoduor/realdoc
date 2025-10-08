@@ -19,14 +19,6 @@ const APIsPage = () => {
             <a href="/#features" className="nav-link">Features</a>
             <a href="/#pricing" className="nav-link">Pricing</a>
             <Link to="/about" className="nav-link">About</Link>
-            <a 
-              href="https://bigvideograb.com/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="nav-link"
-            >
-              Grab videos
-            </a>
           </div>
           <div className="nav-actions">
             <Link to="/login" className="nav-btn nav-btn-secondary">Sign In</Link>

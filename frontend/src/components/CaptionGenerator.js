@@ -11,7 +11,12 @@ const CaptionGenerator = () => {
         platform: content?.platform || 'instagram',
         topic: content?.topic || '',
         tone: content?.tone || 'professional',
-        language: content?.language || 'en'
+        language: content?.language || 'en',
+        media_type: content?.media_type || '',
+        content_category: content?.content_category || '',
+        brand_voice: content?.brand_voice || '',
+        cta_type: content?.cta_type || '',
+        audience: content?.audience || ''
     });
     const [caption, setCaption] = useState('');
     const [loading, setLoading] = useState(false);
@@ -69,7 +74,8 @@ const CaptionGenerator = () => {
             {/* Navigation Header */}
             <header className="bg-white shadow">
                 <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-                    <h1 className="text-3xl font-bold text-gray-900">Caption Generator</h1>
+                    <h1 className="text-xl font-bold">Caption Generator</h1>
+                    
                     <Link
                         to="/app"
                         className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md"
@@ -92,112 +98,204 @@ const CaptionGenerator = () => {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Platform</label>
-                            <select
-                                name="platform"
-                                value={formData.platform}
-                                onChange={handleInputChange}
-                                className="w-full p-3 border rounded-lg"
-                            >
-                                {Object.values(PLATFORMS).map((platform) => (
-                                    <option key={platform.id} value={platform.id}>
-                                        {platform.icon} {platform.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1">Describe your post below</label>
+                            {/* <label className="block text-sm font-medium mb-1">Describe your post below</label> */}
                             <textarea
                                 name="topic"
                                 value={formData.topic}
                                 onChange={handleInputChange}
                                 placeholder="Describe your post content, what it's about, key points you want to highlight, or any specific details you'd like to include..."
                                 className="w-full p-3 border rounded-lg resize-none"
-                                rows="4"
+                                rows="3"
                                 required
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Tone</label>
-                            <select
-                                name="tone"
-                                value={formData.tone}
-                                onChange={handleInputChange}
-                                className="w-full p-3 border rounded-lg"
-                            >
-                                <option value="professional">Professional</option>
-                                <option value="casual">Casual</option>
-                                <option value="friendly">Friendly</option>
-                                <option value="humorous">Humorous</option>
-                                <option value="formal">Formal</option>
-                            </select>
+                        {/* Single line layout for all dropdowns */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                            <div>
+                                {/* <label className="block text-xs font-medium mb-1">Platform</label> */}
+                                <select
+                                    name="platform"
+                                    value={formData.platform}
+                                    onChange={handleInputChange}
+                                    className="w-full p-2 border rounded text-sm"
+                                >
+                                    {Object.entries(PLATFORMS).map(([key, platform]) => (
+                                        <option key={key} value={key}>
+                                            {platform.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                {/* <label className="block text-xs font-medium mb-1">Tone</label> */}
+                                <select
+                                    name="tone"
+                                    value={formData.tone}
+                                    onChange={handleInputChange}
+                                    className="w-full p-2 border rounded text-sm"
+                                >
+                                    <option value="">Tone</option>
+                                    <option value="professional">Professional</option>
+                                    <option value="casual">Casual</option>
+                                    <option value="friendly">Friendly</option>
+                                    <option value="humorous">Humorous</option>
+                                    <option value="formal">Formal</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                {/* <label className="block text-xs font-medium mb-1">Language</label> */}
+                                <select
+                                    name="language"
+                                    value={formData.language}
+                                    onChange={handleInputChange}
+                                    className="w-full p-2 border rounded text-sm"
+                                >
+                                    <option value="en">Language</option>
+                                    <option value="en">English</option>
+                                    <option value="es">Spanish</option>
+                                    <option value="fr">French</option>
+                                    <option value="de">German</option>
+                                    <option value="pt">Portuguese</option>
+                                    <option value="it">Italian</option>
+                                    <option value="nl">Dutch</option>
+                                    <option value="ru">Russian</option>
+                                    <option value="uk">Ukrainian</option>
+                                    <option value="pl">Polish</option>
+                                    <option value="cs">Czech</option>
+                                    <option value="sv">Swedish</option>
+                                    <option value="no">Norwegian</option>
+                                    <option value="da">Danish</option>
+                                    <option value="fi">Finnish</option>
+                                    <option value="el">Greek</option>
+                                    <option value="tr">Turkish</option>
+                                    <option value="ro">Romanian</option>
+                                    <option value="hu">Hungarian</option>
+                                    <option value="bg">Bulgarian</option>
+                                    <option value="he">Hebrew</option>
+                                    <option value="ar">Arabic</option>
+                                    <option value="fa">Persian</option>
+                                    <option value="ur">Urdu</option>
+                                    <option value="hi">Hindi</option>
+                                    <option value="bn">Bengali</option>
+                                    <option value="mr">Marathi</option>
+                                    <option value="gu">Gujarati</option>
+                                    <option value="pa">Punjabi</option>
+                                    <option value="ta">Tamil</option>
+                                    <option value="te">Telugu</option>
+                                    <option value="kn">Kannada</option>
+                                    <option value="ml">Malayalam</option>
+                                    <option value="si">Sinhala</option>
+                                    <option value="th">Thai</option>
+                                    <option value="vi">Vietnamese</option>
+                                    <option value="id">Indonesian</option>
+                                    <option value="ms">Malay</option>
+                                    <option value="fil">Filipino</option>
+                                    <option value="zh-CN">Chinese (Simplified)</option>
+                                    <option value="zh-TW">Chinese (Traditional)</option>
+                                    <option value="ja">Japanese</option>
+                                    <option value="ko">Korean</option>
+                                    <option value="sw">Swahili</option>
+                                    <option value="sw-KE">Swahili (Kenya)</option>
+                                    <option value="sw-TZ">Swahili (Tanzania)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                {/* <label className="block text-xs font-medium mb-1">Media Type</label> */}
+                                <select
+                                    name="media_type"
+                                    value={formData.media_type}
+                                    onChange={handleInputChange}
+                                    className="w-full p-2 border rounded text-sm"
+                                >
+                                    <option value="">Media type</option>
+                                    <option value="image">Image</option>
+                                    <option value="video">Video</option>
+                                    <option value="carousel">Carousel</option>
+                                    <option value="story">Story</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                {/* <label className="block text-xs font-medium mb-1">Category</label> */}
+                                <select
+                                    name="content_category"
+                                    value={formData.content_category}
+                                    onChange={handleInputChange}
+                                    className="w-full p-2 border rounded text-sm"
+                                >
+                                    <option value="">Category</option>
+                                    <option value="business">Business</option>
+                                    <option value="lifestyle">Lifestyle</option>
+                                    <option value="education">Education</option>
+                                    <option value="entertainment">Entertainment</option>
+                                    <option value="health">Health & Fitness</option>
+                                    <option value="food">Food & Cooking</option>
+                                    <option value="travel">Travel</option>
+                                    <option value="fashion">Fashion</option>
+                                    <option value="technology">Technology</option>
+                                    <option value="sports">Sports</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                {/* <label className="block text-xs font-medium mb-1">Brand Voice</label> */}
+                                <select
+                                    name="brand_voice"
+                                    value={formData.brand_voice}
+                                    onChange={handleInputChange}
+                                    className="w-full p-2 border rounded text-sm"
+                                >
+                                    <option value="">Brand voice</option>
+                                    <option value="friendly">Friendly & Approachable</option>
+                                    <option value="professional">Professional & Authoritative</option>
+                                    <option value="casual">Casual & Conversational</option>
+                                    <option value="inspirational">Inspirational & Motivational</option>
+                                    <option value="humorous">Humorous & Playful</option>
+                                    <option value="educational">Educational & Informative</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                {/* <label className="block text-xs font-medium mb-1">CTA Type</label> */}
+                                <select
+                                    name="cta_type"
+                                    value={formData.cta_type}
+                                    onChange={handleInputChange}
+                                    className="w-full p-2 border rounded text-sm"
+                                >
+                                    <option value="">CTA type</option>
+                                    <option value="engagement">Engagement</option>
+                                    <option value="sales">Sales & Conversions</option>
+                                    <option value="awareness">Brand Awareness</option>
+                                    <option value="education">Educational Content</option>
+                                    <option value="community">Community Building</option>
+                                    <option value="none">No CTA</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1">Language</label>
-                            <select
-                                name="language"
-                                value={formData.language}
+                            {/* <label className="block text-xs font-medium mb-1">Target Audience</label> */}
+                            <textarea
+                                name="audience"
+                                value={formData.audience}
                                 onChange={handleInputChange}
-                                className="w-full p-3 border rounded-lg"
-                            >
-                                <option value="en">English</option>
-                                <option value="es">Spanish</option>
-                                <option value="fr">French</option>
-                                <option value="de">German</option>
-                                <option value="pt">Portuguese</option>
-                                <option value="it">Italian</option>
-                                <option value="nl">Dutch</option>
-                                <option value="ru">Russian</option>
-                                <option value="uk">Ukrainian</option>
-                                <option value="pl">Polish</option>
-                                <option value="cs">Czech</option>
-                                <option value="sv">Swedish</option>
-                                <option value="no">Norwegian</option>
-                                <option value="da">Danish</option>
-                                <option value="fi">Finnish</option>
-                                <option value="el">Greek</option>
-                                <option value="tr">Turkish</option>
-                                <option value="ro">Romanian</option>
-                                <option value="hu">Hungarian</option>
-                                <option value="bg">Bulgarian</option>
-                                <option value="he">Hebrew</option>
-                                <option value="ar">Arabic</option>
-                                <option value="fa">Persian</option>
-                                <option value="ur">Urdu</option>
-                                <option value="hi">Hindi</option>
-                                <option value="bn">Bengali</option>
-                                <option value="mr">Marathi</option>
-                                <option value="gu">Gujarati</option>
-                                <option value="pa">Punjabi</option>
-                                <option value="ta">Tamil</option>
-                                <option value="te">Telugu</option>
-                                <option value="kn">Kannada</option>
-                                <option value="ml">Malayalam</option>
-                                <option value="si">Sinhala</option>
-                                <option value="th">Thai</option>
-                                <option value="vi">Vietnamese</option>
-                                <option value="id">Indonesian</option>
-                                <option value="ms">Malay</option>
-                                <option value="fil">Filipino</option>
-                                <option value="zh-CN">Chinese (Simplified)</option>
-                                <option value="zh-TW">Chinese (Traditional)</option>
-                                <option value="ja">Japanese</option>
-                                <option value="ko">Korean</option>
-                                <option value="sw">Swahili</option>
-                                <option value="sw-KE">Swahili (Kenya)</option>
-                                <option value="sw-TZ">Swahili (Tanzania)</option>
-                            </select>
+                                placeholder="Describe your target audience (age, interests, demographics, etc.)"
+                                className="w-full p-2 border rounded text-sm resize-none"
+                                rows="3"
+                            />
                         </div>
 
                         <button
                             type="submit"
                             disabled={loading}
-                            className={`w-full py-2 px-4 rounded font-medium text-white ${
+                            className={`py-2 px-4 rounded font-medium text-white ${
                                 loading 
                                     ? 'bg-gray-400 cursor-not-allowed'
                                     : 'bg-blue-600 hover:bg-blue-700'
@@ -239,7 +337,7 @@ const CaptionGenerator = () => {
                                     to="/app/media-upload"
                                     className="px-4 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded"
                                 >
-                                    Access Download
+                                    Downloaded Video
                                 </Link>
                             </div>
                         </div>

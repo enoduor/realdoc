@@ -240,7 +240,7 @@ const Scheduler = ({ onPublishNow }) => {
             </div>
 
             {/* Platform Constraints Warning */}
-            {platforms.length > 0 && (
+            {/* {platforms.length > 0 && (
                 <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <p className="text-sm text-yellow-800">
                         ⚠️ Platform Requirements:
@@ -257,7 +257,7 @@ const Scheduler = ({ onPublishNow }) => {
                         })}
                     </ul>
                 </div>
-            )}
+            )} */}
 
             {/* Error Modal */}
             <ErrorModal

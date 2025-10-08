@@ -274,7 +274,7 @@ class TwitterService {
 
     if (mediaUrlOrBuffer) {
       try {
-        console.log('[Twitter] Attempting to upload media and post tweet using LinkedIn-style approach...');
+        console.log('[Twitter] Uploading media...');
         const mediaId = await this.uploadMedia(identifier, mediaUrlOrBuffer);
         console.log('[Twitter] Media uploaded successfully, posting tweet with media...');
 
@@ -283,8 +283,6 @@ class TwitterService {
           media: { media_ids: [mediaId] },
         });
         console.log('[TW] v2.tweet (with media) success');
-
-        console.log('[Twitter] Tweet with media posted successfully');
         
         // Return structured object like LinkedIn
         const tweetId = resp?.data?.id;
@@ -299,18 +297,25 @@ class TwitterService {
       } catch (error) {
         console.error('[TW ERR] v2.tweet (with media) failed:', error.code, error.message);
         console.log('[Twitter] Attempting text-only tweet as fallback...');
-        const resp = await client.v2.tweet(payload);
         
-        // Return structured object for fallback too
-        const tweetId = resp?.data?.id;
-        const twitterUrl = `https://twitter.com/i/status/${tweetId}`;
-        
-        return {
-          success: true,
-          postId: tweetId,
-          url: twitterUrl,
-          message: 'Successfully published to Twitter (text-only)'
-        };
+        try {
+          const resp = await client.v2.tweet(payload);
+          console.log('[TW] v2.tweet (text-only fallback) success');
+          
+          // Return structured object for fallback too
+          const tweetId = resp?.data?.id;
+          const twitterUrl = `https://twitter.com/i/status/${tweetId}`;
+          
+          return {
+            success: true,
+            postId: tweetId,
+            url: twitterUrl,
+            message: 'Successfully published to Twitter (text-only)'
+          };
+        } catch (fallbackError) {
+          console.error('[TW ERR] v2.tweet (text-only fallback) also failed:', fallbackError.code, fallbackError.message);
+          throw new Error(`Twitter posting failed. Media tweets blocked by API tier (code 453). Text-only fallback also failed: ${fallbackError.message}`);
+        }
       }
     }
 

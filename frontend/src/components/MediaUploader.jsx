@@ -3,12 +3,14 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { PLATFORMS } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
+import { useUser } from '@clerk/clerk-react';
 // Subscription check removed - users are already verified at dashboard level
 
 const API_URL = process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://reelpostly.com/ai';
 
 const MediaUploader = () => {
   const { updateContent, content } = useContent();
+  const { user } = useUser();
   const [formData, setFormData] = useState({
     platform: content?.platform || 'instagram',
     files: null,
@@ -16,8 +18,32 @@ const MediaUploader = () => {
     error: null,
     preview: null
   });
+  const [subscriptionInfo, setSubscriptionInfo] = useState(null);
 
   const platformLimits = PLATFORMS[formData.platform.toUpperCase()];
+
+  // Fetch subscription information
+  useEffect(() => {
+    const fetchSubscriptionInfo = async () => {
+      try {
+        const response = await fetch('/api/auth/subscription-status', {
+          headers: {
+            'Authorization': `Bearer ${await user?.getToken()}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setSubscriptionInfo(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch subscription info:', error);
+      }
+    };
+
+    if (user) {
+      fetchSubscriptionInfo();
+    }
+  }, [user]);
 
   useEffect(() => {
     if (content?.platform !== formData.platform) {
@@ -113,13 +139,41 @@ const MediaUploader = () => {
       throw new Error(`Unsupported file type for ${formData.platform}. Supported: ${platformLimits.supportedMedia.join(', ')}`);
     }
 
-    // Check file size based on platform
+    // Check file size based on platform and subscription
     let maxSize = 100 * 1024 * 1024; // Default 100MB
-    if (formData.platform === 'instagram') maxSize = 15 * 1024 * 1024; // 15MB for Instagram
-    if (formData.platform === 'twitter') maxSize = 5 * 1024 * 1024; // 5MB for Twitter
+    
+    // Debug logging
+    console.log('[MediaUploader] File validation:', {
+      fileSize: file.size,
+      fileSizeMB: Math.floor(file.size / (1024 * 1024)),
+      subscriptionInfo,
+      selectedPlan: subscriptionInfo?.selectedPlan,
+      platform: formData.platform
+    });
+    
+    // Apply subscription-based limits first
+    if (subscriptionInfo?.selectedPlan === 'starter' || subscriptionInfo?.selectedPlan === 'none' || !subscriptionInfo) {
+      maxSize = 3 * 1024 * 1024; // 3MB for Starter plan or no subscription
+      console.log('[MediaUploader] Applying Starter/no subscription limit: 3MB');
+    } else if (subscriptionInfo?.selectedPlan === 'creator') {
+      maxSize = 50 * 1024 * 1024; // 50MB for Creator plan (all platforms)
+      console.log('[MediaUploader] Applying Creator plan limit: 50MB');
+    } else {
+      // Full limits for Enterprise or other plans
+      if (formData.platform === 'instagram') maxSize = 100 * 1024 * 1024; // 100MB for Instagram
+      if (formData.platform === 'twitter') maxSize = 100 * 1024 * 1024; // 100MB for Twitter
+      if (formData.platform === 'facebook') maxSize = 100 * 1024 * 1024; // 100MB for Facebook
+      if (formData.platform === 'linkedin') maxSize = 100 * 1024 * 1024; // 100MB for LinkedIn
+      if (formData.platform === 'youtube') maxSize = 100 * 1024 * 1024; // 100MB for YouTube
+      if (formData.platform === 'tiktok') maxSize = 72 * 1024 * 1024; // 72MB for TikTok
+      console.log('[MediaUploader] Applying full platform limit:', Math.floor(maxSize / (1024 * 1024)) + 'MB');
+    }
+
+    console.log('[MediaUploader] Final maxSize:', Math.floor(maxSize / (1024 * 1024)) + 'MB');
 
     if (file.size > maxSize) {
-      throw new Error(`File too large for ${formData.platform}. Maximum size is ${Math.floor(maxSize / (1024 * 1024))}MB`);
+      const planName = subscriptionInfo?.selectedPlan || 'starter';
+      throw new Error(`File too large for ${formData.platform} on ${planName} plan. Maximum size is ${Math.floor(maxSize / (1024 * 1024))}MB`);
     }
   };
 
@@ -197,6 +251,10 @@ const MediaUploader = () => {
       uploadFormData.append('file', file, file.name || 'upload');
       if (formData.platform) {
         uploadFormData.append('platform', formData.platform);
+      }
+      // Include subscription plan for backend validation
+      if (subscriptionInfo?.selectedPlan) {
+        uploadFormData.append('subscription_plan', subscriptionInfo.selectedPlan);
       }
 
       const res = await axios.post(`${API_URL}/api/v1/upload`, uploadFormData, {
@@ -303,7 +361,7 @@ const MediaUploader = () => {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">Media Upload</h1>
+          <h1 className="text-xl font-bold">Media Upload</h1>
           <Link
             to="/app"
             className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md"
@@ -344,7 +402,22 @@ const MediaUploader = () => {
                 <li>Supported Types: {platformLimits.supportedMedia.join(', ')}</li>
                 <li>Image Size: {platformLimits.recommendedImageSize}</li>
                 <li>Video Length: {platformLimits.recommendedVideoLength}</li>
+                <li className="font-semibold text-blue-600">
+                  Max File Size: {
+                    subscriptionInfo?.selectedPlan === 'starter' ? '3 MB (Starter Plan)' :
+                    subscriptionInfo?.selectedPlan === 'creator' ? '50 MB (Creator Plan)' :
+                    formData.platform === 'tiktok' ? '72 MB (Full Access)' :
+                    '100 MB (Full Access)'
+                  }
+                </li>
               </ul>
+              {subscriptionInfo?.selectedPlan === 'starter' && (
+                <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                  <p className="text-xs text-yellow-800">
+                    💡 Upgrade to Creator plan for 50 MB uploads, or Enterprise for full platform limits
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Upload Area */}
@@ -502,7 +575,7 @@ const MediaUploader = () => {
                 to="/app/scheduler"
                 className="px-6 py-3 bg-green-600 text-white hover:bg-green-700 rounded-lg font-medium"
               >
-                Schedule Post
+              Go to Publish
               </Link>
             </div>
           )}

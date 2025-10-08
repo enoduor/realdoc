@@ -64,11 +64,22 @@ ALLOWED_TYPES = {
     }
 }
 
-# Reasonable server-side caps (match frontend guidance)
+# Subscription-based limits (applied first, then platform limits)
+SUBSCRIPTION_LIMITS = {
+    'starter': 3 * 1024 * 1024,    # 3MB for Starter plan (all platforms)
+    'creator': 50 * 1024 * 1024,   # 50MB for Creator plan (all platforms)
+    # Enterprise or no subscription gets platform limits
+}
+
+# Platform-specific limits (applied after subscription limits)
 DEFAULT_MAX_SIZE = 100 * 1024 * 1024  # 100MB
 MAX_SIZE_BY_PLATFORM = {
-    'instagram': 15 * 1024 * 1024,  # 15MB
-    'twitter':   5 * 1024 * 1024,   # 5MB
+    'instagram': 100 * 1024 * 1024,  # 100MB (updated to match frontend)
+    'twitter':   100 * 1024 * 1024,  # 100MB (updated to match frontend)
+    'tiktok':    72 * 1024 * 1024,   # 72MB (updated to match frontend)
+    'facebook':  100 * 1024 * 1024,  # 100MB
+    'linkedin':  100 * 1024 * 1024,  # 100MB
+    'youtube':   100 * 1024 * 1024,  # 100MB
     # fallback to DEFAULT_MAX_SIZE for others
 }
 
@@ -108,7 +119,8 @@ def resize_image(image, platform, media_type):
 @router.post("/upload")
 async def upload_media(
     file: UploadFile = File(...),
-    platform: str = Form(None)
+    platform: str = Form(None),
+    subscription_plan: str = Form(None)
 ):
     # Normalize platform early
     platform = (platform or "").strip().lower() or None
@@ -152,13 +164,25 @@ async def upload_media(
                 detail=f"Unsupported content-type for {media_kind}: '{content_type}'. Allowed: {', '.join(sorted(allowed_set))}"
             )
 
-        # Enforce max file size per platform
-        max_size = MAX_SIZE_BY_PLATFORM.get(platform, DEFAULT_MAX_SIZE)
+        # Enforce file size limits: subscription first, then platform
+        subscription_limit = SUBSCRIPTION_LIMITS.get(subscription_plan)
+        platform_limit = MAX_SIZE_BY_PLATFORM.get(platform, DEFAULT_MAX_SIZE)
+        
+        # Use the more restrictive limit
+        max_size = subscription_limit if subscription_limit else platform_limit
+        effective_limit_type = "subscription" if subscription_limit and subscription_limit < platform_limit else "platform"
+        
         if len(content) > max_size:
-            raise HTTPException(
-                status_code=413,
-                detail=f"File too large for {platform or 'this platform'} (max {int(max_size / (1024*1024))}MB)"
-            )
+            if effective_limit_type == "subscription":
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"File too large for {subscription_plan or 'current'} plan. Maximum size is {int(max_size / (1024*1024))}MB. Upgrade to increase limits."
+                )
+            else:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"File too large for {platform or 'this platform'} (max {int(max_size / (1024*1024))}MB)"
+                )
 
         # Generate unique filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

@@ -30,7 +30,7 @@ const PartnerWithUs = () => {
           </div>
           <div className="nav-actions">
             <Link to="/login" className="nav-btn nav-btn-secondary">Sign In</Link>
-            <Link to="/register" className="nav-btn nav-btn-primary">Sign Up</Link>
+            <Link to="/register" className="nav-btn nav-btn-primary">Get Started Now</Link>
           </div>
         </div>
       </nav>

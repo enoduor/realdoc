@@ -32,7 +32,7 @@ const LandingPage = () => {
           </div>
           <div className="nav-actions">
             <Link to="/login" className="nav-btn nav-btn-secondary">Sign In</Link>
-            <Link to="/register" className="nav-btn nav-btn-primary">Sign Up</Link>
+            <Link to="/register" className="nav-btn nav-btn-primary">Get Started Now</Link>
           </div>
         </div>
       </nav>
@@ -43,12 +43,13 @@ const LandingPage = () => {
           <div className="hero-content">
             <h1 className="hero-title">Create Once, Publish Everywhere!</h1>
             <p className="hero-subtitle">
-            Creators are overwhelmed by too many tools and endless complexity. That's why we want you to join us in building an all-in-one platform so you can create, edit, and publish without ever leaving the app. We make it simple, so you can focus on creating, not juggling.  </p>
+            Get videos from your device or social media, generate captions and hashtags, and publish across multiple platforms all in one place.
+            </p>
             <div className="hero-benefits">
                 <ul className="space-y-3 text-left">
                     <li className="flex items-start">
                         <span className="text-green-500 mr-3 mt-1">✅</span>
-                        <span>Save time, reduce costs, manage everything from one dashboard</span>
+                        <span>Save time, reduce costs, manage everything in one place</span>
                     </li>
                     <li className="flex items-start">
                         <span className="text-green-500 mr-3 mt-1">✅</span>
@@ -70,7 +71,7 @@ const LandingPage = () => {
             </div>
             <div id="hero-cta" className="hero-cta">
               <Link to="/register" className="cta-primary">
-                Sign Up
+                Get Started Now
               </Link>
               <Link to="/login" className="cta-secondary">
                 Sign In
@@ -119,7 +120,7 @@ const LandingPage = () => {
               <div className="card-icon">🎯</div>
               <h3 className="card-title">Start with Captions</h3>
               <p className="card-description">
-                Complete content creation workflow - captions, hashtags, media, and publishing
+                Initiate your content creation with AI-powered captions and hashtags.
               </p>
               <Link to="/register" className="card-button start-creating-button">
                 Get Started
@@ -154,19 +155,19 @@ const LandingPage = () => {
             <div className="feature-card">
               <div className="feature-icon">🤖</div>
               <h3>AI-Powered Content Generation</h3>
-              <p>Our intelligent system creates platform-specific captions and hashtags that feel natural on every channel. No more generic content—each post is tailored for maximum engagement.</p>
+              <p>Initiate your workflow with the content and caption generator and then proceed to customize your message within seconds.</p>
             </div>
             
             <div className="feature-card">
               <div className="feature-icon">⚙️</div>
               <h3>Smart Platform Customization</h3>
-              <p>Fine-tune your content for each platform with our intuitive editor. Adjust tone, length, and style to match each channel's unique audience and format requirements.</p>
+              <p>Adjust tone, length, and style of your content to match each channel's audience and format requirements in one place.</p>
             </div>
             
             <div className="feature-card">
               <div className="feature-icon">✅</div>
               <h3>Instant Confirmation & Tracking</h3>
-              <p>Get immediate confirmation with direct links to your live posts across all platforms. Track performance and engagement with built-in analytics and post monitoring.</p>
+              <p>Get confirmation with direct links to your live posts across all platforms. We do not add analytics that you don't need.</p>
             </div>
           </div>
         </div>
@@ -175,13 +176,13 @@ const LandingPage = () => {
       {/* Pain Points Section */}
       <section id="pain-points" className="rp-section">
         <div className="pain-points-container">
-          <h2>Stop Struggling With These Common Problems</h2>
+          <h2>Are you Experiencing  These Common Problems?</h2>
           <p className="pain-points-subtitle">We built ReelPostly to solve the biggest frustrations in social media publishing</p>
           
           <div className="pain-points-grid">
             <div className="pain-point-card">
               <div className="pain-point-icon">⏰</div>
-              <h3>Manual Posting Takes Forever</h3>
+              <h3>Spending too much time Posting</h3>
               <p>You spend hours uploading the same content to multiple platforms, tweaking formats, and managing different posting schedules. ReelPostly simplifies it with one upload shared everywhere.</p>
               <div className="pain-point-solution">
                 <strong>Save valuable time and stay consistent across all your social channels.</strong>
@@ -190,7 +191,7 @@ const LandingPage = () => {
             
             <div className="pain-point-card">
               <div className="pain-point-icon">💰</div>
-              <h3>Overpriced Tools</h3>
+              <h3>Paying for multiple tools</h3>
               <p>Most social media tools charge enterprise-level prices for basic posting features that should be affordable for everyone. ReelPostly is built for individuals and small teams.</p>
               <div className="pain-point-solution">
                 <strong>Get professional-grade automation without the heavy cost.</strong>
@@ -199,8 +200,8 @@ const LandingPage = () => {
             
             <div className="pain-point-card">
               <div className="pain-point-icon">🎯</div>
-              <h3>Too Many Unnecessary Features</h3>
-              <p>Many tools are packed with complex options you'll never use, making simple posting feel overwhelming. ReelPostly focuses on what matters most.</p>
+              <h3>Paying for features you don't use</h3>
+              <p>Many tools are packed with complex options you'll never use, take time to learn, and make simple posting feel overwhelming. ReelPostly focuses on what matters most.</p>
               <div className="pain-point-solution">
                 <strong>No clutter, just a clean workflow that gets your content live faster.</strong>
               </div>
@@ -212,15 +213,15 @@ const LandingPage = () => {
       {/* Benefits Section */}
       <section id="benefits" className="rp-section">
         <div className="benefits-container">
-          <h2>Why Creators Choose ReelPostly</h2>
-          <p className="benefits-subtitle">Join thousands of content creators who've streamlined their workflow</p>
+          <h2>With ReelPostly, You Can:</h2>
+          <p className="benefits-subtitle">Be part of a community streamlining their workflow</p>
           
           <div className="benefits-list">
             <div className="benefit-item">
               <div className="benefit-icon">⏱️</div>
               <div className="benefit-content">
                 <h4>Save Hours Every Week</h4>
-                <p>One workflow replaces six separate uploads. What used to take hours now takes minutes.</p>
+                <p>One workflow replaces six separate uploads. Saving you time and money.</p>
               </div>
             </div>
             
@@ -228,15 +229,15 @@ const LandingPage = () => {
               <div className="benefit-icon">🎯</div>
               <div className="benefit-content">
                 <h4>Platform-Optimized Content</h4>
-                <p>AI generates content that performs better on each platform, increasing your reach and engagement.</p>
+                <p>AI generates content that you quickly tweak, and focus on your brand messaging .</p>
               </div>
             </div>
             
             <div className="benefit-item">
               <div className="benefit-icon">📊</div>
               <div className="benefit-content">
-                <h4>Real-Time Performance Tracking</h4>
-                <p>Monitor your posts across all platforms with instant confirmation links and engagement metrics.</p>
+                <h4>Real-Time Post Notification</h4>
+                <p>Monitor your posts launch across all platforms with instant confirmation links.</p>
               </div>
             </div>
             
@@ -244,17 +245,14 @@ const LandingPage = () => {
               <div className="benefit-icon">🚀</div>
               <div className="benefit-content">
                 <h4>Effortless Publishing</h4>
-                <p>Focus on creating great content while we handle the technical details of multi-platform publishing.</p>
+                <p>Focus on creating great content that shares the same message across your platforms.</p>
               </div>
             </div>
           </div>
           
           <div className="benefits-cta">
             <Link to="/register" className="cta-primary">
-              Start Creating Today
-            </Link>
-            <Link to="/login" className="cta-secondary">
-              Sign In
+              Are you ready?
             </Link>
           </div>
         </div>
@@ -268,7 +266,7 @@ const LandingPage = () => {
       {/* Message from the Founder */}
       <section className="rp-section">
         <h2>Hello Creators,</h2>
-        <p><strong>Create once, publish everywhere with intelligent automation.</strong> ReelPostly transforms your content creation workflow by publishing across all six major platforms with AI-generated captions and hashtags tailored for each audience.</p>
+        <p><strong>Create once, publish everywhere with intelligent automation.</strong> ReelPostly transforms your content creation workflow by publishing across six major platforms with AI-generated captions and hashtags tailored for each audience.</p>
         
         <p><strong>One workflow. Six platforms. Zero hassle.</strong> Stop juggling multiple tools and start creating content that works everywhere.</p>
         
@@ -281,7 +279,7 @@ const LandingPage = () => {
           <h2>Ready to Transform Your Social Media?</h2>
           <p>Start creating and publishing content across all platforms with Reelpostly</p>
           <Link to="/register" className="cta-primary">
-                Sign Up
+                Get Started Now
               </Link>
           <p className="cta-note">Start your 3-day free trial and cancel anytime</p>
         </div>

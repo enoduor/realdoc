@@ -294,7 +294,7 @@ const Dashboard = () => {
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <h1 className="text-xl font-bold">Reelpostly</h1>
+                <h1 className="text-xl font-bold">Welcome to Reelpostly</h1>
               </div>
             </div>
             <div className="flex items-center">
@@ -306,10 +306,7 @@ const Dashboard = () => {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold">Welcome to Reelpostly</h2>
-          </div>
-
+      
           {/* Daily Usage */}
           {hasSubscription && usageStatus && (
             <div className="mb-6 bg-white rounded-lg shadow p-6 overflow-hidden">
@@ -321,7 +318,7 @@ const Dashboard = () => {
                   </p>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="text-sm font-bold text-blue-600">
                     {usageStatus.usage.used}/{usageStatus.usage.limit}
                   </div>
                   <p className="text-sm text-gray-500">posts today</p>

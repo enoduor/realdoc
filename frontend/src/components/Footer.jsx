@@ -25,13 +25,6 @@ const Footer = () => {
             <ul>
               <li><a href="/#features">Features</a></li>
               <li><a href="/#pricing">Pricing</a></li>
-              <li><a 
-                href="https://bigvideograb.com/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-              >
-                Grab videos
-              </a></li>
             </ul>
           </div>
           <div className="footer-section">

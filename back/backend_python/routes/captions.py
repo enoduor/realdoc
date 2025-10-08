@@ -11,6 +11,11 @@ class CaptionRequest(BaseModel):
     topic: str
     tone: Optional[str] = "professional"
     language: Optional[str] = "en"
+    media_type: Optional[str] = None
+    content_category: Optional[str] = None
+    brand_voice: Optional[str] = None
+    cta_type: Optional[str] = None
+    audience: Optional[str] = None
 
     @validator('platform')
     def validate_platform_name(cls, v):
@@ -36,7 +41,12 @@ async def create_caption(request: CaptionRequest):
             topic=request.topic,
             tone=request.tone,
             language=request.language,
-            max_length=platform_limits["max_characters"]
+            max_length=platform_limits["max_characters"],
+            media_type=request.media_type,
+            content_category=request.content_category,
+            brand_voice=request.brand_voice,
+            cta_type=request.cta_type,
+            audience=request.audience
         )
         
         if len(caption) > platform_limits["max_characters"]:
@@ -71,7 +81,12 @@ async def update_caption(caption_id: int, request: CaptionRequest):
         platform=request.platform,
         topic=request.topic,
         tone=request.tone,
-        language=request.language
+        language=request.language,
+        media_type=request.media_type,
+        content_category=request.content_category,
+        brand_voice=request.brand_voice,
+        cta_type=request.cta_type,
+        audience=request.audience
     )
     
     response = CaptionResponse(
