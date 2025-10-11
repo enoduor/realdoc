@@ -40,6 +40,7 @@ const CaptionGenerator = () => {
         }));
         
         if (name === 'platform') {
+            console.log('[CaptionGenerator] Platform changed to:', value);
             updateContent({ platform: value });
         }
     };
@@ -53,6 +54,11 @@ const CaptionGenerator = () => {
         try {
             const response = await ContentService.createCaption(formData);
             setCaption(response.caption);
+            console.log('[CaptionGenerator] Caption generated, saving to context:', {
+                platform: formData.platform,
+                topic: formData.topic,
+                caption: response.caption.substring(0, 50) + '...'
+            });
             updateContent({ 
                 captions: [response.caption],
                 platform: formData.platform,
@@ -122,8 +128,8 @@ const CaptionGenerator = () => {
                                     onChange={handleInputChange}
                                     className="w-full p-2 border rounded text-sm"
                                 >
-                                    {Object.entries(PLATFORMS).map(([key, platform]) => (
-                                        <option key={key} value={key}>
+                                    {Object.values(PLATFORMS).map((platform) => (
+                                        <option key={platform.id} value={platform.id}>
                                             {platform.name}
                                         </option>
                                     ))}

@@ -7,9 +7,12 @@ import { useContent } from '../context/ContentContext';
 
 const HashtagGenerator = () => {
     const { updateContent, content } = useContent();
+    
+    // Initialize formData - will be updated by useEffect if content exists
     const [formData, setFormData] = useState({
-        platform: content.platform || 'instagram',
-        topic: content.topic || '',
+        platform: 'instagram', // Will be overridden by useEffect
+        topic: '',
+        caption: '',
         count: 5
     });
     const [hashtags, setHashtags] = useState([]);
@@ -18,14 +21,41 @@ const HashtagGenerator = () => {
 
     const platformLimits = PLATFORMS[formData.platform.toUpperCase()];
 
+    // Restore hashtags from context when component mounts or context changes
     useEffect(() => {
-        if (content.platform !== formData.platform) {
+        if (content?.hashtags && content.hashtags.length > 0) {
+            setHashtags(content.hashtags);
+        }
+    }, [content?.hashtags]);
+
+    // Initialize formData from context on component mount
+    useEffect(() => {
+        console.log('[HashtagGenerator] Content received:', {
+            platform: content?.platform,
+            topic: content?.topic,
+            caption: content?.captions?.[0] ? content.captions[0].substring(0, 50) + '...' : 'none'
+        });
+        
+        const updates = {};
+        
+        if (content?.platform) {
+            updates.platform = content.platform;
+        }
+        if (content?.topic) {
+            updates.topic = content.topic;
+        }
+        if (content?.captions?.[0]) {
+            updates.caption = content.captions[0];
+        }
+        
+        if (Object.keys(updates).length > 0) {
+            console.log('[HashtagGenerator] Updating formData with:', updates);
             setFormData(prev => ({
                 ...prev,
-                platform: content.platform
+                ...updates
             }));
         }
-    }, [content.platform]);
+    }, [content]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -48,7 +78,20 @@ const HashtagGenerator = () => {
         setError('');
 
         try {
+            console.log('[HashtagGenerator] Sending to API:', {
+                platform: formData.platform,
+                topic: formData.topic,
+                caption: formData.caption ? formData.caption.substring(0, 50) + '...' : 'none',
+                count: formData.count
+            });
+            
             const response = await ContentService.createHashtags(formData);
+            
+            console.log('[HashtagGenerator] API Response:', {
+                hashtags: response.hashtags,
+                count: response.hashtags?.length
+            });
+            
             setHashtags(response.hashtags);
             updateContent({ 
                 hashtags: response.hashtags,
@@ -68,7 +111,7 @@ const HashtagGenerator = () => {
             {/* Navigation Header */}
             <header className="bg-white shadow">
                 <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-                    <h1 className="text-3xl font-bold text-gray-900">Hashtag Generator</h1>
+                    <h1 className="text-xl font-bold text-gray-900">Hashtag Generator</h1>
                     <Link
                         to="/app"
                         className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md"

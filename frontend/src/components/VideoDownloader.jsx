@@ -37,15 +37,54 @@ const VideoDownloader = () => {
         const blob = await response.blob();
         const videoFile = new File([blob], 'downloaded-video.mp4', { type: 'video/mp4' });
         
-        // Update content context with the video
+        // Create preview URL immediately for better UX
+        const previewUrl = URL.createObjectURL(blob);
+        
+        // Update content with preview first
         updateContent({
-          mediaUrl: URL.createObjectURL(blob),
+          mediaUrl: previewUrl,
           mediaType: 'video',
           mediaFile: videoFile,
           mediaFilename: 'downloaded-video.mp4'
         });
         
-        setResult('Video saved to uploads section!');
+        setResult('Video saved! Uploading to server...');
+        
+        // Now upload to S3 in the background
+        try {
+          const uploadFormData = new FormData();
+          uploadFormData.append('file', videoFile);
+          uploadFormData.append('platform', 'video');
+          
+          const uploadResponse = await fetch(`${process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://reelpostly.com/ai'}/api/v1/upload`, {
+            method: 'POST',
+            body: uploadFormData
+          });
+          
+          if (!uploadResponse.ok) {
+            throw new Error('Upload to server failed');
+          }
+          
+          const uploadData = await uploadResponse.json();
+          
+          if (uploadData && uploadData.url) {
+            // Update content with S3 URL
+            updateContent({
+              mediaUrl: uploadData.url,
+              mediaType: uploadData.type || 'video',
+              mediaDimensions: uploadData.dimensions || null,
+              mediaFile: null,
+              mediaFilename: uploadData.filename
+            });
+            
+            setResult('✅ Video uploaded successfully! Ready to publish.');
+          } else {
+            throw new Error('No URL returned from upload');
+          }
+        } catch (uploadError) {
+          console.error('Upload error:', uploadError);
+          setError('Video downloaded but upload to server failed. Please try uploading manually from Media Upload page.');
+        }
       } else {
         // Handle JSON response (fallback)
         const data = await response.json();

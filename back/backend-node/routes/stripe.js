@@ -381,6 +381,56 @@ router.post("/reactivate-subscription", requireAuth(), async (req, res) => {
 });
 
 /* =========================
+ *  ACTIVATE SUBSCRIPTION (END TRIAL EARLY)
+ * ========================= */
+router.post("/activate-subscription", requireAuth(), async (req, res) => {
+  try {
+    const auth = typeof req.auth === "function" ? req.auth() : req.auth;
+    const clerkUserId = auth?.userId;
+    if (!clerkUserId) return res.status(401).json({ error: "Not authenticated" });
+
+    const user = await User.findOne({ clerkUserId });
+    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!user.stripeSubscriptionId) {
+      return res.status(400).json({ error: "No subscription found" });
+    }
+
+    // Only allow if currently trialing
+    if (user.subscriptionStatus !== 'trialing') {
+      return res.status(400).json({ error: "Subscription is not in trial period" });
+    }
+
+    console.log("🔥 Activating subscription early for user:", clerkUserId);
+
+    // End trial immediately by setting trial_end to now
+    const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
+      trial_end: 'now', // End trial immediately and charge the customer
+    });
+
+    console.log("✅ Trial ended, subscription activated:", subscription.id);
+
+    // Update user status and reset daily counters for fresh start
+    user.subscriptionStatus = subscription.status;
+    user.dailyPostsUsed = 0; // Reset to 0 for fresh start on paid plan
+    user.dailyLimitResetAt = null; // Will be set on next check
+    await user.save();
+
+    console.log("✅ Daily counters reset for activated subscription");
+
+    return res.json({
+      success: true,
+      message: "Subscription activated successfully! Your card will be charged now. Daily post limit has been reset.",
+      subscriptionStatus: user.subscriptionStatus,
+    });
+  } catch (err) {
+    console.error("❌ Error activate-subscription:", err);
+    return res.status(500).json({ 
+      error: err.message || "Failed to activate subscription" 
+    });
+  }
+});
+
+/* =========================
  *  BILLING PORTAL (AUTH) — SINGLE, CONSOLIDATED
  * ========================= */
 // routes/stripe.js  — replace ONLY the portal-session handler

@@ -43,7 +43,7 @@ const LandingPage = () => {
           <div className="hero-content">
             <h1 className="hero-title">Create Once, Publish Everywhere!</h1>
             <p className="hero-subtitle">
-            Get videos from your device or social media, generate captions and hashtags, and publish across multiple platforms all in one place.
+            ReelPostly gives you complete control over your content. Unlike most tools, it lets you fine-tune every caption to match your tone, audience, and brand voice. You can adjust for different demographics, content styles, and calls to action, making each post feel truly personalized.
             </p>
             <div className="hero-benefits">
                 <ul className="space-y-3 text-left">
@@ -142,6 +142,26 @@ const LandingPage = () => {
               </Link>
             </div> */}
           </div>
+        </div>
+      </section>
+
+      {/* YouTube Demo Section */}
+      <section className="youtube-demo-section">
+        <div className="youtube-demo-container">
+          <h2 className="youtube-demo-title">See ReelPostly in Action</h2>
+          <p className="youtube-demo-subtitle">Start with a video, generate captions, and publish to all platforms</p>
+          <div className="youtube-video-wrapper">
+            <iframe
+              width="100%"
+              height="100%"
+              src="https://www.youtube.com/embed/4LVN3gcz-tI?autoplay=1&mute=1&loop=1&playlist=4LVN3gcz-tI"
+              title="ReelPostly Demo"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            ></iframe>
+          </div>
+          <Link to="/register" className="nav-btn nav-btn-primary">Get Started Now</Link>
         </div>
       </section>
 
@@ -266,9 +286,11 @@ const LandingPage = () => {
       {/* Message from the Founder */}
       <section className="rp-section">
         <h2>Hello Creators,</h2>
-        <p><strong>Create once, publish everywhere with intelligent automation.</strong> ReelPostly transforms your content creation workflow by publishing across six major platforms with AI-generated captions and hashtags tailored for each audience.</p>
+        <p><strong>What makes ReelPostly different?</strong> Unlike generic social media tools that give you one-size-fits-all captions, we give you granular control over your AI-generated content. Customize tone, demographics, brand voice, content category, and call-to-action for each platform—precision that other tools simply can't match.</p>
         
-        <p><strong>One workflow. Six platforms. Zero hassle.</strong> Stop juggling multiple tools and start creating content that works everywhere.</p>
+        <p><strong>Your complete workflow, all in one place.</strong> Download videos directly from URLs, generate platform-tailored captions with advanced AI parameters, and publish to six major platforms. No more juggling multiple tools or settling for generic AI outputs. ReelPostly puts professional-grade content customization at your fingertips.</p>
+        
+        <p><strong>One seamless workflow, unmatched precision.</strong> Experience the difference that granular AI control makes in your content strategy.</p>
         
         <p style={{ textAlign: 'center', marginTop: '2rem', color: '#667eea', fontWeight: '600' }}>— The ReelPostly Team</p>
       </section>

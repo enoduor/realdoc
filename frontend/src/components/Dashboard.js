@@ -161,28 +161,13 @@ const Dashboard = () => {
       return;
     }
 
-    setChecking(true);
-    getCheckoutSession(sessionId)
-      .then(async (data) => {
-        if (data.subscriptionStatus === 'trialing') {
-          setWelcomeMsg(`🎉 Welcome to the ${data.plan} plan! Your trial is active.`);
-        } else if (data.subscriptionStatus === 'active') {
-          setWelcomeMsg(`✅ Subscription active: ${data.plan} (${data.billingCycle}).`);
-        } else {
-          setWelcomeMsg('⏳ Processing your subscription… this may take a moment.');
-        }
-        // mark as shown + clean URL
-        sessionStorage.setItem(shownKey, '1');
-        url.searchParams.delete('session_id');
-        window.history.replaceState({}, '', url.toString());
-
-        // 📥 pull latest DB state after Stripe redirect
-        await refresh();
-      })
-      .catch(() => {
-        setWelcomeMsg("⚠️ We couldn't confirm your subscription yet. Please refresh in a minute.");
-      })
-      .finally(() => setChecking(false));
+    // Clean URL and refresh without showing welcome message
+    sessionStorage.setItem(shownKey, '1');
+    url.searchParams.delete('session_id');
+    window.history.replaceState({}, '', url.toString());
+    
+    // 📥 pull latest DB state after Stripe redirect
+    refresh();
   }, [refresh]);
 
   // 2) Bootstrap: once signed-in, ensure we have fresh /auth/me and usage (if subscribed)
@@ -272,7 +257,7 @@ const Dashboard = () => {
   };
 
   const features = [
-    { name: 'Start Creating', description: 'Complete content creation workflow - captions, hashtags, media, and publishing', icon: '🎯', link: '/app/caption-generator' },
+    { name: 'Generate Captions', description: 'Complete content creation workflow - captions, hashtags, media, and publishing', icon: '🎯', link: '/app/caption-generator' },
     { name: 'Download Videos', description: 'Find Videos to download and repurpose', icon: '📥', action: () => setShowVideoDownloader(true) },
     { name: 'Generate Captions', description: 'Create engaging AI-powered captions for your social media posts', icon: '✍️', link: '/app/caption-generator', hidden: true },
     { name: 'Generate Hashtags', description: 'Generate relevant hashtags to increase your content reach', icon: '#️⃣', link: '/app/hashtag-generator', hidden: true },
@@ -312,16 +297,12 @@ const Dashboard = () => {
             <div className="mb-6 bg-white rounded-lg shadow p-6 overflow-hidden">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Daily Usage</h3>
-                  <p className="text-sm text-gray-600">
-                    Plan: <span className="font-medium capitalize">{usageStatus.plan}</span>
-                  </p>
+                  <h3 className="text-lg font-semibold text-gray-900">Posts Today</h3>
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-bold text-blue-600">
                     {usageStatus.usage.used}/{usageStatus.usage.limit}
                   </div>
-                  <p className="text-sm text-gray-500">posts today</p>
                   {usageStatus.usage.remaining === 0 && (
                     <p className="text-xs text-red-500 mt-1">
                       Resets in {Math.ceil((new Date(usageStatus.usage.resetAt) - new Date()) / (1000 * 60 * 60))} hours
@@ -330,10 +311,6 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="mt-4">
-                <div className="flex justify-between text-sm text-gray-600 mb-1 min-w-0">
-                  <span className="truncate flex-1 mr-2">Posts Used</span>
-                  <span className="truncate flex-shrink-0">{usageStatus.usage.remaining} remaining</span>
-                </div>
                 <div className="w-full bg-gray-200 rounded-full h-1 overflow-hidden">
                   <div
                     className={`h-1 rounded-full ${
@@ -371,57 +348,124 @@ const Dashboard = () => {
               <div>
                 {sub === 'active' && (
                   <span>
-                    ✅ Subscription active — <strong>{me.selectedPlan ?? '—'}</strong> ({me.billingCycle ?? '—'})
+                    ✅ <strong style={{ textTransform: 'capitalize' }}>{me.selectedPlan ?? '—'}</strong> Plan ({me.billingCycle ?? '—'})
                   </span>
                 )}
                 {sub === 'trialing' && (
                   <span>
-                    🎉 Trialing — <strong>{me.selectedPlan ?? '—'}</strong> ({me.billingCycle ?? '—'})
+                    🎉 <strong style={{ textTransform: 'capitalize' }}>{me.selectedPlan ?? '—'}</strong> Trial
                     {Number.isFinite(me.trialDaysRemaining)
                       ? ` • ${me.trialDaysRemaining} day${me.trialDaysRemaining === 1 ? '' : 's'} left`
                       : ''}
                   </span>
                 )}
-                {sub === 'past_due' && <span>⚠️ Past due — please update your payment method.</span>}
+                {sub === 'past_due' && <span>⚠️ Payment issue — please update your payment method.</span>}
                 {(sub === 'none' || !me.subscriptionStatus) && <span>⚠️ No active subscription.</span>}
               </div>
 
               {(me.stripeCustomerId || me.hasActiveSubscription) && (
-                <button
-                  onClick={async () => {
-                    try {
-                      const token = await getToken();
-                      const res = await fetch('/api/stripe/portal-session', {
-                        method: 'POST',
-                        credentials: 'include',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          Authorization: `Bearer ${token}`,
-                        },
-                      });
-                      const text = await res.text();
-                      const isJson = (res.headers.get('content-type') || '').includes('application/json');
-                      const data = isJson ? JSON.parse(text) : text;
-                      if (!res.ok) throw new Error(typeof data === 'string' ? data : data?.error || 'Failed to create billing portal session');
-                      window.location.href = data.url;
-                    } catch (err) {
-                      console.error('Unable to open billing portal:', err);
-                      setErrorModal({
-                        show: true,
-                        title: 'Unable to Open Billing Portal',
-                        message: err.message || 'An unexpected error occurred while trying to access your billing information. Please try again later.',
-                        type: 'error',
-                        onConfirm: () => setErrorModal({ show: false, title: '', message: '', type: 'error', onConfirm: null, confirmText: 'OK', showCancel: false, cancelText: 'Cancel' }),
-                        confirmText: 'OK',
-                        showCancel: false,
-                        cancelText: 'Cancel'
-                      });
-                    }
-                  }}
-                  style={{ background: '#0ea5e9', color: 'white', border: 0, borderRadius: 8, padding: '8px 12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                >
-                  Manage Billing
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {/* Show "Activate Now" button only during trial */}
+                  {sub === 'trialing' && (
+                    <button
+                      onClick={async () => {
+                        // Show confirmation dialog
+                        setErrorModal({
+                          show: true,
+                          title: 'Activate Subscription Now?',
+                          message: 'This will end your trial immediately and charge your card. You will get full access to your plan limits right away. Continue?',
+                          type: 'warning',
+                          onConfirm: async () => {
+                            setErrorModal({ show: false, title: '', message: '', type: 'error', onConfirm: null, confirmText: 'OK', showCancel: false, cancelText: 'Cancel' });
+                            try {
+                              const token = await getToken();
+                              const res = await fetch('/api/stripe/activate-subscription', {
+                                method: 'POST',
+                                credentials: 'include',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  Authorization: `Bearer ${token}`,
+                                },
+                              });
+                              const text = await res.text();
+                              const isJson = (res.headers.get('content-type') || '').includes('application/json');
+                              const data = isJson ? JSON.parse(text) : text;
+                              if (!res.ok) throw new Error(typeof data === 'string' ? data : data?.error || 'Failed to activate subscription');
+                              
+                              // Show success message
+                              setSuccessModal({
+                                show: true,
+                                title: 'Subscription Activated!',
+                                message: data.message || 'Your subscription is now active. Refreshing...',
+                                type: 'success'
+                              });
+                              
+                              // Refresh user data to show new status
+                              setTimeout(async () => {
+                                await refresh();
+                                setSuccessModal({ show: false, title: '', message: '', type: 'success' });
+                              }, 2000);
+                            } catch (err) {
+                              console.error('Unable to activate subscription:', err);
+                              setErrorModal({
+                                show: true,
+                                title: 'Activation Failed',
+                                message: err.message || 'Failed to activate subscription. Please try again or contact support.',
+                                type: 'error',
+                                onConfirm: () => setErrorModal({ show: false, title: '', message: '', type: 'error', onConfirm: null, confirmText: 'OK', showCancel: false, cancelText: 'Cancel' }),
+                                confirmText: 'OK',
+                                showCancel: false,
+                                cancelText: 'Cancel'
+                              });
+                            }
+                          },
+                          confirmText: 'Activate & Pay Now',
+                          showCancel: true,
+                          cancelText: 'Cancel'
+                        });
+                      }}
+                      style={{ background: '#10b981', color: 'white', border: 0, borderRadius: 8, padding: '8px 12px', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: '600' }}
+                    >
+                      Activate Now
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={async () => {
+                      try {
+                        const token = await getToken();
+                        const res = await fetch('/api/stripe/portal-session', {
+                          method: 'POST',
+                          credentials: 'include',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`,
+                          },
+                        });
+                        const text = await res.text();
+                        const isJson = (res.headers.get('content-type') || '').includes('application/json');
+                        const data = isJson ? JSON.parse(text) : text;
+                        if (!res.ok) throw new Error(typeof data === 'string' ? data : data?.error || 'Failed to create billing portal session');
+                        window.location.href = data.url;
+                      } catch (err) {
+                        console.error('Unable to open billing portal:', err);
+                        setErrorModal({
+                          show: true,
+                          title: 'Unable to Open Billing Portal',
+                          message: err.message || 'An unexpected error occurred while trying to access your billing information. Please try again later.',
+                          type: 'error',
+                          onConfirm: () => setErrorModal({ show: false, title: '', message: '', type: 'error', onConfirm: null, confirmText: 'OK', showCancel: false, cancelText: 'Cancel' }),
+                          confirmText: 'OK',
+                          showCancel: false,
+                          cancelText: 'Cancel'
+                        });
+                      }
+                    }}
+                    style={{ background: '#0ea5e9', color: 'white', border: 0, borderRadius: 8, padding: '8px 12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    Manage Billing
+                  </button>
+                </div>
               )}
             </div>
           )}
@@ -447,9 +491,9 @@ const Dashboard = () => {
                 <Instagram size={24} />
               </a>
               
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-400 text-white rounded-lg cursor-not-allowed opacity-50" title="TikTok - Coming Soon">
+              <a href={`/api/auth/tiktok/oauth/start/tiktok?userId=${user?.id}&email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors" title="Connect TikTok">
                 <Music size={24} />
-              </div>
+              </a>
             </div>
           </div>
 
@@ -469,7 +513,7 @@ const Dashboard = () => {
                       feature.action();
                     },
                     className: `block p-8 rounded-2xl border shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-                      feature.name === 'Start Creating' 
+                      feature.name === 'Generate Captions' 
                         ? 'bg-white hover:border-blue-200 border-blue-100' 
                         : feature.name === 'Download Videos'
                           ? 'bg-white hover:border-blue-200 border-blue-100'
@@ -482,7 +526,7 @@ const Dashboard = () => {
                     to: feature.link,
                     onClick: (e) => handleFeatureClick(e),
                     className: `block p-8 rounded-2xl border shadow-sm hover:shadow-md transition-all duration-300 ${
-                      feature.name === 'Start Creating' 
+                      feature.name === 'Generate Captions' 
                         ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer' 
                         : feature.name === 'Download Videos'
                           ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer'
@@ -498,7 +542,7 @@ const Dashboard = () => {
                     <span className="text-4xl mr-4">{feature.icon}</span>
                     <div>
                       <h3 className={`text-lg font-semibold ${
-                        feature.name === 'Start Creating' 
+                        feature.name === 'Generate Captions' 
                           ? 'text-gray-900' 
                           : feature.name === 'Download Videos'
                             ? 'text-gray-900'
@@ -508,7 +552,7 @@ const Dashboard = () => {
                         {hasSubscription && <span className="ml-2 text-green-500">✅</span>}
                       </h3>
                       <p className={`text-sm mt-1 ${
-                        feature.name === 'Start Creating' 
+                        feature.name === 'Generate Captions' 
                           ? 'text-gray-600' 
                           : feature.name === 'Download Videos'
                             ? 'text-gray-600'

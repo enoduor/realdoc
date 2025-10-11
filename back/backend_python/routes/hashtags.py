@@ -9,6 +9,7 @@ router = APIRouter()
 class HashtagRequest(BaseModel):
     topic: str
     platform: str
+    caption: Optional[str] = None
     count: Optional[int] = None
 
     @validator('platform')
@@ -44,8 +45,11 @@ async def suggest_hashtags(request: HashtagRequest):
         # If count not specified, use recommended count for platform
         count = request.count or platform_limits['recommended_hashtags']
         
+        # Use caption if provided, otherwise fall back to topic
+        context = request.caption if request.caption else request.topic
+        
         hashtags = generate_hashtags(
-            topic=request.topic,
+            topic=context,
             platform=request.platform,
             count=min(count, platform_limits['max_hashtags'])
         )

@@ -33,7 +33,11 @@ const MediaUploader = () => {
         });
         if (response.ok) {
           const data = await response.json();
+          console.log('[MediaUploader] Subscription info fetched:', data);
+          console.log('[MediaUploader] Selected plan:', data?.selectedPlan);
           setSubscriptionInfo(data);
+        } else {
+          console.error('[MediaUploader] Subscription fetch failed:', response.status);
         }
       } catch (error) {
         console.error('Failed to fetch subscription info:', error);
@@ -151,22 +155,22 @@ const MediaUploader = () => {
       platform: formData.platform
     });
     
-    // Apply subscription-based limits first
-    if (subscriptionInfo?.selectedPlan === 'starter' || subscriptionInfo?.selectedPlan === 'none' || !subscriptionInfo) {
-      maxSize = 3 * 1024 * 1024; // 3MB for Starter plan or no subscription
-      console.log('[MediaUploader] Applying Starter/no subscription limit: 3MB');
+    // Apply subscription-based limits
+    if (subscriptionInfo?.selectedPlan === 'starter') {
+      maxSize = 3 * 1024 * 1024; // 3MB for Starter plan
+      console.log('[MediaUploader] Applying Starter plan limit: 3MB');
     } else if (subscriptionInfo?.selectedPlan === 'creator') {
-      maxSize = 50 * 1024 * 1024; // 50MB for Creator plan (all platforms)
+      maxSize = 50 * 1024 * 1024; // 50MB for Creator plan
       console.log('[MediaUploader] Applying Creator plan limit: 50MB');
     } else {
-      // Full limits for Enterprise or other plans
-      if (formData.platform === 'instagram') maxSize = 100 * 1024 * 1024; // 100MB for Instagram
-      if (formData.platform === 'twitter') maxSize = 100 * 1024 * 1024; // 100MB for Twitter
-      if (formData.platform === 'facebook') maxSize = 100 * 1024 * 1024; // 100MB for Facebook
-      if (formData.platform === 'linkedin') maxSize = 100 * 1024 * 1024; // 100MB for LinkedIn
-      if (formData.platform === 'youtube') maxSize = 100 * 1024 * 1024; // 100MB for YouTube
-      if (formData.platform === 'tiktok') maxSize = 72 * 1024 * 1024; // 72MB for TikTok
-      console.log('[MediaUploader] Applying full platform limit:', Math.floor(maxSize / (1024 * 1024)) + 'MB');
+      // Enterprise or other plans - use platform-specific limits
+      if (formData.platform === 'instagram') maxSize = 100 * 1024 * 1024;
+      if (formData.platform === 'twitter') maxSize = 100 * 1024 * 1024;
+      if (formData.platform === 'facebook') maxSize = 100 * 1024 * 1024;
+      if (formData.platform === 'linkedin') maxSize = 100 * 1024 * 1024;
+      if (formData.platform === 'youtube') maxSize = 100 * 1024 * 1024;
+      if (formData.platform === 'tiktok') maxSize = 72 * 1024 * 1024;
+      console.log('[MediaUploader] Applying platform limit:', Math.floor(maxSize / (1024 * 1024)) + 'MB');
     }
 
     console.log('[MediaUploader] Final maxSize:', Math.floor(maxSize / (1024 * 1024)) + 'MB');
@@ -277,15 +281,20 @@ const MediaUploader = () => {
           mediaFilename: res.data.filename // Store filename for URL refresh
         };
 
-        // For images and videos, verify URL accessibility
+        // Update content with S3 URL IMMEDIATELY to prevent race condition
+        updateContent(updatedContent);
+
+        // Then verify URL accessibility and update dimensions asynchronously
         if (updatedContent.mediaType === 'image') {
           const img = new Image();
           img.onload = () => {
-            updatedContent.mediaDimensions = {
-              width: img.naturalWidth,
-              height: img.naturalHeight
-            };
-            updateContent(updatedContent);
+            // Update dimensions only (URL already set above)
+            updateContent({
+              mediaDimensions: {
+                width: img.naturalWidth,
+                height: img.naturalHeight
+              }
+            });
           };
           img.onerror = () => {
             console.error('Image URL not accessible:', res.data.url);
@@ -298,11 +307,13 @@ const MediaUploader = () => {
         } else if (updatedContent.mediaType === 'video') {
           const video = document.createElement('video');
           video.onloadedmetadata = () => {
-            updatedContent.mediaDimensions = {
-              width: video.videoWidth,
-              height: video.videoHeight
-            };
-            updateContent(updatedContent);
+            // Update dimensions only (URL already set above)
+            updateContent({
+              mediaDimensions: {
+                width: video.videoWidth,
+                height: video.videoHeight
+              }
+            });
           };
           video.onerror = () => {
             console.error('Video URL not accessible:', res.data.url);
@@ -312,9 +323,6 @@ const MediaUploader = () => {
             }));
           };
           video.src = res.data.url;
-        } else {
-          // For other types, just update content directly
-          updateContent(updatedContent);
         }
       } else {
         throw new Error('Invalid server response - missing URL');

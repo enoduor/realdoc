@@ -60,6 +60,11 @@ export const ContentProvider = ({ children }) => {
                 ...prev,
                 ...newContent
             };
+            console.log('[ContentContext] Updating content:', {
+                newContent,
+                previousPlatform: prev.platform,
+                updatedPlatform: updated.platform
+            });
             saveContentToStorage(updated);
             return updated;
         });

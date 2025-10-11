@@ -166,24 +166,37 @@ class InstagramService {
       throw error;
     }
 
-    if (isVideo) {
-      // Poll for video processing
-      const start = Date.now();
-      console.log(`[IG] Starting video processing for container: ${creation.id}`);
-      while (Date.now() - start < 120000) { // up to 2 minutes
-        const status = await this.getContainerStatus(accessToken, creation.id);
-        console.log(`[IG] Container ${creation.id} status: ${status}`);
-        if (status === 'FINISHED') {
-          console.log(`[IG] Video processing completed successfully`);
-          break;
-        }
-        if (status === 'ERROR') {
-          console.error(`[IG] Video processing failed for container: ${creation.id}`);
-          throw new Error('Instagram video processing failed');
-        }
-        console.log(`[IG] Waiting 3 seconds before next status check...`);
-        await new Promise((r) => setTimeout(r, 3000));
+    // Poll for media processing (both images and videos need time to process)
+    const start = Date.now();
+    const maxWaitTime = isVideo ? 120000 : 30000; // 2 minutes for video, 30 seconds for image
+    const pollInterval = isVideo ? 3000 : 2000; // 3s for video, 2s for image
+    
+    console.log(`[IG] Waiting for ${isVideo ? 'video' : 'image'} processing for container: ${creation.id}`);
+    
+    while (Date.now() - start < maxWaitTime) {
+      const status = await this.getContainerStatus(accessToken, creation.id);
+      console.log(`[IG] Container ${creation.id} status: ${status}`);
+      
+      if (status === 'FINISHED') {
+        console.log(`[IG] Media processing completed successfully`);
+        break;
       }
+      
+      if (status === 'ERROR') {
+        console.error(`[IG] Media processing failed for container: ${creation.id}`);
+        throw new Error('Instagram media processing failed');
+      }
+      
+      // If status is still IN_PROGRESS or undefined, wait and check again
+      console.log(`[IG] Waiting ${pollInterval / 1000} seconds before next status check...`);
+      await new Promise((r) => setTimeout(r, pollInterval));
+    }
+    
+    // Check if we timed out
+    const finalStatus = await this.getContainerStatus(accessToken, creation.id);
+    if (finalStatus !== 'FINISHED') {
+      console.error(`[IG] Timed out waiting for media processing. Final status: ${finalStatus}`);
+      throw new Error(`Instagram media processing timed out. Status: ${finalStatus}`);
     }
 
     console.log('[IG] Publishing media...');

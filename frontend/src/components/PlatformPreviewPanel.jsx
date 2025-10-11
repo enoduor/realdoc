@@ -570,15 +570,20 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                     mediaFilename: response.data.filename
                 };
                 
-                // For images and videos, verify URL accessibility (same as MediaUploader)
+                // Update content with S3 URL IMMEDIATELY to prevent race condition
+                updateContent(updatedContent);
+                
+                // Then verify URL accessibility and update dimensions asynchronously
                 if (updatedContent.mediaType === 'image') {
                     const img = new Image();
                     img.onload = () => {
-                        updatedContent.mediaDimensions = {
-                            width: img.naturalWidth,
-                            height: img.naturalHeight
-                        };
-                        updateContent(updatedContent);
+                        // Update dimensions only (URL already set above)
+                        updateContent({
+                            mediaDimensions: {
+                                width: img.naturalWidth,
+                                height: img.naturalHeight
+                            }
+                        });
                     };
                     img.onerror = () => {
                         console.error('Image URL not accessible:', response.data.url);
@@ -591,11 +596,13 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                 } else if (updatedContent.mediaType === 'video') {
                     const video = document.createElement('video');
                     video.onloadedmetadata = () => {
-                        updatedContent.mediaDimensions = {
-                            width: video.videoWidth,
-                            height: video.videoHeight
-                        };
-                        updateContent(updatedContent);
+                        // Update dimensions only (URL already set above)
+                        updateContent({
+                            mediaDimensions: {
+                                width: video.videoWidth,
+                                height: video.videoHeight
+                            }
+                        });
                     };
                     video.onerror = () => {
                         console.error('Video URL not accessible:', response.data.url);
@@ -605,9 +612,6 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                         });
                     };
                     video.src = response.data.url;
-                } else {
-                    // For other types, just update content directly
-                    updateContent(updatedContent);
                 }
 
                 setPublishStatus({
@@ -1161,7 +1165,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                     </div>
 
                     {/* Platform Requirements */}
-                    <div className="mb-6 bg-gray-50 p-4 rounded-lg">
+                    {/* <div className="mb-6 bg-gray-50 p-4 rounded-lg">
                         <h2 className="text-lg font-medium mb-3">Platform Requirements</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -1181,7 +1185,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                 </ul>
                             </div>
                         </div>
-                    </div>
+                    </div> */}
 
                     {/* Editable Content Section */}
                     <div className="mb-6 bg-blue-50 p-4 rounded-lg">
@@ -1503,7 +1507,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                         </div>
 
                         {/* Platform Constraints Warning */}
-                        {platforms.length > 0 && (
+                        {/* {platforms.length > 0 && (
                             <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                                 <p className="text-sm text-yellow-800">
                                     ⚠️ Platform Requirements:
@@ -1520,7 +1524,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                     })}
                                 </ul>
                             </div>
-                        )}
+                        )} */}
                     </div>
                 </div>
             </main>

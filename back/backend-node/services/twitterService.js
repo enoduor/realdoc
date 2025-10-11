@@ -284,6 +284,15 @@ class TwitterService {
         });
         console.log('[TW] v2.tweet (with media) success');
         
+        // Log rate limit info
+        if (resp.rateLimit) {
+          console.log('[Twitter] Rate limit:', {
+            remaining: resp.rateLimit.remaining,
+            limit: resp.rateLimit.limit,
+            reset: new Date(resp.rateLimit.reset * 1000).toISOString()
+          });
+        }
+        
         // Return structured object like LinkedIn
         const tweetId = resp?.data?.id;
         const twitterUrl = `https://twitter.com/i/status/${tweetId}`;
@@ -292,7 +301,12 @@ class TwitterService {
           success: true,
           postId: tweetId,
           url: twitterUrl,
-          message: 'Successfully published to Twitter'
+          message: 'Successfully published to Twitter',
+          rateLimit: resp.rateLimit ? {
+            remaining: resp.rateLimit.remaining,
+            limit: resp.rateLimit.limit,
+            reset: resp.rateLimit.reset
+          } : null
         };
       } catch (error) {
         console.error('[TW ERR] v2.tweet (with media) failed:', error.code, error.message);
@@ -302,6 +316,15 @@ class TwitterService {
           const resp = await client.v2.tweet(payload);
           console.log('[TW] v2.tweet (text-only fallback) success');
           
+          // Log rate limit info
+          if (resp.rateLimit) {
+            console.log('[Twitter] Rate limit:', {
+              remaining: resp.rateLimit.remaining,
+              limit: resp.rateLimit.limit,
+              reset: new Date(resp.rateLimit.reset * 1000).toISOString()
+            });
+          }
+          
           // Return structured object for fallback too
           const tweetId = resp?.data?.id;
           const twitterUrl = `https://twitter.com/i/status/${tweetId}`;
@@ -310,7 +333,12 @@ class TwitterService {
             success: true,
             postId: tweetId,
             url: twitterUrl,
-            message: 'Successfully published to Twitter (text-only)'
+            message: 'Successfully published to Twitter (text-only)',
+            rateLimit: resp.rateLimit ? {
+              remaining: resp.rateLimit.remaining,
+              limit: resp.rateLimit.limit,
+              reset: resp.rateLimit.reset
+            } : null
           };
         } catch (fallbackError) {
           console.error('[TW ERR] v2.tweet (text-only fallback) also failed:', fallbackError.code, fallbackError.message);
@@ -324,6 +352,15 @@ class TwitterService {
       const resp = await client.v2.tweet(payload);
       console.log('[TW] v2.tweet (text-only) success');
       
+      // Log rate limit info
+      if (resp.rateLimit) {
+        console.log('[Twitter] Rate limit:', {
+          remaining: resp.rateLimit.remaining,
+          limit: resp.rateLimit.limit,
+          reset: new Date(resp.rateLimit.reset * 1000).toISOString()
+        });
+      }
+      
       // Return structured object like LinkedIn
       const tweetId = resp?.data?.id;
       const twitterUrl = `https://twitter.com/i/status/${tweetId}`;
@@ -332,7 +369,12 @@ class TwitterService {
         success: true,
         postId: tweetId,
         url: twitterUrl,
-        message: 'Successfully published to Twitter'
+        message: 'Successfully published to Twitter',
+        rateLimit: resp.rateLimit ? {
+          remaining: resp.rateLimit.remaining,
+          limit: resp.rateLimit.limit,
+          reset: resp.rateLimit.reset
+        } : null
       };
     } catch (error) {
       console.error('[TW ERR] v2.tweet (text-only) failed:', error.code, error.message);

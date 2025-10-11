@@ -417,10 +417,26 @@ async function onInvoicePaid(invoice) {
   if (!invoice.subscription) return;
   const user = await User.findOne({ stripeSubscriptionId: invoice.subscription });
   if (!user) return;
+  
+  const wasTrialing = user.subscriptionStatus === "trialing";
+  
   user.subscriptionStatus = "active";
+  
+  // If transitioning from trial to active, reset daily counters for fresh start
+  if (wasTrialing) {
+    user.dailyPostsUsed = 0;
+    user.dailyLimitResetAt = null;
+    console.log("✅ Trial ended naturally, resetting daily counters");
+  }
+  
   await user.save();
   console.log("💾 User save OK");
-  console.log("👤 User marked active (invoice paid):", { id: user._id.toString(), email: user.email });
+  console.log("👤 User marked active (invoice paid):", { 
+    id: user._id.toString(), 
+    email: user.email,
+    wasTrialing,
+    countersReset: wasTrialing
+  });
 }
 
 async function onInvoiceFailed(invoice) {

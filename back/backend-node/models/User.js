@@ -143,22 +143,23 @@ UserSchema.methods.hasActiveSubscription = function () {
 /**
  * Helper: getDailyPostLimit
  * Get the daily post limit based on subscription status and plan.
- * - Trialing users: capped at 5/day
- * - Starter: 1/day
+ * - Trialing users: 1/day
+ * - Starter: 2/day
  * - Creator: 5/day
  * - Enterprise: high cap (effectively unlimited for normal usage)
  */
 UserSchema.methods.getDailyPostLimit = function () {
-  // During trial period, standardize at 5 posts/day
-  if (this.subscriptionStatus === 'trialing' || this.isTrialActive()) {
-    return 5;
+  // During trial period, limit to 1 post/day for all plans
+  // Only check subscriptionStatus, not isTrialActive(), so paid subscribers get their plan limits immediately
+  if (this.subscriptionStatus === 'trialing') {
+    return 1;
   }
 
   const plan = (this.selectedPlan || 'none').toLowerCase();
 
   switch (plan) {
     case 'starter':
-      return 1;
+      return 2;
     case 'creator':
       return 5;
     case 'enterprise':
