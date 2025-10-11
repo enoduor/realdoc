@@ -312,13 +312,29 @@ class TikTokService {
 
   /**
    * Upload photo to TikTok using Content Posting API
-   * Uses PULL_FROM_URL method - requires S3 URL
+   * Uses FILE_UPLOAD method (downloads from S3, uploads buffer to TikTok)
+   * This avoids domain verification requirements of PULL_FROM_URL
    */
   async uploadPhoto({ clerkUserId, photoUrl, caption = '' }) {
     const accessToken = await this.getValidAccessTokenByClerk(clerkUserId);
     const url = `${TIKTOK_API_BASE}/post/publish/content/init/`;
 
-    console.log('[TikTok] Uploading photo as draft (MEDIA_UPLOAD mode)...');
+    console.log('[TikTok] Uploading photo as draft (FILE_UPLOAD mode)...');
+    
+    // Download image from S3 to buffer (same as video)
+    console.log('[TikTok] Downloading image from S3:', photoUrl);
+    const imageResponse = await axios.get(photoUrl, {
+      responseType: 'arraybuffer',
+      timeout: 30000
+    });
+    const imageBuffer = Buffer.from(imageResponse.data);
+    const imageSize = imageBuffer.length;
+    console.log('[TikTok] Image downloaded, size:', imageSize, 'bytes');
+    
+    // Validate image size (max 20MB for TikTok photos)
+    if (imageSize > 20 * 1024 * 1024) {
+      throw new Error('Image exceeds TikTok maximum size of 20MB');
+    }
 
     // TikTok photo API supports title (90 chars) and description (4000 chars)
     const payload = {
@@ -327,17 +343,17 @@ class TikTokService {
         description: caption // Full caption in description (max 4000 chars)
       },
       source_info: {
-        source: 'PULL_FROM_URL',
-        photo_cover_index: 0,
-        photo_images: [photoUrl] // Single photo URL (S3)
+        source: 'FILE_UPLOAD', // Changed from PULL_FROM_URL to FILE_UPLOAD
+        photo_cover_index: 0
       },
       post_mode: 'MEDIA_UPLOAD', // Upload to TikTok (draft mode)
       media_type: 'PHOTO'
     };
 
-    console.log('[TikTok] Photo upload payload:', payload);
+    console.log('[TikTok] Photo init payload:', payload);
 
     try {
+      // Step 1: Initialize photo upload
       const { data } = await axios.post(url, payload, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -346,12 +362,12 @@ class TikTokService {
         timeout: 30000
       });
 
-      console.log('[TikTok] Photo upload response:', data);
+      console.log('[TikTok] Photo init response:', data);
 
       // Check for errors
       if (data.error?.code !== 'ok') {
         const errorCode = data.error?.code;
-        console.error('[TikTok] Photo upload failed:', errorCode);
+        console.error('[TikTok] Photo init failed:', errorCode);
         
         // Handle specific photo upload errors
         if (errorCode === 'spam_risk_too_many_pending_share') {
@@ -361,13 +377,35 @@ class TikTokService {
           throw new Error('TikTok app version too old. Please update your TikTok mobile app to version 31.8 or higher.');
         }
         if (errorCode === 'url_ownership_unverified') {
-          throw new Error('S3 domain not verified with TikTok. Contact support.');
+          throw new Error('S3 domain not verified with TikTok. Using FILE_UPLOAD method instead.');
         }
         
-        throw new Error(`TikTok photo upload error: ${errorCode}`);
+        throw new Error(`TikTok photo init error: ${errorCode}`);
       }
 
       const publishId = data?.data?.publish_id;
+      const uploadUrl = data?.data?.upload_url;
+      
+      if (!uploadUrl) {
+        console.log('[TikTok] No upload_url in response - photo might be ready already');
+        return {
+          publish_id: publishId,
+          mediaType: 'image'
+        };
+      }
+
+      // Step 2: Upload the image buffer to TikTok's upload URL
+      console.log('[TikTok] Step 2: Uploading image buffer to TikTok...');
+      const uploadResponse = await axios.put(uploadUrl, imageBuffer, {
+        headers: {
+          'Content-Type': 'image/jpeg',
+          'Content-Length': imageSize
+        },
+        timeout: 60000,
+        maxBodyLength: Infinity
+      });
+
+      console.log('[TikTok] Image buffer uploaded successfully, status:', uploadResponse.status);
       
       return {
         publish_id: publishId,
@@ -615,9 +653,20 @@ class TikTokService {
 
     // Robust scope check (string or array)
     const scopeStr = Array.isArray(tokenDoc.scope) ? tokenDoc.scope.join(' ') : (tokenDoc.scope || '');
-    const hasVideoScopes = /\bvideo\.upload\b/.test(scopeStr) && /\bvideo\.publish\b/.test(scopeStr);
-    if (!hasVideoScopes) {
-      throw new Error('TikTok posting unavailable. Missing required scopes.');
+    console.log('[TikTok] Token scopes:', scopeStr);
+    console.log('[TikTok] Media type:', mediaType);
+    
+    const hasVideoUpload = /\bvideo\.upload\b/.test(scopeStr);
+    const hasVideoPublish = /\bvideo\.publish\b/.test(scopeStr);
+    
+    console.log('[TikTok] Scope check:', {
+      hasVideoUpload,
+      hasVideoPublish,
+      scopeStr
+    });
+    
+    if (!hasVideoUpload || !hasVideoPublish) {
+      throw new Error(`TikTok posting unavailable. Missing required scopes: ${!hasVideoUpload ? 'video.upload ' : ''}${!hasVideoPublish ? 'video.publish' : ''}. Current scopes: ${scopeStr}`);
     }
 
     const profile = await this.getTikTokProfile(identifier);

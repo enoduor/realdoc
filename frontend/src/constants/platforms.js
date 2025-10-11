@@ -55,8 +55,8 @@ export const PLATFORMS = {
         maxHashtags: 20,
         requiresMedia: true,
         icon: '🎵',
-        supportedMedia: ['video'],
-        recommendedImageSize: 'N/A',
+        supportedMedia: ['image', 'video'],
+        recommendedImageSize: 'Max 1080p (20MB)',
         recommendedVideoLength: '15-60 seconds',
         prompt_style: 'trendy and entertaining'
     },
