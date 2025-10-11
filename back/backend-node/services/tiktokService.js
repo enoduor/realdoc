@@ -343,8 +343,9 @@ class TikTokService {
         description: caption // Full caption in description (max 4000 chars)
       },
       source_info: {
-        source: 'FILE_UPLOAD', // Changed from PULL_FROM_URL to FILE_UPLOAD
-        photo_cover_index: 0
+        source: 'FILE_UPLOAD',
+        photo_cover_index: 0,
+        photo_images: [imageSize] // Array of image sizes in bytes
       },
       post_mode: 'MEDIA_UPLOAD', // Upload to TikTok (draft mode)
       media_type: 'PHOTO'
