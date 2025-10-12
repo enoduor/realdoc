@@ -35,9 +35,6 @@ class VideoGenerationRequest(BaseModel):
     model: str = "sora-2"           # e.g., sora-2, sora-2-pro
     seconds: int = 4                # 4, 8, 12
     size: str = "720x1280"          # 720x1280, 1280x720, 1024x1792, 1792x1024
-    # NOTE: OpenAI Sora `/v1/videos` does NOT accept these; keep for UI compatibility only.
-    temperature: Optional[float] = None
-    top_p: Optional[float] = None
 
 # ---------- Helpers ----------
 
@@ -58,8 +55,6 @@ def build_multipart_writer(req: VideoGenerationRequest) -> aiohttp.MultipartWrit
     add_text('model', req.model)
     add_text('seconds', req.seconds)
     add_text('size', req.size)
-
-    # DO NOT forward temperature/top_p (OpenAI rejects unknown parameters)
 
     return writer
 

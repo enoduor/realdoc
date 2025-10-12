@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { PLATFORMS } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
 import { useUser } from '@clerk/clerk-react';
 
@@ -10,21 +9,16 @@ const VideoGenerator = () => {
   const { updateContent, content } = useContent();
   const { user } = useUser();
   const [formData, setFormData] = useState({
-    platform: content?.platform || 'instagram',
     prompt: '',
     model: 'sora-2',
     seconds: '8', // backend accepts int; we will send as provided
     size: '720x1280',
-    temperature: '', // optional
-    top_p: '',       // optional
     generating: false,
     error: null,
     progress: null,
     progressMessage: ''
   });
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
-
-  const platformLimits = PLATFORMS[formData.platform.toUpperCase()];
 
   // Fetch subscription information
   useEffect(() => {
@@ -49,41 +43,22 @@ const VideoGenerator = () => {
     }
   }, [user]);
 
-  useEffect(() => {
-    if (content?.platform !== formData.platform) {
-      setFormData(prev => ({
-        ...prev,
-        platform: content?.platform || 'instagram'
-      }));
-    }
-  }, [content?.platform, formData.platform]);
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
-    if (name === 'platform') {
-      updateContent({ platform: value });
-    }
   };
 
   // Helper to build payload with optional fields
   const buildPayload = () => {
-    const payload = {
+    return {
       prompt: formData.prompt,
       model: formData.model,
       seconds: formData.seconds,
       size: formData.size
     };
-    if (formData.temperature !== '' && !Number.isNaN(Number(formData.temperature))) {
-      payload.temperature = Number(formData.temperature);
-    }
-    if (formData.top_p !== '' && !Number.isNaN(Number(formData.top_p))) {
-      payload.top_p = Number(formData.top_p);
-    }
-    return payload;
   };
 
   const handleGenerate = async () => {
@@ -216,9 +191,7 @@ const VideoGenerator = () => {
                 generating: false,
                 progress: null,
                 progressMessage: '',
-                prompt: '',
-                temperature: '',
-                top_p: ''
+                prompt: ''
               }));
             }, 2000);
           } else if (status === 'failed' || status === 'canceled' || (statusData.error && statusData.success === false)) {
@@ -295,26 +268,6 @@ const VideoGenerator = () => {
           </div>
 
           <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="space-y-4">
-            {/* Platform Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Target Platform
-              </label>
-              <select
-                name="platform"
-                value={formData.platform}
-                onChange={handleInputChange}
-                className="w-full p-3 border rounded-lg"
-                disabled={formData.generating}
-              >
-                {Object.values(PLATFORMS).map((platform) => (
-                  <option key={platform.id} value={platform.id}>
-                    {platform.icon} {platform.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             {/* Model Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -369,44 +322,6 @@ const VideoGenerator = () => {
               </select>
             </div>
 
-            {/* Advanced Params (optional) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Temperature (optional)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="2"
-                  name="temperature"
-                  value={formData.temperature}
-                  onChange={handleInputChange}
-                  className="w-full p-3 border rounded-lg"
-                  placeholder="e.g., 0.6"
-                  disabled={formData.generating}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  top_p (optional)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="1"
-                  name="top_p"
-                  value={formData.top_p}
-                  onChange={handleInputChange}
-                  className="w-full p-3 border rounded-lg"
-                  placeholder="e.g., 0.9"
-                  disabled={formData.generating}
-                />
-              </div>
-            </div>
-
             {/* Video Prompt */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -458,7 +373,7 @@ const VideoGenerator = () => {
             <button
               type="submit"
               disabled={formData.generating || !formData.prompt.trim()}
-              className={`w-full px-6 py-3 rounded-lg text-white font-medium transition-colors
+              className={`w-full px-4 py-2 rounded-lg text-white font-medium transition-colors
                 ${formData.generating || !formData.prompt.trim()
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700'}`}
@@ -490,14 +405,7 @@ const VideoGenerator = () => {
                 <video
                   src={content.mediaUrl}
                   controls
-                  className={`rounded-lg shadow mx-auto object-cover ${
-                    formData.platform === 'instagram' ? 'aspect-[4/5] max-h-[500px]' :
-                    formData.platform === 'facebook' ? 'aspect-[16/9] max-h-[500px]' :
-                    formData.platform === 'linkedin' ? 'aspect-[16/9] max-h-[500px]' :
-                    formData.platform === 'twitter' ? 'aspect-[16/9] max-h-[500px]' :
-                    formData.platform === 'tiktok' ? 'aspect-[9/16] max-h-[600px]' :
-                    formData.platform === 'youtube' ? 'aspect-[16/9] max-h-[500px]' : ''
-                  }`}
+                  className="rounded-lg shadow mx-auto object-cover max-h-[600px]"
                   style={{
                     maxWidth: '100%',
                     objectFit: 'contain'
@@ -520,13 +428,13 @@ const VideoGenerator = () => {
             <div className="mt-6 flex justify-between gap-4">
               <Link
                 to="/app/platform-preview"
-                className="flex-1 px-6 py-3 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-medium text-center"
+                className="flex-1 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-medium text-center"
               >
                 Preview & Publish
               </Link>
               <Link
                 to="/app/scheduler"
-                className="flex-1 px-6 py-3 bg-green-600 text-white hover:bg-green-700 rounded-lg font-medium text-center"
+                className="flex-1 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg font-medium text-center"
               >
                 Go to Publish
               </Link>
