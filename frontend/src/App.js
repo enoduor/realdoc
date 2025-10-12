@@ -9,6 +9,7 @@ import HashtagGenerator from "./components/HashtagGenerator";
 import Dashboard from "./components/Dashboard";
 import MediaUploader from "./components/MediaUploader";
 import VideoDownloader from "./components/VideoDownloader";
+import VideoGenerator from "./components/VideoGenerator";
 import PlatformPreviewPage from "./components/PlatformPreviewPage";
 import SchedulerPage from "./components/SchedulerPage";
 import LandingPage from "./components/LandingPage";
@@ -64,6 +65,14 @@ export default function App() {
             element={
               <ClerkProtectedRoute>
                 <HashtagGenerator />
+              </ClerkProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/video-generator"
+            element={
+              <ClerkProtectedRoute>
+                <VideoGenerator />
               </ClerkProtectedRoute>
             }
           />

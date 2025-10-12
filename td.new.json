@@ -2,23 +2,26 @@
   "containerDefinitions": [
     {
       "name": "repostly-unified",
-      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20251011004903-7563608",
+      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20251012184810-7b2dc67",
       "cpu": 0,
       "portMappings": [
         {
           "containerPort": 3000,
           "hostPort": 3000,
-          "protocol": "tcp"
+          "protocol": "tcp",
+          "name": "repostly-unified-3000-tcp"
         },
         {
           "containerPort": 4001,
           "hostPort": 4001,
-          "protocol": "tcp"
+          "protocol": "tcp",
+          "name": "repostly-unified-4001-tcp"
         },
         {
           "containerPort": 5001,
           "hostPort": 5001,
-          "protocol": "tcp"
+          "protocol": "tcp",
+          "name": "repostly-unified-5001-tcp"
         }
       ],
       "essential": true,
@@ -142,7 +145,8 @@
           "awslogs-group": "/ecs/repostly-unified",
           "awslogs-region": "us-west-2",
           "awslogs-stream-prefix": "ecs"
-        }
+        },
+        "secretOptions": []
       },
       "healthCheck": {
         "command": [
@@ -166,7 +170,8 @@
   "volumes": [],
   "placementConstraints": [],
   "requiresCompatibilities": [
-    "FARGATE"
+    "FARGATE",
+    "MANAGED_INSTANCES"
   ],
   "cpu": "1024",
   "memory": "4096"

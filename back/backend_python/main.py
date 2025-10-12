@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from routes.captions import router as captions_router
 from routes.hashtags import router as hashtags_router
 from routes.media import router as media_router
+from routes.video_generation import router as video_generation_router
 
 load_dotenv()
 
@@ -47,11 +48,13 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.include_router(captions_router, prefix="/api/v1/captions", tags=["captions"])
 app.include_router(hashtags_router, prefix="/api/v1/hashtags", tags=["hashtags"])
 app.include_router(media_router,    prefix="/api/v1",          tags=["media"])
+app.include_router(video_generation_router, prefix="/api/v1/video", tags=["video"])
 
 # Mirror mounts (external /ai/* paths)
 app.include_router(captions_router, prefix="/ai/api/v1/captions", tags=["captions"])
 app.include_router(hashtags_router, prefix="/ai/api/v1/hashtags", tags=["hashtags"])
 app.include_router(media_router,    prefix="/ai/api/v1",          tags=["media"])
+app.include_router(video_generation_router, prefix="/ai/api/v1/video", tags=["video"])
 
 
 
