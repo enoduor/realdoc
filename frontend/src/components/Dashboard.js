@@ -257,9 +257,9 @@ const Dashboard = () => {
   };
 
   const features = [
-    { name: 'Generate Captions', description: 'Complete content creation workflow - captions, hashtags, media, and publishing', icon: '🎯', link: '/app/caption-generator' },
-    { name: 'Generate AI Videos', description: 'Create stunning AI-generated videos with Sora-2 for your content', icon: '🎬', link: '/app/video-generator' },
-    { name: 'Download Videos', description: 'Find Videos to download and repurpose', icon: '📥', action: () => setShowVideoDownloader(true) },
+    { name: 'Generate AI Videos', description: 'Create and sharestunning AI-generated videos with Sora-2 for your content', icon: '🎬', link: '/app/video-generator' },
+    { name: 'Generate Captions', description: 'Generate & fine-tune caption to match your tone, audience, and brand voice.', icon: '🎯', link: '/app/caption-generator' },
+    { name: 'Download Videos', description: 'Dowbload already popular public videos and repurpose them for your content', icon: '📥', action: () => setShowVideoDownloader(true) },
     { name: 'Generate Captions', description: 'Create engaging AI-powered captions for your social media posts', icon: '✍️', link: '/app/caption-generator', hidden: true },
     { name: 'Generate Hashtags', description: 'Generate relevant hashtags to increase your content reach', icon: '#️⃣', link: '/app/hashtag-generator', hidden: true },
     { name: 'Upload Media', description: 'Upload and manage your media content', icon: '📸', link: '/app/media-upload', hidden: true },

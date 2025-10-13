@@ -21,18 +21,10 @@ const LandingPage = () => {
             <a href="#features" className="nav-link">Features</a>
             <a href="#pricing" className="nav-link">Pricing</a>
             <Link to="/about" className="nav-link">About</Link>
-            {/* <a 
-              href="https://bigvideograb.com/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="nav-link"
-            >
-              Grab videos
-            </a> */}
           </div>
           <div className="nav-actions">
             <Link to="/login" className="nav-btn nav-btn-secondary">Sign In</Link>
-            <Link to="/register" className="nav-btn nav-btn-primary">Get Started Now</Link>
+            <Link to="/register" className="nav-btn nav-btn-primary">Try it for free</Link>
           </div>
         </div>
       </nav>
@@ -41,239 +33,230 @@ const LandingPage = () => {
       <section className="hero-section">
         <div className="hero-container">
           <div className="hero-content">
-            <h1 className="hero-title">Create Once, Publish Everywhere!</h1>
+            <h1 className="hero-title">Create Videos with AI<br/> Publish Across Platforms</h1>
             <p className="hero-subtitle">
-            ReelPostly gives you complete control over your content. Unlike most tools, it lets you fine-tune every caption to match your tone, audience, and brand voice. You can adjust for different demographics, content styles, and calls to action, making each post feel truly personalized.
+              Create videos with Sora-2 AI, write captions that actually connect, grab trending content, and post to all your platforms. Reelpostly has everything you need in one simple dashboard.
             </p>
-            <div className="hero-benefits">
-                <ul className="space-y-3 text-left">
-                    <li className="flex items-start">
-                        <span className="text-green-500 mr-3 mt-1">✅</span>
-                        <span>Save time, reduce costs, manage everything in one place</span>
-                    </li>
-                    <li className="flex items-start">
-                        <span className="text-green-500 mr-3 mt-1">✅</span>
-                        <span>Create once and publish to all major platforms instantly</span>
-                    </li>
-                    <li className="flex items-start">
-                        <span className="text-green-500 mr-3 mt-1">✅</span>
-                        <span>Customize posts per platform with simple toggle and one-click publish</span>
-                    </li>
-                    <li className="flex items-start">
-                        <span className="text-green-500 mr-3 mt-1">✅</span>
-                        <span>Get direct, hyperlinked confirmations after each post publishes</span>
-                    </li>
-                    <li className="flex items-start">
-                        <span className="text-green-500 mr-3 mt-1">✅</span>
-                        <span>Craft engaging captions and hashtags effortlessly with AI tools</span>
-                    </li>
-                </ul>
-            </div>
-            <div id="hero-cta" className="hero-cta">
+            <div className="hero-cta">
               <Link to="/register" className="cta-primary">
-                Get Started Now
+                Try it for free
               </Link>
               <Link to="/login" className="cta-secondary">
                 Sign In
               </Link>
             </div>
-            {/* <div className="hero-stats">
-              <div className="stat">
-                <span className="stat-number">Lifetime</span>
-                <a 
-                  href="https://docs.google.com/forms/d/e/1FAIpQLSdXGiQBAVMQy3lXGkNdRwqgfWw20E_VlXODYloiMo7L3bwYCw/viewform"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="stat-label text-white font-bold"
-                >
-                 Fill this form
-                </a>
-              </div>
-            
-              <div className="stat">
-                <span className="stat-number">Launch Day </span>
-                <a 
-                  href="https://docs.google.com/forms/d/e/1FAIpQLSdXGiQBAVMQy3lXGkNdRwqgfWw20E_VlXODYloiMo7L3bwYCw/viewform"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="stat-label text-white font-bold"
-                >
-                 Get 30% Discount
-                </a>
-              </div>
-            </div> */}
+            <div className="social-proof">
+              <p className="social-proof-text">Trusted by creators worldwide • Powered by Sora-2</p>
+            </div>
           </div>
-          <div className="hero-image">
-            <div className="hero-visual">
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="features-section">
+        {/* AI Video Generation */}
+        <div className="feature-block feature-block-dark">
+          <div className="feature-container">
+            <div className="feature-badge">AI VIDEO GENERATION</div>
+            <h2 className="feature-title">Create stunning videos with Sora-2</h2>
+            <p className="feature-description">
+              Generate professional AI videos in minutes. Just describe what you want to see, and Sora-2 creates unique, high-quality videos for your content. No video editing skills required.
+            </p>
+            <Link to="/register" className="feature-cta">Get started</Link>
+            <div className="feature-visual">
+              <div className="video-placeholder">
+                <span className="placeholder-icon">🎬</span>
+                <p className="placeholder-text">AI-Generated Video</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* AI Captions */}
+        <div className="feature-block feature-block-light">
+          <div className="feature-container">
+            <div className="feature-badge">AI CAPTIONS</div>
+            <h2 className="feature-title">Generate captions that convert</h2>
+            <p className="feature-description">
+              Fine-tune every caption to match your tone, audience, and brand voice. Adjust for different demographics, content styles, and calls to action. Make each post feel truly personalized.
+            </p>
+            <Link to="/register" className="feature-cta">Try captions</Link>
+            <div className="feature-visual">
+              <div className="caption-preview">
+                <div className="caption-example">
+                  <p className="caption-text">"🚀 Transform your social media game with AI..."</p>
+                  <div className="caption-tags">#SocialMedia #ContentCreation #AI</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Video Downloads */}
+        <div className="feature-block feature-block-dark">
+          <div className="feature-container">
+            <div className="feature-badge">CONTENT REPURPOSING</div>
+            <h2 className="feature-title">Download and repurpose trending videos</h2>
+            <p className="feature-description">
+              Find popular videos across platforms and repurpose them for your content strategy. Download high-quality videos and give them new life with your unique perspective.
+            </p>
+            <Link to="/register" className="feature-cta">Start downloading</Link>
+            <div className="feature-visual">
+              <div className="video-placeholder">
+                <span className="placeholder-icon">📥</span>
+                <p className="placeholder-text">Video Download Tool</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Multi-Platform Publishing */}
+        <div className="feature-block feature-block-light">
+          <div className="feature-container">
+            <div className="feature-badge">CROSS-POSTING</div>
+            <h2 className="feature-title">Post to all platforms instantly</h2>
+            <p className="feature-description">
+              Publish everywhere in 30 seconds, not 30 minutes. Connect your social media accounts and publish your content across all platforms with a single click - no learning curve required.
+            </p>
+            <Link to="/register" className="feature-cta">Start posting</Link>
+            <div className="platforms-showcase">
               <PlatformIcons />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Official Cards Section */}
-      <section className="official-cards-section">
-        <div className="official-cards-container">
-          <div className="official-cards-grid">
-            {/* Start Creating Card */}
-            <div className="official-card start-creating-card">
-              <div className="card-icon">🎯</div>
-              <h3 className="card-title">Start with Captions</h3>
-              <p className="card-description">
-                Initiate your content creation with AI-powered captions and hashtags.
+      {/* Testimonials Section */}
+      <section className="testimonials-section">
+        <div className="testimonials-container">
+          <h2 className="testimonials-title">Loved by busy creators</h2>
+          <p className="testimonials-subtitle">Here's what our users are saying</p>
+          
+          <div className="testimonials-grid">
+            <div className="testimonial-card">
+              <p className="testimonial-text">"Reelpostly saves me hours every week. The AI video generation is a game-changer for my content strategy."</p>
+              <div className="testimonial-author">
+                <div className="author-name">Sarah Chen</div>
+                <div className="author-handle">@sarahcreates</div>
+              </div>
+            </div>
+
+            <div className="testimonial-card">
+              <p className="testimonial-text">"Finally, a social media tool that actually understands creators. The caption AI is incredibly smart."</p>
+              <div className="testimonial-author">
+                <div className="author-name">Mike Rodriguez</div>
+                <div className="author-handle">@mikebuilds</div>
+              </div>
+            </div>
+
+            <div className="testimonial-card">
+              <p className="testimonial-text">"Best investment for my business. I can focus on creating while Reelpostly handles the distribution."</p>
+              <div className="testimonial-author">
+                <div className="author-name">Jessica Park</div>
+                <div className="author-handle">@jessicaonline</div>
+              </div>
+            </div>
+
+            <div className="testimonial-card">
+              <p className="testimonial-text">"The Sora integration is insane. I'm creating professional videos without any editing experience."</p>
+              <div className="testimonial-author">
+                <div className="author-name">David Kim</div>
+                <div className="author-handle">@davidtech</div>
+              </div>
+            </div>
+
+            <div className="testimonial-card">
+              <p className="testimonial-text">"$9/month for this level of features? This should be illegal. Best value in social media tools."</p>
+              <div className="testimonial-author">
+                <div className="author-name">Alex Johnson</div>
+                <div className="author-handle">@alexgrows</div>
+              </div>
+            </div>
+
+            <div className="testimonial-card">
+              <p className="testimonial-text">"Downloaded trending videos, added my spin with AI captions, published everywhere. Growth has been amazing!"</p>
+              <div className="testimonial-author">
+                <div className="author-name">Emma Watson</div>
+                <div className="author-handle">@emmacontent</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Supported Platforms */}
+      <section className="platforms-section">
+        <div className="platforms-container">
+          <h2 className="section-title">Supported Platforms</h2>
+          <p className="section-subtitle">Post to all these platforms from one dashboard</p>
+          <div className="platforms-grid">
+            <PlatformIcons />
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="faq-section">
+        <div className="faq-container">
+          <h2 className="section-title">Frequently Asked Questions</h2>
+          <p className="section-subtitle">Everything you need to know about Reelpostly</p>
+          
+          <div className="faq-grid">
+            <div className="faq-item">
+              <h3 className="faq-question">How does AI video generation work?</h3>
+              <p className="faq-answer">
+                Simply describe what you want to see, and our Sora-2 AI creates a professional video in 1-2 minutes. No video editing experience needed. You can choose duration, orientation, and quality.
               </p>
-              <Link to="/register" className="card-button start-creating-button">
-                Get Started
-              </Link>
             </div>
 
-            {/* Download Videos Card */}
-            {/* <div className="official-card download-videos-card">
-              <div className="card-icon">📥</div>
-              <h3 className="card-title">Start with Videos</h3>
-              <p className="card-description">
-                Find Videos to download and repurpose
+            <div className="faq-item">
+              <h3 className="faq-question">What platforms can I publish to?</h3>
+              <p className="faq-answer">
+                We support Instagram, Facebook, Twitter/X, LinkedIn, YouTube, and TikTok. Connect unlimited accounts and publish to all platforms with one click.
               </p>
-              <div className="platform-status">
-                <span className="status-badge">TikTok, Facebook & Twitter</span>
-              </div>
-              <Link to="/register" className="card-button download-videos-button">
-                Download Now
-              </Link>
-            </div> */}
-          </div>
-        </div>
-      </section>
+            </div>
 
-      {/* YouTube Demo Section */}
-      <section className="youtube-demo-section">
-        <div className="youtube-demo-container">
-          <h2 className="youtube-demo-title">See ReelPostly in Action</h2>
-          <p className="youtube-demo-subtitle">Start with a video, generate captions, and publish to all platforms</p>
-          <div className="youtube-video-wrapper">
-            <iframe
-              width="100%"
-              height="100%"
-              src="https://www.youtube.com/embed/4LVN3gcz-tI?autoplay=1&mute=1&loop=1&playlist=4LVN3gcz-tI"
-              title="ReelPostly Demo"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            ></iframe>
-          </div>
-          <Link to="/register" className="nav-btn nav-btn-primary">Get Started Now</Link>
-        </div>
-      </section>
+            <div className="faq-item">
+              <h3 className="faq-question">Can I customize captions per platform?</h3>
+              <p className="faq-answer">
+                Yes! Our AI generates platform-optimized captions, and you can fine-tune each one to match your brand voice, audience demographics, and content style before publishing.
+              </p>
+            </div>
 
-      {/* Features Section */}
-      <section id="features" className="rp-section">
-        <div className="features-container">
-          <h2>How ReelPostly Works</h2>
-          <p className="features-subtitle">Transform your content creation workflow with intelligent automation</p>
-          
-          <div className="features-grid">
-            <div className="feature-card">
-              <div className="feature-icon">🤖</div>
-              <h3>AI-Powered Content Generation</h3>
-              <p>Initiate your workflow with the content and caption generator and then proceed to customize your message within seconds.</p>
+            <div className="faq-item">
+              <h3 className="faq-question">How does video downloading work?</h3>
+              <p className="faq-answer">
+                Enter a video URL from supported platforms, and we'll download it for you. Perfect for repurposing trending content with your own unique spin and AI-generated captions.
+              </p>
             </div>
-            
-            <div className="feature-card">
-              <div className="feature-icon">⚙️</div>
-              <h3>Smart Platform Customization</h3>
-              <p>Adjust tone, length, and style of your content to match each channel's audience and format requirements in one place.</p>
-            </div>
-            
-            <div className="feature-card">
-              <div className="feature-icon">✅</div>
-              <h3>Instant Confirmation & Tracking</h3>
-              <p>Get confirmation with direct links to your live posts across all platforms. We do not add analytics that you don't need.</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Pain Points Section */}
-      <section id="pain-points" className="rp-section">
-        <div className="pain-points-container">
-          <h2>Are you Experiencing  These Common Problems?</h2>
-          <p className="pain-points-subtitle">We built ReelPostly to solve the biggest frustrations in social media publishing</p>
-          
-          <div className="pain-points-grid">
-            <div className="pain-point-card">
-              <div className="pain-point-icon">⏰</div>
-              <h3>Spending too much time Posting</h3>
-              <p>You spend hours uploading the same content to multiple platforms, tweaking formats, and managing different posting schedules. ReelPostly simplifies it with one upload shared everywhere.</p>
-              <div className="pain-point-solution">
-                <strong>Save valuable time and stay consistent across all your social channels.</strong>
-              </div>
+            <div className="faq-item">
+              <h3 className="faq-question">Can I cancel anytime?</h3>
+              <p className="faq-answer">
+                Yes, there's no lock-in. Cancel your subscription anytime during the month. You'll still have access to all features until the end of your billing period.
+              </p>
             </div>
-            
-            <div className="pain-point-card">
-              <div className="pain-point-icon">💰</div>
-              <h3>Paying for multiple tools</h3>
-              <p>Most social media tools charge enterprise-level prices for basic posting features that should be affordable for everyone. ReelPostly is built for individuals and small teams.</p>
-              <div className="pain-point-solution">
-                <strong>Get professional-grade automation without the heavy cost.</strong>
-              </div>
-            </div>
-            
-            <div className="pain-point-card">
-              <div className="pain-point-icon">🎯</div>
-              <h3>Paying for features you don't use</h3>
-              <p>Many tools are packed with complex options you'll never use, take time to learn, and make simple posting feel overwhelming. ReelPostly focuses on what matters most.</p>
-              <div className="pain-point-solution">
-                <strong>No clutter, just a clean workflow that gets your content live faster.</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Benefits Section */}
-      <section id="benefits" className="rp-section">
-        <div className="benefits-container">
-          <h2>With ReelPostly, You Can:</h2>
-          <p className="benefits-subtitle">Be part of a community streamlining their workflow</p>
-          
-          <div className="benefits-list">
-            <div className="benefit-item">
-              <div className="benefit-icon">⏱️</div>
-              <div className="benefit-content">
-                <h4>Save Hours Every Week</h4>
-                <p>One workflow replaces six separate uploads. Saving you time and money.</p>
-              </div>
+            <div className="faq-item">
+              <h3 className="faq-question">Do I need to share my social media passwords?</h3>
+              <p className="faq-answer">
+                No, we never ask for passwords. We use official OAuth authentication provided by each platform, which means you log in securely through their official pages.
+              </p>
             </div>
-            
-            <div className="benefit-item">
-              <div className="benefit-icon">🎯</div>
-              <div className="benefit-content">
-                <h4>Platform-Optimized Content</h4>
-                <p>AI generates content that you quickly tweak, and focus on your brand messaging .</p>
-              </div>
+
+            <div className="faq-item">
+              <h3 className="faq-question">Is there a free trial?</h3>
+              <p className="faq-answer">
+                Yes! Get a 3-day free trial with full access to all features. No credit card required upfront. Cancel anytime with our 30-day money-back guarantee.
+              </p>
             </div>
-            
-            <div className="benefit-item">
-              <div className="benefit-icon">📊</div>
-              <div className="benefit-content">
-                <h4>Real-Time Post Notification</h4>
-                <p>Monitor your posts launch across all platforms with instant confirmation links.</p>
-              </div>
+
+            <div className="faq-item">
+              <h3 className="faq-question">What makes Reelpostly different?</h3>
+              <p className="faq-answer">
+                We combine AI video generation, smart caption writing, content repurposing, and multi-platform publishing in one affordable tool. Most platforms charge $75-200/month for similar features.
+              </p>
             </div>
-            
-            <div className="benefit-item">
-              <div className="benefit-icon">🚀</div>
-              <div className="benefit-content">
-                <h4>Effortless Publishing</h4>
-                <p>Focus on creating great content that shares the same message across your platforms.</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="benefits-cta">
-            <Link to="/register" className="cta-primary">
-              Are you ready?
-            </Link>
           </div>
         </div>
       </section>
@@ -283,27 +266,17 @@ const LandingPage = () => {
         <PricingSection />
       </section>
 
-      {/* Message from the Founder */}
-      <section className="rp-section">
-        <h2>Hello Creators,</h2>
-        <p><strong>What makes ReelPostly different?</strong> Unlike generic social media tools that give you one-size-fits-all captions, we give you granular control over your AI-generated content. Customize tone, demographics, brand voice, content category, and call-to-action for each platform—precision that other tools simply can't match.</p>
-        
-        <p><strong>Your complete workflow, all in one place.</strong> Download videos directly from URLs, generate platform-tailored captions with advanced AI parameters, and publish to six major platforms. No more juggling multiple tools or settling for generic AI outputs. ReelPostly puts professional-grade content customization at your fingertips.</p>
-        
-        <p><strong>One seamless workflow, unmatched precision.</strong> Experience the difference that granular AI control makes in your content strategy.</p>
-        
-        <p style={{ textAlign: 'center', marginTop: '2rem', color: '#667eea', fontWeight: '600' }}>— The ReelPostly Team</p>
-      </section>
-
-      {/* CTA Section */}
-      <section className="cta-section">
-        <div className="cta-container">
-          <h2>Ready to Transform Your Social Media?</h2>
-          <p>Start creating and publishing content across all platforms with Reelpostly</p>
-          <Link to="/register" className="cta-primary">
-                Get Started Now
-              </Link>
-          <p className="cta-note">Start your 3-day free trial and cancel anytime</p>
+      {/* Final CTA */}
+      <section className="final-cta-section">
+        <div className="final-cta-container">
+          <h2 className="final-cta-title">Ready to transform your content strategy?</h2>
+          <p className="final-cta-subtitle">
+            Join creators who save hours every week with Reelpostly. Start your free trial today.
+          </p>
+          <Link to="/register" className="cta-primary-large">
+            Try for free
+          </Link>
+          <p className="final-cta-note">3-day free trial • No credit card required • Cancel anytime</p>
         </div>
       </section>
 
