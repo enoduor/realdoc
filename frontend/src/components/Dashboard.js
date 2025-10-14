@@ -16,6 +16,11 @@ const Dashboard = () => {
   // 🔌 from AuthContext (DB-backed)
   const { me, loading, refresh } = useAuthContext();
 
+  // Set main dashboard preference when user visits
+  useEffect(() => {
+    localStorage.setItem('preferredDashboard', 'main');
+  }, []);
+
   // local UI state
   const [usageStatus, setUsageStatus] = useState(null);
   const [welcomeMsg, setWelcomeMsg] = useState('');
@@ -274,21 +279,6 @@ const Dashboard = () => {
           {welcomeMsg}
         </div>
       )}
-
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <h1 className="text-xl font-bold">Welcome to Reelpostly</h1>
-              </div>
-            </div>
-            <div className="flex items-center">
-              <ClerkUserProfile />
-            </div>
-          </div>
-        </div>
-      </nav>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">

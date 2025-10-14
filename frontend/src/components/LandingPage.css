@@ -106,12 +106,17 @@
   border-color: #cbd5e0;
 }
 
-.nav-btn-primary {
+.nav-btn-primary,
+button.nav-btn-primary {
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
 }
 
-.nav-btn-primary:hover {
+.nav-btn-primary:hover,
+button.nav-btn-primary:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
@@ -247,6 +252,16 @@
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
+/* Button-specific styles to match Link */
+button.cta-primary,
+button.feature-cta,
+button.cta-primary-large {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-block;
+}
+
 .cta-secondary {
   background: transparent;
   color: white;
@@ -300,8 +315,9 @@
 .platform-icons {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  animation: float 6s ease-in-out infinite;
+  gap: 24px;
+  max-width: 400px;
+  margin: 0 auto;
 }
 
 .platform-icon {
@@ -960,10 +976,16 @@
 }
 
 .footer-content {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 32px;
+  display: flex;
+  justify-content: space-between;
+  gap: 48px;
   margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+
+.footer-section {
+  flex: 1;
+  min-width: 200px;
 }
 
 .footer-section h4 {
@@ -1164,8 +1186,12 @@
   }
   
   .footer-content {
-    grid-template-columns: 1fr;
+    flex-direction: column;
     gap: 24px;
+  }
+  
+  .footer-section {
+    min-width: 100%;
   }
   
   .footer-bottom {
@@ -1194,12 +1220,14 @@
   
   .platform-icons {
     grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    max-width: 300px;
   }
   
   .platform-icon {
-    width: 60px;
-    height: 60px;
-    font-size: 1.5rem;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    padding: 6px !important;
   }
   
   .features-section,
@@ -1352,13 +1380,17 @@
 
 /* ==================== NEW REDESIGN STYLES ==================== */
 
-/* Hero Section - Simplified */
+/* Hero Section - Full Screen */
 .hero-section {
+  min-height: 100vh;
   padding: 120px 20px 80px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   text-align: center;
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hero-container {
@@ -1506,6 +1538,28 @@
 
 .feature-visual {
   margin-top: 2rem;
+}
+
+.video-embed {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.video-embed iframe,
+.video-embed img.feature-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 16px;
+  object-fit: cover;
 }
 
 .video-placeholder,
@@ -1696,19 +1750,70 @@
 
 .faq-item {
   text-align: left;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.faq-item:hover {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.faq-item.active {
+  border-color: #667eea;
+  background: #f8f9ff;
+}
+
+.faq-question-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
 }
 
 .faq-question {
   font-size: 1.25rem;
   font-weight: 600;
   color: #1a1a2e;
-  margin-bottom: 1rem;
+  margin: 0;
+  flex: 1;
+}
+
+.faq-icon {
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: #667eea;
+  min-width: 24px;
+  text-align: center;
+  transition: transform 0.3s ease;
+}
+
+.faq-item.active .faq-icon {
+  transform: rotate(180deg);
 }
 
 .faq-answer {
   font-size: 1rem;
   line-height: 1.7;
   color: #555;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease, margin-top 0.3s ease, opacity 0.3s ease;
+  opacity: 0;
+}
+
+.faq-answer.open {
+  max-height: 500px;
+  margin-top: 1rem;
+  opacity: 1;
+}
+
+.faq-answer p {
+  margin: 0;
 }
 
 /* Final CTA Section */
@@ -1812,6 +1917,7 @@
     font-size: 1.25rem;
   }
 }
+
 
 @media (min-width: 1025px) and (max-width: 1400px) {
   .hero-title {

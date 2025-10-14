@@ -14,6 +14,23 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ override: true });
 }
 
+// Turn off debug logs in production (keep errors and startup logs)
+if (process.env.NODE_ENV === 'production') {
+  const originalLog = console.log;
+  const originalWarn = console.warn;
+  const originalInfo = console.info;
+  const originalDebug = console.debug;
+  
+  // Allow startup logs to show, then suppress after 5 seconds
+  setTimeout(() => {
+    console.log = () => {};
+    console.debug = () => {};
+    console.info = () => {};
+    console.warn = () => {};
+    // Keep console.error for critical issues
+  }, 5000);
+}
+
 console.log("📡 Attempting MongoDB connection...");
 console.log("🔍 Environment check:");
 console.log("- NODE_ENV:", process.env.NODE_ENV);
@@ -143,6 +160,7 @@ app.use("/api/stripe", require("./routes/stripe"));
 app.use("/api/billing", require("./routes/billing"));
 app.use('/api/publisher', require('./routes/publisher'));
 app.use('/api/video-downloader', require('./routes/videoDownloader'));
+app.use('/api/sora', require('./routes/soraApi'));
 
 // --- Simple root ---
 app.get("/", (_req, res) => {

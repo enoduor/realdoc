@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import Navigation from './Navigation';
 import { useContent } from '../context/ContentContext';
 import { useUser } from '@clerk/clerk-react';
 
@@ -244,6 +245,7 @@ const VideoGenerator = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Navigation />
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className="text-xl font-bold">AI Video Generator (Sora-2)</h1>
@@ -280,8 +282,8 @@ const VideoGenerator = () => {
                 className="w-full p-3 border rounded-lg"
                 disabled={formData.generating}
               >
-                <option value="sora-2-pro">Sora-2 Pro (Highest Quality)</option>
-                <option value="sora-2">Sora-2 Standard</option>
+                <option value="sora-2-pro">Sora-2 Pro (Highest Quality) - $0.60/video</option>
+                <option value="sora-2">Sora-2 Standard - $0.20/video</option>
               </select>
             </div>
 
@@ -331,13 +333,13 @@ const VideoGenerator = () => {
                 name="prompt"
                 value={formData.prompt}
                 onChange={handleInputChange}
-                placeholder="Describe the video you want to generate... (e.g., 'A cat playing with a ball of yarn in slow motion')"
+                placeholder="Describe your video (e.g., 'A golden retriever catching a frisbee in slow motion on a sunny beach')"
                 className="w-full p-3 border rounded-lg resize-none"
                 rows="4"
                 disabled={formData.generating}
               />
               <p className="mt-1 text-xs text-gray-500">
-                Be specific and descriptive for best results. Include details about the scene, mood, and style.
+                Be specific and describe what you want to see. Include the scene, mood, and style.
               </p>
             </div>
 

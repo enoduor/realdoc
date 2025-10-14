@@ -99,7 +99,14 @@ router.post("/", express.raw({ type: "application/json" }), (req, res) => {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object;
-        await upsertUserFromSession(session);
+        
+        // Check if this is a Sora API credit purchase
+        if (session.metadata?.productType === 'sora-api-credits') {
+          await handleSoraApiCredits(session);
+        } else {
+          // Regular subscription checkout
+          await upsertUserFromSession(session);
+        }
         break;
       }
 
@@ -145,6 +152,55 @@ router.post("/", express.raw({ type: "application/json" }), (req, res) => {
 
 function normEmail(e) {
   return (e || "").trim().toLowerCase() || null;
+}
+
+// Handle Sora API credit purchases
+async function handleSoraApiCredits(session) {
+  try {
+    const AWS = require('aws-sdk');
+    const dynamodb = new AWS.DynamoDB.DocumentClient({ region: 'us-west-2' });
+    const TABLE_NAME = 'reelpostly-tenants';
+    
+    const clerkUserId = session.client_reference_id;
+    const creditsToAdd = parseInt(session.metadata?.credits || 0);
+    
+    if (!clerkUserId || !creditsToAdd) {
+      console.error('❌ [Sora Webhook] Missing userId or credits in metadata');
+      return;
+    }
+    
+    console.log(`💳 [Sora Webhook] Processing credit purchase for user ${clerkUserId}, credits: ${creditsToAdd}`);
+    
+    // Find user's API keys
+    const result = await dynamodb.scan({
+      TableName: TABLE_NAME,
+      FilterExpression: 'tenantId = :userId',
+      ExpressionAttributeValues: {
+        ':userId': clerkUserId
+      }
+    }).promise();
+    
+    if (result.Items.length === 0) {
+      console.error(`❌ [Sora Webhook] No API keys found for user ${clerkUserId}`);
+      return;
+    }
+    
+    // Add credits to the most recent key
+    const mostRecentKey = result.Items.sort((a, b) => b.createdAt - a.createdAt)[0];
+    
+    await dynamodb.update({
+      TableName: TABLE_NAME,
+      Key: { apiKeyId: mostRecentKey.apiKeyId },
+      UpdateExpression: 'SET credits = credits + :credits',
+      ExpressionAttributeValues: {
+        ':credits': creditsToAdd
+      }
+    }).promise();
+    
+    console.log(`✅ [Sora Webhook] Added ${creditsToAdd} credits to API key ${mostRecentKey.apiKeyId}`);
+  } catch (error) {
+    console.error('❌ [Sora Webhook] Error adding credits:', error);
+  }
 }
 
 async function findUser({ stripeCustomerId, clerkUserId, email }) {

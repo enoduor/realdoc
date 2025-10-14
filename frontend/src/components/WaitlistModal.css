@@ -1,0 +1,267 @@
+/* Waitlist Modal Styles */
+
+.waitlist-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.waitlist-content {
+  background: white;
+  border-radius: 16px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+.waitlist-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(0, 0, 0, 0.1);
+  border: none;
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  transition: all 0.3s;
+}
+
+.waitlist-close:hover {
+  background: rgba(0, 0, 0, 0.2);
+  color: #000;
+  transform: rotate(90deg);
+}
+
+.waitlist-header {
+  text-align: center;
+  padding: 2.5rem 2rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 16px 16px 0 0;
+}
+
+.waitlist-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  backdrop-filter: blur(10px);
+}
+
+.badge-pulse {
+  animation: pulse 2s infinite;
+}
+
+.waitlist-header h2 {
+  font-size: 2rem;
+  margin: 0;
+  font-weight: 700;
+}
+
+.waitlist-body {
+  padding: 2rem;
+}
+
+.waitlist-intro {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: #333;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.waitlist-intro strong {
+  color: #667eea;
+}
+
+.waitlist-benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.benefit-item {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem;
+  background: #f7f9fc;
+  border-radius: 12px;
+  border: 2px solid #e0e7ff;
+  transition: all 0.3s;
+}
+
+.benefit-item:hover {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.benefit-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.benefit-text {
+  flex: 1;
+}
+
+.benefit-text strong {
+  display: block;
+  font-size: 1.1rem;
+  color: #1a1a2e;
+  margin-bottom: 0.25rem;
+}
+
+.benefit-text p {
+  font-size: 0.95rem;
+  color: #666;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.waitlist-promise {
+  background: #fff9e6;
+  border: 2px solid #ffd700;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.waitlist-promise p {
+  margin: 0;
+  color: #856404;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.waitlist-promise strong {
+  color: #1a1a2e;
+  font-weight: 700;
+}
+
+.waitlist-cta {
+  width: 100%;
+  padding: 1.25rem 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.waitlist-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(102, 126, 234, 0.5);
+}
+
+.waitlist-note {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #999;
+  margin-top: 1rem;
+  margin-bottom: 0;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .waitlist-content {
+    max-width: 95%;
+  }
+
+  .waitlist-header {
+    padding: 2rem 1.5rem 1.25rem;
+  }
+
+  .waitlist-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .waitlist-body {
+    padding: 1.5rem;
+  }
+
+  .waitlist-intro {
+    font-size: 1rem;
+  }
+
+  .benefit-text strong {
+    font-size: 1rem;
+  }
+
+  .benefit-text p {
+    font-size: 0.9rem;
+  }
+
+  .waitlist-cta {
+    font-size: 1.1rem;
+    padding: 1rem 1.5rem;
+  }
+}
+

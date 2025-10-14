@@ -1,10 +1,25 @@
 import React from 'react';
 import { SignIn } from '@clerk/clerk-react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 
 const ClerkLogin = () => {
   const { isSignedIn, isLoaded } = useUser();
+  const [searchParams] = useSearchParams();
+  
+  // Check for redirect parameter (from URL) or localStorage (remembered preference)
+  const redirectTo = searchParams.get('redirect');
+  const preferredDashboard = localStorage.getItem('preferredDashboard');
+  
+  let afterSignInPath = '/app'; // Default to main dashboard
+  
+  if (redirectTo === 'sora-api-dashboard') {
+    // URL parameter takes priority
+    afterSignInPath = '/app/sora-api-dashboard';
+  } else if (preferredDashboard === 'sora-api') {
+    // If user previously visited Sora API page, send them there
+    afterSignInPath = '/app/sora-api-dashboard';
+  }
 
 
   // Show loading while Clerk is initializing
@@ -21,7 +36,7 @@ const ClerkLogin = () => {
 
   // Redirect to app if already authenticated
   if (isSignedIn) {
-    return <Navigate to="/app" replace />;
+    return <Navigate to={afterSignInPath} replace />;
   }
 
   return (
@@ -40,8 +55,8 @@ const ClerkLogin = () => {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <SignIn 
-            redirectUrl="/app"
-            afterSignInUrl="/app"
+            redirectUrl={afterSignInPath}
+            afterSignInUrl={afterSignInPath}
             appearance={{
               elements: {
                 formButtonPrimary: 'bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md w-full',
@@ -61,7 +76,10 @@ const ClerkLogin = () => {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Don't have an account?{' '}
-              <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link 
+                to={redirectTo ? `/register?redirect=${redirectTo}` : "/register"} 
+                className="font-medium text-blue-600 hover:text-blue-500"
+              >
                 Get Started Now
               </Link>
             </p>

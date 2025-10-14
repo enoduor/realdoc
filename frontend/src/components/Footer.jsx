@@ -32,7 +32,7 @@ const Footer = () => {
             <ul>
               <li><Link to="/help">Help Center</Link></li>
               <li><Link to="/privacy">Privacy Policy</Link></li>
-              <li><Link to="/apis">Our APIs</Link></li>
+              <li><Link to="/sora-api#get-api-key">Sora 2 API</Link></li>
             </ul>
           </div>
           <div className="footer-section">
@@ -44,7 +44,7 @@ const Footer = () => {
             </ul>
           </div>
         </div>
-        <div className="social-media-section">
+        {/* <div className="social-media-section">
           <h4>Follow Us</h4>
           <div className="social-links">
             <a 
@@ -102,11 +102,11 @@ const Footer = () => {
               <Youtube size={20} />
             </a>
           </div>
-        </div>
+        </div> */}
         <div className="footer-bottom">
           <p>&copy; 2024 Reelpostly. All rights reserved.</p>
           <div className="footer-links">
-            <Link to="/terms">Terms of Service & Privacy Policy</Link>
+            <Link to="/terms">Terms of Service</Link>
           </div>
         </div>
       </div>

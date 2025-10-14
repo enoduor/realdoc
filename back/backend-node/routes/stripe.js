@@ -431,6 +431,110 @@ router.post("/activate-subscription", requireAuth(), async (req, res) => {
 });
 
 /* =========================
+ *  CREDITS CHECKOUT (ONE-TIME PAYMENTS)
+ *  — Creates a Stripe Checkout Session for adding API credits
+ *  — Does NOT interfere with subscription flows
+ * ========================= */
+
+// Lightweight email validator (avoid passing empty/invalid to Stripe)
+function isValidEmail(email) {
+  if (typeof email !== 'string') return false;
+  const e = email.trim();
+  if (!e) return false;
+  // Simple RFC5322-ish check; Stripe only needs a reasonable format
+  return /.+@.+\..+/.test(e);
+}
+
+router.post("/credits/checkout", requireAuth(), async (req, res) => {
+  try {
+    const { amount, successUrl, cancelUrl, email } = req.body || {};
+
+    // Auth context via Clerk
+    const auth = getClerkAuth(req);
+    const clerkUserId = auth?.userId || null;
+    if (!clerkUserId) return res.status(401).json({ success: false, error: "User authentication required" });
+
+    // Validate amount (USD dollars -> cents)
+    const dollars = Number(amount);
+    if (!Number.isFinite(dollars) || dollars <= 0) {
+      return res.status(400).json({ success: false, error: "Invalid amount" });
+    }
+    const unitAmount = Math.round(dollars * 100);
+
+    // Require redirect URLs; frontend should send back to its dashboard
+    const okSuccess = typeof successUrl === 'string' && successUrl.startsWith('http');
+    const okCancel = typeof cancelUrl === 'string' && cancelUrl.startsWith('http');
+    if (!okSuccess || !okCancel) {
+      return res.status(400).json({ success: false, error: "Missing successUrl/cancelUrl" });
+    }
+
+    // Ensure a Stripe Customer exists for this user (reuse subscription logic)
+    let stripeCustomerId;
+    const user = await User.findOne({ clerkUserId });
+    if (user && user.stripeCustomerId) {
+      stripeCustomerId = user.stripeCustomerId;
+    } else {
+      const customer = await stripe.customers.create({
+        // Only include email if valid; else let Stripe collect on Checkout
+        ...(isValidEmail(email) ? { email } : {}),
+        metadata: { clerkUserId },
+      });
+      stripeCustomerId = customer.id;
+      if (user) {
+        user.stripeCustomerId = stripeCustomerId;
+        await user.save();
+      } else {
+        await User.create({
+          clerkUserId,
+          email: isValidEmail(email) ? email : undefined,
+          stripeCustomerId,
+          subscriptionStatus: "none",
+          selectedPlan: "none",
+          billingCycle: "none",
+        });
+      }
+    }
+
+    // Create a one-time payment Checkout Session to purchase credits
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      payment_method_types: ["card"],
+      customer: stripeCustomerId,
+      client_reference_id: clerkUserId,
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: "ReelPostly API Credits",
+              description: "One-time purchase of API usage credits",
+            },
+            unit_amount: unitAmount,
+          },
+          quantity: 1,
+        },
+      ],
+      // Allow promo codes if desired
+      allow_promotion_codes: true,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: {
+        clerkUserId,
+        purpose: "api_credits",
+        amount_usd: dollars.toString(),
+      },
+    });
+
+    return res.status(200).json({ success: true, url: session.url, sessionId: session.id });
+  } catch (err) {
+    console.error("❌ Stripe error (credits/checkout):", err);
+    // Surface Stripe message where possible for quicker debugging
+    const message = err?.message || err?.raw?.message || "Failed to create credits checkout";
+    return res.status(500).json({ success: false, error: message });
+  }
+});
+
+/* =========================
  *  BILLING PORTAL (AUTH) — SINGLE, CONSOLIDATED
  * ========================= */
 // routes/stripe.js  — replace ONLY the portal-session handler

@@ -1,4 +1,5 @@
 import os
+import sys
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +11,20 @@ from routes.media import router as media_router
 from routes.video_generation import router as video_generation_router
 
 load_dotenv()
+
+# Turn off debug logs in production (keep errors)
+IS_PRODUCTION = os.getenv('NODE_ENV') == 'production' or os.getenv('ENVIRONMENT') == 'production'
+if IS_PRODUCTION:
+    import builtins
+    original_print = builtins.print
+    
+    def production_print(*args, **kwargs):
+        # Only allow prints that explicitly go to stderr (errors)
+        if kwargs.get('file') == sys.stderr:
+            original_print(*args, **kwargs)
+        # Suppress all other print statements (debug logs)
+    
+    builtins.print = production_print
 
 # ---- Config ----
 AI_ROOT_PATH = os.getenv("AI_ROOT_PATH", "/ai")  # external prefix via ALB

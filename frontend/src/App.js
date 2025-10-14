@@ -21,6 +21,8 @@ import PrivacyPolicy from "./components/PrivacyPolicy";
 import PartnerWithUs from "./components/PartnerWithUs";
 import APIsPage from "./components/APIsPage";
 import AccountDeleted from "./components/AccountDeleted";
+import SoraAPILanding from "./components/SoraAPILanding";
+import SoraAPIDashboard from "./components/SoraAPIDashboard";
 import "./App.css";
 
 export default function App() {
@@ -41,6 +43,7 @@ export default function App() {
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/partner" element={<PartnerWithUs />} />
               <Route path="/apis" element={<APIsPage />} />
+              <Route path="/sora-api" element={<SoraAPILanding />} />
               <Route path="/account-deleted" element={<AccountDeleted />} />
 
           {/* Protected */}
@@ -73,6 +76,14 @@ export default function App() {
             element={
               <ClerkProtectedRoute>
                 <VideoGenerator />
+              </ClerkProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/sora-api-dashboard"
+            element={
+              <ClerkProtectedRoute>
+                <SoraAPIDashboard />
               </ClerkProtectedRoute>
             }
           />
