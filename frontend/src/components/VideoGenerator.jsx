@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navigation from './Navigation';
+import PreviewEnhancements from './PreviewEnhancements';
 import { useContent } from '../context/ContentContext';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 
 const API_URL = process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://reelpostly.com/ai';
 
 const VideoGenerator = () => {
   const { updateContent, content } = useContent();
   const { user } = useUser();
+  const { getToken } = useAuth();
   const [formData, setFormData] = useState({
     prompt: '',
     model: 'sora-2',
@@ -27,7 +29,7 @@ const VideoGenerator = () => {
       try {
         const response = await fetch('/api/auth/subscription-status', {
           headers: {
-            'Authorization': `Bearer ${await user?.getToken()}`
+            'Authorization': `Bearer ${await getToken()}`
           }
         });
         if (response.ok) {
@@ -42,7 +44,7 @@ const VideoGenerator = () => {
     if (user) {
       fetchSubscriptionInfo();
     }
-  }, [user]);
+  }, [user, getToken]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -60,6 +62,19 @@ const VideoGenerator = () => {
       seconds: formData.seconds,
       size: formData.size
     };
+  };
+
+  const handleEnhancedDownload = async () => {
+    // This would handle downloading the enhanced version with watermark, text, and filters
+    // For now, we'll use the existing media URL
+    if (content.mediaUrl) {
+      const link = document.createElement('a');
+      link.href = content.mediaUrl;
+      link.download = `enhanced_${Date.now()}.${content.mediaType === 'video' ? 'mp4' : 'jpg'}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const handleGenerate = async () => {
@@ -394,13 +409,30 @@ const VideoGenerator = () => {
             </button>
           </form>
 
-          {/* Preview Area */}
+          {/* Enhancement Controls - ABOVE Video */}
           {content.mediaUrl && content.mediaType === 'video' && !formData.generating && (
             <div className="mt-6">
-              <h3 className="text-lg font-medium mb-2 flex items-center">
+              <h3 className="text-lg font-medium mb-4 flex items-center">
+                Enhance Your Video
+                <span className="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                  🎨 Customize
+                </span>
+              </h3>
+              <PreviewEnhancements
+                mediaUrl={content.mediaUrl}
+                mediaType={content.mediaType}
+                onDownload={handleEnhancedDownload}
+              />
+            </div>
+          )}
+
+          {/* Video Preview - BELOW Controls */}
+          {content.mediaUrl && content.mediaType === 'video' && !formData.generating && (
+            <div className="mt-6">
+              <h3 className="text-lg font-medium mb-4 flex items-center">
                 Generated Video Preview
                 <span className="ml-2 text-sm bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                  ✨ AI Generated
+                  ✨ ReelPostly AI
                 </span>
               </h3>
               <div className="relative">

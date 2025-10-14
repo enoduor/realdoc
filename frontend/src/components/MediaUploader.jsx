@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { PLATFORMS } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 // Subscription check removed - users are already verified at dashboard level
 
 const API_URL = process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://reelpostly.com/ai';
@@ -11,6 +11,7 @@ const API_URL = process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://ree
 const MediaUploader = () => {
   const { updateContent, content } = useContent();
   const { user } = useUser();
+  const { getToken } = useAuth();
   const [formData, setFormData] = useState({
     platform: content?.platform || 'instagram',
     files: null,
@@ -28,7 +29,7 @@ const MediaUploader = () => {
       try {
         const response = await fetch('/api/auth/subscription-status', {
           headers: {
-            'Authorization': `Bearer ${await user?.getToken()}`
+            'Authorization': `Bearer ${await getToken()}`
           }
         });
         if (response.ok) {
@@ -47,7 +48,7 @@ const MediaUploader = () => {
     if (user) {
       fetchSubscriptionInfo();
     }
-  }, [user]);
+  }, [user, getToken]);
 
   useEffect(() => {
     if (content?.platform !== formData.platform) {
