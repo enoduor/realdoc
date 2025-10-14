@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const PreviewEnhancements = ({ mediaUrl, mediaType, onDownload }) => {
+const PreviewEnhancements = ({ mediaUrl, mediaType, onDownload, onClose }) => {
   const [watermarkEnabled, setWatermarkEnabled] = useState(true);
   const [watermarkPosition, setWatermarkPosition] = useState('top-left');
   const [textOverlay, setTextOverlay] = useState('');
@@ -15,6 +15,7 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, onDownload }) => {
   
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
+
 
   // Debug: Log when component renders
   console.log('PreviewEnhancements rendering with:', { mediaUrl, mediaType });
@@ -185,7 +186,7 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, onDownload }) => {
       background: '#f8f9fa',
       maxWidth: '600px'
     }}>
-      {/* Debug indicator */}
+      {/* Header */}
       <div style={{ 
         background: '#e3f2fd', 
         padding: '10px', 
@@ -200,6 +201,52 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, onDownload }) => {
         <p style={{ margin: '3px 0 0 0', color: '#424242', fontSize: '12px' }}>
           Add watermark, text overlays, and apply filters to your video
         </p>
+      </div>
+
+      {/* Video Preview */}
+      <div style={{
+        background: 'white',
+        padding: '15px',
+        margin: '10px 0',
+        border: '1px solid #ddd',
+        borderRadius: '6px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        textAlign: 'center'
+      }}>
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          <video
+            src={mediaUrl}
+            controls
+            style={{
+              maxWidth: '100%',
+              maxHeight: '400px',
+              borderRadius: '6px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+            }}
+          />
+          
+          <button
+            onClick={onClose}
+            style={{
+              position: 'absolute',
+              top: '8px',
+              right: '8px',
+              background: '#ef4444',
+              color: 'white',
+              border: 'none',
+              borderRadius: '50%',
+              width: '24px',
+              height: '24px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            ✕
+          </button>
+        </div>
       </div>
       
       {/* Tab Navigation */}

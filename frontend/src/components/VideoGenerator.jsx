@@ -165,7 +165,7 @@ const VideoGenerator = () => {
           else if (status === 'processing') message = 'Generating video with AI...';
           else if (status === 'downloading') message = 'Downloading result...';
           else if (status === 'uploading') message = 'Uploading to storage...';
-          else if (status === 'completed') message = 'Finalizing...';
+          else if (status === 'completed' || status === 'success') message = 'Video ready!';
           else {
             if (progress < 25) message = 'Queued for generation...';
             else if (progress < 50) message = 'Generating video with AI...';
@@ -181,7 +181,7 @@ const VideoGenerator = () => {
           }));
 
           // Check if completed
-          if (status === 'completed' && statusData.url) {
+          if ((status === 'completed' || status === 'success') && statusData.url) {
             // Stop polling
             if (pollInterval) clearInterval(pollInterval);
 
@@ -409,51 +409,17 @@ const VideoGenerator = () => {
             </button>
           </form>
 
-          {/* Enhancement Controls - ABOVE Video */}
+          {/* Video Enhancement Controls with Preview */}
           {content.mediaUrl && content.mediaType === 'video' && !formData.generating && (
             <div className="mt-6">
-              <h3 className="text-lg font-medium mb-4 flex items-center">
-                Enhance Your Video
-                <span className="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                  🎨 Customize
-                </span>
-              </h3>
               <PreviewEnhancements
                 mediaUrl={content.mediaUrl}
                 mediaType={content.mediaType}
                 onDownload={handleEnhancedDownload}
+                onClose={() => {
+                  updateContent({ mediaUrl: null, mediaType: null, mediaFile: null });
+                }}
               />
-            </div>
-          )}
-
-          {/* Video Preview - BELOW Controls */}
-          {content.mediaUrl && content.mediaType === 'video' && !formData.generating && (
-            <div className="mt-6">
-              <h3 className="text-lg font-medium mb-4 flex items-center">
-                Generated Video Preview
-                <span className="ml-2 text-sm bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                  ✨ ReelPostly AI
-                </span>
-              </h3>
-              <div className="relative">
-                <video
-                  src={content.mediaUrl}
-                  controls
-                  className="rounded-lg shadow mx-auto object-cover max-h-[600px]"
-                  style={{
-                    maxWidth: '100%',
-                    objectFit: 'contain'
-                  }}
-                />
-                <button
-                  onClick={() => {
-                    updateContent({ mediaUrl: null, mediaType: null, mediaFile: null });
-                  }}
-                  className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600"
-                >
-                  ✕
-                </button>
-              </div>
             </div>
           )}
 
