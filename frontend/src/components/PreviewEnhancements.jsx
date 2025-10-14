@@ -17,11 +17,7 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, onDownload, onClose }) => {
   const videoRef = useRef(null);
 
 
-  // Debug: Log when component renders
-  console.log('PreviewEnhancements rendering with:', { mediaUrl, mediaType });
-
   if (!mediaUrl) {
-    console.log('PreviewEnhancements: No mediaUrl provided');
     return null;
   }
 
@@ -146,32 +142,19 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, onDownload, onClose }) => {
   const handleEnhancedDownload = async () => {
     setIsProcessing(true);
     try {
-      // For video, we'll create a canvas-based enhancement
-      if (mediaType === 'video') {
-        const enhancedDataUrl = await applyEnhancements();
-        if (enhancedDataUrl) {
-          const link = document.createElement('a');
-          link.href = enhancedDataUrl;
-          link.download = `enhanced_${Date.now()}.jpg`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        }
-      } else {
-        // For images, apply enhancements directly
-        const enhancedDataUrl = await applyEnhancements();
-        if (enhancedDataUrl) {
-          const link = document.createElement('a');
-          link.href = enhancedDataUrl;
-          link.download = `enhanced_${Date.now()}.jpg`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        }
+      // Download whatever enhanced video is currently displayed
+      const enhancedDataUrl = await applyEnhancements();
+      if (enhancedDataUrl) {
+        const link = document.createElement('a');
+        link.href = enhancedDataUrl;
+        link.download = `enhanced_video_${Date.now()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
     } catch (error) {
-      console.error('Error processing enhanced video:', error);
-      alert('Error processing video. Please try again.');
+      console.error('Error downloading enhanced video:', error);
+      alert('Error downloading enhanced video. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -221,9 +204,52 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, onDownload, onClose }) => {
               maxWidth: '100%',
               maxHeight: '400px',
               borderRadius: '6px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`
             }}
           />
+          
+          {/* Watermark Overlay */}
+          {watermarkEnabled && (
+            <div style={{
+              position: 'absolute',
+              ...(watermarkPosition === 'top-left' && { top: '10px', left: '10px' }),
+              ...(watermarkPosition === 'top-right' && { top: '10px', right: '10px' }),
+              ...(watermarkPosition === 'bottom-left' && { bottom: '10px', left: '10px' }),
+              ...(watermarkPosition === 'bottom-right' && { bottom: '10px', right: '10px' }),
+              ...(watermarkPosition === 'center' && { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }),
+              color: 'rgba(102, 126, 234, 0.8)',
+              fontWeight: 'bold',
+              fontSize: '16px',
+              textShadow: '2px 2px 4px rgba(255, 255, 255, 0.9)',
+              pointerEvents: 'none',
+              zIndex: 10
+            }}>
+              ReelPostly
+            </div>
+          )}
+          
+          {/* Text Overlay */}
+          {textOverlay && (
+            <div style={{
+              position: 'absolute',
+              ...(textPosition === 'top-center' && { top: '20px', left: '50%', transform: 'translateX(-50%)' }),
+              ...(textPosition === 'top-left' && { top: '20px', left: '20px' }),
+              ...(textPosition === 'top-right' && { top: '20px', right: '20px' }),
+              ...(textPosition === 'bottom-center' && { bottom: '20px', left: '50%', transform: 'translateX(-50%)' }),
+              ...(textPosition === 'bottom-left' && { bottom: '20px', left: '20px' }),
+              ...(textPosition === 'bottom-right' && { bottom: '20px', right: '20px' }),
+              ...(textPosition === 'center' && { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }),
+              color: textColor,
+              fontWeight: 'bold',
+              fontSize: `${textSize}px`,
+              textShadow: '2px 2px 4px rgba(0, 0, 0, 0.8)',
+              pointerEvents: 'none',
+              zIndex: 10
+            }}>
+              {textOverlay}
+            </div>
+          )}
           
           <button
             onClick={onClose}
