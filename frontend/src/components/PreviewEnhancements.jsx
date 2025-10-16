@@ -16,145 +16,270 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, onDownload, onClose }) => {
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
 
+  // Pick a supported MediaRecorder mime type (prefers MP4/H264 when available)
+  const pickMimeType = () => {
+    const candidates = [
+      'video/mp4;codecs=h264',
+      'video/webm;codecs=vp9',
+      'video/webm;codecs=vp8',
+      'video/webm'
+    ];
+    if (typeof window !== 'undefined' && window.MediaRecorder) {
+      for (const t of candidates) {
+        if (MediaRecorder.isTypeSupported(t)) return t;
+      }
+    }
+    return '';
+  };
+
+  // Safer constructor: try multiple mime types in order and fall back
+  const makeRecorder = (stream, hasAudio = false) => {
+    // If we have audio, prefer codecs that support it
+    const candidatesWithAudio = [
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus', 
+      'video/webm;codecs=vp9',
+      'video/webm;codecs=vp8',
+      'video/webm',
+      'video/mp4;codecs=h264,aac',
+      'video/mp4;codecs=h264'
+    ];
+    
+    // If no audio, we can use any codec
+    const candidatesWithoutAudio = [
+      'video/webm;codecs=vp9',
+      'video/webm;codecs=vp8',
+      'video/webm',
+      'video/mp4;codecs=h264'
+    ];
+    
+    const candidates = hasAudio ? candidatesWithAudio : candidatesWithoutAudio;
+    
+    for (const t of candidates) {
+      try {
+        console.log(`[PreviewEnhancements] Trying codec: ${t}`);
+        const recorder = new MediaRecorder(stream, { mimeType: t });
+        console.log(`[PreviewEnhancements] Successfully created recorder with: ${t}`);
+        return recorder;
+      } catch (e) {
+        console.log(`[PreviewEnhancements] Failed codec: ${t}`, e.message);
+        // try next
+      }
+    }
+    // Last resort: let the browser choose
+    console.log('[PreviewEnhancements] Using browser default codec');
+    return new MediaRecorder(stream);
+  };
+
 
   if (!mediaUrl) {
     return null;
   }
 
-  // Function to apply enhancements to video
-  const applyEnhancements = async () => {
+  // Function to process video with enhancements and return as MP4/WebM
+  const processVideoWithEnhancements = async () => {
     if (!videoRef.current || !canvasRef.current) return null;
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
 
-    // Set canvas size to match video
+    // Ensure metadata is ready so we can size the canvas correctly
+    if (video.readyState < 1) {
+      await new Promise((res) => video.addEventListener('loadedmetadata', res, { once: true }));
+    }
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
+    // Ensure hidden video can auto-play on all browsers
+    try {
+      video.loop = false;
+      video.muted = true; // required for some browsers to allow programmatic play
+      video.playsInline = true;
+    } catch (_) {}
 
-    // Apply filters
-    ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
+    // Compute a safe maximum recording time
+    const durationSec = Number.isFinite(video.duration) ? video.duration : null;
+    const maxDurationMs = (durationSec && durationSec > 0 ? durationSec * 1000 : 60000) + 1500; // add buffer
+
+    // Prepare streams: canvas for processed video; video element for audio
+    const canvasStream = canvas.captureStream(30); // 30 FPS
+    const sourceStream = (video.captureStream ? video.captureStream() : (video.mozCaptureStream ? video.mozCaptureStream() : null));
+
+    // Combine tracks so we keep original AUDIO + processed VIDEO
+    const combined = new MediaStream();
+    // add video track from canvas
+    const canvasVideoTrack = canvasStream.getVideoTracks()[0];
+    if (canvasVideoTrack) combined.addTrack(canvasVideoTrack);
     
-    // Draw video frame
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Apply watermark
-    if (watermarkEnabled) {
-      ctx.save();
-      ctx.font = 'bold 16px Arial';
-      ctx.fillStyle = 'rgba(102, 126, 234, 0.8)';
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.lineWidth = 2;
-      
-      const watermarkText = 'ReelPostly';
-      const textMetrics = ctx.measureText(watermarkText);
-      const textWidth = textMetrics.width;
-      const textHeight = 20;
-      
-      let x, y;
-      switch (watermarkPosition) {
-        case 'top-left':
-          x = 10;
-          y = 30;
-          break;
-        case 'top-right':
-          x = canvas.width - textWidth - 10;
-          y = 30;
-          break;
-        case 'bottom-left':
-          x = 10;
-          y = canvas.height - 10;
-          break;
-        case 'bottom-right':
-          x = canvas.width - textWidth - 10;
-          y = canvas.height - 10;
-          break;
-        case 'center':
-          x = (canvas.width - textWidth) / 2;
-          y = canvas.height / 2;
-          break;
-        default:
-          x = 10;
-          y = 30;
-      }
-      
-      ctx.strokeText(watermarkText, x, y);
-      ctx.fillText(watermarkText, x, y);
-      ctx.restore();
+    // Only add audio if we have a codec that supports it
+    const hasAudio = sourceStream && sourceStream.getAudioTracks().length > 0;
+    if (hasAudio) {
+      sourceStream.getAudioTracks().forEach(t => combined.addTrack(t));
     }
 
-    // Apply text overlay
-    if (textOverlay) {
-      ctx.save();
-      ctx.font = `bold ${textSize}px Arial`;
-      ctx.fillStyle = textColor;
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
-      ctx.lineWidth = 2;
-      
-      const textMetrics = ctx.measureText(textOverlay);
-      const textWidth = textMetrics.width;
-      
-      let x, y;
-      switch (textPosition) {
-        case 'top-center':
-          x = (canvas.width - textWidth) / 2;
-          y = 40;
-          break;
-        case 'top-left':
-          x = 20;
-          y = 40;
-          break;
-        case 'top-right':
-          x = canvas.width - textWidth - 20;
-          y = 40;
-          break;
-        case 'bottom-center':
-          x = (canvas.width - textWidth) / 2;
-          y = canvas.height - 20;
-          break;
-        case 'bottom-left':
-          x = 20;
-          y = canvas.height - 20;
-          break;
-        case 'bottom-right':
-          x = canvas.width - textWidth - 20;
-          y = canvas.height - 20;
-          break;
-        case 'center':
-          x = (canvas.width - textWidth) / 2;
-          y = canvas.height / 2;
-          break;
-        default:
-          x = (canvas.width - textWidth) / 2;
-          y = canvas.height - 20;
+    // Build a recorder safely by probing candidates in order
+    const recorder = makeRecorder(combined, hasAudio);
+
+    const chunks = [];
+    recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+
+    let rafId = null;
+    const drawFrame = () => {
+      // Apply filters
+      ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
+      // Draw the current frame
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Watermark
+      if (watermarkEnabled) {
+        ctx.save();
+        ctx.font = 'bold 16px Arial';
+        ctx.fillStyle = 'rgba(102, 126, 234, 0.8)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.lineWidth = 2;
+        const watermarkText = 'ReelPostly';
+        const textMetrics = ctx.measureText(watermarkText);
+        const textWidth = textMetrics.width;
+        let x, y;
+        switch (watermarkPosition) {
+          case 'top-left': x = 10; y = 30; break;
+          case 'top-right': x = canvas.width - textWidth - 10; y = 30; break;
+          case 'bottom-left': x = 10; y = canvas.height - 10; break;
+          case 'bottom-right': x = canvas.width - textWidth - 10; y = canvas.height - 10; break;
+          case 'center': x = (canvas.width - textWidth) / 2; y = canvas.height / 2; break;
+          default: x = 10; y = 30;
+        }
+        ctx.strokeText(watermarkText, x, y);
+        ctx.fillText(watermarkText, x, y);
+        ctx.restore();
       }
-      
-      ctx.strokeText(textOverlay, x, y);
-      ctx.fillText(textOverlay, x, y);
-      ctx.restore();
+
+      // Text overlay
+      if (textOverlay) {
+        ctx.save();
+        ctx.font = `bold ${textSize}px Arial`;
+        ctx.fillStyle = textColor;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.lineWidth = 2;
+        const textMetrics = ctx.measureText(textOverlay);
+        const textWidth = textMetrics.width;
+        let x, y;
+        switch (textPosition) {
+          case 'top-center': x = (canvas.width - textWidth) / 2; y = 40; break;
+          case 'top-left': x = 20; y = 40; break;
+          case 'top-right': x = canvas.width - textWidth - 20; y = 40; break;
+          case 'bottom-center': x = (canvas.width - textWidth) / 2; y = canvas.height - 20; break;
+          case 'bottom-left': x = 20; y = canvas.height - 20; break;
+          case 'bottom-right': x = canvas.width - textWidth - 20; y = canvas.height - 20; break;
+          case 'center': x = (canvas.width - textWidth) / 2; y = canvas.height / 2; break;
+          default: x = (canvas.width - textWidth) / 2; y = canvas.height - 20;
+        }
+        ctx.strokeText(textOverlay, x, y);
+        ctx.fillText(textOverlay, x, y);
+        ctx.restore();
+      }
+
+      if (video.ended) return; // let the 'ended' handler stop the recorder
+      rafId = requestAnimationFrame(drawFrame);
+    };
+
+    // Ensure we start from the beginning
+    if (video.currentTime !== 0) {
+      try { video.currentTime = 0; } catch (_) {}
     }
 
-    return canvas.toDataURL('image/jpeg', 0.9);
+    // Start drawing when the video can play frames
+    console.log('[PreviewEnhancements] Waiting for video canplay event...');
+    await new Promise((res) => {
+      const timeout = setTimeout(() => {
+        console.error('[PreviewEnhancements] Video canplay timeout after 5 seconds');
+        res(); // Resolve anyway to prevent hanging
+      }, 5000);
+      
+      video.addEventListener('canplay', () => {
+        clearTimeout(timeout);
+        console.log('[PreviewEnhancements] Video canplay event received');
+        res();
+      }, { once: true });
+    });
+
+    return new Promise((resolve, reject) => {
+      const cleanup = () => { if (rafId) cancelAnimationFrame(rafId); };
+
+      let stopTimerId = null;
+      const stopOnce = () => {
+        try { recorder.stop(); } catch (_) {}
+      };
+      // Fallback: stop even if `ended` doesn’t fire (e.g., autoplay blocked or stream stall)
+      stopTimerId = setTimeout(() => {
+        console.warn('[PreviewEnhancements] Fallback stop after maxDurationMs');
+        stopOnce();
+      }, maxDurationMs);
+
+      recorder.onstop = () => {
+        if (stopTimerId) clearTimeout(stopTimerId);
+        cleanup();
+        const type = recorder.mimeType || 'video/webm';
+        resolve(new Blob(chunks, { type }));
+      };
+      recorder.onerror = (err) => { cleanup(); reject(err); };
+
+      // When the source video ends, stop recording
+      const onEnded = () => {
+        if (stopTimerId) clearTimeout(stopTimerId);
+        stopOnce();
+        video.removeEventListener('ended', onEnded);
+      };
+      video.addEventListener('ended', onEnded, { once: true });
+
+      // Start everything
+      recorder.start();
+      try {
+        if (video.currentTime > 0) video.currentTime = 0;
+      } catch (_) {}
+      const playPromise = video.play();
+      if (playPromise && typeof playPromise.then === 'function') {
+        playPromise.catch(() => {
+          // If autoplay is still blocked, draw frames anyway and rely on fallback timer
+          console.warn('[PreviewEnhancements] video.play() was blocked; proceeding with fallback timer');
+        });
+      }
+      rafId = requestAnimationFrame(drawFrame);
+    });
   };
 
   // Enhanced download function
   const handleEnhancedDownload = async () => {
+    console.log('[PreviewEnhancements] Starting enhanced download...');
     setIsProcessing(true);
+    if (typeof window === 'undefined' || !window.MediaRecorder) {
+      alert('MediaRecorder is not supported in this browser. Please try Chrome/Edge/Firefox.');
+      setIsProcessing(false);
+      return;
+    }
     try {
-      // Download whatever enhanced video is currently displayed
-      const enhancedDataUrl = await applyEnhancements();
-      if (enhancedDataUrl) {
+      // Process the entire video with enhancements
+      console.log('[PreviewEnhancements] Calling processVideoWithEnhancements...');
+      const videoBlob = await processVideoWithEnhancements();
+      console.log('[PreviewEnhancements] Video processing completed, blob:', videoBlob);
+      if (videoBlob) {
+        const url = URL.createObjectURL(videoBlob);
         const link = document.createElement('a');
-        link.href = enhancedDataUrl;
-        link.download = `enhanced_video_${Date.now()}.jpg`;
+        link.href = url;
+        const t = (videoBlob.type || '').toLowerCase();
+        const ext = t.includes('mp4') ? 'mp4' : (t.includes('webm') ? 'webm' : 'webm');
+        link.download = `enhanced_video_${Date.now()}.${ext}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        
+        // Clean up the object URL
+        setTimeout(() => URL.revokeObjectURL(url), 100);
       }
     } catch (error) {
       console.error('Error downloading enhanced video:', error);
-      alert('Error downloading enhanced video. Please try again.');
+      alert('Error downloading enhanced video. If it stays on "Processing…", your browser may be blocking autoplay or the source video is cross‑origin without CORS. Try clicking Play on the preview first, or use Chrome/Edge/Firefox.');
     } finally {
       setIsProcessing(false);
     }
@@ -500,13 +625,14 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, onDownload, onClose }) => {
 
         {/* Hidden canvas and video for processing */}
         <div style={{ display: 'none' }}>
-          <video 
+          <video
             ref={videoRef}
             src={mediaUrl}
             crossOrigin="anonymous"
+            playsInline
             onLoadedData={() => {
               if (videoRef.current) {
-                videoRef.current.currentTime = 0; // Set to first frame
+                try { videoRef.current.currentTime = 0; } catch (_) {}
               }
             }}
           />

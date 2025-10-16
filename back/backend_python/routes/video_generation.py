@@ -251,13 +251,21 @@ async def check_video_status(video_id: str):
     Poll the status of a Sora video generation task.
     Returns progress and video URL when completed; uploads to S3 on completion.
     """
+    # Use sys.stdout.flush() to ensure logs are sent to CloudWatch immediately
+    import sys
+    print(f"[Sora-2 Status Check] Starting status check for video_id: {video_id}", flush=True)
+    
     api_key = os.getenv('OPENAI_API_KEY')
     if not api_key:
+        print("[Sora-2 Status Check ERROR] OPENAI_API_KEY not configured", flush=True)
         raise HTTPException(status_code=500, detail='OPENAI_API_KEY not configured')
 
     bucket_name = os.getenv('AWS_BUCKET_NAME')
     if not bucket_name:
+        print("[Sora-2 Status Check ERROR] AWS_BUCKET_NAME not configured", flush=True)
         raise HTTPException(status_code=500, detail='AWS_BUCKET_NAME not configured')
+    
+    print(f"[Sora-2 Status Check] Environment variables configured - API key: {'Set' if api_key else 'Not set'}, Bucket: {bucket_name}", flush=True)
 
     try:
         api_url = f"https://api.openai.com/v1/videos/{video_id}"
@@ -413,5 +421,6 @@ async def check_video_status(video_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[Sora-2 Status Check ERROR] {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        from utils.logger import logger
+        logger.exception(f"[Sora-2 Status Check ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Status check failed: {str(e)}")
