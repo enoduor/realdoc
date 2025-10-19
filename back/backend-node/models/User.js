@@ -79,6 +79,9 @@ const UserSchema = new mongoose.Schema(
     lastPostDate: { type: Date, default: null },
     dailyLimitResetAt: { type: Date, default: null },
 
+    // Sora video credits
+    soraVideoCredits: { type: Number, default: 0, min: 0 },
+
     // Activity tracking
     lastActiveDate: { type: Date, default: null },
 

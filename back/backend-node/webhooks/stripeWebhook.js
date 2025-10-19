@@ -103,6 +103,8 @@ router.post("/", express.raw({ type: "application/json" }), (req, res) => {
         // Check if this is a Sora API credit purchase
         if (session.metadata?.productType === 'sora-api-credits') {
           await handleSoraApiCredits(session);
+        } else if (session.metadata?.productType === 'sora-video-credits') {
+          await handleSoraVideoCredits(session);
         } else {
           // Regular subscription checkout
           await upsertUserFromSession(session);
@@ -200,6 +202,55 @@ async function handleSoraApiCredits(session) {
     console.log(`✅ [Sora Webhook] Added ${creditsToAdd} credits to API key ${mostRecentKey.apiKeyId}`);
   } catch (error) {
     console.error('❌ [Sora Webhook] Error adding credits:', error);
+  }
+}
+
+// Handle Sora video credit purchases
+async function handleSoraVideoCredits(session) {
+  try {
+    const clerkUserId = session.metadata?.clerkUserId || session.client_reference_id;
+    const priceId = session.metadata?.priceId;
+
+    if (!clerkUserId) {
+      console.error('❌ [Sora Video Webhook] Missing clerkUserId in session metadata');
+      return;
+    }
+
+    console.log(`🎬 [Sora Video Webhook] Processing Sora video credits purchase for user: ${clerkUserId}, priceId: ${priceId}`);
+
+    // Determine credits based on price ID
+    let creditsToAdd = 0;
+    if (priceId === 'price_1SIyQSLPiEjYBNcQyq9gryxu') {
+      creditsToAdd = 8; // $20 = 8 credits
+    }
+
+    if (creditsToAdd === 0) {
+      console.error('❌ [Sora Video Webhook] Unknown price ID:', priceId);
+      return;
+    }
+
+    // Find or create user
+    let user = await User.findOne({ clerkUserId });
+    if (!user) {
+      user = await User.create({
+        clerkUserId,
+        email: session.customer_email || '',
+        subscriptionStatus: "none",
+        selectedPlan: "none",
+        billingCycle: "none",
+        soraVideoCredits: creditsToAdd,
+      });
+      console.log(`✅ [Sora Video Webhook] Created new user with ${creditsToAdd} Sora video credits`);
+    } else {
+      // Add credits to existing user
+      const currentCredits = user.soraVideoCredits || 0;
+      user.soraVideoCredits = currentCredits + creditsToAdd;
+      await user.save();
+      console.log(`✅ [Sora Video Webhook] Added ${creditsToAdd} Sora video credits to user. New total: ${user.soraVideoCredits}`);
+    }
+
+  } catch (error) {
+    console.error('❌ [Sora Video Webhook] Error processing Sora video credits purchase:', error);
   }
 }
 

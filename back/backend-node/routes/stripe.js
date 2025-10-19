@@ -122,21 +122,36 @@ router.post("/create-checkout-session", async (req, res) => {
       console.log("✅ Created new Stripe customer:", stripeCustomerId);
     }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
+    // Determine if this is a one-time payment for Sora video credits
+    const isSoraVideoCredits = priceId === 'price_1SIyQSLPiEjYBNcQyq9gryxu';
+    
+    const sessionConfig = {
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       customer: stripeCustomerId,  // ✅ ALWAYS pass customer to prevent duplicates
       client_reference_id: clerkUserId,  // ✅ Join key for webhooks
-      subscription_data: { 
-        trial_period_days: 3,
-        metadata: { clerkUserId, plan, billingCycle }
-      },
       metadata: { clerkUserId, plan, billingCycle, priceId },
       success_url: `https://reelpostly.com/app?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `https://reelpostly.com/pricing`,
       allow_promotion_codes: true,
-    });
+    };
+
+    if (isSoraVideoCredits) {
+      // One-time payment for Sora video credits
+      sessionConfig.mode = "payment";
+      sessionConfig.metadata.productType = "sora-video-credits";
+      sessionConfig.success_url = `https://reelpostly.com/app/sora/video-generator?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
+      sessionConfig.cancel_url = `https://reelpostly.com/app/sora?checkout=canceled`;
+    } else {
+      // Regular subscription
+      sessionConfig.mode = "subscription";
+      sessionConfig.subscription_data = { 
+        trial_period_days: 3,
+        metadata: { clerkUserId, plan, billingCycle }
+      };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
 
     console.log("✅ checkout session created:", {
       id: session.id,

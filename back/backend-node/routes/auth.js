@@ -44,6 +44,7 @@ function toClient(userDoc) {
     dailyLimitResetAt: json.dailyLimitResetAt || null,
     trialStartDate: json.trialStartDate || null,
     trialEndDate: json.trialEndDate || null,
+    soraVideoCredits: json.soraVideoCredits ?? 0,
     updatedAt: json.updatedAt || null,
     createdAt: json.createdAt || null,
   };
@@ -311,6 +312,7 @@ router.get("/subscription-status", requireAuth(), async (req, res) => {
         stripeSubscriptionId: null,
         dailyPostsUsed: 0,
         accountsConnected: 0,
+        soraVideoCredits: 0,
       });
     }
 
@@ -643,6 +645,52 @@ router.post("/test-link-temp-user", async (req, res) => {
   } catch (error) {
     console.error("❌ Error linking temporary user (test):", error);
     res.status(500).json({ error: "Failed to link temporary user" });
+  }
+});
+
+// ✅ Deduct Sora video credits
+router.post("/deduct-sora-credits", requireAuth(), async (req, res) => {
+  try {
+    const clerkUserId = req.auth().userId;
+    const { creditsToDeduct = 1 } = req.body;
+
+    if (!clerkUserId) {
+      return res.status(401).json({ error: "Unauthenticated" });
+    }
+
+    if (creditsToDeduct <= 0) {
+      return res.status(400).json({ error: "Invalid credit amount" });
+    }
+
+    const user = await User.findOne({ clerkUserId });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const currentCredits = user.soraVideoCredits || 0;
+    if (currentCredits < creditsToDeduct) {
+      return res.status(400).json({ 
+        error: "Insufficient credits", 
+        currentCredits,
+        requestedCredits: creditsToDeduct 
+      });
+    }
+
+    // Deduct credits
+    user.soraVideoCredits = currentCredits - creditsToDeduct;
+    await user.save();
+
+    console.log(`🎬 [Sora Credits] Deducted ${creditsToDeduct} credits for user ${clerkUserId}. Remaining: ${user.soraVideoCredits}`);
+
+    res.json({
+      success: true,
+      creditsDeducted: creditsToDeduct,
+      remainingCredits: user.soraVideoCredits
+    });
+
+  } catch (error) {
+    console.error("❌ Error deducting Sora credits:", error);
+    res.status(500).json({ error: "Failed to deduct credits" });
   }
 });
 
