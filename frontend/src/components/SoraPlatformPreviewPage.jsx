@@ -5,7 +5,7 @@ import { publishNow } from '../api';
 import PlatformPreviewPanel from './PlatformPreviewPanel';
 import ErrorModal from './ErrorModal';
 
-const PlatformPreviewPage = () => {
+const SoraPlatformPreviewPage = () => {
   
   const { content } = useContent();
   const [isLoading, setIsLoading] = useState(false);
@@ -66,12 +66,12 @@ const PlatformPreviewPage = () => {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-xl font-bold">Platform Publisher</h1>
+          <h1 className="text-xl font-bold">Sora Platform Publisher</h1>
           <Link 
-            to={localStorage.getItem('preferredDashboard') === 'sora' ? '/app/sora' : '/app'} 
+            to="/app/sora/video-generator"
             className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md"
           >
-            Back to Dashboard
+            Back to Video Generator
           </Link>
         </div>
       </header>
@@ -84,7 +84,7 @@ const PlatformPreviewPage = () => {
 
         <div className="grid grid-cols-1 gap-8">
           <div>
-            <PlatformPreviewPanel onPublishNow={handlePublishNow} />
+            <PlatformPreviewPanel onPublishNow={handlePublishNow} bypassDailyLimits={true} />
           </div>
         </div>
       </main>
@@ -101,6 +101,4 @@ const PlatformPreviewPage = () => {
   );
 };
 
-export default PlatformPreviewPage;
-
-
+export default SoraPlatformPreviewPage;

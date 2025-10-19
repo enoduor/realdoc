@@ -8,7 +8,7 @@ import VideoDownloader from './VideoDownloader';
 import { getUserUsageStatus, getCheckoutSession } from '../api';
 import { useAuthContext } from '../context/AuthContext';
 
-const Dashboard = () => {
+const SoraVideosDashboard = () => {
   const navigate = useNavigate();
   const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
@@ -16,12 +16,9 @@ const Dashboard = () => {
   // 🔌 from AuthContext (DB-backed)
   const { me, loading, refresh } = useAuthContext();
 
-  // Set main dashboard preference when user visits (but don't override sora preference)
+  // Set sora dashboard preference when user visits
   useEffect(() => {
-    const currentPreference = localStorage.getItem('preferredDashboard');
-    if (currentPreference !== 'sora') {
-      localStorage.setItem('preferredDashboard', 'main');
-    }
+    localStorage.setItem('preferredDashboard', 'sora');
   }, []);
 
   // local UI state
@@ -71,16 +68,7 @@ const Dashboard = () => {
         show: true,
         title: 'Success!',
         message: `${platformName} account connected successfully!`,
-        type: 'success',
-        onConfirm: () => {
-          setSuccessModal({ show: false, title: '', message: '', type: 'success' });
-          // Check if user came from Sora Videos Dashboard and redirect back
-          const preferredDashboard = localStorage.getItem('preferredDashboard');
-          if (preferredDashboard === 'sora') {
-            window.location.href = '/app/sora';
-          }
-        },
-        confirmText: 'OK'
+        type: 'success'
       });
       
       // Clean up URL parameters
@@ -103,14 +91,7 @@ const Dashboard = () => {
         title: 'Connection Failed',
         message: errorMessages[error] || 'Connection failed. Please try again.',
         type: 'error',
-        onConfirm: () => {
-          setErrorModal({ ...errorModal, show: false });
-          // Check if user came from Sora Videos Dashboard and redirect back
-          const preferredDashboard = localStorage.getItem('preferredDashboard');
-          if (preferredDashboard === 'sora') {
-            window.location.href = '/app/sora';
-          }
-        },
+        onConfirm: () => setErrorModal({ ...errorModal, show: false }),
         confirmText: 'OK'
       });
       
@@ -233,7 +214,7 @@ const Dashboard = () => {
     return () => window.removeEventListener('focus', onFocus);
   }, [refresh, me?.subscriptionStatus]);
 
-  // 4) Gentle polling for ~20s if we don’t yet see the sub (bridges webhook delay)
+  // 4) Gentle polling for ~20s if we don't yet see the sub (bridges webhook delay)
   useEffect(() => {
     let tries = 0;
     const maxTries = 10;
@@ -280,19 +261,17 @@ const Dashboard = () => {
     }
   };
 
+  // Sora-specific features
   const features = [
-    { name: 'Generate Captions', description: 'Generate & fine-tune caption to match your tone, audience, and brand voice.', icon: '🎯', link: '/app/caption-generator' },
-    { name: 'Download Videos', description: 'Dowbload already popular public videos and repurpose them for your content', icon: '📥', action: () => setShowVideoDownloader(true) },
-    { name: 'Generate Captions', description: 'Create engaging AI-powered captions for your social media posts', icon: '✍️', link: '/app/caption-generator', hidden: true },
-    { name: 'Generate Hashtags', description: 'Generate relevant hashtags to increase your content reach', icon: '#️⃣', link: '/app/hashtag-generator', hidden: true },
-    { name: 'Upload Media', description: 'Upload and manage your media content', icon: '📸', link: '/app/media-upload', hidden: true },
-    { name: 'Edit & Publish', description: 'Preview and publish your content to different platforms', icon: '🚀', link: '/app/platform-preview', hidden: true },
-    { name: 'Publish Now', description: 'Publish posts immediately across multiple platforms', icon: '🚀', link: '/app/scheduler', hidden: true }
+    { name: 'Generate AI Videos', description: 'Create and share stunning AI-generated videos with Sora-2 for your content', icon: '🎬', link: '/app/sora/video-generator' },
+    { name: 'Upload Media', description: 'Upload images and videos for your social media content', icon: '📤', link: '/app/sora/upload-media', hidden: true },
+    { name: 'Edit & Publish', description: 'Edit and publish content across social media platforms', icon: '✏️', link: '/app/sora/platform-preview', hidden: true },
+    { name: 'Publish Now', description: 'Publish content immediately with scheduling options', icon: '🚀', link: '/app/sora/scheduler', hidden: true }
   ];
 
   return (
     <div className="min-h-screen bg-gray-50">
-
+ 
       {welcomeMsg && (
         <div style={{ margin: '12px auto', maxWidth: '1200px', padding: '12px 16px', borderRadius: 10, background: '#e8f5e9', border: '1px solid #c8e6c9', textAlign: 'center' }}>
           {welcomeMsg}
@@ -302,48 +281,20 @@ const Dashboard = () => {
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Sora Videos Dashboard</h1>
+            <p className="text-gray-600">Create and manage AI-generated videos with Sora-2</p>
+          </div>
+          
           {/* User Profile and Sign Out */}
           <div className="flex justify-end mb-6">
             <ClerkUserProfile />
           </div>
       
-          {/* Daily Usage */}
-          {hasSubscription && usageStatus && (
-            <div className="mb-6 bg-white rounded-lg shadow p-6 overflow-hidden">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Posts Today</h3>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-bold text-blue-600">
-                    {usageStatus.usage.used}/{usageStatus.usage.limit}
-                  </div>
-                  {usageStatus.usage.remaining === 0 && (
-                    <p className="text-xs text-red-500 mt-1">
-                      Resets in {Math.ceil((new Date(usageStatus.usage.resetAt) - new Date()) / (1000 * 60 * 60))} hours
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="mt-4">
-                <div className="w-full bg-gray-200 rounded-full h-1 overflow-hidden">
-                  <div
-                    className={`h-1 rounded-full ${
-                      usageStatus.usage.remaining === 0 ? 'bg-red-500' :
-                      usageStatus.usage.remaining <= 1 ? 'bg-yellow-500' : 'bg-green-500'
-                    }`}
-                    style={{ 
-                      width: `${Math.min((usageStatus.usage.used / usageStatus.usage.limit) * 100, 100)}%`,
-                      maxWidth: '100%'
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Subscription banner */}
-          {!loading && me && (
+          {false && !loading && me && (
             <div
               style={{
                 margin: '12px auto',
@@ -364,14 +315,6 @@ const Dashboard = () => {
                 {sub === 'active' && (
                   <span>
                     ✅ <strong style={{ textTransform: 'capitalize' }}>{me.selectedPlan ?? '—'}</strong> Plan ({me.billingCycle ?? '—'})
-                  </span>
-                )}
-                {sub === 'trialing' && (
-                  <span>
-                    🎉 <strong style={{ textTransform: 'capitalize' }}>{me.selectedPlan ?? '—'}</strong> Trial
-                    {Number.isFinite(me.trialDaysRemaining)
-                      ? ` • ${me.trialDaysRemaining} day${me.trialDaysRemaining === 1 ? '' : 's'} left`
-                      : ''}
                   </span>
                 )}
                 {sub === 'past_due' && <span>⚠️ Payment issue — please update your payment method.</span>}
@@ -514,7 +457,7 @@ const Dashboard = () => {
 
           {/* Feature cards - Centered both horizontally and vertically */}
           <div className="flex justify-center items-center min-h-[400px]">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
+            <div className="flex justify-center w-full max-w-4xl">
             {features.filter(feature => !feature.hidden).map((feature) => {
               const isAction = feature.action && !feature.link;
               const Component = isAction ? 'div' : Link;
@@ -646,8 +589,8 @@ const Dashboard = () => {
         title={successModal.title}
         message={successModal.message}
         type={successModal.type}
-        onConfirm={successModal.onConfirm || (() => setSuccessModal({ show: false, title: '', message: '', type: 'success' }))}
-        confirmText={successModal.confirmText || "OK"}
+        onConfirm={() => setSuccessModal({ show: false, title: '', message: '', type: 'success' })}
+        confirmText="OK"
         showCancel={false}
         cancelText="Cancel"
       />
@@ -656,4 +599,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default SoraVideosDashboard;

@@ -6,7 +6,7 @@ import Scheduler from './Scheduler';
 import PostStatusTracker from './PostStatusTracker';
 import ErrorModal from './ErrorModal';
 
-const SchedulerPage = () => {
+const SoraSchedulerPage = () => {
     const { content } = useContent();
     const [publishedPosts, setPublishedPosts] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -101,12 +101,12 @@ const SchedulerPage = () => {
             {/* Navigation Header */}
             <header className="bg-white shadow">
                 <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-                    <h1 className="text-xl font-bold text-gray-900">🚀 Publish Now</h1>
+                    <h1 className="text-xl font-bold text-gray-900">🚀 Sora Publish Now</h1>
                     <Link
-                        to={localStorage.getItem('preferredDashboard') === 'sora' ? '/app/sora' : '/app'}
+                        to="/app/sora"
                         className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md"
                     >
-                        Back to Dashboard
+                        Back to Sora Dashboard
                     </Link>
                 </div>
             </header>
@@ -125,6 +125,7 @@ const SchedulerPage = () => {
                     <div>
                         <Scheduler 
                             onPublishNow={handlePublishNow}
+                            isSoraFlow={true}
                         />
                     </div>
 
@@ -164,4 +165,4 @@ const SchedulerPage = () => {
     );
 };
 
-export default SchedulerPage;
+export default SoraSchedulerPage;

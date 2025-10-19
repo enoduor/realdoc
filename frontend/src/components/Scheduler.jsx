@@ -11,7 +11,7 @@ const toPlatformId = (name) => {
     return name.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
 };
 
-const Scheduler = ({ onPublishNow }) => {
+const Scheduler = ({ onPublishNow, isSoraFlow = false }) => {
     const { content } = useContent();
     const { user } = useUser();
     const [platforms, setPlatforms] = useState([]);
@@ -214,12 +214,21 @@ const Scheduler = ({ onPublishNow }) => {
 
             {/* Action Buttons */}
             <div className="flex justify-between gap-3">
-                <Link
-                    to="/app/media-upload"
-                    className="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
-                >
-                    Back to Media Upload
-                </Link>
+                {isSoraFlow ? (
+                    <Link
+                        to="/app/sora/video-generator"
+                        className="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
+                    >
+                        Back to AI Video Generator
+                    </Link>
+                ) : (
+                    <Link
+                        to="/app/media-upload"
+                        className="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
+                    >
+                        Back to Media Upload
+                    </Link>
+                )}
                 <button
                     onClick={handlePublishNow}
                     disabled={!canPublish}

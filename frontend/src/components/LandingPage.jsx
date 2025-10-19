@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';
 import Navigation from './Navigation';
 import PricingSection from './PricingSection';
 import PlatformIcons from './PlatformIcons';
@@ -10,6 +11,13 @@ import './LandingPage.css';
 const LandingPage = () => {
   const [openFAQ, setOpenFAQ] = useState(null);
   const [showWaitlistModal, setShowWaitlistModal] = useState(false);
+  const { isSignedIn } = useUser();
+
+  // Handle Sora Videos Dashboard login
+  const handleSoraLogin = () => {
+    localStorage.setItem('preferredDashboard', 'sora');
+    window.location.href = '/login?redirect=sora';
+  };
 
   // Clear Sora API preference when visiting main landing page
   useEffect(() => {
@@ -225,7 +233,10 @@ const LandingPage = () => {
             <p className="feature-description">
               Generate professional AI videos in minutes. Just describe what you want to see, and Sora-2 creates unique, high-quality videos for your content. No video editing skills required.
             </p>
-            <button onClick={() => setShowWaitlistModal(true)} className="feature-cta">Get started</button>
+            <div className="feature-cta-buttons">
+              <button onClick={() => setShowWaitlistModal(true)} className="feature-cta">Get started</button>
+              <button onClick={handleSoraLogin} className="feature-cta feature-cta-secondary">Sign In to Sora Dashboard</button>
+            </div>
             <div className="feature-visual">
               <div className="video-embed">
                 <iframe 

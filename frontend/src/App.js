@@ -7,11 +7,15 @@ import ClerkProtectedRoute from "./components/Auth/ClerkProtectedRoute";
 import CaptionGenerator from "./components/CaptionGenerator";
 import HashtagGenerator from "./components/HashtagGenerator";
 import Dashboard from "./components/Dashboard";
+import SoraVideosDashboard from "./components/SoraVideosDashboard";
 import MediaUploader from "./components/MediaUploader";
 import VideoDownloader from "./components/VideoDownloader";
 import VideoGenerator from "./components/VideoGenerator";
 import PlatformPreviewPage from "./components/PlatformPreviewPage";
 import SchedulerPage from "./components/SchedulerPage";
+import SoraPlatformPreviewPage from "./components/SoraPlatformPreviewPage";
+import SoraSchedulerPage from "./components/SoraSchedulerPage";
+import SoraMediaUploader from "./components/SoraMediaUploader";
 import LandingPage from "./components/LandingPage";
 import PricingPage from "./components/PricingPage";
 import HelpCenter from "./components/HelpCenter";
@@ -52,6 +56,54 @@ export default function App() {
             element={
               <ClerkProtectedRoute>
                 <Dashboard />
+              </ClerkProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/sora"
+            element={
+              <ClerkProtectedRoute>
+                <SoraVideosDashboard />
+              </ClerkProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/sora/video-generator"
+            element={
+              <ClerkProtectedRoute>
+                <VideoGenerator />
+              </ClerkProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/sora/platform-preview"
+            element={
+              <ClerkProtectedRoute>
+                <SoraPlatformPreviewPage />
+              </ClerkProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/sora/publish-now"
+            element={
+              <ClerkProtectedRoute>
+                <SoraSchedulerPage />
+              </ClerkProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/sora/upload-media"
+            element={
+              <ClerkProtectedRoute>
+                <SoraMediaUploader />
+              </ClerkProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/sora/scheduler"
+            element={
+              <ClerkProtectedRoute>
+                <SoraSchedulerPage />
               </ClerkProtectedRoute>
             }
           />

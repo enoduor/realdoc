@@ -28,7 +28,7 @@ const getPlatformNames = (platforms) => {
   });
 };
 
-const PlatformPreviewPanel = ({ onPublishNow }) => {
+const PlatformPreviewPanel = ({ onPublishNow, bypassDailyLimits = false }) => {
     const { user } = useUser();
     const { updateContent, content } = useContent();
     const [formData, setFormData] = useState({
@@ -82,10 +82,10 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
 
     // Fetch usage status when component mounts and user is available
     useEffect(() => {
-        if (user) {
+        if (user && !bypassDailyLimits) {
             fetchUsageStatus();
         }
-    }, [user]);
+    }, [user, bypassDailyLimits]);
 
     // Simple toggle function
     const toggleIndividualMode = () => {
@@ -350,8 +350,8 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
         // Clear previous messages
         setPublishStatus(null);
 
-        // Check usage limits first
-        if (usageStatus && !usageStatus.usage.canPublish) {
+        // Check usage limits first (skip for Sora flow)
+        if (!bypassDailyLimits && usageStatus && !usageStatus.usage.canPublish) {
             const resetTime = new Date(usageStatus.usage.resetAt);
             const hoursUntilReset = Math.ceil((resetTime - new Date()) / (1000 * 60 * 60));
             setError(`Daily limit reached! You've used ${usageStatus.usage.used}/${usageStatus.usage.limit} posts today. Resets in ${hoursUntilReset} hours.`);
@@ -438,7 +438,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                         captions: currentPlatformContent.captions,
                         hashtags: currentPlatformContent.hashtags,
                         mediaType: content.mediaType,
-                        privacyStatus: 'unlisted'
+                        privacyStatus: bypassDailyLimits ? 'public' : 'unlisted'
                     },
                     // Include individual content for backend to handle platform-specific publishing
                     individualContent: individualContent,
@@ -454,7 +454,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                         captions: editableContent.captions,
                         hashtags: editableContent.hashtags,
                         mediaType: content.mediaType,
-                        privacyStatus: 'unlisted'
+                        privacyStatus: bypassDailyLimits ? 'public' : 'unlisted'
                     },
                     refreshToken: user?.publicMetadata?.youtubeRefreshToken || null
                 };
@@ -1451,7 +1451,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                         )}
 
                         {/* Usage Status Display */}
-                        {usageStatus && (
+                        {!bypassDailyLimits && usageStatus && (
                             <div className={`mt-4 p-3 rounded-lg border ${
                                 usageStatus.usage.canPublish ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
                             }`}>
@@ -1479,16 +1479,25 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
 
                                                 {/* Action Buttons - Fixed positioning to avoid hashtag overlay */}
                         <div className="flex justify-between mt-6">
-                            <Link
-                                to="/app/media-upload"
-                                className="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
-                            >
-                                Back to Media Upload
-                            </Link>
+                            {bypassDailyLimits ? (
+                                <Link
+                                    to="/app/sora/video-generator"
+                                    className="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
+                                >
+                                    Back to AI Video Generator
+                                </Link>
+                            ) : (
+                                <Link
+                                    to="/app/media-upload"
+                                    className="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
+                                >
+                                    Back to Media Upload
+                                </Link>
+                            )}
                             <button
                                 onClick={handlePublishPost}
                                 className="px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                                disabled={isPublishing || platforms.length === 0 || (!editableContent.captions[0] && editableContent.hashtags.filter(tag => tag.trim() !== '').length === 0 && !content.mediaUrl) || (usageStatus && !usageStatus.usage.canPublish)}
+                                disabled={isPublishing || platforms.length === 0 || (!editableContent.captions[0] && editableContent.hashtags.filter(tag => tag.trim() !== '').length === 0 && !content.mediaUrl) || (!bypassDailyLimits && usageStatus && !usageStatus.usage.canPublish)}
                             >
                                 {isPublishing ? (
                                     <>
@@ -1499,7 +1508,7 @@ const PlatformPreviewPanel = ({ onPublishNow }) => {
                                         Publishing to {platforms.length} platforms...
                                     </>
                                 ) : (
-                                    usageStatus && !usageStatus.usage.canPublish ? 
+                                    (!bypassDailyLimits && usageStatus && !usageStatus.usage.canPublish) ? 
                                         `Daily Limit Reached (${usageStatus.usage.used}/${usageStatus.usage.limit})` :
                                         '✅ Confirm and Publish'
                                 )}

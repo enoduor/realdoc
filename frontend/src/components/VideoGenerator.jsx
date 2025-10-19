@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import Navigation from './Navigation';
 import PreviewEnhancements from './PreviewEnhancements';
 import { useContent } from '../context/ContentContext';
 import { useUser, useAuth } from '@clerk/clerk-react';
@@ -260,12 +259,11 @@ const VideoGenerator = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navigation />
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className="text-xl font-bold">AI Video Generator (Sora-2)</h1>
           <Link
-            to="/app"
+            to="/app/sora"
             className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md"
           >
             Back to Dashboard
@@ -427,13 +425,13 @@ const VideoGenerator = () => {
           {content.mediaUrl && content.mediaType === 'video' && !formData.generating && (
             <div className="mt-6 flex justify-between gap-4">
               <Link
-                to="/app/platform-preview"
+                to="/app/sora/platform-preview"
                 className="flex-1 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-medium text-center"
               >
                 Preview & Publish
               </Link>
               <Link
-                to="/app/scheduler"
+                to="/app/sora/scheduler"
                 className="flex-1 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg font-medium text-center"
               >
                 Go to Publish

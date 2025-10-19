@@ -124,10 +124,19 @@ export const checkSubscriptionByEmail = async (email) => {
 
 export const publishNow = async (postData) => {
   try {
+    // Check if request is from Sora Videos Dashboard flow
+    const isSoraFlow = localStorage.getItem('preferredDashboard') === 'sora';
+    
+    // Add Sora flow flag to post data
+    const dataWithFlow = {
+      ...postData,
+      soraFlow: isSoraFlow
+    };
+    
     const response = await fetch(`${API_URL}/api/publisher/publish`, {
       method: 'POST',
       headers: await getAuthHeaders(),
-      body: JSON.stringify(postData)
+      body: JSON.stringify(dataWithFlow)
     });
     return await handleResponse(response);
   } catch (error) {
