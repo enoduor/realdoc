@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
+import Navigation from './Navigation';
 import Footer from './Footer';
 import WaitlistModal from './WaitlistModal';
 import './SoraAPILanding.css';
@@ -187,7 +188,7 @@ const SoraAPILanding = () => {
 
   const codeExample = `import requests
 
-# Standard quality (1 credit = $0.20)
+# Standard quality
 response = requests.post(
     'https://api.reelpostly.com/video/generate',
     headers={
@@ -196,13 +197,13 @@ response = requests.post(
     },
     json={
         'prompt': 'A serene tea farm at sunrise with golden light',
-        'model': 'sora-2',        # Standard: $0.20/video
+        'model': 'sora-2',
         'seconds': 8,
         'size': '1280x720'
     }
 )
 
-# Professional quality (3 credits = $0.60)
+# Professional quality
 response = requests.post(
     'https://api.reelpostly.com/video/generate',
     headers={
@@ -211,7 +212,7 @@ response = requests.post(
     },
     json={
         'prompt': 'A serene tea farm at sunrise with golden light',
-        'model': 'sora-2-pro',    # Pro: $0.60/video
+        'model': 'sora-2-pro',
         'seconds': 8,
         'size': '1280x720'
     }
@@ -219,7 +220,15 @@ response = requests.post(
 
 video_data = response.json()
 print(f"Video ID: {video_data['video_id']}")
-print(f"Credits remaining: {video_data['credits_remaining']}")`;
+print(f"Credits remaining: {video_data['credits_remaining']}")
+
+# Check video status
+status_response = requests.get(
+    f"https://api.reelpostly.com/video/status/{video_data['video_id']}",
+    headers={'x-api-key': '<YOUR_API_KEY>'}
+)
+status_data = status_response.json()
+print(f"Status: {status_data['status']}")`;
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(codeExample);
@@ -229,102 +238,113 @@ print(f"Credits remaining: {video_data['credits_remaining']}")`;
 
   return (
     <div className="sora-api-landing">
-      {/* Navigation */}
-      <nav className="api-nav">
-        <div className="nav-container">
-          <Link to="/" className="logo">
-            <img src="/logo.png" alt="ReelPostly" />
-            <span>ReelPostly API</span>
-          </Link>
-          <div className="nav-links">
-            <a href="#features">Features</a>
-            <a href="#docs">Documentation</a>
-            {isSignedIn ? (
-              <>
-                <Link to="/app/sora-api-dashboard" className="nav-btn nav-btn-primary">API Dashboard</Link>
-              </>
-            ) : (
-              <>
-                <Link to="/login?redirect=sora-api-dashboard" className="nav-btn nav-btn-secondary">Sign In</Link>
-                <button onClick={() => setShowWaitlistModal(true)} className="nav-btn nav-btn-primary">Get API Key</button>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
+      <Navigation />
 
-      {/* Hero Section */}
+      {/* Hero Section with Quick Start */}
       <section className="api-hero">
         <div className="hero-container">
-          <div className="hero-badge">
-            <span className="badge-icon">🎬</span>
-            <span>Powered by OpenAI Sora 2 • Available Now</span>
-          </div>
-          <h1 className="hero-title">
-            Sora 2 API: OpenAI Text-to-Video Generation
-          </h1>
-          <p className="hero-subtitle">
-            Generate high-quality AI videos from text prompts with our simple REST API for OpenAI's Sora 2 API
-            Text-to-video generation from $0.20/video (Sora-2) to $0.60/video (Sora-2 Pro) with 10 free credits. Enterprise-grade reliability, instant API access.
-          </p>
-          <div id="get-api-key" className="hero-cta">
-            {isSignedIn ? (
-              <Link to="/app/sora-api-dashboard" className="cta-primary-large">
-                Get Your API Key
-              </Link>
-            ) : (
-              <button onClick={() => setShowWaitlistModal(true)} className="cta-primary-large">
-                Get Free API Key
-              </button>
-            )}
-          </div>
-          <div className="hero-stats">
-            <div className="stat-item">
-              <div className="stat-value">4K</div>
-              <div className="stat-label">Resolution</div>
+          <div className="hero-content">
+            <div className="hero-text">
+              <div className="hero-badge">
+                <span className="badge-icon">🎬</span>
+                <span>Powered by OpenAI Sora 2 • Available Now</span>
+              </div>
+              <h1 className="hero-title">
+                Sora 2 API
+              </h1>
+              <p className="hero-subtitle">
+                Generate high-quality AI videos from text prompts with our simple REST API for OpenAI's Sora 2.
+                Build video generation into your applications with enterprise-grade reliability and instant API access.
+              </p>
+              <div id="get-api-key" className="hero-cta">
+                {isSignedIn ? (
+                  <Link to="/app/sora-api-dashboard" className="cta-primary-large">
+                    Get Your API Key
+                  </Link>
+                ) : (
+                  <button onClick={() => setShowWaitlistModal(true)} className="cta-primary-large">
+                    Get Free API Key
+                  </button>
+                )}
+              </div>
+              <div className="hero-stats">
+                <div className="stat-item">
+                  <div className="stat-value">4K</div>
+                  <div className="stat-label">Resolution</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-value">60 FPS</div>
+                  <div className="stat-label">Frame Rate</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-value">99.9%</div>
+                  <div className="stat-label">Uptime</div>
+                </div>
+              </div>
             </div>
-            <div className="stat-item">
-              <div className="stat-value">60 FPS</div>
-              <div className="stat-label">Frame Rate</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-value">99.9%</div>
-              <div className="stat-label">Uptime</div>
+            <div className="hero-code">
+              <div className="code-header">
+                <h3>Quick Start</h3>
+                <button onClick={handleCopyCode} className="copy-btn">
+                  {copiedCode ? '✓ Copied!' : '📋 Copy Code'}
+                </button>
+              </div>
+              <pre className="code-block">
+                <code>{codeExample}</code>
+              </pre>
+              <div className="code-features">
+                <div className="code-feature">
+                  <span className="feature-icon">⚡</span>
+                  <span>Fast Response Time</span>
+                </div>
+                <div className="code-feature">
+                  <span className="feature-icon">🔄</span>
+                  <span>Automatic Retries</span>
+                </div>
+                <div className="code-feature">
+                  <span className="feature-icon">📊</span>
+                  <span>Usage Tracking</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Code Example Section */}
-      <section className="code-example-section">
-        <div className="code-container">
-          <div className="code-header">
-            <h3>Quick Start</h3>
-            <button onClick={handleCopyCode} className="copy-btn">
-              {copiedCode ? '✓ Copied!' : '📋 Copy Code'}
-            </button>
-          </div>
-          <pre className="code-block">
-            <code>{codeExample}</code>
-          </pre>
-          <div className="code-features">
-            <div className="code-feature">
-              <span className="feature-icon">⚡</span>
-              <span>Fast Response Time</span>
+      {/* Quick Start Guide Section */}
+      <section id="quickstart" className="quickstart-section">
+        <div className="quickstart-container">
+          <h2 className="section-title">Quick Start Guide</h2>
+          <div className="docs-steps">
+            <div className="doc-step">
+              <div className="step-number">1</div>
+              <h3>Get Your API Key</h3>
+              <p>Sign up for a free account and get your API key instantly from the dashboard</p>
+              <code className="endpoint-code">Get free credits</code>
             </div>
-            <div className="code-feature">
-              <span className="feature-icon">🔄</span>
-              <span>Automatic Retries</span>
+            <div className="doc-step">
+              <div className="step-number">2</div>
+              <h3>Create Video</h3>
+              <p>Send a POST request to generate your video with a text prompt</p>
+              <code className="endpoint-code">POST https://api.reelpostly.com/video/generate</code>
             </div>
-            <div className="code-feature">
-              <span className="feature-icon">📊</span>
-              <span>Usage Tracking</span>
+            <div className="doc-step">
+              <div className="step-number">3</div>
+              <h3>Check Status</h3>
+              <p>Poll the status endpoint to track progress and get the video URL when ready</p>
+              <code className="endpoint-code">GET https://api.reelpostly.com/video/status/{'{id}'}</code>
+            </div>
+            <div className="doc-step">
+              <div className="step-number">4</div>
+              <h3>Download & Use</h3>
+              <p>Download your generated video from the provided S3 URL and use it in your app</p>
+              <code className="endpoint-code">Video delivered as presigned S3 URL (7-day expiry)</code>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Powerful Features Section */}
       <section id="features" className="features-section">
         <div className="features-container">
           <h2 className="section-title">Powerful Features</h2>
@@ -370,98 +390,6 @@ print(f"Credits remaining: {video_data['credits_remaining']}")`;
         </div>
       </section>
 
-      {/* API Specs Section */}
-      <section className="specs-section">
-        <div className="specs-container">
-          <h2 className="section-title">Technical Specifications</h2>
-          <div className="specs-grid">
-            <div className="spec-item">
-              <div className="spec-label">Resolution Support</div>
-              <div className="spec-value">Up to 4K UHD</div>
-            </div>
-            <div className="spec-item">
-              <div className="spec-label">Frame Rate</div>
-              <div className="spec-value">30-60 FPS</div>
-            </div>
-            <div className="spec-item">
-              <div className="spec-label">Style Variability</div>
-              <div className="spec-value">Photorealistic, Animated, Cinematic</div>
-            </div>
-            <div className="spec-item">
-              <div className="spec-label">Processing Speed</div>
-              <div className="spec-value">Near real-time rendering</div>
-            </div>
-            <div className="spec-item">
-              <div className="spec-label">Input Format</div>
-              <div className="spec-value">Text-to-video</div>
-            </div>
-            <div className="spec-item">
-              <div className="spec-label">Output Format</div>
-              <div className="spec-value">MP4, MOV, GIF</div>
-            </div>
-            <div className="spec-item">
-              <div className="spec-label">API Type</div>
-              <div className="spec-value">RESTful API with JSON</div>
-            </div>
-            <div className="spec-item">
-              <div className="spec-label">Rate Limit</div>
-              <div className="spec-value">10 requests/second</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-
-      {/* Documentation Section */}
-      <section id="docs" className="docs-section">
-        <div className="docs-container">
-          <h2 className="section-title">Quick Start Guide</h2>
-          <div className="docs-steps">
-            <div className="doc-step">
-              <div className="step-number">1</div>
-              <h3>Get Your API Key</h3>
-              <p>Sign up for a free account and get your API key instantly from the dashboard</p>
-              <code className="endpoint-code">Get free credits</code>
-            </div>
-            <div className="doc-step">
-              <div className="step-number">2</div>
-              <h3>Create Video</h3>
-              <p>Send a POST request to generate your video with a text prompt</p>
-              <code className="endpoint-code">POST https://api.reelpostly.com/video/generate</code>
-            </div>
-            <div className="doc-step">
-              <div className="step-number">3</div>
-              <h3>Check Status</h3>
-              <p>Poll the status endpoint to track progress and get the video URL when ready</p>
-              <code className="endpoint-code">GET https://api.reelpostly.com/video/status/{'{id}'}</code>
-            </div>
-            <div className="doc-step">
-              <div className="step-number">4</div>
-              <h3>Download & Use</h3>
-              <p>Download your generated video from the provided S3 URL and use it in your app</p>
-              <code className="endpoint-code">Video delivered as presigned S3 URL (7-day expiry)</code>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="cta-section">
-        <div className="cta-container">
-          <h2>Ready to Start Generating AI Videos?</h2>
-          <p>Join thousands of developers building with ReelPostly Sora API</p>
-          {isSignedIn ? (
-            <Link to="/app/sora-api-dashboard" className="cta-primary-large">
-              Get Your API Key Now
-            </Link>
-          ) : (
-            <button onClick={() => setShowWaitlistModal(true)} className="cta-primary-large">
-              Get Free API Key
-            </button>
-          )}
-          <p className="cta-note">No credit card required • 10 free credits on signup</p>
-        </div>
-      </section>
 
       {/* FAQ Section */}
       <section className="faq-section">
@@ -469,22 +397,6 @@ print(f"Credits remaining: {video_data['credits_remaining']}")`;
           <h2 className="section-title">Frequently Asked Questions</h2>
           <p className="section-subtitle">Everything you need to know about Reelpostly Sora 2 API</p>
           
-          {/* Model Pricing Table */}
-          <div className="pricing-table" style={{marginBottom: '2rem', backgroundColor: '#f8f9fa', padding: '1.5rem', borderRadius: '8px'}}>
-            <h3 style={{marginBottom: '1rem', color: '#1a1a2e'}}>Model Pricing</h3>
-            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem'}}>
-              <div style={{backgroundColor: 'white', padding: '1rem', borderRadius: '6px', border: '1px solid #e0e7ff'}}>
-                <h4 style={{color: '#667eea', marginBottom: '0.5rem'}}>Sora-2 Standard</h4>
-                <p style={{fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem'}}>Standard quality video generation</p>
-                <p style={{fontSize: '1.1rem', fontWeight: 'bold', color: '#1a1a2e'}}>1 credit ($0.20) per video</p>
-              </div>
-              <div style={{backgroundColor: 'white', padding: '1rem', borderRadius: '6px', border: '1px solid #e0e7ff'}}>
-                <h4 style={{color: '#764ba2', marginBottom: '0.5rem'}}>Sora-2 Pro</h4>
-                <p style={{fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem'}}>Professional quality video generation</p>
-                <p style={{fontSize: '1.1rem', fontWeight: 'bold', color: '#1a1a2e'}}>3 credits ($0.60) per video</p>
-              </div>
-            </div>
-          </div>
           
           <div className="faq-grid">
             <div className={`faq-item ${openFAQ === 0 ? 'active' : ''}`} onClick={() => toggleFAQ(0)}>
@@ -501,85 +413,70 @@ print(f"Credits remaining: {video_data['credits_remaining']}")`;
 
             <div className={`faq-item ${openFAQ === 1 ? 'active' : ''}`} onClick={() => toggleFAQ(1)}>
               <div className="faq-question-wrapper">
-                <h3 className="faq-question">How does pricing work?</h3>
+                <h3 className="faq-question">What video formats are supported?</h3>
                 <span className="faq-icon">{openFAQ === 1 ? '−' : '+'}</span>
               </div>
               <div className={`faq-answer ${openFAQ === 1 ? 'open' : ''}`}>
-                <p>
-                  We use a credit-based system. You purchase credits (e.g., $10 = 50 credits), and each video generation costs:
-                  <br/>• Sora-2 Standard: 1 credit ($0.20 per video)
-                  <br/>• Sora-2 Pro: 3 credits ($0.60 per video)
-                  <br/>Credits never expire, and you only pay for what you use.
-                </p>
-              </div>
-            </div>
-
-            <div className={`faq-item ${openFAQ === 2 ? 'active' : ''}`} onClick={() => toggleFAQ(2)}>
-              <div className="faq-question-wrapper">
-                <h3 className="faq-question">What video formats are supported?</h3>
-                <span className="faq-icon">{openFAQ === 2 ? '−' : '+'}</span>
-              </div>
-              <div className={`faq-answer ${openFAQ === 2 ? 'open' : ''}`}>
                 <p>
                   We support multiple resolutions including 720x1280 (portrait), 1280x720 (landscape), 1024x1792 (tall), and 1792x1024 (wide). Videos are delivered in MP4 format with up to 4K resolution.
                 </p>
               </div>
             </div>
 
-            <div className={`faq-item ${openFAQ === 3 ? 'active' : ''}`} onClick={() => toggleFAQ(3)}>
+            <div className={`faq-item ${openFAQ === 2 ? 'active' : ''}`} onClick={() => toggleFAQ(2)}>
               <div className="faq-question-wrapper">
                 <h3 className="faq-question">How long does video generation take?</h3>
-                <span className="faq-icon">{openFAQ === 3 ? '−' : '+'}</span>
+                <span className="faq-icon">{openFAQ === 2 ? '−' : '+'}</span>
               </div>
-              <div className={`faq-answer ${openFAQ === 3 ? 'open' : ''}`}>
+              <div className={`faq-answer ${openFAQ === 2 ? 'open' : ''}`}>
                 <p>
                   Video generation typically takes 1-3 minutes depending on the length and complexity. You can poll the status endpoint to check progress and download the video when ready.
                 </p>
               </div>
             </div>
 
-            <div className={`faq-item ${openFAQ === 4 ? 'active' : ''}`} onClick={() => toggleFAQ(4)}>
+            <div className={`faq-item ${openFAQ === 3 ? 'active' : ''}`} onClick={() => toggleFAQ(3)}>
               <div className="faq-question-wrapper">
                 <h3 className="faq-question">Is there a rate limit?</h3>
-                <span className="faq-icon">{openFAQ === 4 ? '−' : '+'}</span>
+                <span className="faq-icon">{openFAQ === 3 ? '−' : '+'}</span>
               </div>
-              <div className={`faq-answer ${openFAQ === 4 ? 'open' : ''}`}>
+              <div className={`faq-answer ${openFAQ === 3 ? 'open' : ''}`}>
                 <p>
                   Yes, the Starter plan allows 10 requests per second with a burst capacity of 20. Pro and Enterprise plans offer higher limits. All plans include 1,000 requests per month.
                 </p>
               </div>
             </div>
 
-            <div className={`faq-item ${openFAQ === 5 ? 'active' : ''}`} onClick={() => toggleFAQ(5)}>
+            <div className={`faq-item ${openFAQ === 4 ? 'active' : ''}`} onClick={() => toggleFAQ(4)}>
               <div className="faq-question-wrapper">
                 <h3 className="faq-question">Can I use this for commercial projects?</h3>
-                <span className="faq-icon">{openFAQ === 5 ? '−' : '+'}</span>
+                <span className="faq-icon">{openFAQ === 4 ? '−' : '+'}</span>
               </div>
-              <div className={`faq-answer ${openFAQ === 5 ? 'open' : ''}`}>
+              <div className={`faq-answer ${openFAQ === 4 ? 'open' : ''}`}>
                 <p>
                   Absolutely! All generated videos are yours to use commercially. You retain full rights to use the videos in your applications, websites, or products.
                 </p>
               </div>
             </div>
 
-            <div className={`faq-item ${openFAQ === 6 ? 'active' : ''}`} onClick={() => toggleFAQ(6)}>
+            <div className={`faq-item ${openFAQ === 5 ? 'active' : ''}`} onClick={() => toggleFAQ(5)}>
               <div className="faq-question-wrapper">
                 <h3 className="faq-question">How do I get started?</h3>
-                <span className="faq-icon">{openFAQ === 6 ? '−' : '+'}</span>
+                <span className="faq-icon">{openFAQ === 5 ? '−' : '+'}</span>
               </div>
-              <div className={`faq-answer ${openFAQ === 6 ? 'open' : ''}`}>
+              <div className={`faq-answer ${openFAQ === 5 ? 'open' : ''}`}>
                 <p>
                   Sign up for a free account, get your API key from the dashboard, and start making requests. We provide free credits to get you started, and you can add more credits anytime.
                 </p>
               </div>
             </div>
 
-            <div className={`faq-item ${openFAQ === 7 ? 'active' : ''}`} onClick={() => toggleFAQ(7)}>
+            <div className={`faq-item ${openFAQ === 6 ? 'active' : ''}`} onClick={() => toggleFAQ(6)}>
               <div className="faq-question-wrapper">
                 <h3 className="faq-question">What support do you offer?</h3>
-                <span className="faq-icon">{openFAQ === 7 ? '−' : '+'}</span>
+                <span className="faq-icon">{openFAQ === 6 ? '−' : '+'}</span>
               </div>
-              <div className={`faq-answer ${openFAQ === 7 ? 'open' : ''}`}>
+              <div className={`faq-answer ${openFAQ === 6 ? 'open' : ''}`}>
                 <p>
                   We offer email support for all plans, priority support for Pro users, and dedicated support with SLA guarantees for Enterprise customers. Contact us at support@reelpostly.com.
                 </p>

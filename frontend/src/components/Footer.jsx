@@ -18,29 +18,29 @@ const Footer = () => {
           <div className="footer-section">
             <h4>Reelpostly</h4>
             <p>Made for solo creators, startups, small businesses.<br/>
-            <strong>Create once, publish everywhere.</strong></p>
+            {/* <strong>Create once, publish everywhere.</strong> */}</p>
           </div>
           <div className="footer-section">
             <h4>Product</h4>
             <ul>
-              <li><a href="/#features">Features</a></li>
-              <li><a href="/#pricing">Pricing</a></li>
+              <li><Link to="/sora-api#get-api-key">Sora 2 API</Link></li>
+              {/* <li><a href="/#features">Features</a></li> */}
+              {/* <li><a href="/#pricing">Pricing</a></li> */}
             </ul>
           </div>
           <div className="footer-section">
             <h4>Support</h4>
             <ul>
               <li><Link to="/help">Help Center</Link></li>
-              <li><Link to="/privacy">Privacy Policy</Link></li>
-              <li><Link to="/sora-api#get-api-key">Sora 2 API</Link></li>
             </ul>
           </div>
           <div className="footer-section">
             <h4>Company</h4>
             <ul>
-              <li><Link to="/about">About</Link></li>
+              {/* <li><Link to="/about">About</Link></li> */}
               <li><Link to="/terms">Terms of Service</Link></li>
-              <li><Link to="/partner">Our Values</Link></li>
+              <li><Link to="/privacy">Privacy Policy</Link></li>
+              {/* <li><Link to="/partner">Our Values</Link></li> */}
             </ul>
           </div>
         </div>

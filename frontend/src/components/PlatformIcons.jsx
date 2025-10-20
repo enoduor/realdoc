@@ -50,12 +50,12 @@ const PlatformIcons = () => {
       className: 'platform-icon linkedin',
       bgColor: '#0A66C2'
     },
-    {
-      name: 'twitter',
-      icon: <TwitterIcon />,
-      className: 'platform-icon twitter',
-      bgColor: '#1DA1F2'
-    },
+    // {
+    //   name: 'twitter',
+    //   icon: <TwitterIcon />,
+    //   className: 'platform-icon twitter',
+    //   bgColor: '#1DA1F2'
+    // },
     {
       name: 'instagram',
       icon: <InstagramIcon />,
@@ -68,12 +68,12 @@ const PlatformIcons = () => {
       className: 'platform-icon youtube',
       bgColor: '#FF0000'
     },
-    {
-      name: 'tiktok',
-      icon: <TikTokIcon />,
-      className: 'platform-icon tiktok',
-      bgColor: '#000000'
-    },
+    // {
+    //   name: 'tiktok',
+    //   icon: <TikTokIcon />,
+    //   className: 'platform-icon tiktok',
+    //   bgColor: '#000000'
+    // },
     {
       name: 'facebook',
       icon: <FacebookIcon />,

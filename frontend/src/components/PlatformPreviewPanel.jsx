@@ -1106,9 +1106,11 @@ const PlatformPreviewPanel = ({ onPublishNow, bypassDailyLimits = false }) => {
                             className="w-full p-2 border rounded"
                         >
                             {Object.values(PLATFORMS).map((platform) => (
-                                <option key={platform.id} value={platform.id}>
+                                // {platform.id !== 'twitter' && platform.id !== 'tiktok' && (
+                                <option key={platform.id} value={platform.id} style={{ display: platform.id === 'twitter' || platform.id === 'tiktok' ? 'none' : 'block' }}>
                                     {platform.icon} {platform.name}
                                 </option>
+                                // )}
                             ))}
                         </select>
                     </div>
@@ -1147,6 +1149,7 @@ const PlatformPreviewPanel = ({ onPublishNow, bypassDailyLimits = false }) => {
                         </label>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             {Object.values(PLATFORMS).map((platform) => (
+                                // {platform.id !== 'twitter' && platform.id !== 'tiktok' && (
                                 <label key={platform.id} className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
                                     <input
                                         type="checkbox"
@@ -1155,11 +1158,13 @@ const PlatformPreviewPanel = ({ onPublishNow, bypassDailyLimits = false }) => {
                                         onChange={handlePlatformChange}
                                         className="mr-2"
                                         disabled={isPublishing}
+                                        style={{ display: platform.id === 'twitter' || platform.id === 'tiktok' ? 'none' : 'block' }}
                                     />
-                                    <span className="text-sm">
+                                    <span className="text-sm" style={{ display: platform.id === 'twitter' || platform.id === 'tiktok' ? 'none' : 'block' }}>
                                         {platform.icon} {platform.name}
                                     </span>
                                 </label>
+                                // )}
                             ))}
                         </div>
                     </div>

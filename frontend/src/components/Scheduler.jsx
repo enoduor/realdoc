@@ -179,8 +179,9 @@ const Scheduler = ({ onPublishNow, isSoraFlow = false }) => {
                                 onChange={handlePlatformChange}
                                 className="mr-2"
                                 disabled={isLoading || isPublishing}
+                                style={{ display: platform.id === 'twitter' || platform.id === 'tiktok' ? 'none' : 'block' }}
                             />
-                            <span className="text-sm">
+                            <span className="text-sm" style={{ display: platform.id === 'twitter' || platform.id === 'tiktok' ? 'none' : 'block' }}>
                                 {platform.icon} {platform.name}
                             </span>
                         </label>

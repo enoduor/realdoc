@@ -21,6 +21,7 @@ const VideoGenerator = () => {
     progressMessage: ''
   });
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
+  const [soraCredits, setSoraCredits] = useState(0);
 
   // Fetch subscription information
   useEffect(() => {
@@ -34,6 +35,7 @@ const VideoGenerator = () => {
         if (response.ok) {
           const data = await response.json();
           setSubscriptionInfo(data);
+          setSoraCredits(data.soraVideoCredits || 0);
         }
       } catch (error) {
         console.error('Failed to fetch subscription info:', error);
@@ -44,6 +46,41 @@ const VideoGenerator = () => {
       fetchSubscriptionInfo();
     }
   }, [user, getToken]);
+
+  // Handle payment success
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const checkout = urlParams.get('checkout');
+    const sessionId = urlParams.get('session_id');
+    
+    if (checkout === 'success' && sessionId) {
+      // Show success message
+      setFormData(prev => ({
+        ...prev,
+        progressMessage: 'Payment successful! Credits have been added to your account.'
+      }));
+      
+      // Refresh credits
+      setTimeout(async () => {
+        try {
+          const response = await fetch('/api/auth/subscription-status', {
+            headers: {
+              'Authorization': `Bearer ${await getToken()}`
+            }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setSoraCredits(data.soraVideoCredits || 0);
+          }
+        } catch (error) {
+          console.error('Failed to refresh credits:', error);
+        }
+      }, 1000);
+      
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [getToken]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -81,6 +118,15 @@ const VideoGenerator = () => {
       setFormData(prev => ({
         ...prev,
         error: 'Please enter a video prompt'
+      }));
+      return;
+    }
+
+    // Check Sora video credits
+    if (soraCredits < 1) {
+      setFormData(prev => ({
+        ...prev,
+        error: 'Insufficient credits. Please purchase more credits to generate videos.'
       }));
       return;
     }
@@ -199,6 +245,29 @@ const VideoGenerator = () => {
               mediaDimensions: null
             });
 
+            // Deduct 1 credit from database after successful video generation
+            try {
+              const token = await getToken();
+              const deductResponse = await fetch('/api/auth/deduct-sora-credits', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ creditsToDeduct: 1 })
+              });
+
+              if (deductResponse.ok) {
+                const deductData = await deductResponse.json();
+                setSoraCredits(deductData.remainingCredits);
+                console.log(`✅ Credits deducted. Remaining: ${deductData.remainingCredits}`);
+              } else {
+                console.error('Failed to deduct credits:', await deductResponse.text());
+              }
+            } catch (deductError) {
+              console.error('Error deducting credits:', deductError);
+            }
+
             // Reset form after a short delay
             setTimeout(() => {
               setFormData(prev => ({
@@ -275,10 +344,15 @@ const VideoGenerator = () => {
         <div className="bg-white shadow rounded-lg p-6">
           {/* Info Banner */}
           <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-blue-900 mb-2">🎬 AI Video Generation</h3>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-lg font-semibold text-blue-900">🎬 AI Video Generation</h3>
+              <div className="bg-green-100 px-3 py-1 rounded-lg">
+                <span className="text-sm font-medium text-green-700">{soraCredits} Credits</span>
+              </div>
+            </div>
             <p className="text-sm text-blue-800">
               Generate professional videos using Sora-2 AI. Describe what you want to see, 
-              and AI will create a unique video. Generation takes 1-2 minutes.
+              and AI will create a unique video. Generation takes 1-2 minutes. Each video costs 1 credit.
             </p>
           </div>
 
@@ -295,8 +369,8 @@ const VideoGenerator = () => {
                 className="w-full p-3 border rounded-lg"
                 disabled={formData.generating}
               >
-                <option value="sora-2-pro">Sora-2 Pro (Highest Quality) - $0.60/video</option>
-                <option value="sora-2">Sora-2 Standard - $0.20/video</option>
+                <option value="sora-2-pro">Sora-2 Pro (Highest Quality)</option>
+                <option value="sora-2">Sora-2 (Standard Quality)</option>
               </select>
             </div>
 
@@ -430,12 +504,12 @@ const VideoGenerator = () => {
               >
                 Preview & Publish
               </Link>
-              <Link
+              {/* <Link
                 to="/app/sora/scheduler"
                 className="flex-1 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg font-medium text-center"
               >
                 Go to Publish
-              </Link>
+              </Link> */}
             </div>
           )}
         </div>

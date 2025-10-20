@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List
@@ -9,6 +9,8 @@ from datetime import datetime
 import aiohttp
 import asyncio
 import json
+from utils.auth import require_credits, require_api_key
+from utils.logger import logger
 
 router = APIRouter()
 
@@ -73,16 +75,34 @@ def extract_video_url(status_data: dict) -> Optional[str]:
 
 # ---------- Routes ----------
 
+@router.get("/credits")
+async def get_credits(user_info: dict = Depends(require_api_key())):
+    """
+    Get remaining credits for the API key
+    """
+    return {
+        "credits": user_info['credits'],
+        "status": user_info['status'],
+        "plan": user_info['plan_id']
+    }
+
 @router.post("/generate-video")
-async def generate_video(request: VideoGenerationRequest):
+async def generate_video(
+    request: VideoGenerationRequest,
+    user_info: dict = Depends(require_credits(1))
+):
     """
     Create a Sora video via OpenAI /v1/videos, then stream progress by polling
     /v1/videos/{id}. On completion, download, upload to S3, and stream a final
     success payload with the presigned URL.
     """
+    # Get OpenAI API key
     api_key = os.getenv('OPENAI_API_KEY')
     if not api_key:
         raise HTTPException(status_code=500, detail='OPENAI_API_KEY not configured')
+    
+    # Log user info for debugging
+    logger.info(f"Generating video for user: {user_info['tenant_id']}, remaining credits: {user_info['remaining_credits']}")
 
     bucket_name = os.getenv('AWS_BUCKET_NAME')
     if not bucket_name:

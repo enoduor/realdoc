@@ -26,6 +26,7 @@ const SoraVideosDashboard = () => {
   const [welcomeMsg, setWelcomeMsg] = useState('');
   const [checking, setChecking] = useState(false);
   const [showVideoDownloader, setShowVideoDownloader] = useState(false);
+  const [soraCredits, setSoraCredits] = useState(0);
   const [errorModal, setErrorModal] = useState({ 
     show: false, 
     title: '', 
@@ -56,9 +57,9 @@ const SoraVideosDashboard = () => {
     if (connected) {
       const platformNames = {
         'linkedin': 'LinkedIn',
-        'twitter': 'Twitter', 
+        // 'twitter': 'Twitter', 
         'youtube': 'YouTube',
-        'tiktok': 'TikTok',
+        // 'tiktok': 'TikTok',
         'facebook': 'Facebook',
         'instagram': 'Instagram'
       };
@@ -79,9 +80,9 @@ const SoraVideosDashboard = () => {
     if (error) {
       const errorMessages = {
         'linkedin_auth_failed': 'LinkedIn connection failed. Please try again.',
-        'twitter_auth_failed': 'Twitter connection failed. Please try again.',
+        // 'twitter_auth_failed': 'Twitter connection failed. Please try again.',
         'youtube_auth_failed': 'YouTube connection failed. Please try again.',
-        'tiktok_auth_failed': 'TikTok connection failed. Please try again.',
+        // 'tiktok_auth_failed': 'TikTok connection failed. Please try again.',
         'facebook_auth_failed': 'Facebook connection failed. Please try again.',
         'instagram_auth_failed': 'Instagram connection failed. Please try again.'
       };
@@ -100,6 +101,34 @@ const SoraVideosDashboard = () => {
       window.history.replaceState({}, document.title, newUrl);
     }
   }, []);
+
+  // Fetch Sora video credits balance
+  const fetchSoraCredits = useCallback(async () => {
+    if (!isSignedIn) return;
+    
+    try {
+      const token = await getToken();
+      const response = await fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSoraCredits(data.soraVideoCredits || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching Sora credits:', error);
+    }
+  }, [isSignedIn, getToken]);
+
+  // Fetch credits when component mounts
+  useEffect(() => {
+    if (isSignedIn) {
+      fetchSoraCredits();
+    }
+  }, [isSignedIn, fetchSoraCredits]);
 
   // Handle account deletion
   const handleDeleteAccount = async () => {
@@ -261,9 +290,31 @@ const SoraVideosDashboard = () => {
     }
   };
 
+  // Handle Sora video credit purchase
+    const handleSoraVideoPurchase = async () => {
+        try {
+            const token = await getToken();
+            const response = await fetch('/api/stripe/create-checkout-session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    priceId: 'price_1SIyQSLPiEjYBNcQyq9gryxu'
+                })
+            });
+
+            const { url } = await response.json();
+            window.location.href = url;
+        } catch (error) {
+            console.error('Payment error:', error);
+        }
+    };
+
   // Sora-specific features
   const features = [
-    { name: 'Generate AI Videos', description: 'Create and share stunning AI-generated videos with Sora-2 for your content', icon: '🎬', link: '/app/sora/video-generator' },
+    { name: 'Generate AI Videos', description: 'Create and share stunning AI-generated videos with Sora-2 for your content', icon: '🎬', link: '/app/sora/video-generator', price: '$20', credits: '8 Credits' },
     { name: 'Upload Media', description: 'Upload images and videos for your social media content', icon: '📤', link: '/app/sora/upload-media', hidden: true },
     { name: 'Edit & Publish', description: 'Edit and publish content across social media platforms', icon: '✏️', link: '/app/sora/platform-preview', hidden: true },
     { name: 'Publish Now', description: 'Publish content immediately with scheduling options', icon: '🚀', link: '/app/sora/scheduler', hidden: true }
@@ -436,9 +487,9 @@ const SoraVideosDashboard = () => {
               <a href={`/api/auth/linkedin/oauth2/start/linkedin?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-[#0A66C2] text-white rounded-lg hover:bg-[#004182] transition-colors" title="Connect LinkedIn">
                 <Linkedin size={24} />
               </a>
-              <a href={`/api/auth/twitter/oauth/start/twitter?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors" title="Connect Twitter">
+              {/* <a href={`/api/auth/twitter/oauth/start/twitter?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors" title="Connect Twitter">
                 <Twitter size={24} />
-              </a>
+              </a> */}
               <a href={`/api/auth/youtube/oauth2/start/google?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-[#FF0000] text-white rounded-lg hover:bg-[#cc0000] transition-colors" title="Connect YouTube">
                 <Youtube size={24} />
               </a>
@@ -449,9 +500,9 @@ const SoraVideosDashboard = () => {
                 <Instagram size={24} />
               </a>
               
-              <a href={`/api/auth/tiktok/oauth/start/tiktok?userId=${user?.id}&email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors" title="Connect TikTok">
+              {/* <a href={`/api/auth/tiktok/oauth/start/tiktok?userId=${user?.id}&email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors" title="Connect TikTok">
                 <Music size={24} />
-              </a>
+              </a> */}
             </div>
           </div>
 
@@ -498,7 +549,7 @@ const SoraVideosDashboard = () => {
                 <Component key={feature.name} {...props}>
                   <div className="flex items-center">
                     <span className="text-4xl mr-4">{feature.icon}</span>
-                    <div>
+                    <div className="flex-1">
                       <h3 className={`text-lg font-semibold ${
                         feature.name === 'Generate Captions' 
                           ? 'text-gray-900' 
@@ -516,7 +567,23 @@ const SoraVideosDashboard = () => {
                             ? 'text-gray-600'
                             : 'text-gray-600'
                       }`}>{feature.description}</p>
-                      {!hasSubscription && <p className="mt-2 text-sm text-red-500">⚠️ Subscription required</p>}
+                      
+                      {feature.name === 'Generate AI Videos' && soraCredits === 0 && (
+                        <div className="mt-3 flex items-center justify-between">
+                          <div>
+                            <span className="text-lg font-bold text-green-600">{feature.price}</span>
+                            <span className="ml-2 text-sm text-gray-600">8 Credits Available</span>
+                          </div>
+                          <button
+                            onClick={handleSoraVideoPurchase}
+                            className="cta-primary cta-sora"
+                          >
+                            Purchase
+                          </button>
+                        </div>
+                      )}
+                      
+                      {!hasSubscription && feature.name !== 'Generate AI Videos' && <p className="mt-2 text-sm text-red-500">⚠️ Subscription required</p>}
                     </div>
                   </div>
                 </Component>

@@ -11,29 +11,34 @@ const Navigation = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
+  // Handle Sora Videos Dashboard login
+  const handleSoraLogin = () => {
+    localStorage.setItem('preferredDashboard', 'sora');
+    window.location.href = '/login?redirect=sora';
+  };
+
   return (
     <nav className="navigation">
       <div className="nav-container">
         <div className="nav-logo">
           <Link to="/" className="logo-link">
             <img src="/logo.png" alt="ReelPostly" className="logo-image" />
-            <span className="logo-text">ReelPostly</span>
           </Link>
         </div>
 
         {/* Desktop Navigation */}
         <div className="nav-links">
           <Link to="/" className="nav-link">Home</Link>
+          <a href="/#sora" className="nav-link">Sora</a>
           <a href="/#features" className="nav-link">Features</a>
-          <a href="/#pricing" className="nav-link">Pricing</a>
+          {/* <a href="/#pricing" className="nav-link">Pricing</a> */}
           <Link to="/sora-api" className="nav-link">Sora API</Link>
         </div>
 
         <div className="nav-actions">
           {isSignedIn ? (
             <>
-              <Link to="/app" className="nav-btn nav-btn-secondary">Dashboard</Link>
-              <Link to="/app/sora-api-dashboard" className="nav-btn nav-btn-primary">API Dashboard</Link>
+              <button onClick={handleSoraLogin} className="nav-btn nav-btn-primary">Try it for free</button>
             </>
           ) : (
             <>
@@ -56,8 +61,9 @@ const Navigation = () => {
         <div className="mobile-nav">
           <div className="mobile-nav-links">
             <Link to="/" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Home</Link>
+            <a href="/#sora" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Sora</a>
             <a href="/#features" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Features</a>
-            <a href="/#pricing" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Pricing</a>
+            {/* <a href="/#pricing" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Pricing</a> */}
             <Link to="/about" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>About</Link>
             <Link to="/help" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Help</Link>
             <Link to="/sora-api" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Sora API</Link>
@@ -65,8 +71,7 @@ const Navigation = () => {
           <div className="mobile-nav-actions">
             {isSignedIn ? (
               <>
-                <Link to="/app" className="mobile-nav-btn mobile-nav-btn-secondary" onClick={() => setIsMenuOpen(false)}>Dashboard</Link>
-                <Link to="/app/sora-api-dashboard" className="mobile-nav-btn mobile-nav-btn-primary" onClick={() => setIsMenuOpen(false)}>API Dashboard</Link>
+                <button onClick={handleSoraLogin} className="mobile-nav-btn mobile-nav-btn-primary">Try it for free</button>
               </>
             ) : (
               <>
