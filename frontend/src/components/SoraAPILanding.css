@@ -225,13 +225,13 @@ button.cta-primary-large:hover {
 }
 
 .stat-value {
-  font-size: 2.5rem;
-  font-weight: 800;
+  font-size: 1.5rem;
+  font-weight: 600;
   margin-bottom: 0.5rem;
 }
 
 .stat-label {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   opacity: 0.8;
 }
 
@@ -325,6 +325,11 @@ button.cta-primary-large:hover {
   text-align: center;
 }
 
+.features-cta {
+  margin: 2rem 0 3rem 0;
+  text-align: center;
+}
+
 .features-content {
   display: block;
   text-align: center;
@@ -349,6 +354,11 @@ button.cta-primary-large:hover {
 .quickstart-container {
   max-width: 1200px;
   margin: 0 auto;
+  text-align: center;
+}
+
+.quickstart-cta {
+  margin: 2rem 0 3rem 0;
   text-align: center;
 }
 

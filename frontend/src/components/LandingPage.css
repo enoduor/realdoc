@@ -1506,7 +1506,7 @@ button.cta-primary-large {
 }
 
 .hero-video {
-  margin: 2rem 0;
+  margin: 1rem 0;
   display: flex;
   justify-content: center;
   width: 100%;
@@ -1516,7 +1516,7 @@ button.cta-primary-large {
 
 .video-embed-hero {
   width: 100%;
-  max-width: 750px;
+  max-width: 900px;
   aspect-ratio: 16/9;
   border-radius: 8px;
   overflow: hidden;
@@ -1524,6 +1524,7 @@ button.cta-primary-large {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   position: relative;
   background: #f8fafc;
+  margin: 0.5rem 0;
 }
 
 .video-embed-hero iframe {
@@ -1714,8 +1715,8 @@ button.cta-primary-large {
 }
 
 .social-proof {
-  margin-top: 2rem;
-  padding-top: 2rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.2);
   width: 100%;
   text-align: center;

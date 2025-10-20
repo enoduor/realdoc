@@ -315,6 +315,17 @@ print(f"Status: {status_data['status']}")`;
       <section id="quickstart" className="quickstart-section">
         <div className="quickstart-container">
           <h2 className="section-title">Quick Start Guide</h2>
+          <div className="quickstart-cta">
+            {isSignedIn ? (
+              <Link to="/app/sora-api-dashboard" className="cta-primary-large">
+                Get Your API Key
+              </Link>
+            ) : (
+              <button onClick={() => setShowWaitlistModal(true)} className="cta-primary-large">
+                Get Free API Key
+              </button>
+            )}
+          </div>
           <div className="docs-steps">
             <div className="doc-step">
               <div className="step-number">1</div>
@@ -349,6 +360,18 @@ print(f"Status: {status_data['status']}")`;
         <div className="features-container">
           <h2 className="section-title">Powerful Features</h2>
           <p className="section-subtitle">Everything you need to generate stunning AI videos</p>
+          
+          <div className="features-cta">
+            {isSignedIn ? (
+              <Link to="/app/sora-api-dashboard" className="cta-primary-large">
+                Get Your API Key
+              </Link>
+            ) : (
+              <button onClick={() => setShowWaitlistModal(true)} className="cta-primary-large">
+                Get Free API Key
+              </button>
+            )}
+          </div>
           
           <div className="features-grid">
             <div className="feature-card">

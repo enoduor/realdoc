@@ -208,9 +208,9 @@ const LandingPage = () => {
               <span className="badge-icon">🎬</span>
               <span>Powered by OpenAI Sora 2 • Available Now</span>
             </div>
-            <h1 className="hero-title">Enhance your Sora-2 videos</h1>
+            <h1 className="hero-title">Share Sora videos across platforms</h1>
               <p className="hero-subtitle">
-              Add captions to Sora-2 videos, adjust effects and post to 4 platforms in one platform while you save.   </p>
+              Save time and cost - Create one Sora video, add comments, and publish to multiple platforms in seconds.   </p>
             <div className="hero-cta">
               <button onClick={handleSoraLogin} className="cta-primary cta-sora">
                 Try it for free
@@ -392,7 +392,7 @@ const LandingPage = () => {
       </section>
 
       {/* Testimonials Section */}
-      <section className="testimonials-section">
+      {/* <section className="testimonials-section">
         <div className="testimonials-container">
           <h2 className="testimonials-title">Loved by busy creators</h2>
           <p className="testimonials-subtitle">Here's what our users are saying</p>
@@ -447,7 +447,7 @@ const LandingPage = () => {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Pricing Section */}
       {/* <section id="pricing">
