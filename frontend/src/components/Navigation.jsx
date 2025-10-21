@@ -37,6 +37,26 @@ const Navigation = () => {
     }
   };
 
+  // Determine which Sign In redirect to use based on current page
+  const getSignInPath = () => {
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/sora-api')) {
+      return '/login?redirect=sora-api-dashboard';
+    } else {
+      return '/login?redirect=sora';
+    }
+  };
+
+  // Get the appropriate button text based on current page
+  const getSignInButtonText = () => {
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/sora-api')) {
+      return 'Login';
+    } else {
+      return 'Sign In';
+    }
+  };
+
   return (
     <nav className="navigation">
       <div className="nav-container">
@@ -62,7 +82,7 @@ const Navigation = () => {
             </>
             ) : (
               <>
-                <Link to="/login" className="nav-btn nav-btn-primary">Sign In</Link>
+                <Link to={getSignInPath()} className="nav-btn nav-btn-primary">{getSignInButtonText()}</Link>
               </>
             )}
         </div>
@@ -94,7 +114,7 @@ const Navigation = () => {
               </>
             ) : (
               <>
-                <Link to="/login" className="mobile-nav-btn mobile-nav-btn-primary" onClick={() => setIsMenuOpen(false)}>Sign In</Link>
+                <Link to={getSignInPath()} className="mobile-nav-btn mobile-nav-btn-primary" onClick={() => setIsMenuOpen(false)}>{getSignInButtonText()}</Link>
               </>
             )}
           </div>

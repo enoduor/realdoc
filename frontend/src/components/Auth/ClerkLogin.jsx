@@ -42,6 +42,10 @@ const ClerkLogin = () => {
 
   // Redirect to app if already authenticated
   if (isSignedIn) {
+    // If user came from browser back button, redirect to home instead of creating a loop
+    if (redirectTo === 'sora' || redirectTo === 'sora-api-dashboard') {
+      return <Navigate to="/" replace />;
+    }
     return <Navigate to={afterSignInPath} replace />;
   }
 

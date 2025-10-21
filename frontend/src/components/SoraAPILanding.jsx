@@ -22,7 +22,7 @@ const SoraAPILanding = () => {
     // Update meta description
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'Official Sora 2 API for developers. OpenAI-powered text-to-video generation API now available. Create AI videos with simple REST API. 10 free credits, $0.20 per video. Sora API access starts today.');
+      metaDescription.setAttribute('content', 'Official Sora 2 API for developers. Generate high-quality AI videos from text prompts with our simple REST API for OpenAI\'s Sora 2. Build video generation into your applications with enterprise-grade reliability and instant API access. 10 free credits, $0.20 per video. Sora API access starts today.');
     }
     
     // Update keywords meta tag
@@ -49,7 +49,7 @@ const SoraAPILanding = () => {
       ogDescription.setAttribute('property', 'og:description');
       document.head.appendChild(ogDescription);
     }
-    ogDescription.setAttribute('content', 'Access OpenAI Sora 2 API for text-to-video generation. Create stunning AI videos with our REST API. 10 free credits to start, $0.20 per video. Simple integration, enterprise-grade reliability.');
+    ogDescription.setAttribute('content', 'Generate high-quality AI videos from text prompts with our simple REST API for OpenAI\'s Sora 2. Build video generation into your applications with enterprise-grade reliability and instant API access. 10 free credits to start, $0.20 per video.');
     
     // Add structured data for API Product
     const existingScript = document.querySelector('script[type="application/ld+json"][data-page="sora-api"]');
@@ -186,49 +186,30 @@ const SoraAPILanding = () => {
     setOpenFAQ(openFAQ === index ? null : index);
   };
 
-  const codeExample = `import requests
+  const codeExample = `# Test your API token is working
+curl -X POST "https://api.reelpostly.com/video/generate" \\
+  -H "x-api-key: YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "prompt": "A beautiful sunset over the ocean",
+    "model": "sora-2",
+    "seconds": 4,
+    "size": "720x1280"
+  }'
 
-# Standard quality
-response = requests.post(
-    'https://api.reelpostly.com/video/generate',
-    headers={
-        'x-api-key': '<YOUR_API_KEY>',
-        'Content-Type': 'application/json'
-    },
-    json={
-        'prompt': 'A serene tea farm at sunrise with golden light',
-        'model': 'sora-2',
-        'seconds': 8,
-        'size': '1280x720'
-    }
-)
-
-# Professional quality
-response = requests.post(
-    'https://api.reelpostly.com/video/generate',
-    headers={
-        'x-api-key': '<YOUR_API_KEY>',
-        'Content-Type': 'application/json'
-    },
-    json={
-        'prompt': 'A serene tea farm at sunrise with golden light',
-        'model': 'sora-2-pro',
-        'seconds': 8,
-        'size': '1280x720'
-    }
-)
-
-video_data = response.json()
-print(f"Video ID: {video_data['video_id']}")
-print(f"Credits remaining: {video_data['credits_remaining']}")
+# Response (successful):
+# {
+#   "success": true,
+#   "video_id": "video_abc123",
+#   "status": "queued",
+#   "progress": 0,
+#   "tenant": "user_xyz",
+#   "credits_remaining": 9
+# }
 
 # Check video status
-status_response = requests.get(
-    f"https://api.reelpostly.com/video/status/{video_data['video_id']}",
-    headers={'x-api-key': '<YOUR_API_KEY>'}
-)
-status_data = status_response.json()
-print(f"Status: {status_data['status']}")`;
+curl -X GET "https://api.reelpostly.com/video/status/video_abc123" \\
+  -H "x-api-key: YOUR_API_KEY"`;
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(codeExample);
@@ -262,7 +243,7 @@ print(f"Status: {status_data['status']}")`;
                     Get Your API Key
                   </Link>
                 ) : (
-                  <button onClick={() => setShowWaitlistModal(true)} className="cta-primary-large">
+                  <button onClick={() => window.location.href = '/login?redirect=sora-api-dashboard'} className="cta-primary-large">
                     Get Free API Key
                   </button>
                 )}
@@ -284,7 +265,7 @@ print(f"Status: {status_data['status']}")`;
             </div>
             <div className="hero-code">
               <div className="code-header">
-                <h3>Quick Start</h3>
+                <h3>Test Your API Token</h3>
                 <button onClick={handleCopyCode} className="copy-btn">
                   {copiedCode ? '✓ Copied!' : '📋 Copy Code'}
                 </button>
@@ -321,7 +302,7 @@ print(f"Status: {status_data['status']}")`;
                 Get Your API Key
               </Link>
             ) : (
-              <button onClick={() => setShowWaitlistModal(true)} className="cta-primary-large">
+              <button onClick={() => window.location.href = '/login?redirect=sora-api-dashboard'} className="cta-primary-large">
                 Get Free API Key
               </button>
             )}
@@ -331,19 +312,19 @@ print(f"Status: {status_data['status']}")`;
               <div className="step-number">1</div>
               <h3>Get Your API Key</h3>
               <p>Sign up for a free account and get your API key instantly from the dashboard</p>
-              <code className="endpoint-code">Get free credits</code>
+              <code className="endpoint-code">10 free credits (10 videos) on signup</code>
             </div>
             <div className="doc-step">
               <div className="step-number">2</div>
-              <h3>Create Video</h3>
-              <p>Send a POST request to generate your video with a text prompt</p>
-              <code className="endpoint-code">POST https://api.reelpostly.com/video/generate</code>
+              <h3>Test Your Token</h3>
+              <p>Use this curl command to test if your API token is working</p>
+              <code className="endpoint-code">{`curl -X POST "https://api.reelpostly.com/video/generate" -H "x-api-key: YOUR_API_KEY" -H "Content-Type: application/json" -d '{"prompt":"test","model":"sora-2","seconds":4,"size":"720x1280"}'`}</code>
             </div>
             <div className="doc-step">
               <div className="step-number">3</div>
               <h3>Check Status</h3>
               <p>Poll the status endpoint to track progress and get the video URL when ready</p>
-              <code className="endpoint-code">GET https://api.reelpostly.com/video/status/{'{id}'}</code>
+              <code className="endpoint-code">{`curl -X GET "https://api.reelpostly.com/video/status/video_abc123" -H "x-api-key: YOUR_API_KEY"`}</code>
             </div>
             <div className="doc-step">
               <div className="step-number">4</div>
@@ -367,7 +348,7 @@ print(f"Status: {status_data['status']}")`;
                 Get Your API Key
               </Link>
             ) : (
-              <button onClick={() => setShowWaitlistModal(true)} className="cta-primary-large">
+              <button onClick={() => window.location.href = '/login?redirect=sora-api-dashboard'} className="cta-primary-large">
                 Get Free API Key
               </button>
             )}

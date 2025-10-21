@@ -55,7 +55,42 @@ This tests:
 
 ## 🔍 Manual Testing Steps
 
-### Step 1: Verify Infrastructure
+### Step 1: Check API Token Status
+
+**Quick Token Validation:**
+```bash
+# Test if your API token is active (recommended method)
+curl -X POST "https://api.reelpostly.com/video/generate" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "test token validation",
+    "model": "sora-2",
+    "seconds": 4,
+    "size": "720x1280"
+  }'
+```
+
+**Active Token Response:**
+```json
+{
+  "success": true,
+  "video_id": "video_abc123",
+  "status": "queued",
+  "progress": 0,
+  "tenant": "user_xyz",
+  "credits_remaining": 9
+}
+```
+
+**Inactive Token Response:**
+```json
+{
+  "message": "Missing Authentication Token"
+}
+```
+
+### Step 2: Verify Infrastructure
 
 ```bash
 # Check if DynamoDB table exists
@@ -76,12 +111,12 @@ aws apigateway get-rest-apis --region us-west-2
 
 ```bash
 # Test with curl (replace YOUR_API_KEY)
-curl -X POST "https://api.reelpostly.com/v1/video/generate" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+curl -X POST "https://api.reelpostly.com/video/generate" \
+  -H "x-api-key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "prompt": "A cat playing with a ball",
-    "model": "sora-2", 
+    "prompt": "A beautiful sunset over the ocean",
+    "model": "sora-2",
     "seconds": 4,
     "size": "720x1280"
   }'

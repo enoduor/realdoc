@@ -15,13 +15,17 @@ const LandingPage = () => {
 
   // Handle Sora Videos Dashboard login
   const handleSoraLogin = () => {
-    localStorage.setItem('preferredDashboard', 'sora');
-    window.location.href = '/login?redirect=sora';
+    if (isSignedIn) {
+      // If user is already signed in, go directly to Sora dashboard
+      window.location.href = '/app/sora';
+    } else {
+      // If user is not signed in, go to login page
+      window.location.href = '/login?redirect=sora';
+    }
   };
 
-  // Clear Sora API preference when visiting main landing page
+  // SEO and page setup
   useEffect(() => {
-    localStorage.setItem('preferredDashboard', 'main');
     
     // SEO Optimization for Main Landing Page
     document.title = 'ReelPostly - Sora 2 AI Video Generator & Multi-Platform Publisher | Create Once, Publish Everywhere';
@@ -210,7 +214,7 @@ const LandingPage = () => {
             </div>
             <h1 className="hero-title"><strong>Share Sora videos watermark-free</strong></h1>
               <p className="hero-subtitle">
-              No need to use multiple platforms - Create one watermark-free Sora video, add comments, and publish across your network while preserving video quality. All in one place.   </p>
+              Create one watermark-free Sora videos, add comments, and publish across your platforms in seconds and save time and cost. All in one place. No need to use multiple platforms.  </p>
             <div className="hero-cta">
               <button onClick={handleSoraLogin} className="cta-primary cta-sora">
                 Try it for free

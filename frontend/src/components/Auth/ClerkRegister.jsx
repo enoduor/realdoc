@@ -16,9 +16,15 @@ const ClerkRegister = () => {
   if (redirectTo === 'sora-api-dashboard') {
     // URL parameter takes priority
     afterSignUpPath = '/app/sora-api-dashboard';
+  } else if (redirectTo === 'sora') {
+    // URL parameter takes priority for Sora Videos Dashboard
+    afterSignUpPath = '/app/sora';
   } else if (preferredDashboard === 'sora-api') {
     // If user previously visited Sora API page, send them there
     afterSignUpPath = '/app/sora-api-dashboard';
+  } else if (preferredDashboard === 'sora') {
+    // If user prefers Sora Videos Dashboard, send them there
+    afterSignUpPath = '/app/sora';
   }
 
   // Show loading while Clerk is initializing

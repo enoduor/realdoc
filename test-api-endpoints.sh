@@ -41,11 +41,37 @@ fi
 echo "Testing with API Key: ${API_KEY:0:20}..."
 echo ""
 
-# Test 1: Check API key status
+# Quick token validation
+echo "🔑 Validating API token..."
+response=$(curl -s -w "%{http_code}" -o /tmp/response.json \
+    -H "x-api-key: $API_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{"prompt":"token validation test","model":"sora-2","seconds":4,"size":"720x1280"}' \
+    "$BASE_URL/video/generate")
+
+http_code="${response: -3}"
+if [ "$http_code" = "200" ]; then
+    print_status "success" "API token is ACTIVE and working"
+    echo "Response: $(cat /tmp/response.json)"
+else
+    print_status "error" "API token validation failed (HTTP $http_code)"
+    echo "Response: $(cat /tmp/response.json)"
+    echo ""
+    echo "Possible issues:"
+    echo "- Token is inactive or expired"
+    echo "- Token is invalid"
+    echo "- API Gateway configuration issue"
+    exit 1
+fi
+echo ""
+
+# Test 1: Check API key status (using video generation as validation)
 echo "1️⃣ Testing API key validation..."
 response=$(curl -s -w "%{http_code}" -o /tmp/response.json \
-    -H "X-API-Key: $API_KEY" \
-    "$BASE_URL/ai/api/v1/video/credits")
+    -H "x-api-key: $API_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{"prompt":"test","model":"sora-2","seconds":4,"size":"720x1280"}' \
+    "$BASE_URL/video/generate")
 
 http_code="${response: -3}"
 if [ "$http_code" = "200" ]; then
@@ -58,23 +84,25 @@ else
 fi
 echo ""
 
-# Extract credit balance from the validation response
-balance=$(cat /tmp/response.json | grep -o '"credits":[0-9]*' | cut -d':' -f2)
+# Extract credit balance from the video generation response
+balance=$(cat /tmp/response.json | grep -o '"credits_remaining":[0-9]*' | cut -d':' -f2)
+video_id=$(cat /tmp/response.json | grep -o '"video_id":"[^"]*"' | cut -d'"' -f4)
 echo "Available credits: $balance"
+echo "Generated video ID: $video_id"
 echo ""
 
-# Test 3: Get pricing information
-echo "3️⃣ Testing pricing information..."
+# Test 3: Check video status
+echo "3️⃣ Testing video status check..."
 response=$(curl -s -w "%{http_code}" -o /tmp/response.json \
-    -H "Authorization: Bearer $API_KEY" \
-    "$BASE_URL/v1/pricing")
+    -H "x-api-key: $API_KEY" \
+    "$BASE_URL/video/status/$video_id")
 
 http_code="${response: -3}"
 if [ "$http_code" = "200" ]; then
-    print_status "success" "Pricing information retrieved"
+    print_status "success" "Video status retrieved"
     echo "Response: $(cat /tmp/response.json)"
 else
-    print_status "error" "Pricing check failed (HTTP $http_code)"
+    print_status "error" "Video status check failed (HTTP $http_code)"
     echo "Response: $(cat /tmp/response.json)"
 fi
 echo ""
@@ -96,10 +124,10 @@ EOF
 
     response=$(curl -s -w "%{http_code}" -o /tmp/response.json \
         -X POST \
-        -H "X-API-Key: $API_KEY" \
+        -H "x-api-key: $API_KEY" \
         -H "Content-Type: application/json" \
         -d @/tmp/video_request.json \
-        "$BASE_URL/ai/api/v1/video/generate-video")
+        "$BASE_URL/video/generate")
 
     http_code="${response: -3}"
     if [ "$http_code" = "200" ] || [ "$http_code" = "201" ]; then
@@ -120,16 +148,18 @@ else
 fi
 echo ""
 
-# Test 5: Check final credit balance
+# Test 5: Check final credit balance (generate a test video to see remaining credits)
 echo "5️⃣ Checking final credit balance..."
 response=$(curl -s -w "%{http_code}" -o /tmp/response.json \
-    -H "Authorization: Bearer $API_KEY" \
-    "$BASE_URL/v1/credits/balance")
+    -H "x-api-key: $API_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{"prompt":"balance check","model":"sora-2","seconds":4,"size":"720x1280"}' \
+    "$BASE_URL/video/generate")
 
 http_code="${response: -3}"
 if [ "$http_code" = "200" ]; then
     print_status "success" "Final credit balance retrieved"
-    final_balance=$(cat /tmp/response.json | grep -o '"credits":[0-9]*' | cut -d':' -f2)
+    final_balance=$(cat /tmp/response.json | grep -o '"credits_remaining":[0-9]*' | cut -d':' -f2)
     echo "Final credits: $final_balance"
     
     if [ "$balance" -gt "$final_balance" ]; then
