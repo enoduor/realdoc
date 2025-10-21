@@ -19,26 +19,20 @@ const ClerkUserProfile = () => {
         
       }
       
-      // Determine redirect URL based on current page
+      // Simple redirect logic - API dashboard logout goes to API landing page
       const currentPath = window.location.pathname;
       let redirectPath = '/'; // Default to home page
       
-      console.log('Logout from path:', currentPath); // Debug log
-      
       if (currentPath.includes('/sora-api-dashboard')) {
-        redirectPath = '/sora-api'; // Return to Sora API landing page
-        console.log('Redirecting to Sora API landing page'); // Debug log
+        redirectPath = '/sora-api'; // API dashboard logout → API landing page
       } else if (currentPath.includes('/sora')) {
-        redirectPath = '/sora-api'; // Return to Sora API landing page
-        console.log('Redirecting to Sora API landing page from Sora dashboard'); // Debug log
+        redirectPath = '/sora-api'; // Sora dashboard logout → API landing page
       }
       
       const ORIGIN = window.location.origin;
       const PUBLIC_BASE_RAW = process.env.PUBLIC_URL || '/';
       const PUBLIC_BASE = PUBLIC_BASE_RAW.endsWith('/') ? PUBLIC_BASE_RAW : `${PUBLIC_BASE_RAW}/`;
       const redirectUrl = `${ORIGIN}${PUBLIC_BASE}${redirectPath}`;
-      
-      console.log('Final redirect URL:', redirectUrl); // Debug log
       
       // Sign out with a callback that forces our redirect
       await signOut({
