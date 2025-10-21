@@ -222,6 +222,15 @@ const LandingPage = () => {
             </div>
             <div className="hero-video">
               <div className="video-embed-hero">
+                {/* <iframe 
+                  width="100%" 
+                  height="100%" 
+                  src="https://www.youtube.com/embed/kCkV-lsHjx4?autoplay=1&loop=1&playlist=kCkV-lsHjx4&mute=1&controls=0&showinfo=0&rel=0" 
+                  title="Sora-2 AI Video Generation Demo" 
+                  frameBorder="0" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                  allowFullScreen
+                ></iframe> */}
                 {/* Video placeholder - new video to be added */}
                 <div className="flex items-center justify-center h-full bg-gray-100 rounded-lg">
                   <p className="text-gray-500">New demo video coming soon</p>
