@@ -39,7 +39,7 @@ const LandingPage = () => {
       metaKeywords.setAttribute('name', 'keywords');
       document.head.appendChild(metaKeywords);
     }
-    metaKeywords.setAttribute('content', 'Sora 2, Sora AI video, OpenAI Sora, AI video generator, text-to-video, multi-platform posting, social media publisher, Instagram publisher, TikTok publisher, YouTube publisher, AI captions, video downloader, content repurposing, Sora video maker, cross-platform posting, social media automation, AI content creation, Sora 2 generator, video AI tool');
+    metaKeywords.setAttribute('content', 'Sora 2, Sora AI video, OpenAI Sora, AI video generator, text-to-video, multi-platform posting, social media publisher, Instagram publisher, TikTok publisher, YouTube publisher, AI captions, video downloader, content repurposing, Sora video maker, cross-platform posting, social media automation, AI content creation, Sora 2 generator, video AI tool, sora watermark remover, sora watermark, remove sora watermark, ai watermark remover, video watermark removal, sora video watermark, free watermark remover, watermark removal, sora video tool, remove video watermark, ai video watermark remover, sora watermark tool, automatic watermark removal, video watermark cleaner, sora video editor, video watermark, watermark removal ai, sora watermark delete, video watermark eraser, sora video processing, Watermark Remover API');
     
     // Update Open Graph tags
     let ogTitle = document.querySelector('meta[property="og:title"]');
@@ -206,11 +206,11 @@ const LandingPage = () => {
           <div className="hero-content">
             <div className="hero-badge">
               <span className="badge-icon">🎬</span>
-              <span>Powered by OpenAI Sora 2 • Available Now</span>
+              <span>Powered by OpenAI Sora 2</span>
             </div>
-            <h1 className="hero-title">Share Sora videos across platforms</h1>
+            <h1 className="hero-title"><strong>Share Sora videos watermark-free</strong></h1>
               <p className="hero-subtitle">
-              Save time and cost - Create one Sora video, add comments, and publish to multiple platforms in seconds.   </p>
+              No need to use multiple platforms - Create one watermark-free Sora video, add comments, and publish across your network while preserving video quality. All in one place.   </p>
             <div className="hero-cta">
               <button onClick={handleSoraLogin} className="cta-primary cta-sora">
                 Try it for free

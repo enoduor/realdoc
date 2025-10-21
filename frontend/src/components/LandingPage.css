@@ -245,7 +245,7 @@ button.nav-btn-primary:hover {
   border-radius: 12px;
   text-decoration: none;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.875rem;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
