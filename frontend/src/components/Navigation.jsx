@@ -39,7 +39,7 @@ const Navigation = () => {
   const getSignInPath = () => {
     const currentPath = window.location.pathname;
     if (currentPath.includes('/sora-api')) {
-      return '/login?redirect=sora'; // Sora API page Sign In goes to Sora dashboard
+      return '/login?redirect=sora-api-dashboard'; // Sora API page Sign In goes to Sora API dashboard
     } else {
       return '/login?redirect=sora'; // Main page Sign In goes to Sora dashboard
     }
