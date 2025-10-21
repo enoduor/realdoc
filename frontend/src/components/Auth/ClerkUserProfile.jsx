@@ -26,7 +26,7 @@ const ClerkUserProfile = () => {
       if (currentPath.includes('/sora-api-dashboard')) {
         redirectPath = '/sora-api'; // Return to Sora API landing page
       } else if (currentPath.includes('/sora')) {
-        redirectPath = '/'; // Return to main landing page
+        redirectPath = '/sora-api'; // Return to Sora API landing page
       }
       
       const ORIGIN = window.location.origin;
