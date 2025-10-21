@@ -13,17 +13,15 @@ const Navigation = () => {
 
   // Handle Sora Videos Dashboard login
   const handleSoraLogin = () => {
-    localStorage.setItem('preferredDashboard', 'sora');
     window.location.href = '/login?redirect=sora';
   };
 
-  // Handle Sora API login - redirect to API dashboard or show waitlist
+  // Handle Sora API login - redirect to API dashboard
   const handleSoraApiLogin = () => {
     if (isSignedIn) {
       window.location.href = '/app/sora-api-dashboard';
     } else {
-      localStorage.setItem('preferredDashboard', 'sora-api');
-      window.location.href = '/login?redirect=sora-api';
+      window.location.href = '/login?redirect=sora-api-dashboard';
     }
   };
 
@@ -41,9 +39,9 @@ const Navigation = () => {
   const getSignInPath = () => {
     const currentPath = window.location.pathname;
     if (currentPath.includes('/sora-api')) {
-      return '/login?redirect=sora-api-dashboard';
+      return '/login?redirect=sora'; // Sora API page Sign In goes to Sora dashboard
     } else {
-      return '/login?redirect=sora';
+      return '/login?redirect=sora'; // Main page Sign In goes to Sora dashboard
     }
   };
 

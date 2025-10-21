@@ -16,13 +16,7 @@ const Dashboard = () => {
   // 🔌 from AuthContext (DB-backed)
   const { me, loading, refresh } = useAuthContext();
 
-  // Set main dashboard preference when user visits (but don't override sora preference)
-  useEffect(() => {
-    const currentPreference = localStorage.getItem('preferredDashboard');
-    if (currentPreference !== 'sora') {
-      localStorage.setItem('preferredDashboard', 'main');
-    }
-  }, []);
+  // Dashboard component - no localStorage needed
 
   // local UI state
   const [usageStatus, setUsageStatus] = useState(null);

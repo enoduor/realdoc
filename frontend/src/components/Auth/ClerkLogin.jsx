@@ -7,23 +7,14 @@ const ClerkLogin = () => {
   const { isSignedIn, isLoaded } = useUser();
   const [searchParams] = useSearchParams();
   
-  // Check for redirect parameter (from URL) or localStorage (remembered preference)
+  // Check for redirect parameter from URL only
   const redirectTo = searchParams.get('redirect');
-  const preferredDashboard = localStorage.getItem('preferredDashboard');
   
   let afterSignInPath = '/app'; // Default to main dashboard
   
   if (redirectTo === 'sora-api-dashboard') {
-    // URL parameter takes priority
     afterSignInPath = '/app/sora-api-dashboard';
   } else if (redirectTo === 'sora') {
-    // Redirect to Sora Videos Dashboard
-    afterSignInPath = '/app/sora';
-  } else if (preferredDashboard === 'sora-api') {
-    // If user previously visited Sora API page, send them there
-    afterSignInPath = '/app/sora-api-dashboard';
-  } else if (preferredDashboard === 'sora') {
-    // If user prefers Sora Videos Dashboard, send them there
     afterSignInPath = '/app/sora';
   }
 
