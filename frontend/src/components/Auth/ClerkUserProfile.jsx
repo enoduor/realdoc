@@ -19,12 +19,20 @@ const ClerkUserProfile = () => {
         
       }
       
-      // Sign out from Clerk
-      // Use the same URL building logic as the main app
+      // Determine redirect URL based on current page
+      const currentPath = window.location.pathname;
+      let redirectPath = '/'; // Default to home page
+      
+      if (currentPath.includes('/sora-api-dashboard')) {
+        redirectPath = '/sora-api'; // Return to Sora API landing page
+      } else if (currentPath.includes('/sora')) {
+        redirectPath = '/'; // Return to main landing page
+      }
+      
       const ORIGIN = window.location.origin;
       const PUBLIC_BASE_RAW = process.env.PUBLIC_URL || '/';
       const PUBLIC_BASE = PUBLIC_BASE_RAW.endsWith('/') ? PUBLIC_BASE_RAW : `${PUBLIC_BASE_RAW}/`;
-      const redirectUrl = `${ORIGIN}${PUBLIC_BASE}`;
+      const redirectUrl = `${ORIGIN}${PUBLIC_BASE}${redirectPath}`;
       
       // Sign out with a callback that forces our redirect
       await signOut({
