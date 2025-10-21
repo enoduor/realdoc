@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * Test Script for Sora API Flow
+ * Test Script for Sora API Flow (Backend Infrastructure Testing)
  * Tests: API Key Creation → Credit Check → Video Generation → Credit Deduction
+ * 
+ * For comprehensive API testing, see: ../API_TESTING_GUIDE.md
  */
 
 const AWS = require('aws-sdk');
