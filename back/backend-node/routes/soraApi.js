@@ -155,6 +155,11 @@ router.post('/keys/create', requireAuth(), async (req, res) => {
     const clerkUserId = req.auth.userId;
     const { name } = req.body;
     
+    // Get user email from database
+    const User = require('../models/User');
+    const user = await User.findOne({ clerkUserId });
+    const userEmail = user?.email || req.auth.sessionClaims?.email || req.user?.email || '';
+    
     // Create API key in API Gateway
     const apiKey = await apigateway.createApiKey({
       name: name || `${clerkUserId}-key-${Date.now()}`,
@@ -194,7 +199,7 @@ router.post('/keys/create', requireAuth(), async (req, res) => {
       Item: {
         apiKeyId: apiKey.id,
         tenantId: clerkUserId,
-        email: req.auth.sessionClaims?.email || '',
+        email: userEmail,
         planId: 'starter',
         credits: initialCredits,
         initialCredits: initialCredits, // Store initial credits for usage calculation
