@@ -16,7 +16,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Enable logs for CloudWatch debugging
 // Note: Logs are enabled for production debugging - disable when stable
-if (false && process.env.NODE_ENV === 'production' && process.env.ENABLE_LOGS !== 'true') {
+if (process.env.NODE_ENV === 'production' && process.env.ENABLE_LOGS !== 'true') {
   const originalLog = console.log;
   const originalWarn = console.warn;
   const originalInfo = console.info;

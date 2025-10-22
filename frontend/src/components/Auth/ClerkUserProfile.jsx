@@ -19,15 +19,9 @@ const ClerkUserProfile = () => {
         
       }
       
-      // Simple redirect logic - Sora dashboards logout goes to API landing page
+      // Check current path to determine redirect destination
       const currentPath = window.location.pathname;
-      let redirectPath = '/sora-api'; // Default to Sora API landing page
-      
-      if (currentPath.includes('/sora-api-dashboard')) {
-        redirectPath = '/sora-api'; // API dashboard logout → API landing page
-      } else if (currentPath.includes('/sora')) {
-        redirectPath = '/sora-api'; // Sora dashboard logout → API landing page
-      }
+      const redirectPath = currentPath.includes('/sora-api-dashboard') ? '/sora-api' : '/';
       
       const ORIGIN = window.location.origin;
       const PUBLIC_BASE_RAW = process.env.PUBLIC_URL || '/';

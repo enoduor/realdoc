@@ -351,8 +351,8 @@ const VideoGenerator = () => {
               </div>
             </div>
             <p className="text-sm text-blue-800">
-              Generate professional videos using Sora-2 AI. Describe what you want to see, 
-              and AI will create a unique video. Generation takes 1-2 minutes. Each video costs 1 credit.
+              Generate watermark-free videos using Sora-2 AI. Describe what you want to see, 
+              and AI will create a unique video. Generation takes 1-2 minutes.
             </p>
           </div>
 
@@ -404,10 +404,9 @@ const VideoGenerator = () => {
                 className="w-full p-3 border rounded-lg"
                 disabled={formData.generating}
               >
-                <option value="720x1280">Portrait (720x1280) - Instagram/TikTok</option>
-                <option value="1280x720">Landscape (1280x720) - YouTube/Twitter</option>
-                <option value="1024x1792">Tall Portrait (1024x1792)</option>
-                <option value="1792x1024">Wide Landscape (1792x1024)</option>
+                <option value="720x1280">Portrait (720x1280) - Instagram</option>
+                <option value="1280x720">Landscape (1280x720) - YouTube</option>
+              
               </select>
             </div>
 
@@ -420,7 +419,7 @@ const VideoGenerator = () => {
                 name="prompt"
                 value={formData.prompt}
                 onChange={handleInputChange}
-                placeholder="Describe your video (e.g., 'A golden retriever catching a frisbee in slow motion on a sunny beach')"
+                placeholder="Describe your video (e.g., 'Waves gently washing over smooth rocks on a misty morning beach, filmed in 4K slow motion')"
                 className="w-full p-3 border rounded-lg resize-none"
                 rows="4"
                 disabled={formData.generating}
@@ -487,6 +486,7 @@ const VideoGenerator = () => {
               <PreviewEnhancements
                 mediaUrl={content.mediaUrl}
                 mediaType={content.mediaType}
+                videoSize={formData.size}
                 onDownload={handleEnhancedDownload}
                 onClose={() => {
                   updateContent({ mediaUrl: null, mediaType: null, mediaFile: null });

@@ -156,7 +156,59 @@ function normEmail(e) {
   return (e || "").trim().toLowerCase() || null;
 }
 
-// Handle Sora API credit purchases
+// Helper: track payments on the user record
+async function addUserPaymentRecord(userId, amountNetUsd, amountGrossUsd, credits) {
+  const AWS = require('aws-sdk');
+  const dynamodb = new AWS.DynamoDB.DocumentClient({ region: 'us-west-2' });
+  const TABLE_NAME = 'reelpostly-tenants';
+  
+  try {
+    // First, try to get the existing record to see if it exists
+    const existingRecord = await dynamodb.get({
+      TableName: TABLE_NAME,
+      Key: { apiKeyId: `USER#${userId}` }
+    }).promise();
+    
+    if (existingRecord.Item) {
+      // Record exists, use ADD to increment values
+      await dynamodb.update({
+        TableName: TABLE_NAME,
+        Key: { apiKeyId: `USER#${userId}` },
+        UpdateExpression: 'ADD totalPaidNet :net, totalPaidGross :gross, totalCreditsPurchased :creds, totalPurchases :one SET lastPurchaseAt = :now',
+        ExpressionAttributeValues: {
+          ':net': Number(amountNetUsd || 0),
+          ':gross': Number(amountGrossUsd || 0),
+          ':creds': Number(credits || 0),
+          ':one': 1,
+          ':now': Math.floor(Date.now() / 1000)
+        },
+        ReturnValues: 'UPDATED_NEW'
+      }).promise();
+    } else {
+      // Record doesn't exist, create it with initial values
+      await dynamodb.put({
+        TableName: TABLE_NAME,
+        Item: {
+          apiKeyId: `USER#${userId}`,
+          tenantId: userId,
+          totalPaidNet: Number(amountNetUsd || 0),
+          totalPaidGross: Number(amountGrossUsd || 0),
+          totalCreditsPurchased: Number(credits || 0),
+          totalPurchases: 1,
+          lastPurchaseAt: Math.floor(Date.now() / 1000),
+          createdAt: Math.floor(Date.now() / 1000)
+        }
+      }).promise();
+    }
+    
+    console.log(`💰 [Payment Record] Updated for user ${userId}: net=$${amountNetUsd}, gross=$${amountGrossUsd}, credits=${credits}`);
+  } catch (error) {
+    console.error('❌ [Payment Record] Error updating user payment record:', error);
+    throw error;
+  }
+}
+
+// Handle Sora API token purchases
 async function handleSoraApiCredits(session) {
   try {
     const AWS = require('aws-sdk');
@@ -171,7 +223,7 @@ async function handleSoraApiCredits(session) {
       return;
     }
     
-    console.log(`💳 [Sora Webhook] Processing credit purchase for user ${clerkUserId}, credits: ${creditsToAdd}`);
+    console.log(`💳 [Sora Webhook] Processing token purchase for user ${clerkUserId}, tokens: ${creditsToAdd}`);
     
     // Find user's API keys
     const result = await dynamodb.scan({
@@ -199,7 +251,13 @@ async function handleSoraApiCredits(session) {
       }
     }).promise();
     
-    console.log(`✅ [Sora Webhook] Added ${creditsToAdd} credits to API key ${mostRecentKey.apiKeyId}`);
+    // Update user payment record for lifetime purchases tracking
+    const netUsd = Number(session.amount_total || 0) / 100;
+    const grossUsd = netUsd; // For API credits, net and gross are the same
+    await addUserPaymentRecord(clerkUserId, netUsd, grossUsd, creditsToAdd);
+    
+    console.log(`✅ [Sora Webhook] Added ${creditsToAdd} tokens to API key ${mostRecentKey.apiKeyId}`);
+    console.log(`💰 [Sora Webhook] Updated payment record: net=$${netUsd.toFixed(2)}, gross=$${grossUsd.toFixed(2)}, tokens=${creditsToAdd}`);
   } catch (error) {
     console.error('❌ [Sora Webhook] Error adding credits:', error);
   }

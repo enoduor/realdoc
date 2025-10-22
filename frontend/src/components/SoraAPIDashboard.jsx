@@ -101,6 +101,22 @@ const SoraAPIDashboard = () => {
   };
 
   const createAPIKey = async () => {
+    // Check if user has made any purchases first
+    if (totalCreditsPurchased === 0) {
+      const shouldPurchase = window.confirm(
+        '🔒 Payment Required\n\n' +
+        'You need to purchase tokens before creating an API key.\n\n' +
+        'Would you like to purchase tokens now?'
+      );
+      
+      if (shouldPurchase) {
+        setShowAddCredits(true);
+        return;
+      } else {
+        return;
+      }
+    }
+
     try {
       setCreatingKey(true);
       
@@ -126,6 +142,11 @@ const SoraAPIDashboard = () => {
         
         // Reload dashboard data
         await loadDashboardData();
+        
+        // Show success message
+        setTimeout(() => {
+          alert('🎉 API Key created successfully!');
+        }, 1000);
       } else {
         throw new Error(data.error || 'Failed to create API key');
       }
@@ -139,7 +160,17 @@ const SoraAPIDashboard = () => {
   };
 
   const deleteAPIKey = async (apiKeyId) => {
-    if (!window.confirm('Are you sure you want to delete this API key? This action cannot be undone.')) {
+    // Find the key to get its token count
+    const keyToDelete = apiKeys.find(key => key.id === apiKeyId);
+    const tokenCount = keyToDelete?.credits || 0;
+    
+    let confirmMessage = 'Are you sure you want to delete this API key? This action cannot be undone.';
+    
+    if (tokenCount > 0) {
+      confirmMessage = `⚠️ WARNING: This API key has ${tokenCount} tokens remaining.\n\nDeleting this key will PERMANENTLY LOSE all ${tokenCount} tokens.\n\nAre you sure you want to delete this API key? This action cannot be undone.`;
+    }
+    
+    if (!window.confirm(confirmMessage)) {
       return;
     }
 
@@ -188,6 +219,9 @@ const SoraAPIDashboard = () => {
       setIsPaying(true);
       const API_URL = process.env.REACT_APP_API_URL || 'https://reelpostly.com';
       const token = await getToken();
+      
+      // Use the Sora API implementation that handles $10, $20, $50, $100
+      console.log('🔄 [Frontend] Sending amount:', selectedAmount);
       const response = await fetch(`${API_URL}/api/sora/credits/checkout`, {
         method: 'POST',
         headers: {
@@ -196,11 +230,12 @@ const SoraAPIDashboard = () => {
         },
         body: JSON.stringify({ amount: selectedAmount })
       });
+      
       const data = await response.json();
       if (data.success && data.url) {
         window.location.href = data.url;
       } else {
-        alert(data.message || 'Stripe integration coming soon');
+        alert(data.message || 'Payment failed. Please try again.');
       }
     } catch (error) {
       console.error('Error initiating payment:', error);
@@ -273,9 +308,9 @@ const SoraAPIDashboard = () => {
           <div className="stat-card stat-card-primary">
             <div className="stat-icon">⚡</div>
             <div className="stat-content">
-              <div className="stat-label">Video Credits</div>
+              <div className="stat-label">Tokens</div>
               <div className="stat-value">{credits.toLocaleString()}</div>
-              <div className="stat-sub">Available Tokens</div>
+              <div className="stat-sub">Available for API calls</div>
             </div>
           </div>
 
@@ -284,7 +319,7 @@ const SoraAPIDashboard = () => {
             <div className="stat-content">
               <div className="stat-label">Lifetime Purchases</div>
               <div className="stat-value">{totalCreditsPurchased.toLocaleString()}</div>
-              <div className="stat-sub">Total Credits Bought</div>
+              <div className="stat-sub">Total Tokens Bought</div>
             </div>
           </div>
 
@@ -329,7 +364,7 @@ const SoraAPIDashboard = () => {
                       </button>
                     </div>
                     <div className="key-meta">
-                      <span className="key-credits">⚡ {key.credits?.toLocaleString() || 0} credits</span> • Created {new Date(key.created).toLocaleDateString()} • Last used {new Date(key.lastUsed).toLocaleDateString()}
+                      <span className="key-credits">⚡ {key.credits?.toLocaleString() || 0} tokens</span> • Created {new Date(key.created).toLocaleDateString()} • Last used {new Date(key.lastUsed).toLocaleDateString()}
                     </div>
                   </div>
                   <div className="key-actions">
@@ -371,10 +406,10 @@ const SoraAPIDashboard = () => {
               <label>Select Amount</label>
               <div className="amount-buttons">
                 {[
-                  { amount: 10, credits: 50 },
-                  { amount: 20, credits: 100 },
-                  { amount: 50, credits: 250 },
-                  { amount: 100, credits: 500 }
+                  { amount: 10, credits: 4 },
+                  { amount: 20, credits: 8 },
+                  { amount: 50, credits: 20 },
+                  { amount: 100, credits: 40 }
                 ].map(({ amount, credits }) => (
                   <button
                     key={amount}
@@ -382,7 +417,7 @@ const SoraAPIDashboard = () => {
                     className={`amount-btn ${selectedAmount === amount ? 'active' : ''}`}
                   >
                     <div className="amount-price">${amount}</div>
-                    <div className="amount-credits">{credits} credits</div>
+                    <div className="amount-credits">{credits} tokens</div>
                   </button>
                 ))}
               </div>
@@ -402,7 +437,7 @@ const SoraAPIDashboard = () => {
             </div>
 
             <button onClick={handleAddCredits} disabled={isPaying} className={`btn-primary btn-large ${isPaying ? 'disabled' : ''}`}>
-              {isPaying ? 'Redirecting…' : `Pay $${selectedAmount} • Get ${selectedAmount * 5} Credits`}
+              {isPaying ? 'Redirecting…' : `Pay $${selectedAmount} • Get ${Math.round(selectedAmount * 0.4)} Tokens`}
             </button>
           </div>
         </div>

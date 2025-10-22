@@ -1,13 +1,20 @@
 import os
 import boto3
-from fastapi import HTTPException, Depends, Header
+from fastapi import HTTPException, Depends, Header, Request
 from typing import Optional
 import asyncio
 from functools import wraps
+import time
+from collections import defaultdict
 
 # Initialize DynamoDB client
 dynamodb = boto3.client('dynamodb', region_name='us-west-2')
 TABLE_NAME = 'reelpostly-tenants'
+
+# Production rate limiting with DynamoDB
+RATE_LIMIT_WINDOW = 60  # 1 minute
+MAX_REQUESTS_PER_WINDOW = 10  # 10 requests per minute per API key
+RATE_LIMIT_TABLE = 'reelpostly-rate-limits'
 
 class APIKeyAuth:
     def __init__(self):
@@ -140,3 +147,63 @@ def require_credits(credits_needed: int = 1):
         return user_info
     
     return _validate_and_deduct
+
+async def check_rate_limit(api_key: str) -> bool:
+    """
+    Production rate limiting using DynamoDB
+    Returns True if within limits, False if rate limited
+    """
+    current_time = int(time.time())
+    window_start = current_time - RATE_LIMIT_WINDOW
+    
+    try:
+        # Get current request count for this API key in the time window
+        response = dynamodb.query(
+            TableName=RATE_LIMIT_TABLE,
+            KeyConditionExpression='api_key = :api_key AND request_time > :window_start',
+            ExpressionAttributeValues={
+                ':api_key': {'S': api_key},
+                ':window_start': {'N': str(window_start)}
+            },
+            Select='COUNT'
+        )
+        
+        current_count = response.get('Count', 0)
+        
+        # Check if under limit
+        if current_count >= MAX_REQUESTS_PER_WINDOW:
+            return False
+        
+        # Add current request to DynamoDB
+        dynamodb.put_item(
+            TableName=RATE_LIMIT_TABLE,
+            Item={
+                'api_key': {'S': api_key},
+                'request_time': {'N': str(current_time)},
+                'ttl': {'N': str(current_time + RATE_LIMIT_WINDOW + 300)}  # TTL for cleanup
+            }
+        )
+        
+        return True
+        
+    except Exception as e:
+        # If DynamoDB fails, allow the request (fail open)
+        print(f"Rate limit check failed: {e}")
+        return True
+
+def require_rate_limit():
+    """
+    Production dependency that enforces rate limiting with DynamoDB
+    """
+    async def _check_rate_limit(request: Request, user_info: dict = Depends(require_api_key())):
+        api_key = user_info.get('api_key_id', '')
+        
+        if not await check_rate_limit(api_key):
+            raise HTTPException(
+                status_code=429, 
+                detail=f"Rate limit exceeded. Maximum {MAX_REQUESTS_PER_WINDOW} requests per {RATE_LIMIT_WINDOW} seconds."
+            )
+        
+        return user_info
+    
+    return _check_rate_limit

@@ -88,8 +88,7 @@ async def get_credits(user_info: dict = Depends(require_api_key())):
 
 @router.post("/generate-video")
 async def generate_video(
-    request: VideoGenerationRequest,
-    user_info: dict = Depends(require_credits(1))
+    request: VideoGenerationRequest
 ):
     """
     Create a Sora video via OpenAI /v1/videos, then stream progress by polling
@@ -211,7 +210,9 @@ async def generate_video(
     return StreamingResponse(stream(), media_type="text/event-stream")
 
 @router.post("/generate-video-simple")
-async def generate_video_simple(request: VideoGenerationRequest):
+async def generate_video_simple(
+    request: VideoGenerationRequest
+):
     """
     Creates a video and returns the video_id immediately.
     Frontend should poll /check-video-status/{video_id}.

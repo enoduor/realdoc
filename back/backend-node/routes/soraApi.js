@@ -10,12 +10,12 @@ const dynamodb = new AWS.DynamoDB.DocumentClient({ region: 'us-west-2' });
 const cloudwatch = new AWS.CloudWatch({ region: 'us-west-2' });
 
 const TABLE_NAME = 'reelpostly-tenants';
-const CREDITS_PER_USD = parseInt(process.env.CREDITS_PER_USD || '5', 10); // Default: $1 = 5 credits ($0.20 per video)
+const CREDITS_PER_USD = parseFloat(process.env.CREDITS_PER_USD || '0.4'); // $1 = 0.4 tokens (4 tokens per $10, 1 token = 1 video)
 
 // Model-specific pricing (credits per video)
 const MODEL_PRICING = {
-  'sora-2': 1,      // $0.20 per video (1 credit)
-  'sora-2-pro': 3   // $0.60 per video (3 credits) - 3x more expensive
+  'sora-2': 1,      // $2.50 per video (1 credit)
+  'sora-2-pro': 1.32 // $3.30 per video (1.32 credits)
 };
 const USAGE_PLAN_ID = '4865fg'; // Connected to api.reelpostly.com (API 88v4yak4v6)
 const API_GATEWAY_ID = '88v4yak4v6'; // From deployment
@@ -180,17 +180,8 @@ router.post('/keys/create', requireAuth(), async (req, res) => {
       includeValue: true
     }).promise();
     
-    // Check if user already has API keys (to determine if this is first key)
-    const existingKeysResult = await dynamodb.scan({
-      TableName: TABLE_NAME,
-      FilterExpression: 'tenantId = :tenantId',
-      ExpressionAttributeValues: {
-        ':tenantId': clerkUserId
-      }
-    }).promise();
-    
-    const isFirstKey = existingKeysResult.Items.length === 0;
-    const initialCredits = isFirstKey ? 10 : 0; // Only give free credits on first key
+    // No free tokens - users must purchase credits
+    const initialCredits = 0;
     
     // Add to DynamoDB with appropriate credits
     const timestamp = Math.floor(Date.now() / 1000);
@@ -208,14 +199,14 @@ router.post('/keys/create', requireAuth(), async (req, res) => {
       }
     }).promise();
     
+    // No free token tracking needed
+    
     res.json({
       success: true,
       apiKey: keyWithValue.value, // Only shown once
       apiKeyId: apiKey.id,
       credits: initialCredits,
-      message: isFirstKey 
-        ? 'API key created successfully with 10 free credits! Save this key - you won\'t be able to see it again!'
-        : 'API key created successfully! Save this key - you won\'t be able to see it again!'
+      message: 'API key created successfully! Save this key - you won\'t be able to see it again!'
     });
   } catch (error) {
     console.error('Error creating API key:', error);
@@ -332,10 +323,14 @@ router.post('/credits/checkout', requireAuth(), async (req, res) => {
     const sessionEmail = req.auth.sessionClaims?.email || '';
     const { amount, successUrl, cancelUrl, email } = req.body || {};
 
-    // Validate amount (USD dollars)
+    // Validate amount (USD dollars) - supported denominations: $10, $20, $50, $100
     const dollars = Number(amount);
-    if (!Number.isFinite(dollars) || dollars < 10) {
-      return res.status(400).json({ success: false, error: 'Minimum amount is $10' });
+    const supportedAmounts = [10, 20, 50, 100];
+    if (!Number.isFinite(dollars) || !supportedAmounts.includes(dollars)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Amount must be one of: $10, $20, $50, or $100' 
+      });
     }
 
     // Require Stripe configuration
@@ -356,7 +351,7 @@ router.post('/credits/checkout', requireAuth(), async (req, res) => {
       ? cancelUrl
       : `${appBase}/app/sora-api-dashboard?checkout=canceled`;
 
-    // Credits conversion (e.g., $1 => CREDITS_PER_USD credits)
+    // Tokens conversion (e.g., $1 => CREDITS_PER_USD tokens)
     const creditsToAdd = Math.round(dollars * CREDITS_PER_USD);
 
     // Build Checkout Session params
@@ -370,8 +365,8 @@ router.post('/credits/checkout', requireAuth(), async (req, res) => {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: 'ReelPostly API Credits',
-              description: `${creditsToAdd} API credits`,
+              name: 'ReelPostly API Tokens',
+              description: `${creditsToAdd} API tokens`,
               images: ['https://reelpostly.com/logo.png'],
             },
             unit_amount: Math.round(dollars * 100), // cents
@@ -435,7 +430,7 @@ router.get('/credits/balance', requireAuth(), async (req, res) => {
 });
 
 
-// Consume credits for video generation
+// Consume tokens for video generation
 // Body: { amount?: number, apiKeyId?: string }
 router.post('/credits/consume', requireAuth(), async (req, res) => {
   try {
@@ -477,7 +472,7 @@ router.post('/credits/consume', requireAuth(), async (req, res) => {
 
     const wallet = Number(userItem?.Item?.soraCredits || 0);
     if (wallet < amt) {
-      return res.status(402).json({ success: false, message: 'Insufficient credits' });
+        return res.status(402).json({ success: false, message: 'Insufficient tokens' });
     }
 
     await dynamodb.update({

@@ -284,6 +284,7 @@ button.cta-primary-large:hover {
   padding: 2rem;
   background: #1a1a2e;
   overflow-x: auto;
+  text-align: left;
 }
 
 .code-block code {
@@ -291,6 +292,8 @@ button.cta-primary-large:hover {
   font-family: 'Monaco', 'Courier New', monospace;
   font-size: 0.9rem;
   line-height: 1.6;
+  display: block;
+  white-space: pre;
 }
 
 .code-features {

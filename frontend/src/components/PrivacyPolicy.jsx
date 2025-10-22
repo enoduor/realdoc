@@ -1,37 +1,16 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import Navigation from './Navigation';
 import Footer from './Footer';
 import './LandingPage.css';
 
 const PrivacyPolicy = () => {
   return (
     <div className="landing-page">
-      {/* Navigation Bar */}
-      <nav className="landing-nav">
-        <div className="nav-container">
-          <div className="nav-logo">
-            <Link to="/" className="logo-link">
-              <img src="/logo.png" alt="Reelpostly" className="logo-image" />
-              <span className="logo-text">ReelPostly</span>
-            </Link>
-          </div>
-          <div className="nav-links">
-            <a href="/#features" className="nav-link">Features</a>
-            <a href="/#pricing" className="nav-link">Pricing</a>
-            <Link to="/about" className="nav-link">About</Link>
-            <a href="https://bigvideograb.com/" className="nav-link" target="_blank" rel="noopener noreferrer">
-              Grab videos
-            </a>
-          </div>
-          <div className="nav-actions">
-            <Link to="/login" className="nav-btn nav-btn-secondary">Sign In</Link>
-            <Link to="/register" className="nav-btn nav-btn-primary">Get Started Now</Link>
-          </div>
-        </div>
-      </nav>
+      <Navigation />
 
       {/* Hero Section */}
-      <section className="hero-section">
+      {/* <section className="hero-section">
         <div className="hero-container">
           <div className="hero-content">
             <h1 className="hero-title">Privacy Policy</h1>
@@ -40,7 +19,7 @@ const PrivacyPolicy = () => {
             </p>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Privacy Policy Content */}
       <section className="features-section">

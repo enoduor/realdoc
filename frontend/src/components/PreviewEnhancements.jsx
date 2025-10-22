@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const PreviewEnhancements = ({ mediaUrl, mediaType, onDownload, onClose }) => {
+const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClose }) => {
   const [watermarkEnabled, setWatermarkEnabled] = useState(true);
   const [watermarkPosition, setWatermarkPosition] = useState('top-left');
   const [textOverlay, setTextOverlay] = useState('');
@@ -15,6 +15,33 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, onDownload, onClose }) => {
   
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
+
+  // Calculate preview dimensions based on video size with proper aspect ratios
+  const getPreviewDimensions = () => {
+    const [width, height] = videoSize.split('x').map(Number);
+    const aspectRatio = width / height;
+    
+    // For portrait videos (9:16 aspect ratio) - Instagram
+    if (aspectRatio < 1) {
+      return {
+        width: 'auto',
+        maxWidth: '300px',
+        height: '533px', // Maintains 9:16 aspect ratio
+        maxHeight: '533px'
+      };
+    }
+    // For landscape videos (16:9 aspect ratio) - YouTube
+    else {
+      return {
+        width: '100%',
+        maxWidth: '500px',
+        height: '281px', // Maintains 16:9 aspect ratio
+        maxHeight: '281px'
+      };
+    }
+  };
+
+  const previewDimensions = getPreviewDimensions();
 
   // Pick a supported MediaRecorder mime type (prefers MP4/H264 when available)
   const pickMimeType = () => {
@@ -89,8 +116,11 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, onDownload, onClose }) => {
       await new Promise((res) => video.addEventListener('loadedmetadata', res, { once: true }));
     }
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    // Set canvas dimensions to match the video preview dimensions
+    const previewWidth = video.offsetWidth;
+    const previewHeight = video.offsetHeight;
+    canvas.width = previewWidth;
+    canvas.height = previewHeight;
     // Ensure hidden video can auto-play on all browsers
     try {
       video.loop = false;
@@ -309,6 +339,18 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, onDownload, onClose }) => {
         <p style={{ margin: '3px 0 0 0', color: '#424242', fontSize: '12px' }}>
           Add watermark, text overlays, and apply filters to your video
         </p>
+        <div style={{ 
+          display: 'block', 
+          marginTop: '8px', 
+          padding: '6px 12px',
+          backgroundColor: '#e3f2fd',
+          borderRadius: '4px',
+          border: '1px solid #2196f3'
+        }}>
+          <span style={{ fontWeight: 'bold', color: '#1976d2', fontSize: '13px' }}>
+            📐 Video Dimensions: {videoSize} {videoSize.includes('1280') ? '(Landscape)' : videoSize.includes('720') ? '(Portrait)' : ''}
+          </span>
+        </div>
       </div>
 
       {/* Video Preview */}
@@ -323,11 +365,11 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, onDownload, onClose }) => {
       }}>
         <div style={{ position: 'relative', display: 'inline-block' }}>
           <video
+            ref={videoRef}
             src={mediaUrl}
             controls
             style={{
-              maxWidth: '100%',
-              maxHeight: '400px',
+              ...previewDimensions,
               borderRadius: '6px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
               filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`

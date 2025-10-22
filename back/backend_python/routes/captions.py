@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, validator
 from typing import Optional, List
 from utils.openai_helper import generate_caption
 from utils.platform_constants import validate_platform, get_platform_limits
+from utils.auth import require_api_key, require_credits
 
 router = APIRouter()
 

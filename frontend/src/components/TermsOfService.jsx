@@ -1,42 +1,16 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import Navigation from './Navigation';
 import Footer from './Footer';
 import './LandingPage.css';
 
 const TermsOfService = () => {
   return (
     <div className="landing-page">
-      {/* Navigation Bar */}
-      <nav className="landing-nav">
-        <div className="nav-container">
-          <div className="nav-logo">
-            <Link to="/" className="logo-link">
-              <img src="/logo.png" alt="Reelpostly" className="logo-image" />
-              <span className="logo-text">ReelPostly</span>
-            </Link>
-          </div>
-          <div className="nav-links">
-            <a href="/#features" className="nav-link">Features</a>
-            <a href="/#pricing" className="nav-link">Pricing</a>
-            <Link to="/about" className="nav-link">About</Link>
-            <a 
-              href="https://bigvideograb.com/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="nav-link"
-            >
-              Grab videos
-            </a>
-          </div>
-          <div className="nav-actions">
-            <Link to="/login" className="nav-btn nav-btn-secondary">Sign In</Link>
-            <Link to="/register" className="nav-btn nav-btn-primary">Get Started Now</Link>
-          </div>
-        </div>
-      </nav>
+      <Navigation />
 
       {/* Hero Section */}
-      <section className="hero-section">
+      {/* <section className="hero-section">
         <div className="hero-container">
           <div className="hero-content">
             <h1 className="hero-title">Terms of Service</h1>
@@ -45,7 +19,7 @@ const TermsOfService = () => {
             </p>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Terms Content */}
       <section className="features-section">

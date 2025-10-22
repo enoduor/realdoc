@@ -187,8 +187,8 @@ const SoraAPILanding = () => {
   };
 
   const codeExample = `# Test your API token is working
-curl -X POST "https://api.reelpostly.com/video/generate" \\
-  -H "x-api-key: YOUR_API_KEY" \\
+curl -X POST "https://api.reelpostly.com/ai/api/v1/video/generate-video-simple" \\
+  -H "X-API-Key: YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "prompt": "A beautiful sunset over the ocean",
@@ -208,8 +208,8 @@ curl -X POST "https://api.reelpostly.com/video/generate" \\
 # }
 
 # Check video status
-curl -X GET "https://api.reelpostly.com/video/status/video_abc123" \\
-  -H "x-api-key: YOUR_API_KEY"`;
+curl -X GET "https://api.reelpostly.com/ai/api/v1/video/check-video-status/video_abc123" \\
+  -H "X-API-Key: YOUR_API_KEY"`;
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(codeExample);

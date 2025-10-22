@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Depends
 from fastapi.responses import JSONResponse
 from PIL import Image
 import os
@@ -7,6 +7,7 @@ from botocore.exceptions import ClientError
 from datetime import datetime
 import io
 import mimetypes
+from utils.auth import require_api_key
 
 router = APIRouter()
 
@@ -120,7 +121,8 @@ def resize_image(image, platform, media_type):
 async def upload_media(
     file: UploadFile = File(...),
     platform: str = Form(None),
-    subscription_plan: str = Form(None)
+    subscription_plan: str = Form(None),
+    user_info: dict = Depends(require_api_key())
 ):
     # Normalize platform early
     platform = (platform or "").strip().lower() or None
