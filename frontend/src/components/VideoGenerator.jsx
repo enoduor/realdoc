@@ -326,6 +326,41 @@ const VideoGenerator = () => {
     }
   };
 
+  // When an enhanced asset is ready, persist it so the Preview & Publish step uses it
+  const handleEnhancedAsset = (asset) => {
+    if (!asset?.url || !asset?.key) return;
+    // Update global content context so downstream pages read the enhanced asset
+    updateContent({
+      mediaUrl: asset.url,
+      mediaType: 'video',
+      mediaFile: null,
+      mediaFilename: asset.key,
+      mediaKey: asset.key,
+      enhanced: true,
+    });
+    // Also persist to sessionStorage for cross-page continuity
+    try {
+      sessionStorage.setItem('reelpostly.publishAsset', JSON.stringify(asset));
+    } catch {}
+  };
+
+  // Pick up enhanced asset from in-app event or session cache (safety net)
+  useEffect(() => {
+    const handler = (e) => {
+      const asset = e?.detail;
+      if (asset?.url && asset?.key) handleEnhancedAsset(asset);
+    };
+    window.addEventListener('reelpostly:enhanced-video-ready', handler);
+    try {
+      const cached = sessionStorage.getItem('reelpostly.publishAsset');
+      if (cached) {
+        const asset = JSON.parse(cached);
+        if (asset?.url && asset?.key) handleEnhancedAsset(asset);
+      }
+    } catch {}
+    return () => window.removeEventListener('reelpostly:enhanced-video-ready', handler);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
@@ -491,6 +526,7 @@ const VideoGenerator = () => {
                 onClose={() => {
                   updateContent({ mediaUrl: null, mediaType: null, mediaFile: null });
                 }}
+                onAssetChange={handleEnhancedAsset}
               />
             </div>
           )}

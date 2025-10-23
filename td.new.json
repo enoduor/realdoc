@@ -2,7 +2,7 @@
   "containerDefinitions": [
     {
       "name": "repostly-unified",
-      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20251022220738-9aba9b4",
+      "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20251023003630-aa542e0",
       "cpu": 0,
       "portMappings": [
         {

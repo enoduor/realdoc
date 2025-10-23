@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
@@ -32,7 +31,19 @@ const isTypeSupported = (mime) =>
  *  - onDownload?: (objectUrl, blob) => void
  *  - onClose?: () => void
  */
-const PreviewEnhancements = ({ mediaUrl, mediaBlob, mediaType, videoSize, onDownload, onClose }) => {
+const PreviewEnhancements = ({
+  mediaUrl,
+  mediaBlob,
+  mediaType,
+  videoSize,
+  onDownload,
+  onClose,
+  originalKey,
+  platform,
+  subscriptionPlan,
+  onUploadComplete,
+  onAssetChange, // NEW: notify parent when enhanced asset is ready
+}) => {
   const [watermarkEnabled, setWatermarkEnabled] = useState(true);
   const [watermarkPosition, setWatermarkPosition] = useState('top-left');
   const [textOverlay, setTextOverlay] = useState('');
@@ -45,19 +56,24 @@ const PreviewEnhancements = ({ mediaUrl, mediaBlob, mediaType, videoSize, onDown
   const [activeTab, setActiveTab] = useState('watermark');
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Prefer/track enhanced preview & latest asset
+  const [overrideSrc, setOverrideSrc] = useState(null);    // enhanced URL to show in preview
+  const [latestAsset, setLatestAsset] = useState(null);    // enhanced asset to hand to parent
+
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
   const objectUrlRef = useRef(null);
 
-  // Prefer local Blob URL (no CORS), else use provided mediaUrl
+  // Prefer an override (uploaded enhanced URL), else local Blob URL (no CORS), else provided mediaUrl
   const resolvedSrc = useMemo(() => {
+    if (overrideSrc) return overrideSrc;
     if (mediaBlob instanceof Blob) {
       if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
       objectUrlRef.current = URL.createObjectURL(mediaBlob);
       return objectUrlRef.current;
     }
     return mediaUrl || '';
-  }, [mediaBlob, mediaUrl]);
+  }, [overrideSrc, mediaBlob, mediaUrl]);
 
   // Clean up Object URL if we created it
   useEffect(() => {
@@ -92,11 +108,8 @@ const PreviewEnhancements = ({ mediaUrl, mediaBlob, mediaType, videoSize, onDown
     const webmVp8 = 'video/webm;codecs=vp8';
 
     const candidates = [];
-    // If the browser truly supports MP4 encoding, try it first.
     if (hasAudio && isTypeSupported(mp4Audio)) candidates.push(mp4Audio);
     if (isTypeSupported(mp4Video)) candidates.push(mp4Video);
-
-    // Then WebM fallbacks (widely supported in Chromium/Firefox)
     if (hasAudio && isTypeSupported(webmVp9Opus)) candidates.push(webmVp9Opus);
     if (hasAudio && isTypeSupported(webmVp8Opus)) candidates.push(webmVp8Opus);
     if (isTypeSupported(webmVp9)) candidates.push(webmVp9);
@@ -108,7 +121,6 @@ const PreviewEnhancements = ({ mediaUrl, mediaBlob, mediaType, videoSize, onDown
         return new MediaRecorder(stream, { mimeType });
       } catch (_) {}
     }
-    // Last resort: let the browser decide
     return new MediaRecorder(stream);
   };
 
@@ -123,15 +135,12 @@ const PreviewEnhancements = ({ mediaUrl, mediaBlob, mediaType, videoSize, onDown
       const inputName = 'input.webm';
       const outputName = 'output.mp4';
 
-      // Clean any stale files from previous runs (ignore errors)
       try { await ffmpeg.deleteFile?.(inputName); } catch (_) {}
       try { await ffmpeg.deleteFile?.(outputName); } catch (_) {}
 
-      // Write input into FFmpeg FS
       const inputData = await fetchFile(webmBlob);
       await ffmpeg.writeFile(inputName, inputData);
 
-      // Execute transcode → H.264/AAC MP4 with +faststart and yuv420p for broad compatibility
       await ffmpeg.exec([
         '-i', inputName,
         '-c:v', 'libx264',
@@ -144,7 +153,7 @@ const PreviewEnhancements = ({ mediaUrl, mediaBlob, mediaType, videoSize, onDown
         outputName,
       ]);
 
-      const data = await ffmpeg.readFile(outputName); // Uint8Array
+      const data = await ffmpeg.readFile(outputName);
       return new Blob([data], { type: 'video/mp4' });
     } catch (e) {
       console.error('FFmpeg transcode failed (v0.12):', e);
@@ -158,20 +167,17 @@ const PreviewEnhancements = ({ mediaUrl, mediaBlob, mediaType, videoSize, onDown
     const canvas = canvasRef.current;
     if (!video || !canvas) throw new Error('Missing video/canvas');
 
-    // Ensure metadata for natural dimensions
     if (video.readyState < 1) {
       await new Promise((res) => video.addEventListener('loadedmetadata', res, { once: true }));
     }
 
     const ctx = canvas.getContext('2d');
 
-    // Use natural video resolution for better quality output
     const vw = video.videoWidth || Math.max(640, video.clientWidth || 640);
     const vh = video.videoHeight || Math.max(360, video.clientHeight || 360);
     canvas.width = vw;
     canvas.height = vh;
 
-    // Set playback flags (muted/inline to allow programmatic play)
     try {
       video.loop = false;
       video.muted = true;
@@ -181,7 +187,6 @@ const PreviewEnhancements = ({ mediaUrl, mediaBlob, mediaType, videoSize, onDown
     const durationSec = Number.isFinite(video.duration) ? video.duration : null;
     const maxDurationMs = (durationSec && durationSec > 0 ? durationSec * 1000 : 60000) + 1500;
 
-    // Streams
     const canvasStream = canvas.captureStream(30); // 30fps
     const sourceStream =
       video.captureStream?.() ||
@@ -205,12 +210,9 @@ const PreviewEnhancements = ({ mediaUrl, mediaBlob, mediaType, videoSize, onDown
 
     let rafId = null;
     const drawFrame = () => {
-      // filters
       ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
-      // base frame
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // watermark
       if (watermarkEnabled) {
         ctx.save();
         ctx.font = 'bold 16px Arial';
@@ -233,7 +235,6 @@ const PreviewEnhancements = ({ mediaUrl, mediaBlob, mediaType, videoSize, onDown
         ctx.restore();
       }
 
-      // text overlay
       if (textOverlay) {
         ctx.save();
         ctx.font = `bold ${textSize}px Arial`;
@@ -261,7 +262,6 @@ const PreviewEnhancements = ({ mediaUrl, mediaBlob, mediaType, videoSize, onDown
       if (!video.ended) rafId = requestAnimationFrame(drawFrame);
     };
 
-    // Start from beginning
     try { if (video.currentTime > 0) video.currentTime = 0; } catch (_) {}
 
     await new Promise((res) => {
@@ -276,7 +276,6 @@ const PreviewEnhancements = ({ mediaUrl, mediaBlob, mediaType, videoSize, onDown
         if (timeoutId) clearTimeout(timeoutId);
       };
 
-      // Safety timers
       const timeoutId = setTimeout(() => {
         cleanup();
         reject(new Error('Video processing timeout'));
@@ -284,7 +283,6 @@ const PreviewEnhancements = ({ mediaUrl, mediaBlob, mediaType, videoSize, onDown
 
       const stopOnce = () => { try { recorder.stop(); } catch (_) {} };
 
-      // Fallback: stop even if 'ended' never fires
       const stopTimerId = setTimeout(() => {
         stopOnce();
       }, maxDurationMs);
@@ -305,9 +303,7 @@ const PreviewEnhancements = ({ mediaUrl, mediaBlob, mediaType, videoSize, onDown
       recorder.start();
       const p = video.play();
       if (p && typeof p.then === 'function') {
-        p.catch(() => {
-          // If autoplay blocked, we still draw and rely on fallback timer
-        });
+        p.catch(() => {});
       }
       rafId = requestAnimationFrame(drawFrame);
     });
@@ -323,10 +319,8 @@ const PreviewEnhancements = ({ mediaUrl, mediaBlob, mediaType, videoSize, onDown
       const rawBlob = await processVideoWithEnhancements();
       if (!rawBlob || rawBlob.size === 0) throw new Error('No output from recorder');
 
-      // Detect actual recorder output type
       const producedType = (rawBlob.type || '').toLowerCase();
 
-      // Guard against very large in-browser transcodes
       const MAX_IN_BROWSER_BYTES = 100 * 1024 * 1024; // 100MB
       if (rawBlob.size > MAX_IN_BROWSER_BYTES && (producedType.includes('webm') || producedType === '')) {
         throw new Error('Video too large to convert in-browser. Use server transcode.');
@@ -334,32 +328,73 @@ const PreviewEnhancements = ({ mediaUrl, mediaBlob, mediaType, videoSize, onDown
 
       let finalBlob = null;
       if (producedType.includes('mp4')) {
-        // Native MP4 (e.g., Safari) – use as is
         finalBlob = rawBlob;
       } else if (producedType.includes('webm') || producedType === '' ) {
-        // Most browsers will produce WebM. Transcode to MP4 so downloads are truly MP4.
         finalBlob = await transcodeWebMToMp4(rawBlob);
       } else {
-        // Unknown type – attempt transcode as a fallback
         finalBlob = await transcodeWebMToMp4(rawBlob);
       }
 
       if (!finalBlob || finalBlob.size === 0) throw new Error('Empty final MP4 blob');
 
-      const url = URL.createObjectURL(finalBlob);
+      const API_BASE = process.env.REACT_APP_PYTHON_API_URL || process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localhost:5001';
+      const UPLOAD_URL = API_BASE.replace(/\/$/, '') + '/api/v1/upload';
 
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'enhanced.mp4';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      const form = new FormData();
+      form.append('file', new File([finalBlob], 'enhanced.mp4', { type: 'video/mp4' }));
+      form.append('enhanced', 'true');
+      if (platform && String(platform).toLowerCase() === 'sora') {
+        form.append('billing_model', 'tokens');
+      }
+      if (platform != null) form.append('platform', String(platform));
+      if (subscriptionPlan != null) form.append('subscription_plan', String(subscriptionPlan));
+      if (originalKey) {
+        form.append('replace_original', 'true');
+        form.append('original_key', String(originalKey));
+      }
 
-      if (onDownload) onDownload(url, finalBlob);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const resp = await fetch(UPLOAD_URL, { method: 'POST', body: form });
+      if (!resp.ok) {
+        const errTxt = await resp.text().catch(() => '');
+        throw new Error(`Upload failed (${resp.status}) ${errTxt}`);
+      }
+
+      const data = await resp.json();
+      if (!data || !data.url || !data.key) {
+        throw new Error('Unexpected upload response');
+      }
+
+      // 1) Update in-app preview to the enhanced S3 URL so users stay in flow
+      try {
+        setOverrideSrc(data.url);
+        if (videoRef.current) {
+          const v = videoRef.current;
+          v.pause();
+          v.src = data.url;
+          v.crossOrigin = 'anonymous';
+          await v.load?.();
+          try { v.currentTime = 0; } catch (_) {}
+          await v.play?.().catch(() => {});
+        }
+      } catch (_) {}
+
+      // 2) Persist latest asset so the Publish step picks it up
+      const asset = { ...data, replaced: !!originalKey };
+      setLatestAsset(asset);
+      try {
+        sessionStorage.setItem('reelpostly.publishAsset', JSON.stringify(asset));
+        window.dispatchEvent(new CustomEvent('reelpostly:enhanced-video-ready', { detail: asset }));
+      } catch (_) {}
+
+      // 3) Notify parent to advance publish flow
+      if (typeof onAssetChange === 'function') onAssetChange(asset);
+      if (typeof onUploadComplete === 'function') onUploadComplete(asset);
+
+      // 4) Intentionally skip onDownload to avoid breaking the app flow
+      // if (typeof onDownload === 'function') onDownload(data.url, finalBlob);
     } catch (err) {
       console.error('Enhanced save failed:', err);
-      alert(`Export failed: ${err.message}. If this keeps happening, your browser may not support MP4 recording natively; we will try to convert WebM → MP4 automatically.`);
+      alert(`Export failed: ${err.message}. If this keeps happening, your browser may not support MP4 recording natively (we auto-convert WebM → MP4). If the error mentions upload, check API_BASE and CORS.`);
     } finally {
       setIsProcessing(false);
     }
