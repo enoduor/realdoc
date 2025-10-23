@@ -1,6 +1,38 @@
-import React, { useState, useRef, useEffect } from 'react';
 
-const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClose }) => {
+'use client';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { fetchFile } from '@ffmpeg/util';
+
+// Singleton FFmpeg loader (v0.12 API)
+let __ffmpegInstance = null;
+const getFFmpeg = async () => {
+  if (!__ffmpegInstance) {
+    __ffmpegInstance = new FFmpeg({ log: false });
+    await __ffmpegInstance.load();
+  }
+  return __ffmpegInstance;
+};
+
+// MediaRecorder support helpers
+const isTypeSupported = (mime) =>
+  typeof window !== 'undefined' && window.MediaRecorder && typeof window.MediaRecorder.isTypeSupported === 'function'
+    ? window.MediaRecorder.isTypeSupported(mime)
+    : false;
+
+/**
+ * Preview-enhance and save MP4 directly from the preview video.
+ * Prefers a local Blob/Object URL (no CORS). Does NOT fetch S3.
+ *
+ * Props:
+ *  - mediaUrl: string (fallback if no mediaBlob)
+ *  - mediaBlob?: Blob (preferred; guarantees CORS-clean canvas)
+ *  - mediaType: string
+ *  - videoSize: "WIDTHxHEIGHT" (e.g., "1280x720" or "720x1280")
+ *  - onDownload?: (objectUrl, blob) => void
+ *  - onClose?: () => void
+ */
+const PreviewEnhancements = ({ mediaUrl, mediaBlob, mediaType, videoSize, onDownload, onClose }) => {
   const [watermarkEnabled, setWatermarkEnabled] = useState(true);
   const [watermarkPosition, setWatermarkPosition] = useState('top-left');
   const [textOverlay, setTextOverlay] = useState('');
@@ -12,324 +44,344 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
   const [saturation, setSaturation] = useState(100);
   const [activeTab, setActiveTab] = useState('watermark');
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
+  const objectUrlRef = useRef(null);
 
-  // Calculate preview dimensions based on video size with proper aspect ratios
+  // Prefer local Blob URL (no CORS), else use provided mediaUrl
+  const resolvedSrc = useMemo(() => {
+    if (mediaBlob instanceof Blob) {
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = URL.createObjectURL(mediaBlob);
+      return objectUrlRef.current;
+    }
+    return mediaUrl || '';
+  }, [mediaBlob, mediaUrl]);
+
+  // Clean up Object URL if we created it
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+    };
+  }, []);
+
+  if (!resolvedSrc) return null;
+
+  // Calculate preview box size (UI only)
   const getPreviewDimensions = () => {
-    const [width, height] = videoSize.split('x').map(Number);
-    const aspectRatio = width / height;
-    
-    // For portrait videos (9:16 aspect ratio) - Instagram
-    if (aspectRatio < 1) {
-      return {
-        width: 'auto',
-        maxWidth: '300px',
-        height: '533px', // Maintains 9:16 aspect ratio
-        maxHeight: '533px'
-      };
+    const [w, h] = (videoSize || '1280x720').split('x').map(Number);
+    const ar = w / h;
+    if (ar < 1) {
+      return { width: 'auto', maxWidth: '300px', height: '533px', maxHeight: '533px' };
     }
-    // For landscape videos (16:9 aspect ratio) - YouTube
-    else {
-      return {
-        width: '100%',
-        maxWidth: '500px',
-        height: '281px', // Maintains 16:9 aspect ratio
-        maxHeight: '281px'
-      };
-    }
+    return { width: '100%', maxWidth: '500px', height: '281px', maxHeight: '281px' };
   };
-
   const previewDimensions = getPreviewDimensions();
 
-  // Pick a supported MediaRecorder mime type (prefers MP4/H264 when available)
-  const pickMimeType = () => {
-    const candidates = [
-      'video/mp4;codecs=h264',
-      'video/webm;codecs=vp9',
-      'video/webm;codecs=vp8',
-      'video/webm'
-    ];
-    if (typeof window !== 'undefined' && window.MediaRecorder) {
-      for (const t of candidates) {
-        if (MediaRecorder.isTypeSupported(t)) return t;
-      }
-    }
-    return '';
-  };
-
-  // Safer constructor: try multiple mime types in order and fall back
+  // Try multiple codecs for MediaRecorder (prefer MP4 only if natively supported)
   const makeRecorder = (stream, hasAudio = false) => {
-    // If we have audio, prefer codecs that support it
-    const candidatesWithAudio = [
-      'video/webm;codecs=vp9,opus',
-      'video/webm;codecs=vp8,opus', 
-      'video/webm;codecs=vp9',
-      'video/webm;codecs=vp8',
-      'video/webm',
-      'video/mp4;codecs=h264,aac',
-      'video/mp4;codecs=h264'
-    ];
-    
-    // If no audio, we can use any codec
-    const candidatesWithoutAudio = [
-      'video/webm;codecs=vp9',
-      'video/webm;codecs=vp8',
-      'video/webm',
-      'video/mp4;codecs=h264'
-    ];
-    
-    const candidates = hasAudio ? candidatesWithAudio : candidatesWithoutAudio;
-    
-    for (const t of candidates) {
+    const mp4Audio = 'video/mp4;codecs=h264,aac';
+    const mp4Video = 'video/mp4;codecs=h264';
+    const webmVp9Opus = 'video/webm;codecs=vp9,opus';
+    const webmVp8Opus = 'video/webm;codecs=vp8,opus';
+    const webmVp9 = 'video/webm;codecs=vp9';
+    const webmVp8 = 'video/webm;codecs=vp8';
+
+    const candidates = [];
+    // If the browser truly supports MP4 encoding, try it first.
+    if (hasAudio && isTypeSupported(mp4Audio)) candidates.push(mp4Audio);
+    if (isTypeSupported(mp4Video)) candidates.push(mp4Video);
+
+    // Then WebM fallbacks (widely supported in Chromium/Firefox)
+    if (hasAudio && isTypeSupported(webmVp9Opus)) candidates.push(webmVp9Opus);
+    if (hasAudio && isTypeSupported(webmVp8Opus)) candidates.push(webmVp8Opus);
+    if (isTypeSupported(webmVp9)) candidates.push(webmVp9);
+    if (isTypeSupported(webmVp8)) candidates.push(webmVp8);
+    if (isTypeSupported('video/webm')) candidates.push('video/webm');
+
+    for (const mimeType of candidates) {
       try {
-        console.log(`[PreviewEnhancements] Trying codec: ${t}`);
-        const recorder = new MediaRecorder(stream, { mimeType: t });
-        console.log(`[PreviewEnhancements] Successfully created recorder with: ${t}`);
-        return recorder;
-      } catch (e) {
-        console.log(`[PreviewEnhancements] Failed codec: ${t}`, e.message);
-        // try next
-      }
+        return new MediaRecorder(stream, { mimeType });
+      } catch (_) {}
     }
-    // Last resort: let the browser choose
-    console.log('[PreviewEnhancements] Using browser default codec');
+    // Last resort: let the browser decide
     return new MediaRecorder(stream);
   };
 
+  // Convert a WebM blob to MP4 in-browser using ffmpeg.wasm (lazy-loaded)
+  const transcodeWebMToMp4 = async (webmBlob) => {
+    if (typeof window === 'undefined') {
+      throw new Error('FFmpeg can only run in the browser');
+    }
+    try {
+      const ffmpeg = await getFFmpeg();
 
-  if (!mediaUrl) {
-    return null;
-  }
+      const inputName = 'input.webm';
+      const outputName = 'output.mp4';
 
-  // Function to process video with enhancements and return as MP4/WebM
+      // Clean any stale files from previous runs (ignore errors)
+      try { await ffmpeg.deleteFile?.(inputName); } catch (_) {}
+      try { await ffmpeg.deleteFile?.(outputName); } catch (_) {}
+
+      // Write input into FFmpeg FS
+      const inputData = await fetchFile(webmBlob);
+      await ffmpeg.writeFile(inputName, inputData);
+
+      // Execute transcode → H.264/AAC MP4 with +faststart and yuv420p for broad compatibility
+      await ffmpeg.exec([
+        '-i', inputName,
+        '-c:v', 'libx264',
+        '-preset', 'veryfast',
+        '-crf', '23',
+        '-pix_fmt', 'yuv420p',
+        '-movflags', '+faststart',
+        '-c:a', 'aac',
+        '-b:a', '128k',
+        outputName,
+      ]);
+
+      const data = await ffmpeg.readFile(outputName); // Uint8Array
+      return new Blob([data], { type: 'video/mp4' });
+    } catch (e) {
+      console.error('FFmpeg transcode failed (v0.12):', e);
+      throw new Error('MP4 transcode failed (ffmpeg.wasm)');
+    }
+  };
+
+  // Draw + record the visible preview video to canvas, overlaying watermark & text
   const processVideoWithEnhancements = async () => {
-    if (!videoRef.current || !canvasRef.current) return null;
-
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    if (!video || !canvas) throw new Error('Missing video/canvas');
 
-    // Ensure metadata is ready so we can size the canvas correctly
+    // Ensure metadata for natural dimensions
     if (video.readyState < 1) {
       await new Promise((res) => video.addEventListener('loadedmetadata', res, { once: true }));
     }
 
-    // Set canvas dimensions to match the video preview dimensions
-    const previewWidth = video.offsetWidth;
-    const previewHeight = video.offsetHeight;
-    canvas.width = previewWidth;
-    canvas.height = previewHeight;
-    // Ensure hidden video can auto-play on all browsers
+    const ctx = canvas.getContext('2d');
+
+    // Use natural video resolution for better quality output
+    const vw = video.videoWidth || Math.max(640, video.clientWidth || 640);
+    const vh = video.videoHeight || Math.max(360, video.clientHeight || 360);
+    canvas.width = vw;
+    canvas.height = vh;
+
+    // Set playback flags (muted/inline to allow programmatic play)
     try {
       video.loop = false;
-      video.muted = true; // required for some browsers to allow programmatic play
+      video.muted = true;
       video.playsInline = true;
     } catch (_) {}
 
-    // Compute a safe maximum recording time
     const durationSec = Number.isFinite(video.duration) ? video.duration : null;
-    const maxDurationMs = (durationSec && durationSec > 0 ? durationSec * 1000 : 60000) + 1500; // add buffer
+    const maxDurationMs = (durationSec && durationSec > 0 ? durationSec * 1000 : 60000) + 1500;
 
-    // Prepare streams: canvas for processed video; video element for audio
-    const canvasStream = canvas.captureStream(30); // 30 FPS
-    const sourceStream = (video.captureStream ? video.captureStream() : (video.mozCaptureStream ? video.mozCaptureStream() : null));
+    // Streams
+    const canvasStream = canvas.captureStream(30); // 30fps
+    const sourceStream =
+      video.captureStream?.() ||
+      video.mozCaptureStream?.() ||
+      null;
 
-    // Combine tracks so we keep original AUDIO + processed VIDEO
     const combined = new MediaStream();
-    // add video track from canvas
-    const canvasVideoTrack = canvasStream.getVideoTracks()[0];
-    if (canvasVideoTrack) combined.addTrack(canvasVideoTrack);
-    
-    // Only add audio if we have a codec that supports it
-    const hasAudio = sourceStream && sourceStream.getAudioTracks().length > 0;
+    const canvasTrack = canvasStream.getVideoTracks()[0];
+    if (canvasTrack) combined.addTrack(canvasTrack);
+
+    const hasAudio = !!(sourceStream && sourceStream.getAudioTracks().length > 0);
     if (hasAudio) {
-      sourceStream.getAudioTracks().forEach(t => combined.addTrack(t));
+      sourceStream.getAudioTracks().forEach((t) => combined.addTrack(t));
     }
 
-    // Build a recorder safely by probing candidates in order
     const recorder = makeRecorder(combined, hasAudio);
-
     const chunks = [];
-    recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+    recorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) chunks.push(e.data);
+    };
 
     let rafId = null;
     const drawFrame = () => {
-      // Apply filters
+      // filters
       ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
-      // Draw the current frame
+      // base frame
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Watermark
+      // watermark
       if (watermarkEnabled) {
         ctx.save();
         ctx.font = 'bold 16px Arial';
         ctx.fillStyle = 'rgba(102, 126, 234, 0.8)';
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
         ctx.lineWidth = 2;
-        const watermarkText = 'ReelPostly';
-        const textMetrics = ctx.measureText(watermarkText);
-        const textWidth = textMetrics.width;
-        let x, y;
+        const wText = 'ReelPostly';
+        const wWidth = ctx.measureText(wText).width;
+        let x = 10, y = 30;
         switch (watermarkPosition) {
           case 'top-left': x = 10; y = 30; break;
-          case 'top-right': x = canvas.width - textWidth - 10; y = 30; break;
+          case 'top-right': x = canvas.width - wWidth - 10; y = 30; break;
           case 'bottom-left': x = 10; y = canvas.height - 10; break;
-          case 'bottom-right': x = canvas.width - textWidth - 10; y = canvas.height - 10; break;
-          case 'center': x = (canvas.width - textWidth) / 2; y = canvas.height / 2; break;
-          default: x = 10; y = 30;
+          case 'bottom-right': x = canvas.width - wWidth - 10; y = canvas.height - 10; break;
+          case 'center': x = (canvas.width - wWidth) / 2; y = canvas.height / 2; break;
+          default: break;
         }
-        ctx.strokeText(watermarkText, x, y);
-        ctx.fillText(watermarkText, x, y);
+        ctx.strokeText(wText, x, y);
+        ctx.fillText(wText, x, y);
         ctx.restore();
       }
 
-      // Text overlay
+      // text overlay
       if (textOverlay) {
         ctx.save();
         ctx.font = `bold ${textSize}px Arial`;
         ctx.fillStyle = textColor;
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
         ctx.lineWidth = 2;
-        const textMetrics = ctx.measureText(textOverlay);
-        const textWidth = textMetrics.width;
-        let x, y;
+        const tWidth = ctx.measureText(textOverlay).width;
+        let x = (canvas.width - tWidth) / 2;
+        let y = canvas.height - 20;
         switch (textPosition) {
-          case 'top-center': x = (canvas.width - textWidth) / 2; y = 40; break;
+          case 'top-center': x = (canvas.width - tWidth) / 2; y = 40; break;
           case 'top-left': x = 20; y = 40; break;
-          case 'top-right': x = canvas.width - textWidth - 20; y = 40; break;
-          case 'bottom-center': x = (canvas.width - textWidth) / 2; y = canvas.height - 20; break;
+          case 'top-right': x = canvas.width - tWidth - 20; y = 40; break;
+          case 'bottom-center': x = (canvas.width - tWidth) / 2; y = canvas.height - 20; break;
           case 'bottom-left': x = 20; y = canvas.height - 20; break;
-          case 'bottom-right': x = canvas.width - textWidth - 20; y = canvas.height - 20; break;
-          case 'center': x = (canvas.width - textWidth) / 2; y = canvas.height / 2; break;
-          default: x = (canvas.width - textWidth) / 2; y = canvas.height - 20;
+          case 'bottom-right': x = canvas.width - tWidth - 20; y = canvas.height - 20; break;
+          case 'center': x = (canvas.width - tWidth) / 2; y = canvas.height / 2; break;
+          default: break;
         }
         ctx.strokeText(textOverlay, x, y);
         ctx.fillText(textOverlay, x, y);
         ctx.restore();
       }
 
-      if (video.ended) return; // let the 'ended' handler stop the recorder
-      rafId = requestAnimationFrame(drawFrame);
+      if (!video.ended) rafId = requestAnimationFrame(drawFrame);
     };
 
-    // Ensure we start from the beginning
-    if (video.currentTime !== 0) {
-      try { video.currentTime = 0; } catch (_) {}
-    }
+    // Start from beginning
+    try { if (video.currentTime > 0) video.currentTime = 0; } catch (_) {}
 
-    // Start drawing when the video can play frames
-    console.log('[PreviewEnhancements] Waiting for video canplay event...');
     await new Promise((res) => {
-      const timeout = setTimeout(() => {
-        console.error('[PreviewEnhancements] Video canplay timeout after 5 seconds');
-        res(); // Resolve anyway to prevent hanging
-      }, 5000);
-      
-      video.addEventListener('canplay', () => {
-        clearTimeout(timeout);
-        console.log('[PreviewEnhancements] Video canplay event received');
-        res();
-      }, { once: true });
+      if (video.readyState >= 2) res();
+      else video.addEventListener('canplay', res, { once: true });
     });
 
     return new Promise((resolve, reject) => {
-      const cleanup = () => { if (rafId) cancelAnimationFrame(rafId); };
-
-      let stopTimerId = null;
-      const stopOnce = () => {
-        try { recorder.stop(); } catch (_) {}
+      const cleanup = () => {
+        if (rafId) cancelAnimationFrame(rafId);
+        if (stopTimerId) clearTimeout(stopTimerId);
+        if (timeoutId) clearTimeout(timeoutId);
       };
-      // Fallback: stop even if `ended` doesn’t fire (e.g., autoplay blocked or stream stall)
-      stopTimerId = setTimeout(() => {
-        console.warn('[PreviewEnhancements] Fallback stop after maxDurationMs');
+
+      // Safety timers
+      const timeoutId = setTimeout(() => {
+        cleanup();
+        reject(new Error('Video processing timeout'));
+      }, 30000);
+
+      const stopOnce = () => { try { recorder.stop(); } catch (_) {} };
+
+      // Fallback: stop even if 'ended' never fires
+      const stopTimerId = setTimeout(() => {
         stopOnce();
       }, maxDurationMs);
 
       recorder.onstop = () => {
-        if (stopTimerId) clearTimeout(stopTimerId);
         cleanup();
         const type = recorder.mimeType || 'video/webm';
         resolve(new Blob(chunks, { type }));
       };
       recorder.onerror = (err) => { cleanup(); reject(err); };
 
-      // When the source video ends, stop recording
       const onEnded = () => {
-        if (stopTimerId) clearTimeout(stopTimerId);
         stopOnce();
         video.removeEventListener('ended', onEnded);
       };
       video.addEventListener('ended', onEnded, { once: true });
 
-      // Start everything
       recorder.start();
-      try {
-        if (video.currentTime > 0) video.currentTime = 0;
-      } catch (_) {}
-      const playPromise = video.play();
-      if (playPromise && typeof playPromise.then === 'function') {
-        playPromise.catch(() => {
-          // If autoplay is still blocked, draw frames anyway and rely on fallback timer
-          console.warn('[PreviewEnhancements] video.play() was blocked; proceeding with fallback timer');
+      const p = video.play();
+      if (p && typeof p.then === 'function') {
+        p.catch(() => {
+          // If autoplay blocked, we still draw and rely on fallback timer
         });
       }
       rafId = requestAnimationFrame(drawFrame);
     });
   };
 
-  // Enhanced download function
-  const handleEnhancedDownload = async () => {
-    console.log('[PreviewEnhancements] Starting enhanced download...');
+  const handleEnhancedSave = async () => {
     setIsProcessing(true);
-    if (typeof window === 'undefined' || !window.MediaRecorder) {
-      alert('MediaRecorder is not supported in this browser. Please try Chrome/Edge/Firefox.');
-      setIsProcessing(false);
-      return;
-    }
     try {
-      // Process the entire video with enhancements
-      console.log('[PreviewEnhancements] Calling processVideoWithEnhancements...');
-      const videoBlob = await processVideoWithEnhancements();
-      console.log('[PreviewEnhancements] Video processing completed, blob:', videoBlob);
-      if (videoBlob) {
-        const url = URL.createObjectURL(videoBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        const t = (videoBlob.type || '').toLowerCase();
-        const ext = t.includes('mp4') ? 'mp4' : (t.includes('webm') ? 'webm' : 'webm');
-        link.download = `enhanced_video_${Date.now()}.${ext}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Clean up the object URL
-        setTimeout(() => URL.revokeObjectURL(url), 100);
+      if (!window.MediaRecorder) throw new Error('MediaRecorder not supported');
+      if (!videoRef.current || videoRef.current.readyState < 2) throw new Error('Video not ready');
+      if (!canvasRef.current) throw new Error('Canvas not available');
+
+      const rawBlob = await processVideoWithEnhancements();
+      if (!rawBlob || rawBlob.size === 0) throw new Error('No output from recorder');
+
+      // Detect actual recorder output type
+      const producedType = (rawBlob.type || '').toLowerCase();
+
+      // Guard against very large in-browser transcodes
+      const MAX_IN_BROWSER_BYTES = 100 * 1024 * 1024; // 100MB
+      if (rawBlob.size > MAX_IN_BROWSER_BYTES && (producedType.includes('webm') || producedType === '')) {
+        throw new Error('Video too large to convert in-browser. Use server transcode.');
       }
-    } catch (error) {
-      console.error('Error downloading enhanced video:', error);
-      alert('Error downloading enhanced video. If it stays on "Processing…", your browser may be blocking autoplay or the source video is cross‑origin without CORS. Try clicking Play on the preview first, or use Chrome/Edge/Firefox.');
+
+      let finalBlob = null;
+      if (producedType.includes('mp4')) {
+        // Native MP4 (e.g., Safari) – use as is
+        finalBlob = rawBlob;
+      } else if (producedType.includes('webm') || producedType === '' ) {
+        // Most browsers will produce WebM. Transcode to MP4 so downloads are truly MP4.
+        finalBlob = await transcodeWebMToMp4(rawBlob);
+      } else {
+        // Unknown type – attempt transcode as a fallback
+        finalBlob = await transcodeWebMToMp4(rawBlob);
+      }
+
+      if (!finalBlob || finalBlob.size === 0) throw new Error('Empty final MP4 blob');
+
+      const url = URL.createObjectURL(finalBlob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'enhanced.mp4';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      if (onDownload) onDownload(url, finalBlob);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error('Enhanced save failed:', err);
+      alert(`Export failed: ${err.message}. If this keeps happening, your browser may not support MP4 recording natively; we will try to convert WebM → MP4 automatically.`);
     } finally {
       setIsProcessing(false);
     }
   };
 
+  const isBlobSrc = resolvedSrc.startsWith('blob:');
+
   return (
-    <div style={{ 
-      border: '2px solid #007bff', 
-      padding: '15px', 
-      margin: '15px auto', 
+    <div style={{
+      border: '2px solid #007bff',
+      padding: '15px',
+      margin: '15px auto',
       borderRadius: '8px',
       background: '#f8f9fa',
       maxWidth: '600px'
     }}>
       {/* Header */}
-      <div style={{ 
-        background: '#e3f2fd', 
-        padding: '10px', 
-        margin: '8px 0', 
-        border: '1px solid #2196f3', 
+      <div style={{
+        background: '#e3f2fd',
+        padding: '10px',
+        margin: '8px 0',
+        border: '1px solid #2196f3',
         borderRadius: '6px',
         textAlign: 'center'
       }}>
@@ -339,21 +391,9 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
         <p style={{ margin: '3px 0 0 0', color: '#424242', fontSize: '12px' }}>
           Add watermark, text overlays, and apply filters to your video
         </p>
-        <div style={{ 
-          display: 'block', 
-          marginTop: '8px', 
-          padding: '6px 12px',
-          backgroundColor: '#e3f2fd',
-          borderRadius: '4px',
-          border: '1px solid #2196f3'
-        }}>
-          <span style={{ fontWeight: 'bold', color: '#1976d2', fontSize: '13px' }}>
-            📐 Video Dimensions: {videoSize} {videoSize.includes('1280') ? '(Landscape)' : videoSize.includes('720') ? '(Portrait)' : ''}
-          </span>
-        </div>
       </div>
 
-      {/* Video Preview */}
+      {/* Video Preview (this is the same element we record from) */}
       <div style={{
         background: 'white',
         padding: '15px',
@@ -366,17 +406,25 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
         <div style={{ position: 'relative', display: 'inline-block' }}>
           <video
             ref={videoRef}
-            src={mediaUrl}
+            src={resolvedSrc}
             controls
+            // When blob URL, omit crossOrigin to keep it same-origin-clean
+            crossOrigin={isBlobSrc ? undefined : 'anonymous'}
             style={{
               ...previewDimensions,
               borderRadius: '6px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
               filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`
             }}
+            muted
+            playsInline
+            preload="auto"
+            onLoadedData={() => {
+              try { if (videoRef.current) videoRef.current.currentTime = 0; } catch (_) {}
+            }}
           />
-          
-          {/* Watermark Overlay */}
+
+          {/* UI watermark preview */}
           {watermarkEnabled && (
             <div style={{
               position: 'absolute',
@@ -395,8 +443,8 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
               ReelPostly
             </div>
           )}
-          
-          {/* Text Overlay */}
+
+          {/* UI text overlay preview */}
           {textOverlay && (
             <div style={{
               position: 'absolute',
@@ -417,7 +465,7 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
               {textOverlay}
             </div>
           )}
-          
+
           <button
             onClick={onClose}
             style={{
@@ -441,24 +489,24 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
           </button>
         </div>
       </div>
-      
-      {/* Tab Navigation */}
-      <div style={{ 
-        background: 'white', 
-        padding: '12px', 
-        margin: '10px 0', 
-        border: '1px solid #ddd', 
+
+      {/* Tabs */}
+      <div style={{
+        background: 'white',
+        padding: '12px',
+        margin: '10px 0',
+        border: '1px solid #ddd',
         borderRadius: '6px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
         <div style={{ display: 'flex', gap: '4px', marginBottom: '15px', justifyContent: 'center' }}>
-          <button 
+          <button
             onClick={() => setActiveTab('watermark')}
-            style={{ 
-              padding: '6px 12px', 
+            style={{
+              padding: '6px 12px',
               background: activeTab === 'watermark' ? '#007bff' : '#f8f9fa',
               color: activeTab === 'watermark' ? 'white' : '#333',
-              border: '1px solid #ddd', 
+              border: '1px solid #ddd',
               borderRadius: '4px',
               cursor: 'pointer',
               fontWeight: '500',
@@ -467,13 +515,13 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
           >
             🏷️ Watermark
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('text')}
-            style={{ 
-              padding: '6px 12px', 
+            style={{
+              padding: '6px 12px',
               background: activeTab === 'text' ? '#28a745' : '#f8f9fa',
               color: activeTab === 'text' ? 'white' : '#333',
-              border: '1px solid #ddd', 
+              border: '1px solid #ddd',
               borderRadius: '4px',
               cursor: 'pointer',
               fontWeight: '500',
@@ -482,13 +530,13 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
           >
             📝 Text
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('filters')}
-            style={{ 
-              padding: '6px 12px', 
+            style={{
+              padding: '6px 12px',
               background: activeTab === 'filters' ? '#ffc107' : '#f8f9fa',
               color: activeTab === 'filters' ? 'black' : '#333',
-              border: '1px solid #ddd', 
+              border: '1px solid #ddd',
               borderRadius: '4px',
               cursor: 'pointer',
               fontWeight: '500',
@@ -499,14 +547,13 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
           </button>
         </div>
 
-        {/* Watermark Controls */}
         {activeTab === 'watermark' && (
           <div style={{ textAlign: 'center' }}>
             <h4 style={{ margin: '0 0 10px 0', color: '#333', fontSize: '14px' }}>ReelPostly Watermark</h4>
             <div style={{ marginBottom: '10px' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   checked={watermarkEnabled}
                   onChange={(e) => setWatermarkEnabled(e.target.checked)}
                 />
@@ -516,7 +563,7 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
             {watermarkEnabled && (
               <div style={{ marginBottom: '10px' }}>
                 <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px' }}>Position:</label>
-                <select 
+                <select
                   value={watermarkPosition}
                   onChange={(e) => setWatermarkPosition(e.target.value)}
                   style={{ padding: '6px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '12px' }}
@@ -532,21 +579,20 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
           </div>
         )}
 
-        {/* Text Overlay Controls */}
         {activeTab === 'text' && (
           <div style={{ textAlign: 'center' }}>
             <h4 style={{ margin: '0 0 10px 0', color: '#333', fontSize: '14px' }}>Text Overlay</h4>
             <div style={{ marginBottom: '10px' }}>
               <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px' }}>Text:</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={textOverlay}
                 onChange={(e) => setTextOverlay(e.target.value)}
                 placeholder="Enter text to overlay..."
-                style={{ 
-                  width: '80%', 
-                  padding: '6px', 
-                  borderRadius: '4px', 
+                style={{
+                  width: '80%',
+                  padding: '6px',
+                  borderRadius: '4px',
                   border: '1px solid #ddd',
                   fontSize: '12px'
                 }}
@@ -556,7 +602,7 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
               <>
                 <div style={{ marginBottom: '10px' }}>
                   <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px' }}>Position:</label>
-                  <select 
+                  <select
                     value={textPosition}
                     onChange={(e) => setTextPosition(e.target.value)}
                     style={{ padding: '6px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '12px' }}
@@ -573,8 +619,8 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', justifyContent: 'center', alignItems: 'center' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px' }}>Color:</label>
-                    <input 
-                      type="color" 
+                    <input
+                      type="color"
                       value={textColor}
                       onChange={(e) => setTextColor(e.target.value)}
                       style={{ width: '30px', height: '30px', border: 'none', borderRadius: '4px' }}
@@ -584,10 +630,10 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
                     <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px' }}>
                       Size: {textSize}px
                     </label>
-                    <input 
-                      type="range" 
-                      min="12" 
-                      max="72" 
+                    <input
+                      type="range"
+                      min="12"
+                      max="72"
                       value={textSize}
                       onChange={(e) => setTextSize(parseInt(e.target.value))}
                       style={{ width: '100%' }}
@@ -599,7 +645,6 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
           </div>
         )}
 
-        {/* Filters Controls */}
         {activeTab === 'filters' && (
           <div style={{ textAlign: 'center' }}>
             <h4 style={{ margin: '0 0 10px 0', color: '#333', fontSize: '14px' }}>Video Filters</h4>
@@ -607,10 +652,10 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
               <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px' }}>
                 Brightness: {brightness}%
               </label>
-              <input 
-                type="range" 
-                min="0" 
-                max="200" 
+              <input
+                type="range"
+                min="0"
+                max="200"
                 value={brightness}
                 onChange={(e) => setBrightness(parseInt(e.target.value))}
                 style={{ width: '80%' }}
@@ -620,10 +665,10 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
               <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px' }}>
                 Contrast: {contrast}%
               </label>
-              <input 
-                type="range" 
-                min="0" 
-                max="200" 
+              <input
+                type="range"
+                min="0"
+                max="200"
                 value={contrast}
                 onChange={(e) => setContrast(parseInt(e.target.value))}
                 style={{ width: '80%' }}
@@ -633,10 +678,10 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
               <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px' }}>
                 Saturation: {saturation}%
               </label>
-              <input 
-                type="range" 
-                min="0" 
-                max="200" 
+              <input
+                type="range"
+                min="0"
+                max="200"
                 value={saturation}
                 onChange={(e) => setSaturation(parseInt(e.target.value))}
                 style={{ width: '80%' }}
@@ -645,39 +690,28 @@ const PreviewEnhancements = ({ mediaUrl, mediaType, videoSize, onDownload, onClo
           </div>
         )}
 
-        {/* Download Button */}
+        {/* Save */}
         <div style={{ marginTop: '15px', textAlign: 'center' }}>
-          <button 
-            onClick={handleEnhancedDownload}
+          <button
+            onClick={handleEnhancedSave}
             disabled={isProcessing}
-            style={{ 
-              padding: '8px 20px', 
-              background: isProcessing ? '#6c757d' : '#6f42c1', 
-              color: 'white', 
-              border: 'none', 
+            style={{
+              padding: '8px 20px',
+              background: isProcessing ? '#6c757d' : '#6f42c1',
+              color: 'white',
+              border: 'none',
               borderRadius: '4px',
               cursor: isProcessing ? 'not-allowed' : 'pointer',
               fontWeight: '500',
               fontSize: '12px'
             }}
           >
-            {isProcessing ? '⏳ Processing...' : '💾 Download Enhanced'}
+            {isProcessing ? '⏳ Processing...' : '💾 Save Enhanced MP4'}
           </button>
         </div>
 
-        {/* Hidden canvas and video for processing */}
+        {/* Hidden canvas – we draw the visible <video> onto this */}
         <div style={{ display: 'none' }}>
-          <video
-            ref={videoRef}
-            src={mediaUrl}
-            crossOrigin="anonymous"
-            playsInline
-            onLoadedData={() => {
-              if (videoRef.current) {
-                try { videoRef.current.currentTime = 0; } catch (_) {}
-              }
-            }}
-          />
           <canvas ref={canvasRef} />
         </div>
       </div>

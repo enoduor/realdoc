@@ -101,8 +101,8 @@ const SoraAPIDashboard = () => {
   };
 
   const createAPIKey = async () => {
-    // Check if user has made any purchases first
-    if (totalCreditsPurchased === 0) {
+    // Check if user has current token balance
+    if (credits === 0) {
       const shouldPurchase = window.confirm(
         '🔒 Payment Required\n\n' +
         'You need to purchase tokens before creating an API key.\n\n' +

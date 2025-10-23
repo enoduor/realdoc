@@ -126,34 +126,34 @@ const SoraAPILanding = () => {
             "itemListElement": [
               {
                 "@type": "Offer",
-                "name": "$10 Credit Pack (50 credits)",
+                "name": "$10 Credit Pack (4 tokens)",
                 "price": "10.00",
                 "priceCurrency": "USD",
-                "description": "50 video generations (Sora-2 Standard) or 16 video generations (Sora-2 Pro)",
+                "description": "4 video generations (Sora-2 Standard) or 3 video generations (Sora-2 Pro)",
                 "url": "https://reelpostly.com/sora-api#pack-10"
               },
               {
                 "@type": "Offer",
-                "name": "$20 Credit Pack (100 credits)",
+                "name": "$20 Credit Pack (8 tokens)",
                 "price": "20.00",
                 "priceCurrency": "USD",
-                "description": "100 video generations (Sora-2 Standard) or 33 video generations (Sora-2 Pro)",
+                "description": "8 video generations (Sora-2 Standard) or 6 video generations (Sora-2 Pro)",
                 "url": "https://reelpostly.com/sora-api#pack-20"
               },
               {
                 "@type": "Offer",
-                "name": "$50 Credit Pack (250 credits)",
+                "name": "$50 Credit Pack (20 tokens)",
                 "price": "50.00",
                 "priceCurrency": "USD",
-                "description": "250 video generations (Sora-2 Standard) or 83 video generations (Sora-2 Pro)",
+                "description": "20 video generations (Sora-2 Standard) or 15 video generations (Sora-2 Pro)",
                 "url": "https://reelpostly.com/sora-api#pack-50"
               },
               {
                 "@type": "Offer",
-                "name": "$100 Credit Pack (500 credits)",
+                "name": "$100 Credit Pack (40 tokens)",
                 "price": "100.00",
                 "priceCurrency": "USD",
-                "description": "500 video generations (Sora-2 Standard) or 166 video generations (Sora-2 Pro)",
+                "description": "40 video generations (Sora-2 Standard) or 30 video generations (Sora-2 Pro)",
                 "url": "https://reelpostly.com/sora-api#pack-100"
               }
             ]
