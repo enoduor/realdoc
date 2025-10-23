@@ -187,7 +187,7 @@ async def generate_video(
                 s3 = get_s3_client()
                 s3.put_object(
                     Bucket=bucket_name,
-                    Key=f"media/{filename}",
+                    Key=f"media/original/{filename}",
                     Body=blob,
                     ContentType='video/mp4',
                     Metadata={
@@ -198,7 +198,7 @@ async def generate_video(
 
                 file_url = s3.generate_presigned_url(
                     'get_object',
-                    Params={'Bucket': bucket_name, 'Key': f"media/{filename}"},
+                    Params={'Bucket': bucket_name, 'Key': f"media/original/{filename}"},
                     ExpiresIn=3600
                 )
 
@@ -395,7 +395,7 @@ async def check_video_status(video_id: str):
                         s3 = get_s3_client()
                         s3.put_object(
                             Bucket=bucket_name,
-                            Key=f"media/{filename}",
+                            Key=f"media/original/{filename}",
                             Body=video_content,
                             ContentType='video/mp4',
                             Metadata={
@@ -407,7 +407,7 @@ async def check_video_status(video_id: str):
 
                         file_url = s3.generate_presigned_url(
                             'get_object',
-                            Params={'Bucket': bucket_name, 'Key': f"media/{filename}"},
+                            Params={'Bucket': bucket_name, 'Key': f"media/original/{filename}"},
                             ExpiresIn=3600
                         )
 
