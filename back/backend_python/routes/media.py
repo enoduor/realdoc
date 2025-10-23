@@ -121,7 +121,11 @@ def resize_image(image, platform, media_type):
 async def upload_media(
     file: UploadFile = File(...),
     platform: str = Form(None),
-    subscription_plan: str = Form(None)
+    subscription_plan: str = Form(None),
+    enhanced: bool = Form(False),
+    replace_original: bool = Form(False),
+    original_key: str = Form(None),
+    billing_model: str = Form(None)
 ):
     # Normalize platform early
     platform = (platform or "").strip().lower() or None
@@ -165,19 +169,27 @@ async def upload_media(
                 detail=f"Unsupported content-type for {media_kind}: '{content_type}'. Allowed: {', '.join(sorted(allowed_set))}"
             )
 
-        # Enforce file size limits: subscription first, then platform
-        subscription_limit = SUBSCRIPTION_LIMITS.get(subscription_plan)
+        # Enforce file size limits: subscription first, then platform (unless token-billed/Sora)
+        bm = (billing_model or '').strip().lower()
+        token_billed = bm == 'tokens'
+        is_sora = (platform or '').strip().lower() == 'sora'
+
+        subscription_limit = None if (token_billed or is_sora) else SUBSCRIPTION_LIMITS.get(subscription_plan)
         platform_limit = MAX_SIZE_BY_PLATFORM.get(platform, DEFAULT_MAX_SIZE)
-        
-        # Use the more restrictive limit
-        max_size = subscription_limit if subscription_limit else platform_limit
-        effective_limit_type = "subscription" if subscription_limit and subscription_limit < platform_limit else "platform"
-        
+
+        # Use the more restrictive limit when subscription applies; otherwise platform limit
+        if subscription_limit:
+            max_size = min(subscription_limit, platform_limit)
+            effective_limit_type = 'subscription' if subscription_limit <= platform_limit else 'platform'
+        else:
+            max_size = platform_limit
+            effective_limit_type = 'platform'
+
         if len(content) > max_size:
-            if effective_limit_type == "subscription":
+            if effective_limit_type == 'subscription':
                 raise HTTPException(
                     status_code=413,
-                    detail=f"File too large for {subscription_plan or 'current'} plan. Maximum size is {int(max_size / (1024*1024))}MB. Upgrade to increase limits."
+                    detail=f"File too large for {subscription_plan or 'current'} plan. Maximum size is {int(max_size / (1024*1024))}MB."
                 )
             else:
                 raise HTTPException(
@@ -234,17 +246,27 @@ async def upload_media(
                 else:
                     raise HTTPException(status_code=500, detail=f"Error accessing bucket: {error_message}")
             
+            # Determine final S3 object key
+            if replace_original and original_key:
+                # Overwrite the provided key in place
+                s3_key = original_key.lstrip('/')
+            else:
+                key_prefix = 'media/enhanced' if enhanced else 'media/original'
+                s3_key = f"{key_prefix}/{filename}"
+            
             # Upload the file with metadata
             try:
                 s3.put_object(
                     Bucket=bucket_name,
-                    Key=f"media/{filename}",
+                    Key=s3_key,
                     Body=content,
                     ContentType=content_type,
                     Metadata={
                         'upload-date': datetime.now().isoformat(),
                         'platform': platform if (platform and platform in PLATFORM_DIMENSIONS) else 'unknown',
-                        'user-upload': 'true'
+                        'user-upload': 'true',
+                        'enhanced': 'true' if enhanced else 'false',
+                        'replaced-original': original_key or '',
                     }
                 )
                 
@@ -253,7 +275,7 @@ async def upload_media(
                     'get_object',
                     Params={
                         'Bucket': bucket_name,
-                        'Key': f"media/{filename}"
+                        'Key': s3_key
                     },
                     ExpiresIn=3600  # URL expires in 1 hour
                 )
@@ -277,7 +299,8 @@ async def upload_media(
                 "url": file_url,
                 "filename": filename,
                 "type": media_type,
-                "dimensions": dimensions
+                "dimensions": dimensions,
+                "key": s3_key
             })
             
         except ClientError as e:
