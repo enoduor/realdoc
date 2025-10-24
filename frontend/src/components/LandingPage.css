@@ -1494,7 +1494,7 @@ button.cta-primary-large {
   font-size: 1.2rem;
   color: #4a5568;
   margin-bottom: 2rem;
-  max-width: 600px;
+  max-width: 1000px;
   margin-left: auto;
   margin-right: auto;
   line-height: 1.6;
@@ -1701,7 +1701,7 @@ button.cta-primary-large {
   line-height: 1.6;
   margin-bottom: 2rem;
   opacity: 0.95;
-  max-width: 800px;
+  max-width: 1000px;
   margin-left: auto;
   margin-right: auto;
 }

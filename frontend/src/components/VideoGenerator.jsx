@@ -216,7 +216,7 @@ const VideoGenerator = () => {
             else if (progress < 50) message = 'Generating video with AI...';
             else if (progress < 75) message = 'Processing video...';
             else if (progress < 100) message = 'Almost done...';
-            else message = 'Finalizing...';
+            else message = 'Sora-2 has blcoked this prompt...';
           }
 
           setFormData(prev => ({
@@ -351,12 +351,50 @@ const VideoGenerator = () => {
     return () => window.removeEventListener('reelpostly:enhanced-video-ready', handler);
   }, []);
 
-  // Restore video data from content context when component mounts
+  // Restore enhanced video data when component mounts
   useEffect(() => {
-    if (content.mediaUrl && content.mediaType === 'video') {
-      // Video data already exists in content context, no need to restore
+    // First check sessionStorage for enhanced video (from PreviewEnhancements)
+    const sessionAsset = sessionStorage.getItem('reelpostly.publishAsset');
+    if (sessionAsset) {
+      try {
+        const asset = JSON.parse(sessionAsset);
+        if (asset?.url && asset?.key) {
+          // Enhanced video exists in sessionStorage, restore it
+          updateContent({
+            mediaUrl: asset.url,
+            mediaType: 'video',
+            mediaFile: null,
+            mediaFilename: asset.key,
+            mediaKey: asset.key,
+            enhanced: true
+          });
+          return;
+        }
+      } catch (error) {
+        console.error('Error parsing sessionStorage asset:', error);
+      }
     }
-  }, [content.mediaUrl, content.mediaType]);
+
+    // Fallback: Check localStorage for enhanced video
+    const savedContent = localStorage.getItem('repostly-content');
+    if (savedContent) {
+      try {
+        const parsedContent = JSON.parse(savedContent);
+        if (parsedContent.mediaUrl && parsedContent.mediaType === 'video' && parsedContent.enhanced) {
+          updateContent({
+            mediaUrl: parsedContent.mediaUrl,
+            mediaType: parsedContent.mediaType,
+            mediaFile: null,
+            mediaFilename: parsedContent.mediaFilename,
+            mediaKey: parsedContent.mediaKey,
+            enhanced: parsedContent.enhanced
+          });
+        }
+      } catch (error) {
+        console.error('Error parsing saved enhanced video content:', error);
+      }
+    }
+  }, []); // Run only once when component mounts
 
   return (
     <div className="min-h-screen bg-gray-50">

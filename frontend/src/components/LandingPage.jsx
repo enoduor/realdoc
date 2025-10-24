@@ -28,12 +28,12 @@ const LandingPage = () => {
   useEffect(() => {
     
     // SEO Optimization for Main Landing Page
-    document.title = 'ReelPostly - Sora 2 AI Video Generator & Multi-Platform Publisher | Create Once, Publish Everywhere';
+    document.title = 'ReelPostly - Create AI Videos That Reflect Your Brand | Sora 2 AI Video Generator';
     
     // Update meta description
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'Create AI videos with OpenAI Sora 2, generate captions, download trending content, and publish to Instagram, TikTok, YouTube, Facebook, LinkedIn & Twitter. All-in-one video creator with Sora-2 integration. 3-day free trial.');
+      metaDescription.setAttribute('content', 'Create studio-quality, watermark-free Sora videos, upload your logo, add text overlays and filters, and publish across social media in seconds, all from one place. Create AI videos that reflect your brand with Sora 2 AI.');
     }
     
     // Update keywords meta tag
@@ -43,7 +43,7 @@ const LandingPage = () => {
       metaKeywords.setAttribute('name', 'keywords');
       document.head.appendChild(metaKeywords);
     }
-    metaKeywords.setAttribute('content', 'Sora 2, Sora AI video, OpenAI Sora, AI video generator, text-to-video, multi-platform posting, social media publisher, Instagram publisher, TikTok publisher, YouTube publisher, AI captions, video downloader, content repurposing, Sora video maker, cross-platform posting, social media automation, AI content creation, Sora 2 generator, video AI tool, sora watermark remover, sora watermark, remove sora watermark, ai watermark remover, video watermark removal, sora video watermark, free watermark remover, watermark removal, sora video tool, remove video watermark, ai video watermark remover, sora watermark tool, automatic watermark removal, video watermark cleaner, sora video editor, video watermark, watermark removal ai, sora watermark delete, video watermark eraser, sora video processing, Watermark Remover API');
+    metaKeywords.setAttribute('content', 'Sora 2, Sora AI video, OpenAI Sora, AI video generator, text-to-video, multi-platform posting, social media publisher, Instagram publisher, TikTok publisher, YouTube publisher, AI captions, video downloader, content repurposing, Sora video maker, cross-platform posting, social media automation, AI content creation, Sora 2 generator, video AI tool, sora watermark remover, sora watermark, remove sora watermark, ai watermark remover, video watermark removal, sora video watermark, free watermark remover, watermark removal, sora video tool, remove video watermark, ai video watermark remover, sora watermark tool, automatic watermark removal, video watermark cleaner, sora video editor, video watermark, watermark removal ai, sora watermark delete, video watermark eraser, sora video processing, Watermark Remover API, Sora AI video generator, Sora 2 video creator, OpenAI Sora videos, Sora video maker, Sora AI video creation, Sora text to video, Sora video generator free, Sora AI video tool, Sora video creation platform, Sora AI video maker, Sora video generator online, Sora AI video editor, Sora video creation tool, Sora AI video platform, Sora video generation, Sora AI video creator, Sora video maker tool, Sora AI video generator free, Sora video creation software, Sora AI video generation tool, Sora video creator platform, Sora AI video maker free, Sora video generation platform, Sora AI video creation tool, Sora video maker online, Sora AI video generator tool, Sora video creation service, Sora AI video maker platform, Sora video generator service, Sora AI video creation platform, Sora video maker service, Sora AI video generator platform, Sora video creation app, Sora AI video maker service, Sora video generator app, Sora AI video creation service, Sora video maker app, Sora AI video generator service, Sora video creation website, Sora AI video maker app, Sora video generator website, Sora AI video creation website, Sora video maker website, Sora AI video generator website, Sora video creation online, Sora AI video maker website, Sora video generator online tool, Sora AI video creation online, Sora video maker online tool, Sora AI video generator online tool, Sora video creation online tool, Sora AI video maker online tool, Sora video generator online platform, Sora AI video creation online platform, Sora video maker online platform, Sora AI video generator online platform, Sora video creation online platform, Sora AI video maker online platform, Sora video generator online service, Sora AI video creation online service, Sora video maker online service, Sora AI video generator online service, Sora video creation online service, Sora AI video maker online service, Sora video generator online app, Sora AI video creation online app, Sora video maker online app, Sora AI video generator online app, Sora video creation online app, Sora AI video maker online app, Sora video generator online website, Sora AI video creation online website, Sora video maker online website, Sora AI video generator online website, Sora video creation online website, Sora AI video maker online website');
     
     // Update Open Graph tags
     let ogTitle = document.querySelector('meta[property="og:title"]');
@@ -52,7 +52,7 @@ const LandingPage = () => {
       ogTitle.setAttribute('property', 'og:title');
       document.head.appendChild(ogTitle);
     }
-    ogTitle.setAttribute('content', 'ReelPostly - Sora 2 AI Video Generator & Multi-Platform Publisher');
+    ogTitle.setAttribute('content', 'ReelPostly - Create AI Videos That Reflect Your Brand | Sora 2 AI Video Generator');
     
     let ogDescription = document.querySelector('meta[property="og:description"]');
     if (!ogDescription) {
@@ -60,7 +60,7 @@ const LandingPage = () => {
       ogDescription.setAttribute('property', 'og:description');
       document.head.appendChild(ogDescription);
     }
-    ogDescription.setAttribute('content', 'Create AI videos with OpenAI Sora 2, generate platform-specific captions, download trending videos, and publish across all social media platforms in one click. All-in-one video creator powered by Sora-2 AI.');
+    ogDescription.setAttribute('content', 'Create studio-quality, watermark-free Sora videos, upload your logo, add text overlays and filters, and publish across social media in seconds, all from one place. Create AI videos that reflect your brand.');
     
     // Add structured data for SEO
     const existingScript = document.querySelector('script[type="application/ld+json"][data-page="main"]');
@@ -121,9 +121,9 @@ const LandingPage = () => {
           "@type": "WebPage",
           "@id": "https://reelpostly.com/#webpage",
           "url": "https://reelpostly.com/",
-          "name": "ReelPostly - Sora 2 AI Video Generator & Multi-Platform Publisher | Create Once, Publish Everywhere",
-          "headline": "Create once, publish across platforms",
-          "description": "Create AI videos with OpenAI Sora 2, generate captions, download trending content, and publish to Instagram, TikTok, YouTube, Facebook, LinkedIn & Twitter. All-in-one video creator with Sora-2 integration. 3-day free trial.",
+          "name": "ReelPostly - Create AI Videos That Reflect Your Brand | Sora 2 AI Video Generator",
+          "headline": "Create AI videos that reflect your brand",
+          "description": "Create studio-quality, watermark-free Sora videos, upload your logo, add text overlays and filters, and publish across social media in seconds, all from one place. Create AI videos that reflect your brand with Sora 2 AI.",
           "inLanguage": "en",
           "isPartOf": { "@id": "https://reelpostly.com/#website" },
           "about": { "@id": "https://reelpostly.com/#app" },
@@ -212,9 +212,9 @@ const LandingPage = () => {
               <span className="badge-icon">🎬</span>
               <span>Powered by OpenAI Sora 2</span>
             </div>
-            <h1 className="hero-title"><strong>Share Sora videos watermark-free</strong></h1>
+            <h1 className="hero-title"><strong>Create AI videos that reflect your brand</strong></h1>
               <p className="hero-subtitle">
-              Create one watermark-free Sora videos, add comments, and publish across your platforms in seconds and save time and cost. All in one place. No need to use multiple platforms.  </p>
+              Create studio-quality, watermark-free Sora videos, upload your logo, add text overlays and filters, and publish across social media in seconds, all from one place.  </p>
             <div className="hero-cta">
               <button onClick={handleSoraLogin} className="cta-primary cta-sora">
                 Try it for free
@@ -481,7 +481,7 @@ const LandingPage = () => {
       <section id="faq" className="faq-section">
         <div className="faq-container">
           <h2 className="section-title">Frequently Asked Questions</h2>
-          <p className="section-subtitle">Everything you need to know about Sora-2 AI video generation</p>
+          <p className="section-subtitle">Everything you need to know about AI video generation with Reelpostly</p>
           
           <div className="faq-grid">
             <div className={`faq-item ${openFAQ === 0 ? 'active' : ''}`} onClick={() => toggleFAQ(0)}>
@@ -491,7 +491,7 @@ const LandingPage = () => {
               </div>
               <div className={`faq-answer ${openFAQ === 0 ? 'open' : ''}`}>
                 <p>
-                  You can choose between Sora-2 Standard ($0.20/video) and Sora-2 Pro ($0.60/video) for highest quality. Both options generate professional videos with different quality levels to match your needs and budget.
+                  You can choose between Sora-2 Standard and Sora-2 Pro (TBD)  for highest quality. Both options generate professional videos with different quality levels to match your needs and budget.
                 </p>
               </div>
             </div>
@@ -503,7 +503,7 @@ const LandingPage = () => {
               </div>
               <div className={`faq-answer ${openFAQ === 1 ? 'open' : ''}`}>
                 <p>
-                  You can generate videos in 4, 8, or 12-second durations. Choose the length that works best for your content - shorter clips for quick attention or longer videos for more detailed storytelling.
+                  You can generate videos in 4, 8, or 12 (TBD)-second durations. Choose the length that works best for your content - shorter clips for quick attention or longer videos for more detailed storytelling.
                 </p>
               </div>
             </div>
@@ -515,7 +515,7 @@ const LandingPage = () => {
               </div>
               <div className={`faq-answer ${openFAQ === 2 ? 'open' : ''}`}>
                 <p>
-                  Create videos in Portrait (720x1280) for Instagram/TikTok, Landscape (1280x720) for YouTube/Twitter, Tall Portrait (1024x1792), or Wide Landscape (1792x1024) formats to match your platform requirements.
+                  Create videos in Portrait (720x1280) for Instagram/TikTok or Landscape (1280x720) for YouTube/Twitter formats to match your platform requirements.
                 </p>
               </div>
             </div>
@@ -527,7 +527,7 @@ const LandingPage = () => {
               </div>
               <div className={`faq-answer ${openFAQ === 3 ? 'open' : ''}`}>
                 <p>
-                  After generating your video, you can add captions, adjust effects, apply filters, and customize every detail to make your videos truly stand out with your own voice and style.
+                  After generating your video, you can add  text overlays, adjust effects, apply filters, and customize every detail to make your videos truly stand out with your own voice and style.
                 </p>
               </div>
             </div>
@@ -539,7 +539,7 @@ const LandingPage = () => {
               </div>
               <div className={`faq-answer ${openFAQ === 4 ? 'open' : ''}`}>
                 <p>
-                  Yes! You can publish your enhanced videos directly to Facebook, Instagram, LinkedIn, and YouTube with one click. Connect your accounts and share your content across multiple platforms instantly.
+                  Yes! You can publish your enhanced videos directly to Facebook, Instagram, LinkedIn, and YouTube (More platforms coming soon) with one click. Connect your accounts and share your content across multiple platforms instantly.
                 </p>
               </div>
             </div>

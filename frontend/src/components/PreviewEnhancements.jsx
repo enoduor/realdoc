@@ -87,12 +87,12 @@ const PreviewEnhancements = ({
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         
-        // Set canvas size to 250x250
-        canvas.width = 250;
-        canvas.height = 250;
+        // Set canvas size to 125x125 (50% of 250x250)
+        canvas.width = 125;
+        canvas.height = 125;
         
-        // Draw the image resized to 250x250
-        ctx.drawImage(img, 0, 0, 250, 250);
+        // Draw the image resized to 125x125
+        ctx.drawImage(img, 0, 0, 125, 125);
         
         // Convert canvas to blob and create new URL
         canvas.toBlob((blob) => {
@@ -270,9 +270,9 @@ const PreviewEnhancements = ({
 
       if (watermarkEnabled && watermarkLogoImage) {
         ctx.save();
-        // Fixed square logo size: 250x250 pixels
-        const logoWidth = 250;
-        const logoHeight = 250;
+        // Fixed square logo size: 125x125 pixels (50% of original)
+        const logoWidth = 125;
+        const logoHeight = 125;
         
         let x = 10, y = 30;
         switch (watermarkPosition) {
@@ -550,8 +550,8 @@ const PreviewEnhancements = ({
                   src={watermarkLogoUrl} 
                   alt="Watermark Logo" 
                   style={{ 
-                    width: '250px', 
-                    height: '250px', 
+                    width: '125px', 
+                    height: '125px', 
                     opacity: 0.8,
                     objectFit: 'contain'
                   }} 
@@ -702,7 +702,7 @@ const PreviewEnhancements = ({
                   }}
                 />
                 <p style={{ fontSize: '10px', color: '#666', margin: '4px 0', lineHeight: '1.3' }}>
-                  Recommended: PNG/JPG/SVG, max 2MB. Logo will be displayed as 250x250 pixels square.
+                  Recommended: PNG/JPG/SVG, max 2MB. Logo will be displayed as 125x125 pixels square.
                 </p>
                 {watermarkLogoUrl && (
                   <div style={{ marginTop: '8px' }}>
@@ -868,7 +868,7 @@ const PreviewEnhancements = ({
               fontSize: '12px'
             }}
           >
-            {isProcessing ? '⏳ Processing...' : '💾 Update Video'}
+            {isProcessing ? '⏳ Updating...' : '💾 Update Video'}
           </button>
         </div>
 

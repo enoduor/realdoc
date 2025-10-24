@@ -66,10 +66,10 @@ const Navigation = () => {
 
         {/* Desktop Navigation */}
         <div className="nav-links">
-          <a href="/#sora" className="nav-link">Sora Videos</a>
+          <a href="/#sora" className="nav-link">Create Videos</a>
           <a href="/#features" className="nav-link">Features</a>
           {/* <a href="/#pricing" className="nav-link">Pricing</a> */}
-          <Link to="/sora-api" className="nav-link">Sora API</Link>
+          <Link to="/sora-api" className="nav-link">Sora 2 API</Link>
         </div>
 
         <div className="nav-actions">
@@ -96,7 +96,7 @@ const Navigation = () => {
       {isMenuOpen && (
         <div className="mobile-nav">
           <div className="mobile-nav-links">
-            <a href="/#sora" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Sora Videos</a>
+            <a href="/#sora" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Create Videos</a>
             <a href="/#features" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Features</a>
             {/* <a href="/#pricing" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Pricing</a> */}
             <Link to="/about" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>About</Link>
