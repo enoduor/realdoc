@@ -376,19 +376,6 @@ const VideoGenerator = () => {
       </header>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {/* Info Banner */}
-        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-lg font-semibold text-blue-900">🎬 AI Video Generation</h3>
-            <div className="bg-green-100 px-3 py-1 rounded-lg">
-              <span className="text-sm font-medium text-green-700">{soraCredits} Credits</span>
-            </div>
-          </div>
-          <p className="text-sm text-blue-800">
-            Generate watermark-free videos using Sora-2 AI. Describe what you want to see, 
-            and AI will create a unique video. Generation takes 1-2 minutes.
-          </p>
-        </div>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">

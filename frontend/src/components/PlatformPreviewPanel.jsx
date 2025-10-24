@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { Link } from 'react-router-dom';
+import { Linkedin, Twitter, Instagram, Youtube, Music, Facebook } from 'lucide-react';
 import { PLATFORMS } from '../constants/platforms';
 import { useContent } from '../context/ContentContext';
 import { publishNow, getUserUsageStatus } from '../api';
@@ -1152,7 +1153,7 @@ const PlatformPreviewPanel = ({ onPublishNow, bypassDailyLimits = false }) => {
                         </label>
                         <div className="space-y-4">
                             {Object.values(PLATFORMS).map((platform) => (
-                                // {platform.id !== 'twitter' && platform.id !== 'tiktok' && (
+                                platform.id !== 'twitter' && platform.id !== 'tiktok' && (
                                 <label key={platform.id} className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
                                     <input
                                         type="checkbox"
@@ -1161,13 +1162,13 @@ const PlatformPreviewPanel = ({ onPublishNow, bypassDailyLimits = false }) => {
                                         onChange={handlePlatformChange}
                                         className="mr-2"
                                         disabled={isPublishing}
-                                        style={{ display: platform.id === 'twitter' || platform.id === 'tiktok' ? 'none' : 'block' }}
                                     />
-                                    <span className="text-sm" style={{ display: platform.id === 'twitter' || platform.id === 'tiktok' ? 'none' : 'block' }}>
-                                        {platform.icon} {platform.name}
+                                    <span className="text-sm flex items-center">
+                                        <span className="mr-2">{platform.icon}</span>
+                                        {platform.name}
                                     </span>
                                 </label>
-                                // )}
+                                )
                             ))}
                         </div>
                     </div>

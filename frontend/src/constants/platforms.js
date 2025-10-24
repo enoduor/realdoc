@@ -1,3 +1,5 @@
+import { Linkedin, Twitter, Instagram, Youtube, Music, Facebook } from 'lucide-react';
+
 // Platform-specific configurations and limitations
 export const PLATFORMS = {
     INSTAGRAM: {
@@ -6,7 +8,7 @@ export const PLATFORMS = {
         maxCharacters: 2200,
         maxHashtags: 5,
         requiresMedia: true,
-        icon: '📸',
+        icon: <Instagram size={20} className="text-purple-500" />,
         supportedMedia: ['image', 'video', 'carousel'],
         recommendedImageSize: '1080x1080 (square), 1080x1350 (portrait)',
         recommendedVideoLength: '3-60 seconds',
@@ -30,7 +32,7 @@ export const PLATFORMS = {
         maxCharacters: 63206,
         maxHashtags: 5,
         requiresMedia: false,
-        icon: '👤',
+        icon: <Facebook size={20} className="text-[#1877F2]" />,
         supportedMedia: ['image', 'video', 'carousel', 'link'],
         recommendedImageSize: '1200x630',
         recommendedVideoLength: 'Up to 240 minutes',
@@ -42,7 +44,7 @@ export const PLATFORMS = {
         maxCharacters: 3000,
         maxHashtags: 5,
         requiresMedia: false,
-        icon: '💼',
+        icon: <Linkedin size={20} className="text-[#0A66C2]" />,
         supportedMedia: ['image', 'video', 'document'],
         recommendedImageSize: '1200x627',
         recommendedVideoLength: 'Up to 10 minutes',
@@ -66,7 +68,7 @@ export const PLATFORMS = {
         maxCharacters: 5000,
         maxHashtags: 5,
         requiresMedia: true,
-        icon: '▶️',
+        icon: <Youtube size={20} className="text-[#FF0000]" />,
         supportedMedia: ['video'],
         recommendedImageSize: '1280x720 (thumbnail)',
         recommendedVideoLength: 'No limit (recommended 10-15 minutes)',

@@ -490,8 +490,9 @@ const SoraVideosDashboard = () => {
               </div>
             </div>
             <p className="text-sm text-blue-800">
-              Generate watermark-free videos using Sora-2 AI. Describe what you want to see, 
-              and AI will create a unique video. Generation takes 1-2 minutes.
+              
+              Create your own style of watermark-free videos with Sora-2 AI. 
+              Describe it, customize it, and watch your idea come alive
             </p>
           </div>
       
@@ -542,9 +543,11 @@ const SoraVideosDashboard = () => {
                             ? 'bg-white hover:border-blue-200 border-blue-100' 
                             : feature.name === 'Download Videos'
                               ? 'bg-white hover:border-blue-200 border-blue-100'
-                              : hasSubscription 
-                                ? 'bg-white hover:border-gray-300 border-gray-200' 
-                                : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
+                              : feature.name === 'Generate AI Videos'
+                                ? 'text-[#1976d2] hover:border-[#2196f3] border-[#2196f3]'
+                                : hasSubscription 
+                                  ? 'bg-white hover:border-gray-300 border-gray-200' 
+                                  : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
                         }`
                       }
                     : {
@@ -555,14 +558,20 @@ const SoraVideosDashboard = () => {
                             ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer' 
                             : feature.name === 'Download Videos'
                               ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer'
-                              : hasSubscription 
-                                ? 'bg-white hover:border-gray-300 border-gray-200 cursor-pointer' 
-                                : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
+                              : feature.name === 'Generate AI Videos'
+                                ? 'text-[#1976d2] hover:border-[#2196f3] border-[#2196f3] cursor-pointer'
+                                : hasSubscription 
+                                  ? 'bg-white hover:border-gray-300 border-gray-200 cursor-pointer' 
+                                  : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
                         }`
                       };
 
                   return (
-                    <Component key={feature.name} {...props}>
+                    <Component 
+                      key={feature.name} 
+                      {...props}
+                      style={feature.name === 'Generate AI Videos' ? { background: '#e3f2fd' } : {}}
+                    >
                       <div className="flex items-center">
                         <span className="text-2xl mr-3">{feature.icon}</span>
                         <div className="flex-1">
@@ -571,7 +580,9 @@ const SoraVideosDashboard = () => {
                               ? 'text-gray-900' 
                               : feature.name === 'Download Videos'
                                 ? 'text-gray-900'
-                                : 'text-gray-900'
+                                : feature.name === 'Generate AI Videos'
+                                  ? 'text-[#1976d2]'
+                                  : 'text-gray-900'
                           }`}>
                             {feature.name}
                             {hasSubscription && <span className="ml-2 text-green-500">✅</span>}
@@ -581,7 +592,9 @@ const SoraVideosDashboard = () => {
                               ? 'text-gray-600' 
                               : feature.name === 'Download Videos'
                                 ? 'text-gray-600'
-                                : 'text-gray-600'
+                                : feature.name === 'Generate AI Videos'
+                                  ? 'text-[#424242]'
+                                  : 'text-gray-600'
                           }`}>{feature.description}</p>
                           
                           {feature.name === 'Generate AI Videos' && soraCredits === 0 && (

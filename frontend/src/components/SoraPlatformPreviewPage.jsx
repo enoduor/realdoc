@@ -68,10 +68,10 @@ const SoraPlatformPreviewPage = () => {
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className="text-xl font-bold">Sora Platform Publisher</h1>
           <Link 
-            to="/app/sora/video-generator"
+            to="/app/sora"
             className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md"
           >
-            Back to Video Generator
+            Back to Dashboard
           </Link>
         </div>
       </header>
