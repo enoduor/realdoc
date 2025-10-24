@@ -1520,7 +1520,7 @@ const PlatformPreviewPanel = ({ onPublishNow, bypassDailyLimits = false }) => {
                 {bypassDailyLimits ? (
                     <Link
                         to="/app/sora/video-generator"
-                        className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
+                        className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
                     >
                         Back to AI Video Generator
                     </Link>

@@ -46,6 +46,9 @@ const PreviewEnhancements = ({
 }) => {
   const [watermarkEnabled, setWatermarkEnabled] = useState(true);
   const [watermarkPosition, setWatermarkPosition] = useState('top-left');
+  const [watermarkLogo, setWatermarkLogo] = useState(null);
+  const [watermarkLogoUrl, setWatermarkLogoUrl] = useState(null);
+  const [watermarkLogoImage, setWatermarkLogoImage] = useState(null);
   const [textOverlay, setTextOverlay] = useState('');
   const [textPosition, setTextPosition] = useState('bottom-center');
   const [textColor, setTextColor] = useState('#ffffff');
@@ -55,6 +58,58 @@ const PreviewEnhancements = ({
   const [saturation, setSaturation] = useState(100);
   const [activeTab, setActiveTab] = useState('watermark');
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Handle logo upload
+  const handleLogoUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Logo file size must be less than 2MB');
+        return;
+      }
+      
+      // Validate file type
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('Please upload a PNG, JPG, or SVG file');
+        return;
+      }
+      
+      setWatermarkLogo(file);
+      const url = URL.createObjectURL(file);
+      setWatermarkLogoUrl(url);
+      
+      // Preload and resize the image to 250x250
+      const img = new Image();
+      img.onload = () => {
+        // Create a canvas to resize the image
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas size to 250x250
+        canvas.width = 250;
+        canvas.height = 250;
+        
+        // Draw the image resized to 250x250
+        ctx.drawImage(img, 0, 0, 250, 250);
+        
+        // Convert canvas to blob and create new URL
+        canvas.toBlob((blob) => {
+          const resizedUrl = URL.createObjectURL(blob);
+          setWatermarkLogoUrl(resizedUrl);
+          
+          // Create a new image object with the resized image
+          const resizedImg = new Image();
+          resizedImg.onload = () => {
+            setWatermarkLogoImage(resizedImg);
+          };
+          resizedImg.src = resizedUrl;
+        }, 'image/png');
+      };
+      img.src = url;
+    }
+  };
 
   // Prefer/track enhanced preview & latest asset
   const [overrideSrc, setOverrideSrc] = useState(null);    // enhanced URL to show in preview
@@ -213,7 +268,26 @@ const PreviewEnhancements = ({
       ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      if (watermarkEnabled) {
+      if (watermarkEnabled && watermarkLogoImage) {
+        ctx.save();
+        // Fixed square logo size: 250x250 pixels
+        const logoWidth = 250;
+        const logoHeight = 250;
+        
+        let x = 10, y = 30;
+        switch (watermarkPosition) {
+          case 'top-left': x = 10; y = 30; break;
+          case 'top-right': x = canvas.width - logoWidth - 10; y = 30; break;
+          case 'bottom-left': x = 10; y = canvas.height - logoHeight - 10; break;
+          case 'bottom-right': x = canvas.width - logoWidth - 10; y = canvas.height - logoHeight - 10; break;
+          case 'center': x = (canvas.width - logoWidth) / 2; y = (canvas.height - logoHeight) / 2; break;
+          default: break;
+        }
+        ctx.globalAlpha = 0.8; // Transparency
+        ctx.drawImage(watermarkLogoImage, x, y, logoWidth, logoHeight);
+        ctx.restore();
+      } else if (watermarkEnabled && !watermarkLogoUrl) {
+        // Fallback to text if no logo is uploaded
         ctx.save();
         ctx.font = 'bold 16px Arial';
         ctx.fillStyle = 'rgba(102, 126, 234, 0.8)';
@@ -468,14 +542,30 @@ const PreviewEnhancements = ({
               ...(watermarkPosition === 'bottom-left' && { bottom: '10px', left: '10px' }),
               ...(watermarkPosition === 'bottom-right' && { bottom: '10px', right: '10px' }),
               ...(watermarkPosition === 'center' && { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }),
-              color: 'rgba(102, 126, 234, 0.8)',
-              fontWeight: 'bold',
-              fontSize: '16px',
-              textShadow: '2px 2px 4px rgba(255, 255, 255, 0.9)',
               pointerEvents: 'none',
               zIndex: 10
             }}>
-              ReelPostly
+              {watermarkLogoUrl ? (
+                <img 
+                  src={watermarkLogoUrl} 
+                  alt="Watermark Logo" 
+                  style={{ 
+                    width: '250px', 
+                    height: '250px', 
+                    opacity: 0.8,
+                    objectFit: 'contain'
+                  }} 
+                />
+              ) : (
+                <span style={{
+                  color: 'rgba(102, 126, 234, 0.8)',
+                  fontWeight: 'bold',
+                  fontSize: '16px',
+                  textShadow: '2px 2px 4px rgba(255, 255, 255, 0.9)',
+                }}>
+                  ReelPostly
+                </span>
+              )}
             </div>
           )}
 
@@ -584,7 +674,7 @@ const PreviewEnhancements = ({
 
         {activeTab === 'watermark' && (
           <div style={{ textAlign: 'center' }}>
-            <h4 style={{ margin: '0 0 10px 0', color: '#333', fontSize: '14px' }}>ReelPostly Watermark</h4>
+            <h4 style={{ margin: '0 0 10px 0', color: '#333', fontSize: '14px' }}>Logo Watermark</h4>
             <div style={{ marginBottom: '10px' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
                 <input
@@ -592,9 +682,46 @@ const PreviewEnhancements = ({
                   checked={watermarkEnabled}
                   onChange={(e) => setWatermarkEnabled(e.target.checked)}
                 />
-                <span style={{ fontSize: '12px' }}>Enable ReelPostly watermark</span>
+                <span style={{ fontSize: '12px' }}>Enable watermark</span>
               </label>
             </div>
+            {watermarkEnabled && (
+              <div style={{ marginBottom: '10px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px' }}>Upload Logo:</label>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+                  onChange={handleLogoUpload}
+                  style={{ 
+                    fontSize: '11px',
+                    padding: '4px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    width: '100%',
+                    maxWidth: '200px'
+                  }}
+                />
+                <p style={{ fontSize: '10px', color: '#666', margin: '4px 0', lineHeight: '1.3' }}>
+                  Recommended: PNG/JPG/SVG, max 2MB. Logo will be displayed as 250x250 pixels square.
+                </p>
+                {watermarkLogoUrl && (
+                  <div style={{ marginTop: '8px' }}>
+                    <img 
+                      src={watermarkLogoUrl} 
+                      alt="Logo Preview" 
+                      style={{ 
+                        width: '60px', 
+                        height: '30px', 
+                        objectFit: 'contain',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px'
+                      }} 
+                    />
+                    <p style={{ fontSize: '10px', color: '#666', margin: '4px 0 0 0' }}>Logo Preview</p>
+                  </div>
+                )}
+              </div>
+            )}
             {watermarkEnabled && (
               <div style={{ marginBottom: '10px' }}>
                 <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px' }}>Position:</label>
@@ -741,7 +868,7 @@ const PreviewEnhancements = ({
               fontSize: '12px'
             }}
           >
-            {isProcessing ? '⏳ Processing...' : '💾 Save Enhanced MP4'}
+            {isProcessing ? '⏳ Processing...' : '💾 Update Video'}
           </button>
         </div>
 

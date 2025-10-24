@@ -338,28 +338,25 @@ const VideoGenerator = () => {
       mediaKey: asset.key,
       enhanced: true,
     });
-    // Also persist to sessionStorage for cross-page continuity
-    try {
-      sessionStorage.setItem('reelpostly.publishAsset', JSON.stringify(asset));
-    } catch {}
+    // Store video data in localStorage through content context (no need for sessionStorage)
   };
 
-  // Pick up enhanced asset from in-app event or session cache (safety net)
+  // Pick up enhanced asset from in-app event
   useEffect(() => {
     const handler = (e) => {
       const asset = e?.detail;
       if (asset?.url && asset?.key) handleEnhancedAsset(asset);
     };
     window.addEventListener('reelpostly:enhanced-video-ready', handler);
-    try {
-      const cached = sessionStorage.getItem('reelpostly.publishAsset');
-      if (cached) {
-        const asset = JSON.parse(cached);
-        if (asset?.url && asset?.key) handleEnhancedAsset(asset);
-      }
-    } catch {}
     return () => window.removeEventListener('reelpostly:enhanced-video-ready', handler);
   }, []);
+
+  // Restore video data from content context when component mounts
+  useEffect(() => {
+    if (content.mediaUrl && content.mediaType === 'video') {
+      // Video data already exists in content context, no need to restore
+    }
+  }, [content.mediaUrl, content.mediaType]);
 
   return (
     <div className="min-h-screen bg-gray-50">

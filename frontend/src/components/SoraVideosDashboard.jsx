@@ -528,7 +528,9 @@ const SoraVideosDashboard = () => {
               <div className="space-y-4">
                 {features.filter(feature => !feature.hidden).map((feature) => {
                   const isAction = feature.action && !feature.link;
-                  const Component = isAction ? 'div' : Link;
+                  // For Generate AI Videos, disable the entire component when no credits
+                  const shouldDisableGenerateAI = feature.name === 'Generate AI Videos' && soraCredits === 0;
+                  const Component = isAction ? 'div' : (shouldDisableGenerateAI ? 'div' : Link);
                   const props = isAction 
                     ? { 
                         onClick: (e) => {
@@ -544,22 +546,32 @@ const SoraVideosDashboard = () => {
                             : feature.name === 'Download Videos'
                               ? 'bg-white hover:border-blue-200 border-blue-100'
                               : feature.name === 'Generate AI Videos'
-                                ? 'text-[#1976d2] hover:border-[#2196f3] border-[#2196f3]'
+                                ? shouldDisableGenerateAI
+                                  ? 'text-[#1976d2] border-[#2196f3] cursor-not-allowed opacity-75'
+                                  : 'text-[#1976d2] hover:border-[#2196f3] border-[#2196f3]'
                                 : hasSubscription 
                                   ? 'bg-white hover:border-gray-300 border-gray-200' 
                                   : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
                         }`
                       }
                     : {
-                        to: feature.link,
-                        onClick: (e) => handleFeatureClick(e),
+                        ...(shouldDisableGenerateAI ? {} : { to: feature.link }),
+                        onClick: (e) => {
+                          if (shouldDisableGenerateAI) {
+                            e.preventDefault();
+                            return;
+                          }
+                          handleFeatureClick(e);
+                        },
                         className: `block p-4 rounded-lg border shadow-sm hover:shadow-md transition-all duration-300 ${
                           feature.name === 'Generate Captions' 
                             ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer' 
                             : feature.name === 'Download Videos'
                               ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer'
                               : feature.name === 'Generate AI Videos'
-                                ? 'text-[#1976d2] hover:border-[#2196f3] border-[#2196f3] cursor-pointer'
+                                ? shouldDisableGenerateAI
+                                  ? 'text-[#1976d2] border-[#2196f3] cursor-not-allowed opacity-75'
+                                  : 'text-[#1976d2] hover:border-[#2196f3] border-[#2196f3] cursor-pointer'
                                 : hasSubscription 
                                   ? 'bg-white hover:border-gray-300 border-gray-200 cursor-pointer' 
                                   : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
