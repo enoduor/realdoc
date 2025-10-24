@@ -479,116 +479,133 @@ const SoraVideosDashboard = () => {
             </div>
           )}
 
-          {/* OAuth Connections */}
-          <div className="mb-8 p-6 bg-white rounded-lg shadow text-center">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Connect Your Social Media Accounts</h3>
-            <p className="text-sm text-gray-600 mb-4">Connect your accounts to start publishing content across platforms.</p>
-            <div className="flex flex-wrap gap-4 justify-center">
-              <a href={`/api/auth/linkedin/oauth2/start/linkedin?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-[#0A66C2] text-white rounded-lg hover:bg-[#004182] transition-colors" title="Connect LinkedIn">
-                <Linkedin size={24} />
-              </a>
-              {/* <a href={`/api/auth/twitter/oauth/start/twitter?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors" title="Connect Twitter">
-                <Twitter size={24} />
-              </a> */}
-              <a href={`/api/auth/youtube/oauth2/start/google?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-[#FF0000] text-white rounded-lg hover:bg-[#cc0000] transition-colors" title="Connect YouTube">
-                <Youtube size={24} />
-              </a>
-              <a href={`/api/auth/facebook/oauth/start/facebook?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-[#1877F2] text-white rounded-lg hover:bg-[#166FE5] transition-colors" title="Connect Facebook">
-                <Facebook size={24} />
-              </a>
-              <a href={`/api/auth/instagram/oauth/start/instagram?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors" title="Connect Instagram">
-                <Instagram size={24} />
-              </a>
-              
-              {/* <a href={`/api/auth/tiktok/oauth/start/tiktok?userId=${user?.id}&email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors" title="Connect TikTok">
-                <Music size={24} />
-              </a> */}
+        
+
+            {/* Info Banner */}
+            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-lg font-semibold text-blue-900">🎬 AI Video Generation</h3>
+              <div className="bg-green-100 px-3 py-1 rounded-lg">
+                <span className="text-sm font-medium text-green-700">{soraCredits} Credits</span>
+              </div>
             </div>
+            <p className="text-sm text-blue-800">
+              Generate watermark-free videos using Sora-2 AI. Describe what you want to see, 
+              and AI will create a unique video. Generation takes 1-2 minutes.
+            </p>
           </div>
+      
 
-          {/* Feature cards - Centered both horizontally and vertically */}
-          <div className="flex justify-center items-center min-h-[400px]">
-            <div className="flex justify-center w-full max-w-4xl">
-            {features.filter(feature => !feature.hidden).map((feature) => {
-              const isAction = feature.action && !feature.link;
-              const Component = isAction ? 'div' : Link;
-              const props = isAction 
-                ? { 
-                    onClick: (e) => {
-                      if (!hasSubscription) {
-                        handleFeatureClick(e);
-                        return;
+          {/* Two Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
+            {/* Left Panel - Connect Your Social Media Accounts */}
+            <div className="lg:col-span-2 bg-white shadow rounded-lg p-6">
+              <h3 className="text-lg font-medium mb-4">Connect Your Social Media Accounts</h3>
+              <div className="space-y-4">
+                <a href={`/api/auth/linkedin/oauth2/start/linkedin?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="flex items-center p-3 border rounded-lg hover:bg-gray-50 transition-colors" title="Connect LinkedIn">
+                  <Linkedin size={24} className="mr-3 text-[#0A66C2]" />
+                  <span className="text-sm">LinkedIn</span>
+                </a>
+                <a href={`/api/auth/youtube/oauth2/start/google?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="flex items-center p-3 border rounded-lg hover:bg-gray-50 transition-colors" title="Connect YouTube">
+                  <Youtube size={24} className="mr-3 text-[#FF0000]" />
+                  <span className="text-sm">YouTube</span>
+                </a>
+                <a href={`/api/auth/facebook/oauth/start/facebook?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="flex items-center p-3 border rounded-lg hover:bg-gray-50 transition-colors" title="Connect Facebook">
+                  <Facebook size={24} className="mr-3 text-[#1877F2]" />
+                  <span className="text-sm">Facebook</span>
+                </a>
+                <a href={`/api/auth/instagram/oauth/start/instagram?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="flex items-center p-3 border rounded-lg hover:bg-gray-50 transition-colors" title="Connect Instagram">
+                  <Instagram size={24} className="mr-3 text-purple-500" />
+                  <span className="text-sm">Instagram</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Right Panel - Features */}
+            <div className="lg:col-span-3 bg-white shadow rounded-lg p-6">
+              <h3 className="text-lg font-medium mb-4">Features</h3>
+              <div className="space-y-4">
+                {features.filter(feature => !feature.hidden).map((feature) => {
+                  const isAction = feature.action && !feature.link;
+                  const Component = isAction ? 'div' : Link;
+                  const props = isAction 
+                    ? { 
+                        onClick: (e) => {
+                          if (!hasSubscription) {
+                            handleFeatureClick(e);
+                            return;
+                          }
+                          feature.action();
+                        },
+                        className: `block p-4 rounded-lg border shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
+                          feature.name === 'Generate Captions' 
+                            ? 'bg-white hover:border-blue-200 border-blue-100' 
+                            : feature.name === 'Download Videos'
+                              ? 'bg-white hover:border-blue-200 border-blue-100'
+                              : hasSubscription 
+                                ? 'bg-white hover:border-gray-300 border-gray-200' 
+                                : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
+                        }`
                       }
-                      feature.action();
-                    },
-                    className: `block p-8 rounded-2xl border shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-                      feature.name === 'Generate Captions' 
-                        ? 'bg-white hover:border-blue-200 border-blue-100' 
-                        : feature.name === 'Download Videos'
-                          ? 'bg-white hover:border-blue-200 border-blue-100'
-                          : hasSubscription 
-                            ? 'bg-white hover:border-gray-300 border-gray-200' 
-                            : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
-                    }`
-                  }
-                : {
-                    to: feature.link,
-                    onClick: (e) => handleFeatureClick(e),
-                    className: `block p-8 rounded-2xl border shadow-sm hover:shadow-md transition-all duration-300 ${
-                      feature.name === 'Generate Captions' 
-                        ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer' 
-                        : feature.name === 'Download Videos'
-                          ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer'
-                          : hasSubscription 
-                            ? 'bg-white hover:border-gray-300 border-gray-200 cursor-pointer' 
-                            : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
-                    }`
-                  };
+                    : {
+                        to: feature.link,
+                        onClick: (e) => handleFeatureClick(e),
+                        className: `block p-4 rounded-lg border shadow-sm hover:shadow-md transition-all duration-300 ${
+                          feature.name === 'Generate Captions' 
+                            ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer' 
+                            : feature.name === 'Download Videos'
+                              ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer'
+                              : hasSubscription 
+                                ? 'bg-white hover:border-gray-300 border-gray-200 cursor-pointer' 
+                                : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
+                        }`
+                      };
 
-              return (
-                <Component key={feature.name} {...props}>
-                  <div className="flex items-center">
-                    <span className="text-4xl mr-4">{feature.icon}</span>
-                    <div className="flex-1">
-                      <h3 className={`text-lg font-semibold ${
-                        feature.name === 'Generate Captions' 
-                          ? 'text-gray-900' 
-                          : feature.name === 'Download Videos'
-                            ? 'text-gray-900'
-                            : 'text-gray-900'
-                      }`}>
-                        {feature.name}
-                        {hasSubscription && <span className="ml-2 text-green-500">✅</span>}
-                      </h3>
-                      <p className={`text-sm mt-1 ${
-                        feature.name === 'Generate Captions' 
-                          ? 'text-gray-600' 
-                          : feature.name === 'Download Videos'
-                            ? 'text-gray-600'
-                            : 'text-gray-600'
-                      }`}>{feature.description}</p>
-                      
-                      {feature.name === 'Generate AI Videos' && soraCredits === 0 && (
-                        <div className="mt-3 flex items-center justify-between">
-                          <div>
-                            <span className="text-lg font-bold text-green-600">{feature.price}</span>
-                            <span className="ml-2 text-sm text-gray-600">8 Credits Available</span>
-                          </div>
-                          <button
-                            onClick={handleSoraVideoPurchase}
-                            className="cta-primary cta-sora"
-                          >
-                            Purchase
-                          </button>
+                  return (
+                    <Component key={feature.name} {...props}>
+                      <div className="flex items-center">
+                        <span className="text-2xl mr-3">{feature.icon}</span>
+                        <div className="flex-1">
+                          <h4 className={`text-sm font-semibold ${
+                            feature.name === 'Generate Captions' 
+                              ? 'text-gray-900' 
+                              : feature.name === 'Download Videos'
+                                ? 'text-gray-900'
+                                : 'text-gray-900'
+                          }`}>
+                            {feature.name}
+                            {hasSubscription && <span className="ml-2 text-green-500">✅</span>}
+                          </h4>
+                          <p className={`text-xs mt-1 ${
+                            feature.name === 'Generate Captions' 
+                              ? 'text-gray-600' 
+                              : feature.name === 'Download Videos'
+                                ? 'text-gray-600'
+                                : 'text-gray-600'
+                          }`}>{feature.description}</p>
+                          
+                          {feature.name === 'Generate AI Videos' && soraCredits === 0 && (
+                            <div className="mt-2 flex items-center justify-between">
+                              <div>
+                                <span className="text-sm font-bold text-green-600">{feature.price}</span>
+                                <span className="ml-1 text-xs text-gray-600">8 Credits</span>
+                              </div>
+                              <button
+                                onClick={handleSoraVideoPurchase}
+                                className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                              >
+                                Purchase
+                              </button>
+                            </div>
+                          )}
+                          
+                          {!hasSubscription && feature.name !== 'Generate AI Videos' && <p className="mt-1 text-xs text-red-500">⚠️ Subscription required</p>}
                         </div>
-                      )}
-                      
-                      {!hasSubscription && feature.name !== 'Generate AI Videos' && <p className="mt-2 text-sm text-red-500">⚠️ Subscription required</p>}
-                    </div>
-                  </div>
-                </Component>
-              );
-            })}
+                      </div>
+                    </Component>
+                  );
+                })}
+              </div>
             </div>
           </div>
 

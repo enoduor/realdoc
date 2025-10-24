@@ -77,13 +77,13 @@ const SoraPlatformPreviewPage = () => {
       </header>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        
         {success && (
           <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">{success}</div>
         )}
 
-        <div className="grid grid-cols-1 gap-8">
-          <div>
+        {/* Main Content Grid - Same layout as VideoGenerator */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="lg:col-span-2">
             <PlatformPreviewPanel onPublishNow={handlePublishNow} bypassDailyLimits={true} />
           </div>
         </div>

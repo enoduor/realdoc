@@ -376,22 +376,25 @@ const VideoGenerator = () => {
       </header>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="bg-white shadow rounded-lg p-6">
-          {/* Info Banner */}
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-lg font-semibold text-blue-900">🎬 AI Video Generation</h3>
-              <div className="bg-green-100 px-3 py-1 rounded-lg">
-                <span className="text-sm font-medium text-green-700">{soraCredits} Credits</span>
-              </div>
+        {/* Info Banner */}
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-lg font-semibold text-blue-900">🎬 AI Video Generation</h3>
+            <div className="bg-green-100 px-3 py-1 rounded-lg">
+              <span className="text-sm font-medium text-green-700">{soraCredits} Credits</span>
             </div>
-            <p className="text-sm text-blue-800">
-              Generate watermark-free videos using Sora-2 AI. Describe what you want to see, 
-              and AI will create a unique video. Generation takes 1-2 minutes.
-            </p>
           </div>
+          <p className="text-sm text-blue-800">
+            Generate watermark-free videos using Sora-2 AI. Describe what you want to see, 
+            and AI will create a unique video. Generation takes 1-2 minutes.
+          </p>
+        </div>
 
-          <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="space-y-4">
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+          {/* Left Column - Controls */}
+          <div className="lg:col-span-2 bg-white shadow rounded-lg p-6">
+            <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} className="space-y-4">
             {/* Model Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -513,11 +516,12 @@ const VideoGenerator = () => {
                 '🎬 Generate Video'
               )}
             </button>
-          </form>
+            </form>
+          </div>
 
-          {/* Video Enhancement Controls with Preview */}
-          {content.mediaUrl && content.mediaType === 'video' && !formData.generating && (
-            <div className="mt-6">
+          {/* Right Column - Video Enhancement Controls */}
+          <div className="lg:col-span-3 bg-white shadow rounded-lg p-6">
+            {content.mediaUrl && content.mediaType === 'video' && !formData.generating ? (
               <PreviewEnhancements
                 mediaUrl={content.mediaUrl}
                 mediaType={content.mediaType}
@@ -528,27 +532,34 @@ const VideoGenerator = () => {
                 }}
                 onAssetChange={handleEnhancedAsset}
               />
-            </div>
-          )}
-
-          {/* Navigation Buttons */}
-          {content.mediaUrl && content.mediaType === 'video' && !formData.generating && (
-            <div className="mt-6 flex justify-between gap-4">
-              <Link
-                to="/app/sora/platform-preview"
-                className="flex-1 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-medium text-center"
-              >
-                Preview & Publish
-              </Link>
-              {/* <Link
-                to="/app/sora/scheduler"
-                className="flex-1 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg font-medium text-center"
-              >
-                Go to Publish
-              </Link> */}
-            </div>
-          )}
+            ) : (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Video Enhancement</h3>
+                <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <div className="text-center">
+                    <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m0 0V3a1 1 0 011 1v6.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 011.414-1.414L15 10.586V4z" />
+                    </svg>
+                    <p className="mt-2 text-sm text-gray-500">Generate a video to enhance</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Navigation Button - Below Both Columns */}
+        {content.mediaUrl && content.mediaType === 'video' && !formData.generating && (
+          <div className="mt-8 flex justify-center">
+            <Link
+              to="/app/sora/platform-preview"
+              className="px-8 py-3 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-medium text-center"
+            >
+              Preview & Publish
+            </Link>
+          </div>
+        )}
+
       </main>
     </div>
   );
