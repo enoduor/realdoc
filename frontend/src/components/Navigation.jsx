@@ -75,7 +75,7 @@ const Navigation = () => {
         <div className="nav-actions">
           {isSignedIn ? (
             <>
-              <button onClick={handleTryItFree} className="nav-btn nav-btn-primary">Try it for free</button>
+              <button onClick={handleTryItFree} className="nav-btn nav-btn-primary">Get Started</button>
             </>
             ) : (
               <>
@@ -106,7 +106,7 @@ const Navigation = () => {
           <div className="mobile-nav-actions">
             {isSignedIn ? (
               <>
-                <button onClick={handleTryItFree} className="mobile-nav-btn mobile-nav-btn-primary">Try it for free</button>
+                <button onClick={handleTryItFree} className="mobile-nav-btn mobile-nav-btn-primary">Get Started</button>
               </>
             ) : (
               <>

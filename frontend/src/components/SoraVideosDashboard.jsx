@@ -314,7 +314,7 @@ const SoraVideosDashboard = () => {
 
   // Sora-specific features
   const features = [
-    { name: 'Generate AI Videos', description: 'Create and share stunning AI-generated videos with Sora-2 for your content', icon: '🎬', link: '/app/sora/video-generator', price: '$20', credits: '8 Credits' },
+    { name: 'Generate AI Videos', description: 'Create and share stunning AI-generated videos in seconds', icon: '🎬', link: '/app/sora/video-generator', price: '$20', credits: '8 Credits' },
     { name: 'Upload Media', description: 'Upload images and videos for your social media content', icon: '📤', link: '/app/sora/upload-media', hidden: true },
     { name: 'Edit & Publish', description: 'Edit and publish content across social media platforms', icon: '✏️', link: '/app/sora/platform-preview', hidden: true },
     { name: 'Publish Now', description: 'Publish content immediately with scheduling options', icon: '🚀', link: '/app/sora/scheduler', hidden: true }
@@ -334,8 +334,8 @@ const SoraVideosDashboard = () => {
           
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Sora Videos Dashboard</h1>
-            <p className="text-gray-600">Create and manage AI-generated videos with Sora-2</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Brand your videos</h1>
+            <p className="text-gray-600">Create, manage and personalize your AI-generated videos</p>
           </div>
           
           {/* User Profile and Sign Out */}
@@ -491,8 +491,7 @@ const SoraVideosDashboard = () => {
             </div>
             <p className="text-sm text-blue-800">
               
-              Create your own style of watermark-free videos with Sora-2 AI. 
-              Describe it, customize it, and watch your idea come alive
+            Create your own watermark-free videos, customize them, and watch your ideas come to life.
             </p>
           </div>
       

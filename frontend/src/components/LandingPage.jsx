@@ -214,10 +214,10 @@ const LandingPage = () => {
             </div>
             <h1 className="hero-title"><strong>Create AI videos that reflect your brand</strong></h1>
               <p className="hero-subtitle">
-              Create studio-quality, watermark-free Sora videos, upload your logo, add text overlays and filters, and publish across social media in seconds, all from one place.  </p>
+              Create studio-quality, watermark-free AI videos, upload your logo, add text overlays and filters, and publish across social media in seconds, all from one place.  </p>
             <div className="hero-cta">
               <button onClick={handleSoraLogin} className="cta-primary cta-sora">
-                Try it for free
+                Get Started
               </button>
             </div>
             <div className="hero-video">
@@ -391,7 +391,7 @@ const LandingPage = () => {
             <h2 className="feature-title">Post to popular platforms instantly</h2>
             <p className="feature-description">
             Post to the platforms below in seconds, not minutes. Just connect your social accounts and share your content across these four platforms with one click.   </p>
-            <button onClick={handleSoraLogin} className="cta-primary cta-sora">Try it for free</button>
+            <button onClick={handleSoraLogin} className="cta-primary cta-sora">Get Started</button>
             <div className="platforms-showcase">
               <PlatformIcons />
             </div>
@@ -557,10 +557,10 @@ const LandingPage = () => {
             </div>
           </div>
           
-          {/* Try it for free button at end of FAQ */}
+          {/* Get Started button at end of FAQ */}
           <div style={{ textAlign: 'center', marginTop: '3rem' }}>
             <button onClick={handleSoraLogin} className="cta-primary cta-sora">
-              Try it for free
+              Get Started
             </button>
           </div>
         </div>

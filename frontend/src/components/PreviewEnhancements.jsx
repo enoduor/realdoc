@@ -58,6 +58,26 @@ const PreviewEnhancements = ({
   const [saturation, setSaturation] = useState(100);
   const [activeTab, setActiveTab] = useState('watermark');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [needsUserGesture, setNeedsUserGesture] = useState(false);
+  // Helper: play video with sound on user gesture (for browsers that require it)
+  const playWithSound = async () => {
+    const v = videoRef.current;
+    if (!v) return;
+    try {
+      // Ensure any AudioContext we created is running
+      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+        await audioCtxRef.current.resume().catch(() => {});
+      }
+      v.muted = false;
+      v.defaultMuted = false;
+      v.volume = 1.0;
+      await v.play();
+      setNeedsUserGesture(false);
+    } catch (e) {
+      // If autoplay still blocked, keep overlay visible
+      setNeedsUserGesture(true);
+    }
+  };
 
   // Handle logo upload
   const handleLogoUpload = (event) => {
@@ -118,6 +138,7 @@ const PreviewEnhancements = ({
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
   const objectUrlRef = useRef(null);
+  const audioCtxRef = useRef(null);
 
   // Prefer an override (uploaded enhanced URL), else local Blob URL (no CORS), else provided mediaUrl
   const resolvedSrc = useMemo(() => {
@@ -198,13 +219,18 @@ const PreviewEnhancements = ({
 
       await ffmpeg.exec([
         '-i', inputName,
+        // map first video and first audio if present
+        '-map', '0:v:0',
+        '-map', '0:a:0?',
         '-c:v', 'libx264',
         '-preset', 'veryfast',
         '-crf', '23',
         '-pix_fmt', 'yuv420p',
-        '-movflags', '+faststart',
         '-c:a', 'aac',
         '-b:a', '128k',
+        '-movflags', '+faststart',
+        // if A/V lengths differ, end at the shortest to avoid silent tails
+        '-shortest',
         outputName,
       ]);
 
@@ -235,8 +261,17 @@ const PreviewEnhancements = ({
 
     try {
       video.loop = false;
-      video.muted = true;
       video.playsInline = true;
+      video.muted = false; // Ensure video is not muted for audio capture
+      video.volume = 1.0; // Ensure volume is at maximum
+      
+      // Force video to load audio if not already loaded
+      if (video.readyState < 2) {
+        await new Promise((resolve) => {
+          video.addEventListener('canplay', resolve, { once: true });
+          video.load();
+        });
+      }
     } catch (_) {}
 
     const durationSec = Number.isFinite(video.duration) ? video.duration : null;
@@ -252,9 +287,38 @@ const PreviewEnhancements = ({
     const canvasTrack = canvasStream.getVideoTracks()[0];
     if (canvasTrack) combined.addTrack(canvasTrack);
 
-    const hasAudio = !!(sourceStream && sourceStream.getAudioTracks().length > 0);
+    let hasAudio = !!(sourceStream && sourceStream.getAudioTracks().length > 0);
     if (hasAudio) {
       sourceStream.getAudioTracks().forEach((t) => combined.addTrack(t));
+    }
+    // Fallback: if no audio tracks captured from <video>, route via WebAudio and record
+    if (
+      !hasAudio &&
+      (window.AudioContext || window.webkitAudioContext)
+    ) {
+      try {
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        const ac = audioCtxRef.current;
+        // Resume on user gesture if suspended (clicking "Update Video" counts as a gesture)
+        if (ac.state === 'suspended') {
+          await ac.resume().catch(() => {});
+        }
+        const srcNode = ac.createMediaElementSource(video);
+        const dest = ac.createMediaStreamDestination();
+        // so the user can still hear the sound locally
+        srcNode.connect(ac.destination);
+        // and also feed a clean stream to the recorder
+        srcNode.connect(dest);
+        const audioTrack = dest.stream.getAudioTracks()[0];
+        if (audioTrack) {
+          combined.addTrack(audioTrack);
+          hasAudio = true;
+        }
+      } catch (e) {
+        console.warn('WebAudio fallback for audio capture failed:', e);
+      }
     }
 
     const recorder = makeRecorder(combined, hasAudio);
@@ -343,11 +407,12 @@ const PreviewEnhancements = ({
       else video.addEventListener('canplay', res, { once: true });
     });
 
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       const cleanup = () => {
         if (rafId) cancelAnimationFrame(rafId);
         if (stopTimerId) clearTimeout(stopTimerId);
         if (timeoutId) clearTimeout(timeoutId);
+        video.removeEventListener('volumechange', preventMuting);
       };
 
       const timeoutId = setTimeout(() => {
@@ -375,10 +440,25 @@ const PreviewEnhancements = ({
       video.addEventListener('ended', onEnded, { once: true });
 
       recorder.start();
-      const p = video.play();
-      if (p && typeof p.then === 'function') {
-        p.catch(() => {});
+      
+      // Ensure video is not muted before playing and maintain audio
+      video.muted = false;
+      video.volume = 1.0;
+      
+      // Add event listener to prevent muting during playback
+      const preventMuting = () => {
+        if (video.muted) {
+          video.muted = false;
+        }
+      };
+      
+      video.addEventListener('volumechange', preventMuting);
+      
+      // Try to start playback; if blocked, the recording will proceed once user interacts
+      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+        try { await audioCtxRef.current.resume(); } catch (_) {}
       }
+      try { await video.play(); } catch (_) {}
       rafId = requestAnimationFrame(drawFrame);
     });
   };
@@ -446,9 +526,21 @@ const PreviewEnhancements = ({
           v.pause();
           v.src = data.url;
           v.crossOrigin = 'anonymous';
+          v.muted = false; // Ensure enhanced video is not muted
+          v.volume = 1.0; // Set volume to maximum
+          v.defaultMuted = false; // Ensure default is not muted
           await v.load?.();
           try { v.currentTime = 0; } catch (_) {}
-          await v.play?.().catch(() => {});
+
+          v.addEventListener('loadedmetadata', () => {
+            v.muted = false;
+            v.defaultMuted = false;
+            v.volume = 1.0;
+          }, { once: true });
+
+          // Do not autoplay with sound to avoid browsers re-muting the element.
+          // Show a tap-to-play overlay that starts playback with sound on user gesture.
+          setNeedsUserGesture(true);
         }
       } catch (_) {}
 
@@ -525,12 +617,17 @@ const PreviewEnhancements = ({
               boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
               filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`
             }}
-            muted
             playsInline
             preload="auto"
             onLoadedData={() => {
-              try { if (videoRef.current) videoRef.current.currentTime = 0; } catch (_) {}
+              try { 
+                if (videoRef.current) {
+                  videoRef.current.currentTime = 0;
+                  videoRef.current.muted = false; // Ensure enhanced video is not muted
+                }
+              } catch (_) {}
             }}
+            onPlay={() => setNeedsUserGesture(false)}
           />
 
           {/* UI watermark preview */}
@@ -612,6 +709,27 @@ const PreviewEnhancements = ({
           >
             ✕
           </button>
+          {needsUserGesture && (
+            <button
+              onClick={playWithSound}
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+                background: 'rgba(0,0,0,0.7)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '999px',
+                padding: '10px 16px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                zIndex: 20
+              }}
+            >
+              Tap to play with sound
+            </button>
+          )}
         </div>
       </div>
 
