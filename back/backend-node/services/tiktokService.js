@@ -58,7 +58,10 @@ class TikTokService {
         scope: data.scope
       });
 
-      console.log('🔍 [TikTok Token Exchange] Full response:', JSON.stringify(data, null, 2));
+      // Security: Never log tokens in production
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 [TikTok Token Exchange] Full response:', JSON.stringify(data, null, 2));
+      }
 
       const expiresAt = dayjs().add(data.expires_in, 'second').toDate();
       return { ...data, expiresAt };

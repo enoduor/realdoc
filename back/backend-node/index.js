@@ -22,14 +22,12 @@ if (process.env.NODE_ENV === 'production' && process.env.ENABLE_LOGS !== 'true')
   const originalInfo = console.info;
   const originalDebug = console.debug;
   
-  // Allow startup logs to show, then suppress after 5 seconds
-  setTimeout(() => {
-    console.log = () => {};
-    console.debug = () => {};
-    console.info = () => {};
-    console.warn = () => {};
-    // Keep console.error for critical issues
-  }, 5000);
+  // Suppress logs immediately in production
+  console.log = () => {};
+  console.debug = () => {};
+  console.info = () => {};
+  console.warn = () => {};
+  // Keep console.error for critical issues
 }
 
 console.log("📡 Attempting MongoDB connection...");

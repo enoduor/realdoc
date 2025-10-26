@@ -102,7 +102,7 @@ const HelpCenter = () => {
       {/* Feedback Section */}
       <section className="cta-section">
         <div className="cta-container">
-          <h2>🚀 Help Us Improve Sora</h2>
+          <h2>🚀 Help Us Improve Reelpostly</h2>
           <p>
             We're constantly evolving our Sora video generation and Sora API to solve the real problems creators face. 
             Your input shapes every Sora feature we build and every improvement we make.

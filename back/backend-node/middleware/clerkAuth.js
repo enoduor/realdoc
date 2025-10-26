@@ -15,9 +15,11 @@ const clerkAuthMiddleware = async (req, res, next) => {
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    console.log('Token length:', token.length);
-    console.log('Token preview:', token.substring(0, 20) + '...');
-    console.log('Full token:', token);
+    // Security: Never log tokens in production
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Token length:', token.length);
+      console.log('Token preview:', token.substring(0, 20) + '...');
+    }
     
     // Check for required environment variables
     const clerkSecretKey = process.env.CLERK_SECRET_KEY || process.env.CLERK_JWT_KEY;

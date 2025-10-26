@@ -429,7 +429,7 @@ const VideoGenerator = () => {
                 className="w-full p-3 border rounded-lg"
                 disabled={formData.generating}
               >
-                <option value="sora-2-pro">Sora-2 Pro (Highest Quality)</option>
+                {/* <option value="sora-2-pro">Sora-2 Pro (Highest Quality)</option> */}
                 <option value="sora-2">Sora-2 (Standard Quality)</option>
               </select>
             </div>
@@ -448,7 +448,7 @@ const VideoGenerator = () => {
               >
                 <option value="4">4 seconds</option>
                 <option value="8">8 seconds</option>
-                <option value="12">12 seconds</option>
+                {/* <option value="12">12 seconds</option> */}
               </select>
             </div>
 
