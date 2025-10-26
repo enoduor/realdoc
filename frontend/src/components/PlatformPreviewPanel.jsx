@@ -1318,6 +1318,34 @@ const PlatformPreviewPanel = ({ onPublishNow, bypassDailyLimits = false }) => {
                         )}
                     </div>
 
+                    {/* Download Updated Video Button */}
+                    {content.mediaUrl && content.mediaType === 'video' && (
+                        <div className="mb-6 flex justify-center">
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const response = await fetch(content.mediaUrl);
+                                        const blob = await response.blob();
+                                        const url = window.URL.createObjectURL(blob);
+                                        const link = document.createElement('a');
+                                        link.href = url;
+                                        link.download = 'updated-video.mp4';
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                        window.URL.revokeObjectURL(url);
+                                    } catch (error) {
+                                        console.error('Download error:', error);
+                                        alert('Failed to download video. Please try again.');
+                                    }
+                                }}
+                                className="px-8 py-3 bg-purple-600 text-white rounded text-sm hover:bg-purple-700"
+                            >
+                                ⬇️ Download Updated Video
+                            </button>
+                        </div>
+                    )}
+
                     {/* Media Upload Section - Commented out for Sora video flow */}
                     {/* <div className="mb-6 bg-white p-4 rounded-lg shadow-sm">
                         <h3 className="text-lg font-medium mb-3">Upload Media</h3>

@@ -607,11 +607,11 @@ const SoraVideosDashboard = () => {
                                   : 'text-gray-600'
                           }`}>{feature.description}</p>
                           
-                          {feature.name === 'Generate AI Videos' && soraCredits === 0 && (
+                          {(feature.name === 'Generate AI Videos' || feature.name === 'Generate Your Video') && soraCredits === 0 && (
                             <div className="mt-2 flex items-center justify-between">
                               <div>
                                 <span className="text-sm font-bold text-green-600">{feature.price}</span>
-                                <span className="ml-1 text-xs text-gray-600">8 Credits</span>
+                                <span className="ml-1 text-xs text-gray-600">{feature.credits}</span>
                               </div>
                               <button
                                 onClick={handleSoraVideoPurchase}
@@ -622,7 +622,7 @@ const SoraVideosDashboard = () => {
                             </div>
                           )}
                           
-                          {!hasSubscription && feature.name !== 'Generate AI Videos' && <p className="mt-1 text-xs text-red-500">⚠️ Subscription required</p>}
+                          {!hasSubscription && feature.name !== 'Generate AI Videos' && feature.name !== 'Generate Your Video' && <p className="mt-1 text-xs text-red-500">⚠️ Subscription required</p>}
                         </div>
                       </div>
                     </Component>

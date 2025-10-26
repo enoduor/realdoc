@@ -212,7 +212,7 @@ const LandingPage = () => {
               <span className="badge-icon">🎬</span>
               <span>Powered by OpenAI Sora 2</span>
             </div>
-            <h1 className="hero-title"><strong>Create Watermark-Free Sora Videos</strong></h1>
+            <h1 className="hero-title"><strong>Create Watermark-Free AI Videos</strong></h1>
               <p className="hero-subtitle">
               Create studio-quality, watermark-free AI videos, upload your logo, add text overlays and filters, and publish across social media in seconds, all from one place.  </p>
             <div className="hero-cta">
