@@ -347,7 +347,17 @@ const PreviewEnhancements = ({
           case 'center': x = (canvas.width - logoWidth) / 2; y = (canvas.height - logoHeight) / 2; break;
           default: break;
         }
-        ctx.globalAlpha = 0.8; // Transparency
+        
+        // Create circular masking for the logo
+        const centerX = x + logoWidth / 2;
+        const centerY = y + logoHeight / 2;
+        const radius = Math.min(logoWidth, logoHeight) / 2;
+        
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.clip();
+        
+        ctx.globalAlpha = 0.8;
         ctx.drawImage(watermarkLogoImage, x, y, logoWidth, logoHeight);
         ctx.restore();
       } else if (watermarkEnabled && !watermarkLogoUrl) {

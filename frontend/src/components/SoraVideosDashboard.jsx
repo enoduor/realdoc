@@ -314,7 +314,7 @@ const SoraVideosDashboard = () => {
 
   // Sora-specific features
   const features = [
-    { name: 'Generate AI Videos', description: 'Create and share stunning AI-generated videos in seconds', icon: '🎬', link: '/app/sora/video-generator', price: '$20', credits: '8 Credits' },
+    { name: 'Generate Your Video', description: 'Create and share stunning AI-generated videos in seconds', icon: '🎬', link: '/app/sora/video-generator', price: '$20', credits: '8 Credits' },
     { name: 'Upload Media', description: 'Upload images and videos for your social media content', icon: '📤', link: '/app/sora/upload-media', hidden: true },
     { name: 'Edit & Publish', description: 'Edit and publish content across social media platforms', icon: '✏️', link: '/app/sora/platform-preview', hidden: true },
     { name: 'Publish Now', description: 'Publish content immediately with scheduling options', icon: '🚀', link: '/app/sora/scheduler', hidden: true }
@@ -334,7 +334,7 @@ const SoraVideosDashboard = () => {
           
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Brand your videos</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Watermark Free Sora Videos</h1>
             <p className="text-gray-600">Create, manage and personalize your AI-generated videos</p>
           </div>
           
@@ -567,10 +567,10 @@ const SoraVideosDashboard = () => {
                             ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer' 
                             : feature.name === 'Download Videos'
                               ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer'
-                              : feature.name === 'Generate AI Videos'
+                              : feature.name === 'Generate AI Videos' || feature.name === 'Generate Your Video'
                                 ? shouldDisableGenerateAI
-                                  ? 'text-[#1976d2] border-[#2196f3] cursor-not-allowed opacity-75'
-                                  : 'text-[#1976d2] hover:border-[#2196f3] border-[#2196f3] cursor-pointer'
+                                  ? 'text-[#1976d2] border-[#2196f3] cursor-not-allowed opacity-75 bg-blue-50'
+                                  : 'text-[#1976d2] hover:border-[#2196f3] border-[#2196f3] cursor-pointer bg-blue-50'
                                 : hasSubscription 
                                   ? 'bg-white hover:border-gray-300 border-gray-200 cursor-pointer' 
                                   : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
@@ -581,7 +581,6 @@ const SoraVideosDashboard = () => {
                     <Component 
                       key={feature.name} 
                       {...props}
-                      style={feature.name === 'Generate AI Videos' ? { background: '#e3f2fd' } : {}}
                     >
                       <div className="flex items-center">
                         <span className="text-2xl mr-3">{feature.icon}</span>
