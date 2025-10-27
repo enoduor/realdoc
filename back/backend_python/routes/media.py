@@ -271,11 +271,13 @@ async def upload_media(
                 )
                 
                 # Generate a pre-signed URL that expires in 1 hour
+                # Include Content-Disposition to force download behavior
                 file_url = s3.generate_presigned_url(
                     'get_object',
                     Params={
                         'Bucket': bucket_name,
-                        'Key': s3_key
+                        'Key': s3_key,
+                        'ResponseContentDisposition': f'attachment; filename="{filename}"'
                     },
                     ExpiresIn=3600  # URL expires in 1 hour
                 )

@@ -198,7 +198,11 @@ async def generate_video(
 
                 file_url = s3.generate_presigned_url(
                     'get_object',
-                    Params={'Bucket': bucket_name, 'Key': f"media/original/{filename}"},
+                    Params={
+                        'Bucket': bucket_name,
+                        'Key': f"media/original/{filename}",
+                        'ResponseContentDisposition': f'attachment; filename="{filename}"'
+                    },
                     ExpiresIn=3600
                 )
 
@@ -407,7 +411,11 @@ async def check_video_status(video_id: str):
 
                         file_url = s3.generate_presigned_url(
                             'get_object',
-                            Params={'Bucket': bucket_name, 'Key': f"media/original/{filename}"},
+                            Params={
+                                'Bucket': bucket_name,
+                                'Key': f"media/original/{filename}",
+                                'ResponseContentDisposition': f'attachment; filename="{filename}"'
+                            },
                             ExpiresIn=3600
                         )
 

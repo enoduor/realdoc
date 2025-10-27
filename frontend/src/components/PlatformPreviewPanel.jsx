@@ -1324,16 +1324,32 @@ const PlatformPreviewPanel = ({ onPublishNow, bypassDailyLimits = false }) => {
                             <button
                                 onClick={async () => {
                                     try {
-                                        const response = await fetch(content.mediaUrl);
+                                        // Fetch the video as a blob to prevent opening in browser
+                                        const response = await fetch(content.mediaUrl, {
+                                            method: 'GET'
+                                        });
+                                        
+                                        if (!response.ok) {
+                                            throw new Error('Failed to fetch video');
+                                        }
+                                        
                                         const blob = await response.blob();
                                         const url = window.URL.createObjectURL(blob);
+                                        
+                                        // Create a download link with a unique filename
                                         const link = document.createElement('a');
                                         link.href = url;
-                                        link.download = 'updated-video.mp4';
+                                        link.download = `updated-video-${Date.now()}.mp4`;
+                                        
+                                        // Append to body, trigger download, then cleanup
                                         document.body.appendChild(link);
                                         link.click();
-                                        document.body.removeChild(link);
-                                        window.URL.revokeObjectURL(url);
+                                        
+                                        // Cleanup after a short delay
+                                        setTimeout(() => {
+                                            document.body.removeChild(link);
+                                            window.URL.revokeObjectURL(url);
+                                        }, 100);
                                     } catch (error) {
                                         console.error('Download error:', error);
                                         alert('Failed to download video. Please try again.');
