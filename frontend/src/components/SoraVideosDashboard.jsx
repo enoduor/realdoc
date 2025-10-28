@@ -5,7 +5,6 @@ import { Linkedin, Twitter, Instagram, Youtube, Music, Facebook } from 'lucide-r
 import ClerkUserProfile from './Auth/ClerkUserProfile';
 import ErrorModal from './ErrorModal';
 import VideoDownloader from './VideoDownloader';
-import { getUserUsageStatus, getCheckoutSession } from '../api';
 import { useAuthContext } from '../context/AuthContext';
 
 const SoraVideosDashboard = () => {
@@ -44,9 +43,6 @@ const SoraVideosDashboard = () => {
     type: 'success'
   });
 
-  // Convenience: derive hasSubscription from /auth/me snapshot
-  const sub = (me?.subscriptionStatus || 'none').toLowerCase();
-  const hasSubscription = sub === 'active' || sub === 'trialing';
 
   // Handle URL parameters for success/error messages
   useEffect(() => {
@@ -204,44 +200,27 @@ const SoraVideosDashboard = () => {
     refresh();
   }, [refresh]);
 
-  // 2) Bootstrap: once signed-in, ensure we have fresh /auth/me and usage (if subscribed)
+  // 2) Bootstrap: once signed-in, ensure we have fresh /auth/me
   useEffect(() => {
     const boot = async () => {
       if (!isSignedIn || !user) return;
       await refresh(); // pulls /auth/me into context
-      const status = (me?.subscriptionStatus || 'none').toLowerCase();
-      if (status === 'active' || status === 'trialing') {
-        try {
-          const usage = await getUserUsageStatus();
-          setUsageStatus(usage);
-        } catch (e) {
-          console.error('Error getting usage status:', e);
-        }
-      } else {
-        setUsageStatus(null);
-      }
     };
     // run after first render + whenever `isSignedIn` changes
-    // also run when `me` changes to populate usage after webhook
     boot();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSignedIn, user, me?.subscriptionStatus]);
+  }, [isSignedIn, user]);
 
   // 3) Refresh /auth/me on tab focus (stay in sync with webhooks)
   useEffect(() => {
     const onFocus = async () => {
       try {
         await refresh();
-        const status = (me?.subscriptionStatus || 'none').toLowerCase();
-        if (status === 'active' || status === 'trialing') {
-          const usage = await getUserUsageStatus().catch(() => null);
-          if (usage) setUsageStatus(usage);
-        }
       } catch {}
     };
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, [refresh, me?.subscriptionStatus]);
+  }, [refresh]);
 
   // 4) Gentle polling for ~20s if we don't yet see the sub (bridges webhook delay)
   useEffect(() => {
@@ -252,43 +231,16 @@ const SoraVideosDashboard = () => {
     const tick = async () => {
       try {
         await refresh();
-        const status = (me?.subscriptionStatus || 'none').toLowerCase();
-        if (status === 'active' || status === 'trialing') {
-          clearInterval(timer);
-          const usage = await getUserUsageStatus().catch(() => null);
-          if (usage) setUsageStatus(usage);
-          return;
-        }
+        return;
       } catch {}
       tries += 1;
       if (tries >= maxTries && timer) clearInterval(timer);
     };
 
-    if (!hasSubscription) {
-      timer = setInterval(tick, 2000);
-    }
+    timer = setInterval(tick, 2000);
     return () => timer && clearInterval(timer);
-  }, [hasSubscription, refresh, me?.subscriptionStatus]);
+  }, [refresh]);
 
-  // Gate features if not subscribed
-  const handleFeatureClick = (e) => {
-    if (!hasSubscription) {
-      e.preventDefault();
-      setErrorModal({
-        show: true,
-        title: 'Subscription Required',
-        message: 'You need an active subscription to access this feature. Would you like to view our pricing plans?',
-        type: 'warning',
-        onConfirm: () => {
-          setErrorModal({ show: false, title: '', message: '' });
-          navigate('/pricing');
-        },
-        confirmText: 'View Pricing',
-        showCancel: true,
-        cancelText: 'Cancel'
-      });
-    }
-  };
 
   // Handle Sora video credit purchase
     const handleSoraVideoPurchase = async () => {
@@ -344,8 +296,6 @@ const SoraVideosDashboard = () => {
           </div>
       
 
-          {/* Subscription banner */}
-          {false && !loading && me && (
             <div
               style={{
                 margin: '12px auto',
@@ -353,9 +303,9 @@ const SoraVideosDashboard = () => {
                 padding: '12px 16px',
                 borderRadius: 10,
                 border: '1px solid',
-                background: hasSubscription ? '#e8f5e9' : '#fff8e1',
-                borderColor: hasSubscription ? '#c8e6c9' : '#ffe0b2',
-                color: hasSubscription ? '#1b5e20' : '#8d6e63',
+                background: '#fff8e1',
+                borderColor: '#ffe0b2',
+                color: '#8d6e63',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -363,19 +313,19 @@ const SoraVideosDashboard = () => {
               }}
             >
               <div>
-                {sub === 'active' && (
+                {false && (
                   <span>
                     ✅ <strong style={{ textTransform: 'capitalize' }}>{me.selectedPlan ?? '—'}</strong> Plan ({me.billingCycle ?? '—'})
                   </span>
                 )}
-                {sub === 'past_due' && <span>⚠️ Payment issue — please update your payment method.</span>}
-                {(sub === 'none' || !me.subscriptionStatus) && <span>⚠️ No active subscription.</span>}
+                {false && <span>⚠️ Payment issue — please update your payment method.</span>}
+                {false && <span>⚠️ No active subscription.</span>}
               </div>
 
-              {(me.stripeCustomerId || me.hasActiveSubscription) && (
+              {false && (
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {/* Show "Activate Now" button only during trial */}
-                  {sub === 'trialing' && (
+                  {false && (
                     <button
                       onClick={async () => {
                         // Show confirmation dialog
@@ -477,7 +427,7 @@ const SoraVideosDashboard = () => {
                 </div>
               )}
             </div>
-          )}
+          
 
         
 
@@ -528,13 +478,13 @@ const SoraVideosDashboard = () => {
                 {features.filter(feature => !feature.hidden).map((feature) => {
                   const isAction = feature.action && !feature.link;
                   // For Generate AI Videos, disable the entire component when no credits
-                  const shouldDisableGenerateAI = feature.name === 'Generate AI Videos' && soraCredits === 0;
+                  const shouldDisableGenerateAI = (feature.name === 'Generate AI Videos' || feature.name === 'Generate Your Video') && soraCredits === 0;
                   const Component = isAction ? 'div' : (shouldDisableGenerateAI ? 'div' : Link);
                   const props = isAction 
                     ? { 
                         onClick: (e) => {
-                          if (!hasSubscription) {
-                            handleFeatureClick(e);
+                          if (shouldDisableGenerateAI) {
+                            e.preventDefault();
                             return;
                           }
                           feature.action();
@@ -548,9 +498,7 @@ const SoraVideosDashboard = () => {
                                 ? shouldDisableGenerateAI
                                   ? 'text-[#1976d2] border-[#2196f3] cursor-not-allowed opacity-75'
                                   : 'text-[#1976d2] hover:border-[#2196f3] border-[#2196f3]'
-                                : hasSubscription 
-                                  ? 'bg-white hover:border-gray-300 border-gray-200' 
-                                  : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
+                                : 'bg-white hover:border-gray-300 border-gray-200'
                         }`
                       }
                     : {
@@ -560,7 +508,6 @@ const SoraVideosDashboard = () => {
                             e.preventDefault();
                             return;
                           }
-                          handleFeatureClick(e);
                         },
                         className: `block p-4 rounded-lg border shadow-sm hover:shadow-md transition-all duration-300 ${
                           feature.name === 'Generate Captions' 
@@ -571,9 +518,7 @@ const SoraVideosDashboard = () => {
                                 ? shouldDisableGenerateAI
                                   ? 'text-[#1976d2] border-[#2196f3] cursor-not-allowed opacity-75 bg-blue-50'
                                   : 'text-[#1976d2] hover:border-[#2196f3] border-[#2196f3] cursor-pointer bg-blue-50'
-                                : hasSubscription 
-                                  ? 'bg-white hover:border-gray-300 border-gray-200 cursor-pointer' 
-                                  : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
+                                : 'bg-white hover:border-gray-300 border-gray-200 cursor-pointer'
                         }`
                       };
 
@@ -595,7 +540,6 @@ const SoraVideosDashboard = () => {
                                   : 'text-gray-900'
                           }`}>
                             {feature.name}
-                            {hasSubscription && <span className="ml-2 text-green-500">✅</span>}
                           </h4>
                           <p className={`text-xs mt-1 ${
                             feature.name === 'Generate Captions' 
@@ -622,7 +566,6 @@ const SoraVideosDashboard = () => {
                             </div>
                           )}
                           
-                          {!hasSubscription && feature.name !== 'Generate AI Videos' && feature.name !== 'Generate Your Video' && <p className="mt-1 text-xs text-red-500">⚠️ Subscription required</p>}
                         </div>
                       </div>
                     </Component>

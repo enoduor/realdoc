@@ -225,7 +225,7 @@ const LandingPage = () => {
                 <iframe 
                   width="100%" 
                   height="100%" 
-                  src="https://www.youtube.com/embed/Jbf8182xWBA?autoplay=1&loop=1&playlist=Jbf8182xWBA&mute=1&controls=0&showinfo=0&rel=0" 
+                  src="https://www.youtube.com/embed/vsgzfu2y8_A?autoplay=1&loop=1&playlist=vsgzfu2y8_A&mute=1&controls=0&showinfo=0&rel=0" 
                   title="Sora-2 AI Video Generation Demo" 
                   frameBorder="0" 
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
