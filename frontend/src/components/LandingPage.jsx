@@ -396,7 +396,7 @@ const LandingPage = () => {
       </section>
 
       {/* Testimonials Section */}
-      {/* <section className="testimonials-section">
+      <section className="testimonials-section">
         <div className="testimonials-container">
           <h2 className="testimonials-title">Loved by busy creators</h2>
           <p className="testimonials-subtitle">Here's what our users are saying</p>
@@ -451,7 +451,7 @@ const LandingPage = () => {
             </div>
           </div>
         </div>
-      </section> */}
+      </section>
 
       {/* Pricing Section */}
       {/* <section id="pricing">
