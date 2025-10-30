@@ -434,23 +434,23 @@ const SoraVideosDashboard = () => {
             {/* Info Banner */}
             <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex justify-between items-center mb-2">
-              <h3 className="text-lg font-semibold text-blue-900">🎬 AI Video Generation</h3>
+              <h3 className="text-lg font-semibold text-blue-900">🎬 Download or Share Your Videos Videos</h3>
               <div className="bg-green-100 px-3 py-1 rounded-lg">
                 <span className="text-sm font-medium text-green-700">{soraCredits} Credits</span>
               </div>
             </div>
             <p className="text-sm text-blue-800">
               
-            Create your own watermark-free videos, customize them, and watch your ideas come to life.
+            Once you your ideas come to life. You can download or share your videos in one click.
             </p>
           </div>
       
 
           {/* Two Column Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
-            {/* Left Panel - Connect Your Social Media Accounts */}
+            {/* Left Panel - Connect to Share Your Videos */}
             <div className="lg:col-span-2 bg-white shadow rounded-lg p-6">
-              <h3 className="text-lg font-medium mb-4">Connect Your Social Media Accounts</h3>
+              <h3 className="text-lg font-medium mb-4">Share Videos</h3>
               <div className="space-y-4">
                 <a href={`/api/auth/linkedin/oauth2/start/linkedin?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="flex items-center p-3 border rounded-lg hover:bg-gray-50 transition-colors" title="Connect LinkedIn">
                   <Linkedin size={24} className="mr-3 text-[#0A66C2]" />
@@ -473,7 +473,7 @@ const SoraVideosDashboard = () => {
 
             {/* Right Panel - Features */}
             <div className="lg:col-span-3 bg-white shadow rounded-lg p-6">
-              <h3 className="text-lg font-medium mb-4">Features</h3>
+              <h3 className="text-lg font-medium mb-4">Download Videos</h3>
               <div className="space-y-4">
                 {features.filter(feature => !feature.hidden).map((feature) => {
                   const isAction = feature.action && !feature.link;
