@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import PreviewEnhancements from './PreviewEnhancements';
 import { useContent } from '../context/ContentContext';
 import { useUser, useAuth } from '@clerk/clerk-react';
+import ErrorModal from './ErrorModal';
 
 const API_URL = process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://reelpostly.com/ai';
 
-const VideoGenerator = () => {
+const SoraVideoGenerator = () => {
   const { updateContent, content } = useContent();
   const { user } = useUser();
   const { getToken } = useAuth();
@@ -19,6 +20,20 @@ const VideoGenerator = () => {
     error: null,
     progress: null,
     progressMessage: ''
+  });
+
+  // Remix state
+  const [currentVideoId, setCurrentVideoId] = useState(null);
+  const [remixPrompt, setRemixPrompt] = useState('');
+  const [remixBusy, setRemixBusy] = useState(false);
+  const [remixProgress, setRemixProgress] = useState(0);
+
+  // Credits error modal state
+  const [creditsErrorModal, setCreditsErrorModal] = useState({
+    show: false,
+    title: '',
+    message: '',
+    type: 'warning'
   });
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
   const [soraCredits, setSoraCredits] = useState(0);
@@ -124,10 +139,12 @@ const VideoGenerator = () => {
 
     // Check Sora video credits
     if (soraCredits < 1) {
-      setFormData(prev => ({
-        ...prev,
-        error: 'Insufficient credits. Please purchase more credits to generate videos.'
-      }));
+      setCreditsErrorModal({
+        show: true,
+        title: 'Out of Credits',
+        message: 'You\'re out of credits. Add credits to continue generating videos.',
+        type: 'warning'
+      });
       return;
     }
 
@@ -169,6 +186,8 @@ const VideoGenerator = () => {
       }
 
       const videoId = createData.video_id;
+      setCurrentVideoId(videoId);
+      setRemixPrompt(prev => formData.prompt || '');
       
       setFormData(prev => ({
         ...prev,
@@ -325,6 +344,85 @@ const VideoGenerator = () => {
       if (pollInterval) clearInterval(pollInterval);
     }
   };
+
+  // === Remix helpers START ===
+  const remixVideo = async (videoId, prompt) => {
+ 
+    const resp = await fetch(`${API_URL}/api/v1/video/remix-video/${videoId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    const data = await resp.json();
+    return data.id || data.video_id || (data.raw && data.raw.id);
+  };
+
+  const pollRemixStatus = async (newId) => {
+    while (true) {
+      const r = await fetch(`${API_URL}/api/v1/video/check-video-status/${newId}`);
+      if (!r.ok) throw new Error(await r.text());
+      const s = await r.json();
+      const p = typeof s.progress === 'number' ? s.progress : 0;
+      setRemixProgress(p);
+      if (s.status === 'completed' || s.status === 'success') return s;
+      if (['failed', 'canceled', 'error'].includes((s.status || '').toLowerCase())) {
+        throw new Error(s.error || 'Remix failed');
+      }
+      await new Promise(res => setTimeout(res, 2500));
+    }
+  };
+
+  const startRemix = async () => {
+    if (!currentVideoId || !remixPrompt.trim() || remixBusy) return;
+    try {
+      setRemixBusy(true);
+      setRemixProgress(0);
+      // 1) Start remix
+      const newId = await remixVideo(currentVideoId, remixPrompt.trim());
+      // 2) Poll status
+      const result = await pollRemixStatus(newId);
+
+      // 3) Update global content with the remixed video
+      if (result && result.url) {
+        updateContent({
+          mediaUrl: result.url,
+          mediaType: 'video',
+          mediaFile: null,
+          mediaFilename: result.filename,
+          mediaDimensions: null
+        });
+      }
+
+      // 4) Deduct 1 credit for the remix (same as initial generation)
+      try {
+        const token = await getToken();
+        const deductResponse = await fetch('/api/auth/deduct-sora-credits', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ creditsToDeduct: 1 })
+        });
+        if (deductResponse.ok) {
+          const deductData = await deductResponse.json();
+          setSoraCredits(deductData.remainingCredits);
+          console.log(`✅ Credits deducted (remix). Remaining: ${deductData.remainingCredits}`);
+        } else {
+          console.error('Failed to deduct credits (remix):', await deductResponse.text());
+        }
+      } catch (deductError) {
+        console.error('Error deducting credits (remix):', deductError);
+      }
+    } catch (err) {
+      console.error('Remix error:', err);
+      alert('Remix error: ' + (err.message || String(err)));
+    } finally {
+      setRemixBusy(false);
+    }
+  };
+  // === Remix helpers END ===
 
   // When an enhanced asset is ready, persist it so the Preview & Publish step uses it
   const handleEnhancedAsset = (asset) => {
@@ -487,6 +585,54 @@ const VideoGenerator = () => {
               <p className="mt-1 text-xs text-gray-500">
                 Be specific and describe what you want to see. Include the scene, mood, and style.
               </p>
+              {/* Remix panel: visible when original video exists and generation is not in progress */}
+              {(content.mediaUrl && content.mediaType === 'video' && !formData.generating && currentVideoId) && (
+                <div className="mt-3 p-3 border border-gray-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-semibold text-gray-900">Remix this video</span>
+                    <span className="text-xs text-gray-500">Edit the description and re-generate from this result.</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      value={remixPrompt}
+                      onChange={(e) => setRemixPrompt(e.target.value)}
+                      placeholder="Describe your change… e.g., switch to night with neon lights"
+                      className="flex-1 p-2 border rounded-lg"
+                      aria-label="Remix prompt"
+                    />
+                    <button
+                      type="button"
+                      onClick={startRemix}
+                      disabled={remixBusy || !remixPrompt.trim() || soraCredits < 1}
+                      className={`px-4 py-2 rounded-lg text-white font-medium transition-colors ${
+                        (remixBusy || !remixPrompt.trim() || soraCredits < 1)
+                          ? 'bg-gray-400 cursor-not-allowed'
+                          : 'bg-blue-600 hover:bg-blue-700'
+                      }`}
+                      aria-label="Start remix"
+                    >
+                      {remixBusy ? `Remixing… ${remixProgress}%` : 'Remix'}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    No need to wait for storage — remix starts immediately and appears here when ready.
+                  </p>
+                  {soraCredits < 1 && (
+                    <button
+                      onClick={() => setCreditsErrorModal({
+                        show: true,
+                        title: 'Out of Credits',
+                        message: 'You\'re out of credits. Add credits to continue.',
+                        type: 'warning'
+                      })}
+                      className="mt-1 text-xs text-red-600 hover:text-red-800 underline cursor-pointer"
+                    >
+                      You're out of credits. Add credits to continue.
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
 
@@ -539,6 +685,18 @@ const VideoGenerator = () => {
               )}
             </button>
             </form>
+
+            {/* Preview & Publish Button - At bottom of left panel */}
+            {content.mediaUrl && content.mediaType === 'video' && !formData.generating && (
+              <div className="mt-8 flex justify-center">
+                <Link
+                  to="/app/sora/platform-preview"
+                  className="px-8 py-3 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-medium text-center"
+                >
+                  Preview & Publish
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Right Column - Video Enhancement Controls */}
@@ -570,22 +728,23 @@ const VideoGenerator = () => {
           </div>
         </div>
 
-        {/* Navigation Button - Below Both Columns */}
-        {content.mediaUrl && content.mediaType === 'video' && !formData.generating && (
-          <div className="mt-8 flex justify-center">
-            <Link
-              to="/app/sora/platform-preview"
-              className="px-8 py-3 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-medium text-center"
-            >
-              Preview & Publish
-            </Link>
-          </div>
-        )}
-
       </main>
+
+      {/* Credits Error Modal */}
+      <ErrorModal
+        isOpen={creditsErrorModal.show}
+        onClose={() => setCreditsErrorModal({ show: false, title: '', message: '', type: 'warning' })}
+        title={creditsErrorModal.title}
+        message={creditsErrorModal.message}
+        type={creditsErrorModal.type}
+        confirmText="Add Credits"
+        onConfirm={() => {
+          // Navigate to billing/pricing page
+          window.location.href = '/app/billing';
+        }}
+      />
     </div>
   );
 };
 
-export default VideoGenerator;
-
+export default SoraVideoGenerator;

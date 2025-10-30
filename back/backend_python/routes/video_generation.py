@@ -100,8 +100,8 @@ async def generate_video(
     if not api_key:
         raise HTTPException(status_code=500, detail='OPENAI_API_KEY not configured')
     
-    # Log user info for debugging
-    logger.info(f"Generating video for user: {user_info['tenant_id']}, remaining credits: {user_info['remaining_credits']}")
+    # Log video generation request
+    logger.info("[Sora-2] Generating video task")
 
     bucket_name = os.getenv('AWS_BUCKET_NAME')
     if not bucket_name:
@@ -159,6 +159,12 @@ async def generate_video(
                 if status != 'completed':
                     yield f"data: {json.dumps({'status': status, 'message': 'Video task did not complete successfully'})}\n\n"
                     return
+                # Notify the client that OpenAI has completed the job.
+                # This lets the UI expose a 'Remix' action immediately, without waiting for S3 upload.
+                try:
+                    yield f"data: {json.dumps({'status': 'completed_openai', 'video_id': video_id})}\n\n"
+                except Exception:
+                    pass
 
                 # Grab video URL
                 video_url = extract_video_url(status_data)
@@ -453,3 +459,96 @@ async def check_video_status(video_id: str):
         from utils.logger import logger
         logger.exception(f"[Sora-2 Status Check ERROR] {str(e)}")
         raise HTTPException(status_code=500, detail=f"Status check failed: {str(e)}")
+
+# Remix a completed video using a new prompt (mirrors OpenAI: POST /v1/videos/{video_id}/remix)
+@router.post("/remix-video/{video_id}")
+async def remix_video(video_id: str, body: dict):
+    """
+    Create a remix of a completed video using a new prompt.
+    Mirrors OpenAI: POST /v1/videos/{video_id}/remix
+    Request body must include: {"prompt": "<updated prompt>"}.
+    Returns the new video job (queued) which can be polled with /check-video-status/{id}.
+    """
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured")
+
+    prompt = (body or {}).get("prompt")
+    if not prompt or not isinstance(prompt, str) or not prompt.strip():
+        raise HTTPException(status_code=400, detail="Missing or invalid 'prompt' for remix")
+
+    remix_url = f"https://api.openai.com/v1/videos/{video_id}/remix"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {"prompt": prompt.strip()}
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(remix_url, headers=headers, json=payload) as resp:
+            try:
+                data = await resp.json()
+            except Exception:
+                data = {"error": await resp.text()}
+            if resp.status != 200:
+                raise HTTPException(status_code=resp.status, detail=data)
+            # Normalize minimal fields we rely on in the frontend
+            normalized = {
+                "id": data.get("id"),
+                "status": data.get("status"),
+                "model": data.get("model"),
+                "progress": data.get("progress", 0),
+                "remixed_from_video_id": data.get("remixed_from_video_id"),
+                "raw": data
+            }
+            return JSONResponse(content=normalized)
+
+
+# List video jobs for the organization (mirrors OpenAI: GET /v1/videos)
+@router.get("/list-videos")
+async def list_videos(after: str = None, limit: int = 10, order: str = "desc"):
+    """
+    List video jobs for the organization.
+    Mirrors OpenAI: GET /v1/videos
+    Query params:
+      - after: str (optional)
+      - limit: int (optional)
+      - order: 'asc' or 'desc' (optional, default 'desc')
+    """
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured")
+
+    # Guardrails
+    limit = max(1, min(int(limit or 10), 100))
+    order = (order or "desc").lower()
+    if order not in ("asc", "desc"):
+        order = "desc"
+
+    base_url = "https://api.openai.com/v1/videos"
+    # Build query string manually to avoid adding None values
+    q = []
+    if after:
+        q.append(f"after={after}")
+    if limit:
+        q.append(f"limit={limit}")
+    if order:
+        q.append(f"order={order}")
+    url = base_url + (f"?{'&'.join(q)}" if q else "")
+
+    headers = {"Authorization": f"Bearer {api_key}"}
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as resp:
+            try:
+                data = await resp.json()
+            except Exception:
+                data = {"error": await resp.text()}
+            if resp.status != 200:
+                raise HTTPException(status_code=resp.status, detail=data)
+            # Pass through OpenAI response but ensure a consistent top-level shape
+            return JSONResponse(content={
+                "object": data.get("object", "list"),
+                "data": data.get("data", []),
+                "raw": data
+            })

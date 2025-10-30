@@ -670,25 +670,16 @@ const PlatformPreviewPanel = ({ onPublishNow, bypassDailyLimits = false }) => {
         }
     };
 
-    // Render platform-specific preview
-    const renderPlatformPreview = () => {
-        switch (formData.platform) {
-            case 'tiktok':
-                return renderTikTokPreview();
-            case 'instagram':
-                return renderInstagramPreview();
-            case 'linkedin':
-                return renderLinkedInPreview();
-            case 'twitter':
-                return renderTwitterPreview();
-            case 'youtube':
-                return renderYouTubePreview();
-            case 'facebook':
-                return renderFacebookPreview();
-            default:
-                return renderDefaultPreview();
-        }
-    };
+    // Render platform-specific preview - Commented out, replaced with buttons
+    // const renderPlatformPreview = () => {
+    //     switch (formData.platform) {
+    //         case 'tiktok':
+    //             return renderTikTokPreview();
+    //         case 'instagram':
+    //             return (
+    //         // ... all platform previews commented out
+    //     }
+    // };
 
     // TikTok Preview (Vertical, mobile-like)
     const renderTikTokPreview = () => (
@@ -737,69 +728,69 @@ const PlatformPreviewPanel = ({ onPublishNow, bypassDailyLimits = false }) => {
         </div>
     );
 
-    // Instagram Preview (Square-ish)
-    const renderInstagramPreview = () => (
-        <div className="w-full h-full bg-white">
-            {/* Header */}
-            <div className="flex items-center p-3 border-b">
-                <div className="w-8 h-8 bg-gray-300 rounded-full mr-3"></div>
-                <span className="text-sm font-medium">username</span>
-            </div>
-            
-            {/* Media */}
-            <div className="relative">
-                {content.mediaUrl ? (
-                    <div className="w-full h-64 bg-gray-100 flex items-center justify-center overflow-hidden">
-                        {content.mediaType === 'video' ? (
-                            <video 
-                                src={content.mediaUrl} 
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                    e.target.style.display = 'none';
-                                }}
-                            />
-                        ) : (
-                            <img 
-                                src={content.mediaUrl} 
-                                alt="Instagram" 
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                    e.target.style.display = 'none';
-                                }}
-                            />
-                        )}
-                    </div>
-                ) : (
-                    <div className="w-full h-64 bg-gray-100 flex items-center justify-center">
-                        <span className="text-gray-400">No media</span>
-                    </div>
-                )}
-            </div>
-            
-            {/* Actions */}
-            <div className="p-3 flex space-x-4">
-                <span>❤️</span>
-                <span>💬</span>
-                <span>📤</span>
-            </div>
-            
-            {/* Caption */}
-            <div className="px-3 pb-3">
-                {editableContent.captions[0] && (
-                    <p className="text-sm mb-2">
-                        <span className="font-medium">username</span> {editableContent.captions[0]}
-                    </p>
-                )}
-                {editableContent.hashtags && editableContent.hashtags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                        {editableContent.hashtags.slice(0, 3).map((tag, index) => (
-                            <span key={index} className="text-blue-600 text-xs">#{tag}</span>
-                        ))}
-                    </div>
-                )}
-            </div>
-        </div>
-    );
+    // Instagram Preview (Square-ish) - Commented out
+    // const renderInstagramPreview = () => (
+    //     <div className="w-full h-full bg-white">
+    //         {/* Header */}
+    //         <div className="flex items-center p-3 border-b">
+    //             <div className="w-8 h-8 bg-gray-300 rounded-full mr-3"></div>
+    //             <span className="text-sm font-medium">username</span>
+    //         </div>
+    //         
+    //         {/* Media */}
+    //         <div className="relative">
+    //             {content.mediaUrl ? (
+    //                 <div className="w-full h-64 bg-gray-100 flex items-center justify-center overflow-hidden">
+    //                     {content.mediaType === 'video' ? (
+    //                         <video 
+    //                             src={content.mediaUrl} 
+    //                             className="w-full h-full object-cover"
+    //                             onError={(e) => {
+    //                                 e.target.style.display = 'none';
+    //                             }}
+    //                         />
+    //                     ) : (
+    //                         <img 
+    //                             src={content.mediaUrl} 
+    //                             alt="Instagram" 
+    //                             className="w-full h-full object-cover"
+    //                             onError={(e) => {
+    //                                 e.target.style.display = 'none';
+    //                             }}
+    //                         />
+    //                     )}
+    //                 </div>
+    //             ) : (
+    //                 <div className="w-full h-64 bg-gray-100 flex items-center justify-center">
+    //                     <span className="text-gray-400">No media</span>
+    //                 </div>
+    //             )}
+    //         </div>
+    //         
+    //         {/* Actions */}
+    //         <div className="p-3 flex space-x-4">
+    //             <span>❤️</span>
+    //             <span>💬</span>
+    //             <span>📤</span>
+    //         </div>
+    //         
+    //         {/* Caption */}
+    //         <div className="px-3 pb-3">
+    //             {editableContent.captions[0] && (
+    //                 <p className="text-sm mb-2">
+    //                     <span className="font-medium">username</span> {editableContent.captions[0]}
+    //                 </p>
+    //             )}
+    //             {editableContent.hashtags && editableContent.hashtags.length > 0 && (
+    //                 <div className="flex flex-wrap gap-1">
+    //                     {editableContent.hashtags.slice(0, 3).map((tag, index) => (
+    //                         <span key={index} className="text-blue-600 text-xs">#{tag}</span>
+    //                     ))}
+    //                 </div>
+    //             )}
+    //         </div>
+    //     </div>
+    // );
 
     // LinkedIn Preview (Professional, wide)
     const renderLinkedInPreview = () => (
@@ -1318,47 +1309,15 @@ const PlatformPreviewPanel = ({ onPublishNow, bypassDailyLimits = false }) => {
                         )}
                     </div>
 
-                    {/* Download Updated Video Button */}
-                    {content.mediaUrl && content.mediaType === 'video' && (
+                    {/* Back Button - Under Describe Video section */}
+                    {bypassDailyLimits && (
                         <div className="mb-6 flex justify-center">
-                            <button
-                                onClick={async () => {
-                                    try {
-                                        // Fetch the video as a blob to prevent opening in browser
-                                        const response = await fetch(content.mediaUrl, {
-                                            method: 'GET'
-                                        });
-                                        
-                                        if (!response.ok) {
-                                            throw new Error('Failed to fetch video');
-                                        }
-                                        
-                                        const blob = await response.blob();
-                                        const url = window.URL.createObjectURL(blob);
-                                        
-                                        // Create a download link with a unique filename
-                                        const link = document.createElement('a');
-                                        link.href = url;
-                                        link.download = `updated-video-${Date.now()}.mp4`;
-                                        
-                                        // Append to body, trigger download, then cleanup
-                                        document.body.appendChild(link);
-                                        link.click();
-                                        
-                                        // Cleanup after a short delay
-                                        setTimeout(() => {
-                                            document.body.removeChild(link);
-                                            window.URL.revokeObjectURL(url);
-                                        }, 100);
-                                    } catch (error) {
-                                        console.error('Download error:', error);
-                                        alert('Failed to download video. Please try again.');
-                                    }
-                                }}
-                                className="px-8 py-3 bg-purple-600 text-white rounded text-sm hover:bg-purple-700"
+                            <Link
+                                to="/app/sora/video-generator"
+                                className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
                             >
-                                ⬇️ Download Updated Video
-                            </button>
+                                Back to AI Video Generator
+                            </Link>
                         </div>
                     )}
 
@@ -1405,40 +1364,72 @@ const PlatformPreviewPanel = ({ onPublishNow, bypassDailyLimits = false }) => {
                     {/* Platform-Specific Preview */}
                     <div className="space-y-6">
                         
-                        {/* Media Preview Section */}
-                        {content.mediaUrl && (
-                            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                                <h4 className="text-sm font-medium mb-2">📁 Media Preview:</h4>
-                                <div className="flex items-center space-x-4">
-                                    {content.mediaType === 'image' ? (
-                                        <img 
-                                            src={content.mediaUrl} 
-                                            alt="Media Preview" 
-                                            className="w-24 h-24 object-cover rounded-lg border"
-                                        />
-                                    ) : content.mediaType === 'video' ? (
-                                        <video 
-                                            src={content.mediaUrl} 
-                                            className="w-24 h-24 object-cover rounded-lg border"
-                                            muted
-                                        />
-                                    ) : (
-                                        <div className="w-24 h-24 bg-gray-200 rounded-lg border flex items-center justify-center">
-                                            <span className="text-gray-500 text-xs">File</span>
-                                        </div>
-                                    )}
-                                    
-                                    <div className="flex-1">
-                                        <p className="text-sm font-medium">Type: {content.mediaType || 'Unknown'}</p>
-                                        <p className="text-xs text-gray-600">Media ready for publishing</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                        {/* Media Preview Section - Hidden as requested */}
                         
-                        {/* Platform-specific preview container */}
-                        <div className={`mx-auto ${getPlatformPreviewStyles()}`}>
-                            {renderPlatformPreview()}
+                        {/* Button Cards - Direct replacement for platform previews */}
+                        <div className="w-full h-full bg-white p-6 flex flex-col justify-center space-y-4">
+                            {/* Download Updated Video Button Card */}
+                            {content.mediaUrl && content.mediaType === 'video' && (
+                                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center">
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                const response = await fetch(content.mediaUrl, {
+                                                    method: 'GET'
+                                                });
+                                                
+                                                if (!response.ok) {
+                                                    throw new Error('Failed to fetch video');
+                                                }
+                                                
+                                                const blob = await response.blob();
+                                                const url = window.URL.createObjectURL(blob);
+                                                
+                                                const link = document.createElement('a');
+                                                link.href = url;
+                                                link.download = `updated-video-${Date.now()}.mp4`;
+                                                
+                                                document.body.appendChild(link);
+                                                link.click();
+                                                
+                                                setTimeout(() => {
+                                                    document.body.removeChild(link);
+                                                    window.URL.revokeObjectURL(url);
+                                                }, 100);
+                                            } catch (error) {
+                                                console.error('Download error:', error);
+                                                alert('Failed to download video. Please try again.');
+                                            }
+                                        }}
+                                        className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors"
+                                    >
+                                        ⬇️ Download Updated Video
+                                    </button>
+                                </div>
+                            )}
+                            
+                            {/* Confirm and Publish Button Card */}
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                                <button
+                                    onClick={handlePublishPost}
+                                    className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                                    disabled={isPublishing || platforms.length === 0 || (!editableContent.captions[0] && editableContent.hashtags.filter(tag => tag.trim() !== '').length === 0 && !content.mediaUrl) || (!bypassDailyLimits && usageStatus && !usageStatus.usage.canPublish)}
+                                >
+                                    {isPublishing ? (
+                                        <>
+                                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Publishing to {platforms.length} platforms...
+                                        </>
+                                    ) : (
+                                        (!bypassDailyLimits && usageStatus && !usageStatus.usage.canPublish) ? 
+                                            `Daily Limit Reached (${usageStatus.usage.used}/${usageStatus.usage.limit})` :
+                                            '✅ Confirm and Publish'
+                                    )}
+                                </button>
+                            </div>
                         </div>
 
                         {/* Publishing Status Display */}
@@ -1559,43 +1550,11 @@ const PlatformPreviewPanel = ({ onPublishNow, bypassDailyLimits = false }) => {
                 </div>
             </div>
 
-            {/* Action Buttons - Below Both Columns, Centered */}
-            <div className="mt-8 flex justify-center gap-4">
-                {bypassDailyLimits ? (
-                    <Link
-                        to="/app/sora/video-generator"
-                        className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
-                    >
-                        Back to AI Video Generator
-                    </Link>
-                ) : (
-                    <Link
-                        to="/app/media-upload"
-                        className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
-                    >
-                        Back to Media Upload
-                    </Link>
-                )}
-                <button
-                    onClick={handlePublishPost}
-                    className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                    disabled={isPublishing || platforms.length === 0 || (!editableContent.captions[0] && editableContent.hashtags.filter(tag => tag.trim() !== '').length === 0 && !content.mediaUrl) || (!bypassDailyLimits && usageStatus && !usageStatus.usage.canPublish)}
-                >
-                    {isPublishing ? (
-                        <>
-                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Publishing to {platforms.length} platforms...
-                        </>
-                    ) : (
-                        (!bypassDailyLimits && usageStatus && !usageStatus.usage.canPublish) ? 
-                            `Daily Limit Reached (${usageStatus.usage.used}/${usageStatus.usage.limit})` :
-                            '✅ Confirm and Publish'
-                    )}
-                </button>
-            </div>
+            {/* Action Buttons - Right Side Under Preview & Publish - COMMENTED OUT - Buttons now in Preview & Publish section */}
+            {/* <div className="mt-8 flex justify-end gap-4">
+                <button>Download Updated Video</button>
+                <button>Confirm and Publish</button>
+            </div> */}
         </div>
         </>
     );

@@ -85,7 +85,7 @@ const Navigation = () => {
         </div>
 
         {/* Mobile Menu Button */}
-        <button className="mobile-menu-btn" onClick={toggleMenu}>
+        <button className={`mobile-menu-btn ${isMenuOpen ? 'active' : ''}`} onClick={toggleMenu}>
           <span className="hamburger"></span>
           <span className="hamburger"></span>
           <span className="hamburger"></span>

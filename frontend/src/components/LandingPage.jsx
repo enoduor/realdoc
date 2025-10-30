@@ -24,6 +24,39 @@ const LandingPage = () => {
     }
   };
 
+  // Load TikTok embed script for video gallery with autoplay
+  useEffect(() => {
+    // Check if script already exists
+    let script = document.querySelector('script[src="https://www.tiktok.com/embed.js"]');
+    
+    if (!script) {
+      script = document.createElement('script');
+      script.src = 'https://www.tiktok.com/embed.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+
+    // Process embeds when script loads
+    script.onload = () => {
+      // TikTok embed script automatically processes blockquotes
+      // Ensure all embeds are processed
+      if (window.tiktokEmbed && typeof window.tiktokEmbed.lib === 'function') {
+        window.tiktokEmbed.lib.renderAll();
+      }
+    };
+
+    // If script already loaded, trigger processing immediately
+    if (script.complete || script.readyState === 'complete') {
+      if (window.tiktokEmbed && typeof window.tiktokEmbed.lib === 'function') {
+        window.tiktokEmbed.lib.renderAll();
+      }
+    }
+
+    return () => {
+      // Don't remove script on unmount as it may be needed elsewhere
+    };
+  }, []);
+
   // SEO and page setup
   useEffect(() => {
     
@@ -212,12 +245,15 @@ const LandingPage = () => {
               <span className="badge-icon">🎬</span>
               <span>Powered by OpenAI Sora 2</span>
             </div>
-            <h1 className="hero-title"><strong>Create Watermark-Free AI Videos</strong></h1>
-              <p className="hero-subtitle">
-              Create studio-quality, watermark-free AI videos, upload your logo, add text overlays and filters, and publish across social media in seconds, all from one place.  </p>
+            <h1 className="hero-title">
+              <strong>AI Video Generator for High-Quality Videos in Seconds</strong>
+            </h1>
+            <p className="hero-description">
+              Generate and remix videos from text descriptions 10× faster than Google Video and at 80% lower cost. Unleash endless creative possibilities with AI-powered video editing to create studio-quality, watermark-free videos, upload your logo, add text overlays and filters, and publish across social media in seconds, all from one place.
+            </p>
             <div className="hero-cta">
               <button onClick={handleSoraLogin} className="cta-primary cta-sora">
-                Get Started
+                Start Creating
               </button>
             </div>
             <div className="hero-video">
@@ -225,7 +261,7 @@ const LandingPage = () => {
                 <iframe 
                   width="100%" 
                   height="100%" 
-                  src="https://www.youtube.com/embed/kyDM06fVQtE?autoplay=1&loop=1&playlist=kyDM06fVQtE&mute=1&controls=0&showinfo=0&rel=0" 
+                  src="https://www.youtube.com/embed/vsgzfu2y8_A?autoplay=0&loop=1&playlist=vsgzfu2y8_A&controls=1&showinfo=0&rel=0" 
                   title="Sora-2 AI Video Generation Demo" 
                   frameBorder="0" 
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
@@ -234,11 +270,14 @@ const LandingPage = () => {
               </div>
             </div>
             <div className="social-proof">
-              <p className="social-proof-text">Video creation now powered by OpenAI's Sora 2 model</p>
+              <div className="hero-badge">
+                <span>🎥 Remix Videos • 🔊 With Audio • ⚡ Ultra Fast • 💰 Affordable</span>
+              </div>
             </div>
           </div>
         </div>
       </section>
+
 
       {/* CROSS-POSTING Section */}
       {/* <section className="modern-main-feature">
@@ -300,7 +339,7 @@ const LandingPage = () => {
                 Generate professional AI videos in minutes. Just describe what you want to see, and Sora-2 creates unique, high-quality videos for your content. No video editing skills required.
               </p>
               <div className="modern-actions">
-                <button onClick={() => setShowWaitlistModal(true)} className="modern-cta">Get started</button>
+                <button onClick={() => setShowWaitlistModal(true)} className="modern-cta">Start Creating</button>
                 <button onClick={handleSoraLogin} className="modern-link">Sign In to Sora Dashboard</button>
               </div>
             </div>
@@ -387,7 +426,7 @@ const LandingPage = () => {
             <h2 className="feature-title">Post to popular platforms instantly</h2>
             <p className="feature-description">
             Post to the platforms below in seconds, not minutes. Just connect your social accounts and share your content across these four platforms with one click.   </p>
-            <button onClick={handleSoraLogin} className="cta-primary cta-sora">Get Started</button>
+            <button onClick={handleSoraLogin} className="cta-primary cta-sora">Start Creating</button>
             <div className="platforms-showcase">
               <PlatformIcons />
             </div>
@@ -553,10 +592,10 @@ const LandingPage = () => {
             </div>
           </div>
           
-          {/* Get Started button at end of FAQ */}
+          {/* Start Creating button at end of FAQ */}
           <div style={{ textAlign: 'center', marginTop: '3rem' }}>
             <button onClick={handleSoraLogin} className="cta-primary cta-sora">
-              Get Started
+              Start Creating
             </button>
           </div>
         </div>

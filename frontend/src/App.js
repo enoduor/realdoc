@@ -10,7 +10,7 @@ import Dashboard from "./components/Dashboard";
 import SoraVideosDashboard from "./components/SoraVideosDashboard";
 import MediaUploader from "./components/MediaUploader";
 import VideoDownloader from "./components/VideoDownloader";
-import VideoGenerator from "./components/VideoGenerator";
+import SoraVideoGenerator from "./components/SoraVideoGenerator";
 import PlatformPreviewPage from "./components/PlatformPreviewPage";
 import SchedulerPage from "./components/SchedulerPage";
 import SoraPlatformPreviewPage from "./components/SoraPlatformPreviewPage";
@@ -71,7 +71,7 @@ export default function App() {
             path="/app/sora/video-generator"
             element={
               <ClerkProtectedRoute>
-                <VideoGenerator />
+                <SoraVideoGenerator />
               </ClerkProtectedRoute>
             }
           />
@@ -108,6 +108,14 @@ export default function App() {
             }
           />
           <Route
+            path="/app/sora/video-generator"
+            element={
+              <ClerkProtectedRoute>
+                <SoraVideoGenerator />
+              </ClerkProtectedRoute>
+            }
+          />
+          <Route
             path="/app/caption-generator"
             element={
               <ClerkProtectedRoute>
@@ -120,14 +128,6 @@ export default function App() {
             element={
               <ClerkProtectedRoute>
                 <HashtagGenerator />
-              </ClerkProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/video-generator"
-            element={
-              <ClerkProtectedRoute>
-                <VideoGenerator />
               </ClerkProtectedRoute>
             }
           />
