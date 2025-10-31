@@ -295,25 +295,51 @@ router.get("/subscription-status", requireAuth(), async (req, res) => {
     const clerkUserId = typeof req.auth === "function" ? req.auth()?.userId : req.auth?.userId;
     if (!clerkUserId) return res.status(401).json({ error: "Unauthenticated" });
 
-    const user = await User.findOne({ clerkUserId });
+    let user = await User.findOne({ clerkUserId });
 
-    // If the user row is missing (should be rare), return safe defaults
+    // If the user row is missing, create it with default values
     if (!user) {
-      return res.json({
-        clerkUserId,
-        subscriptionStatus: "none",
-        hasActiveSubscription: false,
-        isTrialing: false,
-        selectedPlan: "none",
-        billingCycle: "none",
-        trialStartDate: null,
-        trialEndDate: null,
-        stripeCustomerId: null,
-        stripeSubscriptionId: null,
-        dailyPostsUsed: 0,
-        accountsConnected: 0,
-        soraVideoCredits: 0,
-      });
+      try {
+        // Get user info from Clerk
+        const { Clerk } = require('@clerk/clerk-sdk-node');
+        const clerk = new Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
+        const cUser = await clerk.users.getUser(clerkUserId);
+        const email = cUser?.primaryEmailAddressId 
+          ? (await clerk.emailAddresses.getEmailAddress(cUser.primaryEmailAddressId))?.emailAddress 
+          : null;
+
+        user = new User({
+          clerkUserId,
+          email: email ? email.toLowerCase() : undefined,
+          firstName: cUser?.firstName || undefined,
+          lastName: cUser?.lastName || undefined,
+          subscriptionStatus: "none",
+          selectedPlan: "none",
+          billingCycle: "none",
+          soraVideoCredits: 0,
+          lastActiveDate: new Date(),
+        });
+        await user.save();
+        console.log(`✅ [Subscription Status] Created user for ${clerkUserId} with email ${email || '(none)'}`);
+      } catch (createError) {
+        console.error("❌ [Subscription Status] Failed to create user:", createError);
+        // Return defaults if creation fails
+        return res.json({
+          clerkUserId,
+          subscriptionStatus: "none",
+          hasActiveSubscription: false,
+          isTrialing: false,
+          selectedPlan: "none",
+          billingCycle: "none",
+          trialStartDate: null,
+          trialEndDate: null,
+          stripeCustomerId: null,
+          stripeSubscriptionId: null,
+          dailyPostsUsed: 0,
+          accountsConnected: 0,
+          soraVideoCredits: 0,
+        });
+      }
     }
 
     // Normalize to your client shape and add helpful flags

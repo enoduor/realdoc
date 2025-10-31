@@ -216,6 +216,8 @@ const SoraVideosDashboard = () => {
     const boot = async () => {
       if (!isSignedIn || !user) return;
       await refresh(); // pulls /auth/me into context
+      // Also refresh Sora credits specifically
+      await fetchSoraCredits();
     };
     // run after first render + whenever `isSignedIn` changes
     boot();
@@ -227,11 +229,13 @@ const SoraVideosDashboard = () => {
     const onFocus = async () => {
       try {
         await refresh();
+        // Also refresh Sora credits specifically
+        await fetchSoraCredits();
       } catch {}
     };
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, [refresh]);
+  }, [refresh, fetchSoraCredits]);
 
   // 4) Gentle polling for ~20s if we don't yet see the sub (bridges webhook delay)
   useEffect(() => {
@@ -277,7 +281,7 @@ const SoraVideosDashboard = () => {
 
   // Sora-specific features
   const features = [
-    { name: 'Generate Your Video', description: 'Create and share stunning AI-generated videos in seconds', icon: '🎬', link: '/app/sora/video-generator', price: '$20', credits: '8 Credits' },
+    { name: 'Generate Your Video', description: 'Download and share stunning AI-generated videos in seconds', icon: '🎬', link: '/app/sora/video-generator', price: '$20', credits: '8 Credits' },
     { name: 'Upload Media', description: 'Upload images and videos for your social media content', icon: '📤', link: '/app/sora/upload-media', hidden: true },
     { name: 'Edit & Publish', description: 'Edit and publish content across social media platforms', icon: '✏️', link: '/app/sora/platform-preview', hidden: true },
     { name: 'Publish Now', description: 'Publish content immediately with scheduling options', icon: '🚀', link: '/app/sora/scheduler', hidden: true }
@@ -298,7 +302,7 @@ const SoraVideosDashboard = () => {
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Bring Your Ideas to Life</h1>
-            <p className="text-gray-600">Create, manage and personalize your AI-generated videos</p>
+            <p className="text-gray-600">Create, remix, download and share videos in one place</p>
           </div>
           
           {/* User Profile and Sign Out */}
@@ -576,6 +580,18 @@ const SoraVideosDashboard = () => {
                   );
                 })}
               </div>
+              
+              {/* Button to navigate back to Create Video page - only visible to logged-in users */}
+              {isSignedIn && (
+                <div className="mt-12 text-center">
+                  <Link
+                    to="/app/sora/video-generator"
+                    className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    Go to Create Video Page
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
 

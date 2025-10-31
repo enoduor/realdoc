@@ -801,7 +801,8 @@ const PreviewEnhancements = ({
                 <p style={{ fontSize: '10px', color: '#666', margin: '4px 0', lineHeight: '1.3' }}>
                   PNG/JPG/SVG, max 2MB.
                 </p>
-                {watermarkLogoUrl && (
+                {/* Logo Preview section hidden */}
+                {/* {watermarkLogoUrl && (
                   <div style={{ marginTop: '8px' }}>
                     <img 
                       src={watermarkLogoUrl} 
@@ -816,7 +817,7 @@ const PreviewEnhancements = ({
                     />
                     <p style={{ fontSize: '10px', color: '#666', margin: '4px 0 0 0' }}>Logo Preview</p>
                   </div>
-                )}
+                )} */}
               </div>
             )}
             {watermarkEnabled && (

@@ -160,6 +160,7 @@ app.use("/api/billing", require("./routes/billing"));
 app.use('/api/publisher', require('./routes/publisher'));
 app.use('/api/video-downloader', require('./routes/videoDownloader'));
 app.use('/api/sora', require('./routes/soraApi'));
+app.use('/api/sora', require('./routes/soraVideo')); // Protected video generation endpoint
 
 // --- Simple root ---
 app.get("/", (_req, res) => {

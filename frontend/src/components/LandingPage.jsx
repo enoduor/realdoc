@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';
 import Navigation from './Navigation';
 import PricingSection from './PricingSection';
 import PlatformIcons from './PlatformIcons';
@@ -11,17 +10,10 @@ import './LandingPage.css';
 const LandingPage = () => {
   const [openFAQ, setOpenFAQ] = useState(null);
   const [showWaitlistModal, setShowWaitlistModal] = useState(false);
-  const { isSignedIn } = useUser();
 
-  // Handle Sora Videos Dashboard login
+  // Navigate to Sora Videos Dashboard (public, no authentication required)
   const handleSoraLogin = () => {
-    if (isSignedIn) {
-      // If user is already signed in, go directly to Sora dashboard
-      window.location.href = '/app/sora';
-    } else {
-      // If user is not signed in, go to login page
-      window.location.href = '/login?redirect=sora';
-    }
+    window.location.href = '/app/sora';
   };
 
   // Load TikTok embed script for video gallery with autoplay
@@ -428,7 +420,80 @@ const LandingPage = () => {
             </div>
           </div>
         </div> */}
-            
+      </section>
+
+      {/* Gallery Section */}
+      <section className="gallery-section">
+        <div className="gallery-container">
+          <h2 className="section-title">Video Gallery</h2>
+          <p className="section-subtitle">Explore our AI-generated video creations</p>
+          
+          {/* Start Creating button above gallery grid */}
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <button onClick={handleSoraLogin} className="cta-primary cta-sora">
+              Start Creating
+            </button>
+          </div>
+          
+          <div className="gallery-grid">
+            {[...Array(8)].map((_, index) => {
+              let gifSrc, title, description;
+              
+              if (index === 0) {
+                gifSrc = "/kangaroo.gif";
+                title = "Wildlife Adventure";
+                description = "Experience the beauty of nature with stunning wildlife footage. Perfect for nature enthusiasts and outdoor brands.";
+              } else if (index === 1) {
+                gifSrc = "/soccer.gif";
+                title = "Sports Action";
+                description = "Dynamic sports footage that captures game excitement. Ideal for sports content and athletic brands.";
+              } else if (index === 2) {
+                gifSrc = "/waltz.gif";
+                title = "Elegant Performance";
+                description = "Graceful and artistic video content showcasing elegance. Great for artistic and lifestyle content.";
+              } else if (index === 3) {
+                gifSrc = "/boys.gif";
+                title = "Lifestyle Content";
+                description = "Engaging lifestyle video content that resonates with audiences. Perfect for lifestyle brands and social content.";
+              } else if (index === 4) {
+                gifSrc = "/model.gif";
+                title = "Fashion Model";
+                description = "Professional fashion and modeling content with elegant style. Perfect for fashion brands and lifestyle content.";
+              } else if (index === 5) {
+                gifSrc = "/orchestra.gif";
+                title = "Musical Performance";
+                description = "Symphonic and orchestral performances capturing the essence of live music. Perfect for music events and cultural content.";
+              } else if (index === 6) {
+                gifSrc = "/ad.gif";
+                title = "Advertising Content";
+                description = "Engaging advertising content that captures attention and drives engagement. Perfect for marketing campaigns and brand promotions.";
+              } else if (index === 7) {
+                gifSrc = "/web.gif";
+                title = "Web Content";
+                description = "Modern web and digital content showcasing technology and innovation. Perfect for tech brands and digital marketing.";
+              }
+              
+              return (
+                <div key={index} className="gallery-item">
+                  <img 
+                    src={gifSrc} 
+                    alt={`Gallery video ${index + 1}`}
+                    className="gallery-gif"
+                    loading="lazy"
+                  />
+                  <div className="gallery-content">
+                    <h3 className="gallery-title">{title}</h3>
+                    <p className="gallery-description">{description}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section - Multi-Platform Publishing */}
+      <section id="features" className="features-section">
         {/* Multi-Platform Publishing */}
         <div className="feature-block feature-block-light">
           <div className="feature-container">
@@ -443,12 +508,19 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
-
+      
       {/* Testimonials Section */}
       <section className="testimonials-section">
         <div className="testimonials-container">
           <h2 className="testimonials-title">Loved by busy creators</h2>
           <p className="testimonials-subtitle">Here's what our users are saying</p>
+          
+          {/* Start Creating button for consistency */}
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <button onClick={handleSoraLogin} className="cta-primary cta-sora">
+              Start Creating
+            </button>
+          </div>
           
           <div className="testimonials-grid">
             <div className="testimonial-card">
@@ -499,13 +571,6 @@ const LandingPage = () => {
               </div>
             </div>
           </div>
-          
-          {/* Start Creating button for consistency */}
-          <div style={{ textAlign: 'center', marginTop: '3rem' }}>
-            <button onClick={handleSoraLogin} className="cta-primary cta-sora">
-              Start Creating
-            </button>
-          </div>
         </div>
       </section>
 
@@ -534,6 +599,13 @@ const LandingPage = () => {
         <div className="faq-container">
           <h2 className="section-title">Frequently Asked Questions</h2>
           <p className="section-subtitle">Everything you need to know about AI video generation with Reelpostly</p>
+          
+          {/* Start Creating button above FAQ questions */}
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <button onClick={handleSoraLogin} className="cta-primary cta-sora">
+              Start Creating
+            </button>
+          </div>
           
           <div className="faq-grid">
             <div className={`faq-item ${openFAQ === 0 ? 'active' : ''}`} onClick={() => toggleFAQ(0)}>
@@ -607,13 +679,6 @@ const LandingPage = () => {
                 </p>
               </div>
             </div>
-          </div>
-          
-          {/* Start Creating button at end of FAQ */}
-          <div style={{ textAlign: 'center', marginTop: '3rem' }}>
-            <button onClick={handleSoraLogin} className="cta-primary cta-sora">
-              Start Creating
-            </button>
           </div>
         </div>
       </section>

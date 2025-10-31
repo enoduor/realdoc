@@ -100,26 +100,111 @@ const SoraVideoGenerator = () => {
   // Fetch subscription information
   useEffect(() => {
     const fetchSubscriptionInfo = async () => {
+      if (!isSignedIn) {
+        setSoraCredits(0);
+        return;
+      }
       try {
+        const token = await getToken();
+        if (!token) {
+          setSoraCredits(0);
+          return;
+        }
         const response = await fetch('/api/auth/subscription-status', {
           headers: {
-            'Authorization': `Bearer ${await getToken()}`
+            'Authorization': `Bearer ${token}`
           }
         });
         if (response.ok) {
           const data = await response.json();
           setSubscriptionInfo(data);
           setSoraCredits(data.soraVideoCredits || 0);
+        } else {
+          setSoraCredits(0);
         }
       } catch (error) {
         console.error('Failed to fetch subscription info:', error);
+        setSoraCredits(0);
       }
     };
 
-    if (user) {
-      fetchSubscriptionInfo();
+    fetchSubscriptionInfo();
+  }, [user, isSignedIn, getToken]);
+
+  // Refresh credits when component mounts or user navigates back (always fetch fresh on mount)
+  useEffect(() => {
+    if (isSignedIn && user) {
+      const fetchCredits = async () => {
+        try {
+          const token = await getToken();
+          if (!token) return;
+          const response = await fetch('/api/auth/subscription-status', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setSoraCredits(data.soraVideoCredits || 0);
+          }
+        } catch (error) {
+          console.error('Failed to refresh credits on mount:', error);
+        }
+      };
+      fetchCredits();
     }
-  }, [user, getToken]);
+  }, [isSignedIn, user, getToken]);
+
+  // Refresh credits when page/tab regains focus (user navigates back)
+  useEffect(() => {
+    if (!isSignedIn) return;
+    
+    const handleFocus = async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+        const response = await fetch('/api/auth/subscription-status', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setSoraCredits(data.soraVideoCredits || 0);
+        }
+      } catch (error) {
+        console.error('Failed to refresh credits on focus:', error);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [isSignedIn, getToken]);
+
+  // Listen for credits updates from other components (e.g., after payment or credit deduction)
+  useEffect(() => {
+    const handleCreditsUpdate = async () => {
+      if (!isSignedIn) return;
+      try {
+        const token = await getToken();
+        if (!token) return;
+        const response = await fetch('/api/auth/subscription-status', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setSoraCredits(data.soraVideoCredits || 0);
+        }
+      } catch (error) {
+        console.error('Failed to refresh credits on update event:', error);
+      }
+    };
+
+    window.addEventListener('reelpostly:credits-updated', handleCreditsUpdate);
+    return () => window.removeEventListener('reelpostly:credits-updated', handleCreditsUpdate);
+  }, [isSignedIn, getToken]);
 
   // Handle authentication success - close auth modal and refresh credits
   useEffect(() => {
@@ -138,10 +223,10 @@ const SoraVideoGenerator = () => {
           if (response.ok) {
             const data = await response.json();
             setSoraCredits(data.soraVideoCredits || 0);
-            // If user had pending navigation and now has credits, navigate to platform preview
+            // Clear pending navigation after auth - user will stay on video-generator and can click again
             if (pendingNavigation && data.soraVideoCredits > 0) {
               setPendingNavigation(false);
-              window.location.href = '/app/sora/platform-preview';
+              // Don't navigate - stay on video-generator so user can click "Download & Share" again
             }
           }
         } catch (error) {
@@ -188,13 +273,13 @@ const SoraVideoGenerator = () => {
             // Notify other components (like SoraVideosDashboard) that credits were updated
             window.dispatchEvent(new CustomEvent('reelpostly:credits-updated', { detail: { credits: data.soraVideoCredits || 0 } }));
             
-            // If user had pending navigation and now has credits, navigate to platform preview
+            // Clear pending navigation after payment - user will stay on video-generator and can click again
             // Check sessionStorage since state might not be updated yet
             const hasPendingNav = sessionStorage.getItem('reelpostly.pendingNavigation') === 'true';
             if (hasPendingNav && data.soraVideoCredits > 0) {
               setPendingNavigation(false);
               sessionStorage.removeItem('reelpostly.pendingNavigation');
-              window.location.href = '/app/sora/platform-preview';
+              // Don't navigate - stay on video-generator so user can click "Download & Share" again
             }
           }
         } catch (error) {
@@ -248,15 +333,16 @@ const SoraVideoGenerator = () => {
     } catch (_) {}
   }, [content, currentVideoId, updateContent]);
 
-  // Check if user can proceed after auth (has credits and pending navigation)
+  // Clear pending navigation when user is signed in and has credits (but don't auto-navigate)
+  // User will stay on video-generator and can click "Download & Share" again to go to platform-preview
   useEffect(() => {
-    if (isSignedIn && pendingNavigation && soraCredits > 0 && content?.mediaUrl) {
-      // User is signed in, has credits, and wants to navigate to platform preview
+    if (isSignedIn && pendingNavigation && soraCredits > 0) {
+      // Clear pending navigation - user will stay on video-generator
       setPendingNavigation(false);
       sessionStorage.removeItem('reelpostly.pendingNavigation');
-      window.location.href = '/app/sora/platform-preview';
+      // Don't navigate - user needs to click "Download & Share" again to go to platform-preview
     }
-  }, [isSignedIn, pendingNavigation, soraCredits, content?.mediaUrl]);
+  }, [isSignedIn, pendingNavigation, soraCredits]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -298,8 +384,25 @@ const SoraVideoGenerator = () => {
       return;
     }
 
-    // Note: Do not block generation based on credits here. Backend will enforce limits
-    // and we handle any 402/insufficient-credit responses below.
+    // Check authentication first
+    if (!isSignedIn) {
+      setShowAuthModal(true);
+      setAuthMode('signin');
+      return;
+    }
+
+    // Check credits BEFORE making request - immediately trigger purchase if 0 credits
+    const credits = typeof soraCredits === 'number' ? soraCredits : 0;
+    if (credits < 1) {
+      // User needs credits - show purchase modal immediately
+      setCreditsErrorModal({
+        show: true,
+        title: 'Add Credits to Generate Video',
+        message: 'You need at least 1 credit to generate a video. Purchase credits to continue.',
+        type: 'warning'
+      });
+      return;
+    }
 
     let pollInterval = null;
 
@@ -313,10 +416,17 @@ const SoraVideoGenerator = () => {
       }));
 
       // Step 1: Create video (returns immediately with video_id)
-      const createResponse = await fetch(`${API_URL}/api/v1/video/generate-video-simple`, {
+      // Call protected Node.js endpoint that validates auth and credits
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication required. Please sign in to generate videos.');
+      }
+
+      const createResponse = await fetch('/api/sora/generate-video-simple', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(buildPayload())
       });
@@ -324,11 +434,25 @@ const SoraVideoGenerator = () => {
       if (!createResponse.ok) {
         const errorData = await createResponse.json().catch(() => ({}));
         
-        if (createResponse.status === 402) {
-          throw new Error('⚠️ Insufficient API credits. Please add credits to your OpenAI account to generate videos.');
+        // Handle authentication errors (fallback - should be caught upfront)
+        if (createResponse.status === 401) {
+          setShowAuthModal(true);
+          setAuthMode('signin');
+          throw new Error(''); // Clear error message
         }
         
-        throw new Error(errorData.detail || `HTTP error! status: ${createResponse.status}`);
+        // Handle insufficient credits (fallback - should be caught upfront)
+        if (createResponse.status === 402) {
+          setCreditsErrorModal({
+            show: true,
+            title: 'Add Credits to Generate Video',
+            message: 'You need at least 1 credit to generate a video. Purchase credits to continue.',
+            type: 'warning'
+          });
+          throw new Error(''); // Clear error message
+        }
+        
+        throw new Error(errorData.detail || errorData.error || `HTTP error! status: ${createResponse.status}`);
       }
 
       const createData = await createResponse.json();
@@ -417,27 +541,14 @@ const SoraVideoGenerator = () => {
               mediaDimensions: null
             });
 
-            // Deduct 1 credit from database after successful video generation
-            try {
-              const token = await getToken();
-              const deductResponse = await fetch('/api/auth/deduct-sora-credits', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({ creditsToDeduct: 1 })
-              });
-
-              if (deductResponse.ok) {
-                const deductData = await deductResponse.json();
-                setSoraCredits(deductData.remainingCredits);
-                console.log(`✅ Credits deducted. Remaining: ${deductData.remainingCredits}`);
-              } else {
-                console.error('Failed to deduct credits:', await deductResponse.text());
-              }
-            } catch (deductError) {
-              console.error('Error deducting credits:', deductError);
+            // Credits are already deducted by the backend before generation
+            // Update credit balance from the response if available
+            if (createData.remainingCredits !== undefined) {
+              setSoraCredits(createData.remainingCredits);
+              console.log(`✅ Credits deducted by backend. Remaining: ${createData.remainingCredits}`);
+              
+              // Dispatch event to notify other components (e.g., dashboard)
+              window.dispatchEvent(new CustomEvent('reelpostly:credits-updated'));
             }
 
             // Reset form after a short delay
@@ -548,25 +659,37 @@ const SoraVideoGenerator = () => {
       }
 
       // 4) Deduct 1 credit for the remix (same as initial generation)
-      try {
-        const token = await getToken();
-        const deductResponse = await fetch('/api/auth/deduct-sora-credits', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ creditsToDeduct: 1 })
-        });
-        if (deductResponse.ok) {
-          const deductData = await deductResponse.json();
-          setSoraCredits(deductData.remainingCredits);
-          console.log(`✅ Credits deducted (remix). Remaining: ${deductData.remainingCredits}`);
-        } else {
-          console.error('Failed to deduct credits (remix):', await deductResponse.text());
+      if (isSignedIn) {
+        try {
+          const token = await getToken();
+          if (!token) {
+            console.error('❌ No auth token available for credit deduction (remix)');
+          } else {
+            const deductResponse = await fetch('/api/auth/deduct-sora-credits', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              },
+              body: JSON.stringify({ creditsToDeduct: 1 })
+            });
+            if (deductResponse.ok) {
+              const deductData = await deductResponse.json();
+              setSoraCredits(deductData.remainingCredits);
+              console.log(`✅ Credits deducted (remix). Remaining: ${deductData.remainingCredits}`);
+              
+              // Dispatch event to notify other components (e.g., dashboard)
+              window.dispatchEvent(new CustomEvent('reelpostly:credits-updated'));
+            } else {
+              const errorText = await deductResponse.text();
+              console.error('❌ Failed to deduct credits (remix):', deductResponse.status, errorText);
+            }
+          }
+        } catch (deductError) {
+          console.error('❌ Error deducting credits (remix):', deductError);
         }
-      } catch (deductError) {
-        console.error('Error deducting credits (remix):', deductError);
+      } else {
+        console.warn('⚠️ User not signed in - skipping credit deduction (remix)');
       }
     } catch (err) {
       console.error('Remix error:', err);
@@ -777,8 +900,8 @@ const SoraVideoGenerator = () => {
             </div>
 
 
-            {/* Error Display */}
-            {formData.error && (
+            {/* Error Display - Only show non-credit/auth errors */}
+            {formData.error && !/credits|authentication|sign in/i.test(formData.error) && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-red-800">{formData.error}</p>
               </div>
@@ -827,46 +950,14 @@ const SoraVideoGenerator = () => {
             </button>
             </form>
 
-            {/* Preview & Publish + (moved) Purchase Button */}
+            {/* Preview & Publish */}
             {content.mediaUrl && content.mediaType === 'video' && !formData.generating && (
-              <div className="mt-8 flex items-center justify-center gap-3">
+              <div className="mt-8 flex items-center justify-center">
                 <Link
                   to="/app/sora/platform-preview"
-                  onClick={(e) => {
-                    if (soraCredits < 1) {
-                      e.preventDefault();
-                      // If not signed in, show auth modal
-                      if (!isSignedIn) {
-                        setPendingNavigation(true);
-                        // Persist to sessionStorage in case of redirect
-                        try {
-                          sessionStorage.setItem('reelpostly.pendingNavigation', 'true');
-                        } catch (_) {}
-                        setShowAuthModal(true);
-                        setAuthMode('signin');
-                      } else {
-                        // If signed in but no credits, show error modal with purchase option
-                        setCreditsErrorModal({
-                          show: true,
-                          title: 'Out of Credits',
-                          message: 'You\'re out of credits. Add credits to continue.',
-                          type: 'warning'
-                        });
-                      }
-                    }
-                  }}
                   className="px-8 py-3 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-medium text-center"
                   >Download & Share
                 </Link>
-                {soraCredits < 1 && isSignedIn && (
-                  <button
-                    onClick={handleSoraVideoPurchase}
-                    className="px-4 py-3 bg-amber-500 text-white hover:bg-amber-600 rounded-lg font-medium text-center text-sm"
-                    title="Purchase credits to generate more videos"
-                  >
-                    Purchase Credits
-                  </button>
-                )}
               </div>
             )}
           </div>
