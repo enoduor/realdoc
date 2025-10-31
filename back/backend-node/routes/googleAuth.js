@@ -102,25 +102,43 @@ router.get('/callback', async (req, res) => {
     if (!channel) return res.redirect(abs('app?error=google_auth_failed'));
 
     const YouTubeToken = require('../models/YouTubeToken');
-    await YouTubeToken.findOneAndUpdate(
-      { clerkUserId: userInfo.userId, provider: 'youtube' },
-      {
-        clerkUserId: userInfo.userId || null,
-        email: userInfo.email || null,
-        channelId: channel.id,
-        channelTitle: channel.snippet.title,
-        channelDescription: channel.snippet.description,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
-        expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : new Date(Date.now() + 3600000),
-        scope: tokens.scope,
-        provider: 'youtube',
-        isActive: true,
-        updatedAt: new Date()
-      },
-      { upsert: true, new: true }
-    );
-
+    
+    // First check if a record with this channelId exists
+    let existingDoc = await YouTubeToken.findOne({ channelId: channel.id });
+    
+    if (existingDoc) {
+      // Update existing document
+      existingDoc.clerkUserId = userInfo.userId || null;
+      existingDoc.email = userInfo.email || null;
+      existingDoc.channelTitle = channel.snippet.title;
+      existingDoc.channelDescription = channel.snippet.description;
+      existingDoc.accessToken = tokens.access_token;
+      existingDoc.refreshToken = tokens.refresh_token;
+      existingDoc.expiresAt = tokens.expiry_date ? new Date(tokens.expiry_date) : new Date(Date.now() + 3600000);
+      existingDoc.scope = tokens.scope;
+      existingDoc.provider = 'youtube';
+      existingDoc.isActive = true;
+      await existingDoc.save();
+      console.log('[YouTube OAuth] updated existing token doc:', existingDoc._id);
+      return res.redirect(abs('app?connected=youtube'));
+    }
+    
+    // Create new document if none exists
+    const newDoc = new YouTubeToken({
+      clerkUserId: userInfo.userId || null,
+      email: userInfo.email || null,
+      channelId: channel.id,
+      channelTitle: channel.snippet.title,
+      channelDescription: channel.snippet.description,
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : new Date(Date.now() + 3600000),
+      scope: tokens.scope,
+      provider: 'youtube',
+      isActive: true
+    });
+    await newDoc.save();
+    console.log('[YouTube OAuth] saved new token doc:', newDoc._id);
     return res.redirect(abs('app?connected=youtube'));
   } catch {
     return res.redirect(abs('app?error=google_auth_failed'));

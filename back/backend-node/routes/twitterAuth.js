@@ -58,23 +58,39 @@ router.get('/callback', async (req, res) => {
 
     const { accessToken, accessSecret, userId, screenName } = await tempClient.login(oauth_verifier);
 
-    await TwitterToken.findOneAndUpdate(
-      { clerkUserId: stored.userId, provider: 'twitter' },
-      {
-        clerkUserId: stored.userId,
-        userId: stored.userId,
-        email: stored.email || null,
-        twitterUserId: userId,
-        handle: screenName,
-        oauthToken: accessToken,
-        oauthTokenSecret: accessSecret,
-        provider: 'twitter',
-        isActive: true,
-        updatedAt: new Date(),
-      },
-      { upsert: true, new: true }
-    );
-
+    // First check if a record with this twitterUserId exists
+    let existingDoc = await TwitterToken.findOne({ twitterUserId: userId });
+    
+    if (existingDoc) {
+      // Update existing document
+      existingDoc.clerkUserId = stored.userId;
+      existingDoc.userId = stored.userId;
+      existingDoc.email = stored.email || null;
+      existingDoc.handle = screenName;
+      existingDoc.oauthToken = accessToken;
+      existingDoc.oauthTokenSecret = accessSecret;
+      existingDoc.provider = 'twitter';
+      existingDoc.isActive = true;
+      existingDoc.updatedAt = new Date();
+      await existingDoc.save();
+      console.log('[Twitter OAuth] updated existing token doc:', existingDoc._id);
+      return res.redirect(abs('app?connected=twitter'));
+    }
+    
+    // Create new document if none exists
+    const newDoc = new TwitterToken({
+      clerkUserId: stored.userId,
+      userId: stored.userId,
+      email: stored.email || null,
+      twitterUserId: userId,
+      handle: screenName,
+      oauthToken: accessToken,
+      oauthTokenSecret: accessSecret,
+      provider: 'twitter',
+      isActive: true
+    });
+    await newDoc.save();
+    console.log('[Twitter OAuth] saved new token doc:', newDoc._id);
     return res.redirect(abs('app?connected=twitter'));
   } catch (e) {
     return res.redirect(abs('app?error=twitter_auth_failed'));

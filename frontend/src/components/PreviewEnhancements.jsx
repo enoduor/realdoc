@@ -360,27 +360,6 @@ const PreviewEnhancements = ({
         ctx.globalAlpha = 0.8;
         ctx.drawImage(watermarkLogoImage, x, y, logoWidth, logoHeight);
         ctx.restore();
-      } else if (watermarkEnabled && !watermarkLogoUrl) {
-        // Fallback to text if no logo is uploaded
-        ctx.save();
-        ctx.font = 'bold 16px Arial';
-        ctx.fillStyle = 'rgba(102, 126, 234, 0.8)';
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.lineWidth = 2;
-        const wText = 'ReelPostly';
-        const wWidth = ctx.measureText(wText).width;
-        let x = 10, y = 30;
-        switch (watermarkPosition) {
-          case 'top-left': x = 10; y = 30; break;
-          case 'top-right': x = canvas.width - wWidth - 10; y = 30; break;
-          case 'bottom-left': x = 10; y = canvas.height - 10; break;
-          case 'bottom-right': x = canvas.width - wWidth - 10; y = canvas.height - 10; break;
-          case 'center': x = (canvas.width - wWidth) / 2; y = canvas.height / 2; break;
-          default: break;
-        }
-        ctx.strokeText(wText, x, y);
-        ctx.fillText(wText, x, y);
-        ctx.restore();
       }
 
       if (textOverlay) {
@@ -597,10 +576,10 @@ const PreviewEnhancements = ({
         textAlign: 'center'
       }}>
         <strong style={{ color: '#1976d2', fontSize: '14px' }}>
-          🎨 Video Enhancement Controls
+          🎨 Enhance Your Video
         </strong>
         <p style={{ margin: '3px 0 0 0', color: '#424242', fontSize: '12px' }}>
-          Add watermark, text overlays, and apply filters to your video
+          Add logo, text overlays, and apply filters to your video
         </p>
       </div>
 
@@ -640,8 +619,8 @@ const PreviewEnhancements = ({
             onPlay={() => setNeedsUserGesture(false)}
           />
 
-          {/* UI watermark preview */}
-          {watermarkEnabled && (
+          {/* UI watermark preview - only show if logo is uploaded */}
+          {watermarkEnabled && watermarkLogoUrl && (
             <div style={{
               position: 'absolute',
               ...(watermarkPosition === 'top-left' && { top: '10px', left: '10px' }),
@@ -652,27 +631,16 @@ const PreviewEnhancements = ({
               pointerEvents: 'none',
               zIndex: 10
             }}>
-              {watermarkLogoUrl ? (
-                <img 
-                  src={watermarkLogoUrl} 
-                  alt="Watermark Logo" 
-                  style={{ 
-                    width: '125px', 
-                    height: '125px', 
-                    opacity: 0.8,
-                    objectFit: 'contain'
-                  }} 
-                />
-              ) : (
-                <span style={{
-                  color: 'rgba(102, 126, 234, 0.8)',
-                  fontWeight: 'bold',
-                  fontSize: '16px',
-                  textShadow: '2px 2px 4px rgba(255, 255, 255, 0.9)',
-                }}>
-                  ReelPostly
-                </span>
-              )}
+              <img 
+                src={watermarkLogoUrl} 
+                alt="Watermark Logo" 
+                style={{ 
+                  width: '125px', 
+                  height: '125px', 
+                  opacity: 0.8,
+                  objectFit: 'contain'
+                }} 
+              />
             </div>
           )}
 
@@ -766,7 +734,7 @@ const PreviewEnhancements = ({
               fontSize: '12px'
             }}
           >
-            🏷️ Watermark
+            🏷️ Logo
           </button>
           <button
             onClick={() => setActiveTab('text')}
@@ -802,20 +770,17 @@ const PreviewEnhancements = ({
 
         {activeTab === 'watermark' && (
           <div style={{ textAlign: 'center' }}>
-            <h4 style={{ margin: '0 0 10px 0', color: '#333', fontSize: '14px' }}>Logo Watermark</h4>
-            <div style={{ marginBottom: '10px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+            <h4 style={{ margin: '0 0 10px 0', color: '#333', fontSize: '14px' }}>Logo</h4>
+            <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <input
                   type="checkbox"
                   checked={watermarkEnabled}
                   onChange={(e) => setWatermarkEnabled(e.target.checked)}
                 />
-                <span style={{ fontSize: '12px' }}>Enable watermark</span>
+                <span style={{ fontSize: '12px' }}>Upload</span>
               </label>
-            </div>
-            {watermarkEnabled && (
-              <div style={{ marginBottom: '10px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontSize: '12px' }}>Upload Logo:</label>
+              {watermarkEnabled && (
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/jpg,image/svg+xml"
@@ -829,8 +794,12 @@ const PreviewEnhancements = ({
                     maxWidth: '200px'
                   }}
                 />
+              )}
+            </div>
+            {watermarkEnabled && (
+              <div style={{ marginBottom: '10px' }}>
                 <p style={{ fontSize: '10px', color: '#666', margin: '4px 0', lineHeight: '1.3' }}>
-                  Recommended: PNG/JPG/SVG, max 2MB. Logo will be displayed as 125x125 pixels square.
+                  PNG/JPG/SVG, max 2MB.
                 </p>
                 {watermarkLogoUrl && (
                   <div style={{ marginTop: '8px' }}>

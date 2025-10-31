@@ -126,6 +126,17 @@ const SoraVideosDashboard = () => {
     }
   }, [isSignedIn, fetchSoraCredits]);
 
+  // Listen for credits updates from other components (e.g., after payment)
+  useEffect(() => {
+    const handleCreditsUpdate = () => {
+      fetchSoraCredits();
+    };
+    window.addEventListener('reelpostly:credits-updated', handleCreditsUpdate);
+    return () => {
+      window.removeEventListener('reelpostly:credits-updated', handleCreditsUpdate);
+    };
+  }, [fetchSoraCredits]);
+
   // Handle account deletion
   const handleDeleteAccount = async () => {
     try {
@@ -286,14 +297,16 @@ const SoraVideosDashboard = () => {
           
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Watermark Free Sora Videos</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Bring Your Ideas to Life</h1>
             <p className="text-gray-600">Create, manage and personalize your AI-generated videos</p>
           </div>
           
           {/* User Profile and Sign Out */}
-          <div className="flex justify-end mb-6">
-            <ClerkUserProfile />
-          </div>
+          {isSignedIn && (
+            <div className="flex justify-end mb-6">
+              <ClerkUserProfile />
+            </div>
+          )}
       
 
             <div
@@ -434,7 +447,7 @@ const SoraVideosDashboard = () => {
             {/* Info Banner */}
             <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex justify-between items-center mb-2">
-              <h3 className="text-lg font-semibold text-blue-900">🎬 Download or Share Your Videos Videos</h3>
+              <h3 className="text-lg font-semibold text-blue-900">🎬 Download or Share Your Videos</h3>
               <div className="bg-green-100 px-3 py-1 rounded-lg">
                 <span className="text-sm font-medium text-green-700">{soraCredits} Credits</span>
               </div>
@@ -450,7 +463,7 @@ const SoraVideosDashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
             {/* Left Panel - Connect to Share Your Videos */}
             <div className="lg:col-span-2 bg-white shadow rounded-lg p-6">
-              <h3 className="text-lg font-medium mb-4">Share Videos</h3>
+              <h3 className="text-lg font-medium mb-4">Connect to Share Videos</h3>
               <div className="space-y-4">
                 <a href={`/api/auth/linkedin/oauth2/start/linkedin?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="flex items-center p-3 border rounded-lg hover:bg-gray-50 transition-colors" title="Connect LinkedIn">
                   <Linkedin size={24} className="mr-3 text-[#0A66C2]" />
@@ -473,12 +486,12 @@ const SoraVideosDashboard = () => {
 
             {/* Right Panel - Features */}
             <div className="lg:col-span-3 bg-white shadow rounded-lg p-6">
-              <h3 className="text-lg font-medium mb-4">Download Videos</h3>
+              <h3 className="text-lg font-bold mb-4">Start Creating</h3>
               <div className="space-y-4">
                 {features.filter(feature => !feature.hidden).map((feature) => {
                   const isAction = feature.action && !feature.link;
-                  // For Generate AI Videos, disable the entire component when no credits
-                  const shouldDisableGenerateAI = (feature.name === 'Generate AI Videos' || feature.name === 'Generate Your Video') && soraCredits === 0;
+                  // Only disable the legacy 'Generate AI Videos' when no credits. 'Generate Your Video' remains clickable.
+                  const shouldDisableGenerateAI = (feature.name === 'Generate AI Videos') && soraCredits === 0;
                   const Component = isAction ? 'div' : (shouldDisableGenerateAI ? 'div' : Link);
                   const props = isAction 
                     ? { 
@@ -498,7 +511,9 @@ const SoraVideosDashboard = () => {
                                 ? shouldDisableGenerateAI
                                   ? 'text-[#1976d2] border-[#2196f3] cursor-not-allowed opacity-75'
                                   : 'text-[#1976d2] hover:border-[#2196f3] border-[#2196f3]'
-                                : 'bg-white hover:border-gray-300 border-gray-200'
+                                : feature.name === 'Generate Your Video'
+                                  ? 'bg-blue-50 hover:border-blue-200 border-blue-100'
+                                  : 'bg-white hover:border-gray-300 border-gray-200'
                         }`
                       }
                     : {
@@ -514,11 +529,13 @@ const SoraVideosDashboard = () => {
                             ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer' 
                             : feature.name === 'Download Videos'
                               ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer'
-                              : feature.name === 'Generate AI Videos' || feature.name === 'Generate Your Video'
+                          : feature.name === 'Generate AI Videos'
                                 ? shouldDisableGenerateAI
                                   ? 'text-[#1976d2] border-[#2196f3] cursor-not-allowed opacity-75 bg-blue-50'
                                   : 'text-[#1976d2] hover:border-[#2196f3] border-[#2196f3] cursor-pointer bg-blue-50'
-                                : 'bg-white hover:border-gray-300 border-gray-200 cursor-pointer'
+                                : feature.name === 'Generate Your Video'
+                                  ? 'bg-blue-50 hover:border-blue-200 border-blue-100 cursor-pointer'
+                                  : 'bg-white hover:border-gray-300 border-gray-200 cursor-pointer'
                         }`
                       };
 
@@ -551,20 +568,7 @@ const SoraVideosDashboard = () => {
                                   : 'text-gray-600'
                           }`}>{feature.description}</p>
                           
-                          {(feature.name === 'Generate AI Videos' || feature.name === 'Generate Your Video') && soraCredits === 0 && (
-                            <div className="mt-2 flex items-center justify-between">
-                              <div>
-                                <span className="text-sm font-bold text-green-600">{feature.price}</span>
-                                <span className="ml-1 text-xs text-gray-600">{feature.credits}</span>
-                              </div>
-                              <button
-                                onClick={handleSoraVideoPurchase}
-                                className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-                              >
-                                Purchase
-                              </button>
-                            </div>
-                          )}
+                          {/* Purchase button moved to Preview & Publish section in SoraVideoGenerator */}
                           
                         </div>
                       </div>
@@ -595,27 +599,29 @@ const SoraVideosDashboard = () => {
             </div>
           )}
 
-          {/* Account Settings */}
-          <div className="mb-8 p-6 bg-white rounded-lg shadow">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600 text-sm">This will clear your data from the app database</span>
-              <button
-                onClick={() => setErrorModal({
-                  show: true,
-                  title: 'Delete Account',
-                  message: 'Are you sure you want to delete your account? This action cannot be undone and will remove all your data, including connected social media accounts and posts.',
-                  type: 'warning',
-                  onConfirm: handleDeleteAccount,
-                  confirmText: 'Delete Account',
-                  showCancel: true,
-                  cancelText: 'Cancel'
-                })}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
-              >
-                Delete Account
-              </button>
+          {/* Account Settings - Only show when signed in */}
+          {isSignedIn && (
+            <div className="mb-8 p-6 bg-white rounded-lg shadow">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600 text-sm">This will clear your data from the app database</span>
+                <button
+                  onClick={() => setErrorModal({
+                    show: true,
+                    title: 'Delete Account',
+                    message: 'Are you sure you want to delete your account? This action cannot be undone and will remove all your data, including connected social media accounts and posts.',
+                    type: 'warning',
+                    onConfirm: handleDeleteAccount,
+                    confirmText: 'Delete Account',
+                    showCancel: true,
+                    cancelText: 'Cancel'
+                  })}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                >
+                  Delete Account
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </main>
 

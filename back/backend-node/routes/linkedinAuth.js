@@ -143,26 +143,42 @@ router.get('/callback', async (req, res) => {
       ? new Date(Date.now() + Number(tokenData.expires_in) * 1000)
       : undefined;
 
-    const doc = await LinkedInToken.findOneAndUpdate(
-      { clerkUserId: userId, provider: 'linkedin' },
-      {
-        clerkUserId: userId || null,
-        userId: userId || null,
-        email: email || null,
-        linkedinUserId,
-        firstName,
-        lastName,
-        accessToken: tokenData.access_token,
-        expiresAt,
-        scope: tokenData.scope || 'openid profile w_member_social email',
-        provider: 'linkedin',
-        isActive: true,
-        updatedAt: new Date(),
-      },
-      { upsert: true, new: true }
-    );
-
-    console.log('[LinkedIn OAuth] saved token doc:', doc?._id);
+    // First check if a record with this linkedinUserId exists
+    let existingDoc = await LinkedInToken.findOne({ linkedinUserId });
+    
+    if (existingDoc) {
+      // Update existing document
+      existingDoc.clerkUserId = userId || null;
+      existingDoc.userId = userId || null;
+      existingDoc.email = email || null;
+      existingDoc.firstName = firstName;
+      existingDoc.lastName = lastName;
+      existingDoc.accessToken = tokenData.access_token;
+      existingDoc.expiresAt = expiresAt;
+      existingDoc.scope = tokenData.scope || 'openid profile w_member_social email';
+      existingDoc.provider = 'linkedin';
+      existingDoc.isActive = true;
+      await existingDoc.save();
+      console.log('[LinkedIn OAuth] updated existing token doc:', existingDoc._id);
+      return res.redirect(abs('app?connected=linkedin'));
+    }
+    
+    // Create new document if none exists
+    const newDoc = new LinkedInToken({
+      clerkUserId: userId || null,
+      userId: userId || null,
+      email: email || null,
+      linkedinUserId,
+      firstName,
+      lastName,
+      accessToken: tokenData.access_token,
+      expiresAt,
+      scope: tokenData.scope || 'openid profile w_member_social email',
+      provider: 'linkedin',
+      isActive: true
+    });
+    await newDoc.save();
+    console.log('[LinkedIn OAuth] saved new token doc:', newDoc._id);
     return res.redirect(abs('app?connected=linkedin'));
   } catch (e) {
     console.error('[LinkedIn OAuth] callback error:', e);

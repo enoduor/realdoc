@@ -10,12 +10,14 @@ const ClerkRegister = () => {
   // Check for redirect parameter from URL only
   const redirectTo = searchParams.get('redirect');
   
-  let afterSignUpPath = '/app'; // Default to main dashboard
+  let afterSignUpPath = '/app/sora'; // Default to Sora dashboard
   
   if (redirectTo === 'sora-api-dashboard') {
     afterSignUpPath = '/app/sora-api-dashboard';
   } else if (redirectTo === 'sora') {
     afterSignUpPath = '/app/sora';
+  } else if (redirectTo === 'sora/video-generator') {
+    afterSignUpPath = '/app/sora/video-generator';
   }
 
   // Show loading while Clerk is initializing

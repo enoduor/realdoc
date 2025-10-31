@@ -152,20 +152,79 @@ router.get('/callback', async (req, res) => {
     
     const clerkUserId = userInfo.userId || null; // came from state at /connect
 
-    const tokenDoc = await TikTokToken.findOneAndUpdate(
-      { clerkUserId, provider: 'tiktok' },
-      {
-        clerkUserId,
-        email: userInfo.email || null,
-        accessToken: tokenResp.access_token,
-        refreshToken: tokenResp.refresh_token,
-        tokenType: tokenResp.token_type || 'Bearer',
-        scope: tokenResp.scope,
-        expiresAt: tokenResp.expires_in ? new Date(Date.now() + (tokenResp.expires_in * 1000)) : null
-      },
-      { upsert: true, new: true }
-    );
-    console.log('TikTok token saved to database:', tokenDoc ? 'SUCCESS' : 'FAILED');
+    // First check if a record with this clerkUserId exists
+    let existingDoc = await TikTokToken.findOne({ clerkUserId });
+    
+    if (existingDoc) {
+      // Update existing document
+      existingDoc.email = userInfo.email || null;
+      existingDoc.accessToken = tokenResp.access_token;
+      existingDoc.refreshToken = tokenResp.refresh_token;
+      existingDoc.tokenType = tokenResp.token_type || 'Bearer';
+      existingDoc.scope = tokenResp.scope;
+      existingDoc.expiresAt = tokenResp.expires_in ? new Date(Date.now() + (tokenResp.expires_in * 1000)) : null;
+      await existingDoc.save();
+      console.log('[TikTok OAuth] updated existing token doc:', existingDoc._id);
+      
+      // Use the existing doc for profile update
+      const tokenDoc = existingDoc;
+      
+      // Fetch and store TikTok profile info so /status is populated
+      try {
+        // Node 18+ has global fetch; if not, this will throw and we silently skip
+        const profileRes = await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,username', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${tokenResp.access_token}`
+          }
+        });
+        if (profileRes.ok) {
+          const profileJson = await profileRes.json();
+          // Expected structure: { data: { user: { open_id, display_name, username } } }
+          const u = profileJson?.data?.user || {};
+          const display = typeof u.display_name === 'string' ? u.display_name : '';
+          let first = null, last = null;
+          if (display) {
+            const parts = display.trim().split(/\s+/);
+            first = parts[0] || null;
+            last = parts.length > 1 ? parts.slice(1).join(' ') : null;
+          }
+          await TikTokToken.updateOne(
+            { _id: tokenDoc._id },
+            {
+              $set: {
+                tiktokUserOpenId: u.open_id || tokenDoc.tiktokUserOpenId || null,
+                username: u.username || tokenDoc.username || null,
+                firstName: first ?? tokenDoc.firstName ?? null,
+                lastName:  last ?? tokenDoc.lastName  ?? null
+              }
+            }
+           );
+        } else {
+          const errTxt = await profileRes.text().catch(() => '');
+          console.warn('Failed to fetch TikTok profile info:', profileRes.status, errTxt);
+        }
+      } catch (pfErr) {
+        console.warn('TikTok profile sync skipped/failed:', pfErr.message);
+      }
+      
+      console.log('TikTok OAuth completed successfully, redirecting to app');
+      return res.redirect(abs('app?connected=tiktok'));
+    }
+    
+    // Create new document if none exists
+    const newDoc = new TikTokToken({
+      clerkUserId,
+      email: userInfo.email || null,
+      accessToken: tokenResp.access_token,
+      refreshToken: tokenResp.refresh_token,
+      tokenType: tokenResp.token_type || 'Bearer',
+      scope: tokenResp.scope,
+      expiresAt: tokenResp.expires_in ? new Date(Date.now() + (tokenResp.expires_in * 1000)) : null
+    });
+    await newDoc.save();
+    console.log('[TikTok OAuth] saved new token doc:', newDoc._id);
+    const tokenDoc = newDoc;
 
     // Fetch and store TikTok profile info so /status is populated
     try {

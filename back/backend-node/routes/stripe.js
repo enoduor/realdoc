@@ -140,8 +140,8 @@ router.post("/create-checkout-session", async (req, res) => {
       // One-time payment for Sora video credits
       sessionConfig.mode = "payment";
       sessionConfig.metadata = { ...sessionConfig.metadata, productType: "sora-video-credits" };
-      sessionConfig.success_url = `https://reelpostly.com/app/sora?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
-      sessionConfig.cancel_url = `https://reelpostly.com/app/sora?checkout=canceled`;
+      sessionConfig.success_url = `https://reelpostly.com/app/sora/video-generator?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
+      sessionConfig.cancel_url = `https://reelpostly.com/app/sora/video-generator?checkout=canceled`;
     } else {
       // Regular subscription
       sessionConfig.mode = "subscription";

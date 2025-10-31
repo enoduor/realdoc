@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import PreviewEnhancements from './PreviewEnhancements';
 import { useContent } from '../context/ContentContext';
 import { useUser, useAuth } from '@clerk/clerk-react';
+import { SignIn, SignUp } from '@clerk/clerk-react';
 import ErrorModal from './ErrorModal';
 
 const API_URL = process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://reelpostly.com/ai';
@@ -10,7 +11,7 @@ const API_URL = process.env.REACT_APP_AI_API?.replace(/\/$/, '') || 'https://ree
 const SoraVideoGenerator = () => {
   const { updateContent, content } = useContent();
   const { user } = useUser();
-  const { getToken } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
   const [formData, setFormData] = useState({
     prompt: '',
     model: 'sora-2',
@@ -37,6 +38,64 @@ const SoraVideoGenerator = () => {
   });
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
   const [soraCredits, setSoraCredits] = useState(0);
+  
+  // Auth modal state - show when credits are 0 and user clicks Download & Share
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState('signin'); // 'signin' or 'signup'
+  const [pendingNavigation, setPendingNavigation] = useState(false); // Track if user wants to go to platform preview
+
+  // Move purchase flow here (Stripe checkout for Sora credits)
+  const handleSoraVideoPurchase = async () => {
+    // This function is only called when user is signed in (button only shows when isSignedIn is true)
+    if (!isSignedIn) {
+      console.error('User must be signed in to purchase credits');
+      return;
+    }
+
+    try {
+      const token = await getToken();
+      if (!token) {
+        console.error('Failed to get authentication token');
+        alert('Authentication required. Please sign in again.');
+        return;
+      }
+
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          priceId: 'price_1SIyQSLPiEjYBNcQyq9gryxu'
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to create checkout session:', errorData);
+        alert('Failed to start checkout. Please try again.');
+        return;
+      }
+
+      const { url } = await response.json();
+      if (url) {
+        // Persist generator state and pending navigation so it survives the Stripe redirect roundtrip
+        try {
+          sessionStorage.setItem('reelpostly.generatorContent', JSON.stringify(content || {}));
+          if (currentVideoId) sessionStorage.setItem('reelpostly.currentVideoId', String(currentVideoId));
+          if (pendingNavigation) sessionStorage.setItem('reelpostly.pendingNavigation', 'true');
+        } catch (_) {}
+        window.location.href = url;
+      } else {
+        console.error('No checkout URL returned from server');
+        alert('Failed to start checkout. Please try again.');
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      alert('An error occurred while processing your payment. Please try again.');
+    }
+  };
 
   // Fetch subscription information
   useEffect(() => {
@@ -62,6 +121,37 @@ const SoraVideoGenerator = () => {
     }
   }, [user, getToken]);
 
+  // Handle authentication success - close auth modal and refresh credits
+  useEffect(() => {
+    if (isSignedIn && showAuthModal) {
+      // Close auth modal
+      setShowAuthModal(false);
+      // Refresh credits after authentication
+      const fetchCredits = async () => {
+        try {
+          const token = await getToken();
+          const response = await fetch('/api/auth/subscription-status', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setSoraCredits(data.soraVideoCredits || 0);
+            // If user had pending navigation and now has credits, navigate to platform preview
+            if (pendingNavigation && data.soraVideoCredits > 0) {
+              setPendingNavigation(false);
+              window.location.href = '/app/sora/platform-preview';
+            }
+          }
+        } catch (error) {
+          console.error('Failed to refresh credits after auth:', error);
+        }
+      };
+      fetchCredits();
+    }
+  }, [isSignedIn, showAuthModal, pendingNavigation, getToken]);
+
   // Handle payment success
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -69,6 +159,15 @@ const SoraVideoGenerator = () => {
     const sessionId = urlParams.get('session_id');
     
     if (checkout === 'success' && sessionId) {
+      // Restore pending navigation from sessionStorage
+      try {
+        const pendingNav = sessionStorage.getItem('reelpostly.pendingNavigation');
+        if (pendingNav === 'true') {
+          setPendingNavigation(true);
+          sessionStorage.removeItem('reelpostly.pendingNavigation');
+        }
+      } catch (_) {}
+      
       // Show success message
       setFormData(prev => ({
         ...prev,
@@ -86,16 +185,78 @@ const SoraVideoGenerator = () => {
           if (response.ok) {
             const data = await response.json();
             setSoraCredits(data.soraVideoCredits || 0);
+            // Notify other components (like SoraVideosDashboard) that credits were updated
+            window.dispatchEvent(new CustomEvent('reelpostly:credits-updated', { detail: { credits: data.soraVideoCredits || 0 } }));
+            
+            // If user had pending navigation and now has credits, navigate to platform preview
+            // Check sessionStorage since state might not be updated yet
+            const hasPendingNav = sessionStorage.getItem('reelpostly.pendingNavigation') === 'true';
+            if (hasPendingNav && data.soraVideoCredits > 0) {
+              setPendingNavigation(false);
+              sessionStorage.removeItem('reelpostly.pendingNavigation');
+              window.location.href = '/app/sora/platform-preview';
+            }
           }
         } catch (error) {
           console.error('Failed to refresh credits:', error);
         }
       }, 1000);
+
+      // Restore generator state if it was stashed pre-checkout
+      try {
+        if (!content?.mediaUrl) {
+          const cached = sessionStorage.getItem('reelpostly.generatorContent');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed && (parsed.mediaUrl || parsed.mediaFile)) {
+              updateContent(parsed);
+            }
+          }
+        }
+        const cachedId = sessionStorage.getItem('reelpostly.currentVideoId');
+        if (cachedId) setCurrentVideoId(cachedId);
+        // Clear cache after restore
+        sessionStorage.removeItem('reelpostly.generatorContent');
+        sessionStorage.removeItem('reelpostly.currentVideoId');
+      } catch (_) {}
       
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [getToken]);
+
+  // On first mount, if we have a stashed state and no current content, restore (covers cancel flow or manual back)
+  useEffect(() => {
+    try {
+      if (!content?.mediaUrl) {
+        const cached = sessionStorage.getItem('reelpostly.generatorContent');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && (parsed.mediaUrl || parsed.mediaFile)) {
+            updateContent(parsed);
+          }
+        }
+      }
+      const cachedId = sessionStorage.getItem('reelpostly.currentVideoId');
+      if (cachedId && !currentVideoId) setCurrentVideoId(cachedId);
+      
+      // Restore pending navigation if it exists
+      const pendingNav = sessionStorage.getItem('reelpostly.pendingNavigation');
+      if (pendingNav === 'true') {
+        setPendingNavigation(true);
+      }
+    } catch (_) {}
+  }, [content, currentVideoId, updateContent]);
+
+  // Check if user can proceed after auth (has credits and pending navigation)
+  useEffect(() => {
+    if (isSignedIn && pendingNavigation && soraCredits > 0 && content?.mediaUrl) {
+      // User is signed in, has credits, and wants to navigate to platform preview
+      setPendingNavigation(false);
+      sessionStorage.removeItem('reelpostly.pendingNavigation');
+      window.location.href = '/app/sora/platform-preview';
+    }
+  }, [isSignedIn, pendingNavigation, soraCredits, content?.mediaUrl]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -137,16 +298,8 @@ const SoraVideoGenerator = () => {
       return;
     }
 
-    // Check Sora video credits
-    if (soraCredits < 1) {
-      setCreditsErrorModal({
-        show: true,
-        title: 'Out of Credits',
-        message: 'You\'re out of credits. Add credits to continue generating videos.',
-        type: 'warning'
-      });
-      return;
-    }
+    // Note: Do not block generation based on credits here. Backend will enforce limits
+    // and we handle any 402/insufficient-credit responses below.
 
     let pollInterval = null;
 
@@ -528,7 +681,7 @@ const SoraVideoGenerator = () => {
                 disabled={formData.generating}
               >
                 {/* <option value="sora-2-pro">Sora-2 Pro (Highest Quality)</option> */}
-                <option value="sora-2">Sora-2 (Standard Quality)</option>
+                <option value="sora-2">Sora-2 </option>
               </select>
             </div>
 
@@ -544,9 +697,9 @@ const SoraVideoGenerator = () => {
                 className="w-full p-3 border rounded-lg"
                 disabled={formData.generating}
               >
-                <option value="4">4 seconds</option>
-                <option value="8">8 seconds</option>
-                {/* <option value="12">12 seconds</option> */}
+                <option value="4">4 secs</option>
+                <option value="8">8 secs</option>
+                <option value="12">12 secs</option>
               </select>
             </div>
 
@@ -562,8 +715,8 @@ const SoraVideoGenerator = () => {
                 className="w-full p-3 border rounded-lg"
                 disabled={formData.generating}
               >
-                <option value="720x1280">Portrait (720x1280) - Instagram</option>
-                <option value="1280x720">Landscape (1280x720) - YouTube</option>
+                <option value="720x1280">Portrait - Instagram</option>
+                <option value="1280x720">Landscape - YouTube</option>
               
               </select>
             </div>
@@ -583,14 +736,14 @@ const SoraVideoGenerator = () => {
                 disabled={formData.generating}
               />
               <p className="mt-1 text-xs text-gray-500">
-                Be specific and describe what you want to see. Include the scene, mood, and style.
+                Describe the scene, mood, and style you would llke.
               </p>
               {/* Remix panel: visible when original video exists and generation is not in progress */}
               {(content.mediaUrl && content.mediaType === 'video' && !formData.generating && currentVideoId) && (
                 <div className="mt-3 p-3 border border-gray-200 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-sm font-semibold text-gray-900">Remix this video</span>
-                    <span className="text-xs text-gray-500">Edit the description and re-generate from this result.</span>
+                    <span className="text-sm font-semibold text-gray-900">Remix Video</span>
+                    <span className="text-xs text-gray-500">Edit description and re-generate result.</span>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
@@ -604,9 +757,9 @@ const SoraVideoGenerator = () => {
                     <button
                       type="button"
                       onClick={startRemix}
-                      disabled={remixBusy || !remixPrompt.trim() || soraCredits < 1}
+                      disabled={remixBusy || !remixPrompt.trim()}
                       className={`px-4 py-2 rounded-lg text-white font-medium transition-colors ${
-                        (remixBusy || !remixPrompt.trim() || soraCredits < 1)
+                        (remixBusy || !remixPrompt.trim())
                           ? 'bg-gray-400 cursor-not-allowed'
                           : 'bg-blue-600 hover:bg-blue-700'
                       }`}
@@ -615,22 +768,10 @@ const SoraVideoGenerator = () => {
                       {remixBusy ? `Remixing… ${remixProgress}%` : 'Remix'}
                     </button>
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">
+                  {/* <p className="mt-1 text-xs text-gray-500">
                     No need to wait for storage — remix starts immediately and appears here when ready.
-                  </p>
-                  {soraCredits < 1 && (
-                    <button
-                      onClick={() => setCreditsErrorModal({
-                        show: true,
-                        title: 'Out of Credits',
-                        message: 'You\'re out of credits. Add credits to continue.',
-                        type: 'warning'
-                      })}
-                      className="mt-1 text-xs text-red-600 hover:text-red-800 underline cursor-pointer"
-                    >
-                      You're out of credits. Add credits to continue.
-                    </button>
-                  )}
+                  </p> */}
+                  {/* Removed inline credits modal; credits prompt only appears on Preview & Publish click */}
                 </div>
               )}
             </div>
@@ -686,15 +827,46 @@ const SoraVideoGenerator = () => {
             </button>
             </form>
 
-            {/* Preview & Publish Button - At bottom of left panel */}
+            {/* Preview & Publish + (moved) Purchase Button */}
             {content.mediaUrl && content.mediaType === 'video' && !formData.generating && (
-              <div className="mt-8 flex justify-center">
+              <div className="mt-8 flex items-center justify-center gap-3">
                 <Link
                   to="/app/sora/platform-preview"
+                  onClick={(e) => {
+                    if (soraCredits < 1) {
+                      e.preventDefault();
+                      // If not signed in, show auth modal
+                      if (!isSignedIn) {
+                        setPendingNavigation(true);
+                        // Persist to sessionStorage in case of redirect
+                        try {
+                          sessionStorage.setItem('reelpostly.pendingNavigation', 'true');
+                        } catch (_) {}
+                        setShowAuthModal(true);
+                        setAuthMode('signin');
+                      } else {
+                        // If signed in but no credits, show error modal with purchase option
+                        setCreditsErrorModal({
+                          show: true,
+                          title: 'Out of Credits',
+                          message: 'You\'re out of credits. Add credits to continue.',
+                          type: 'warning'
+                        });
+                      }
+                    }
+                  }}
                   className="px-8 py-3 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-medium text-center"
-                >
-                  Preview & Publish
+                  >Download & Share
                 </Link>
+                {soraCredits < 1 && isSignedIn && (
+                  <button
+                    onClick={handleSoraVideoPurchase}
+                    className="px-4 py-3 bg-amber-500 text-white hover:bg-amber-600 rounded-lg font-medium text-center text-sm"
+                    title="Purchase credits to generate more videos"
+                  >
+                    Purchase Credits
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -714,7 +886,7 @@ const SoraVideoGenerator = () => {
               />
             ) : (
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Video Enhancement</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Generated Video</h3>
                 <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                   <div className="text-center">
                     <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 24 24">
@@ -738,11 +910,79 @@ const SoraVideoGenerator = () => {
         message={creditsErrorModal.message}
         type={creditsErrorModal.type}
         confirmText="Add Credits"
-        onConfirm={() => {
-          // Navigate to billing/pricing page
-          window.location.href = '/app/billing';
+        onConfirm={async () => {
+          setCreditsErrorModal({ show: false, title: '', message: '', type: 'warning' });
+          await handleSoraVideoPurchase();
         }}
       />
+
+      {/* Auth Modal - Show when user clicks Download & Share with 0 credits and not signed in */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 relative">
+            <button
+              onClick={() => {
+                setShowAuthModal(false);
+                setPendingNavigation(false);
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+            <h2 className="text-2xl font-bold mb-4 text-center">
+              {authMode === 'signin' ? 'Sign In' : 'Sign Up'}
+            </h2>
+            <p className="text-sm text-gray-600 mb-6 text-center">
+              {authMode === 'signin' 
+                ? 'Sign in to purchase credits and download your video'
+                : 'Create an account to purchase credits and download your video'}
+            </p>
+            
+            <div className="mb-4">
+              {authMode === 'signin' ? (
+                <SignIn 
+                  redirectUrl="/app/sora/video-generator"
+                  afterSignInUrl="/app/sora/video-generator"
+                  appearance={{
+                    elements: {
+                      formButtonPrimary: 'bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md w-full',
+                      card: 'bg-transparent shadow-none',
+                      headerTitle: 'text-xl font-bold text-gray-900',
+                      headerSubtitle: 'text-gray-600',
+                      socialButtonsBlockButton: 'bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium py-2 px-4 rounded-md w-full mb-2',
+                    }
+                  }}
+                />
+              ) : (
+                <SignUp 
+                  redirectUrl="/app/sora/video-generator"
+                  afterSignUpUrl="/app/sora/video-generator"
+                  appearance={{
+                    elements: {
+                      formButtonPrimary: 'bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md w-full',
+                      card: 'bg-transparent shadow-none',
+                      headerTitle: 'text-xl font-bold text-gray-900',
+                      headerSubtitle: 'text-gray-600',
+                      socialButtonsBlockButton: 'bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium py-2 px-4 rounded-md w-full mb-2',
+                    }
+                  }}
+                />
+              )}
+            </div>
+            
+            <div className="text-center mt-4">
+              <button
+                onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
+                className="text-blue-600 hover:text-blue-500 text-sm"
+              >
+                {authMode === 'signin' 
+                  ? "Don't have an account? Sign up" 
+                  : 'Already have an account? Sign in'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

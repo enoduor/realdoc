@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const PlatformIcons = () => {
   // Realistic LinkedIn Icon
@@ -83,35 +84,58 @@ const PlatformIcons = () => {
   ];
 
   return (
-    <div className="platform-icons">
-      {platformIcons.map((platform, index) => (
-        <div 
-          key={index} 
-          className={platform.className}
-          style={{
-            background: platform.bgColor,
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '20px' }}>
+      <Link to="/app/sora" style={{ display: 'block', cursor: 'pointer', marginBottom: '24px' }}>
+        <img 
+          src="/posts.png" 
+          alt="Posts to Popular Platforms" 
+          style={{ 
+            maxWidth: '100%', 
+            height: 'auto',
             borderRadius: '8px',
-            padding: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minWidth: '48px',
-            minHeight: '48px',
-            transition: 'all 0.3s ease',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+            boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+            transition: 'all 0.3s ease'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.2)';
+            e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+            e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
           }}
-        >
-          {platform.icon}
-        </div>
-      ))}
+        />
+      </Link>
+      <div className="platform-icons" style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+        {platformIcons.map((platform, index) => (
+          <div 
+            key={index} 
+            className={platform.className}
+            style={{
+              background: platform.bgColor,
+              borderRadius: '8px',
+              padding: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: '40px',
+              minHeight: '40px',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+            }}
+          >
+            {platform.icon}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

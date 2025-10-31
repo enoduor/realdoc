@@ -140,27 +140,47 @@ async function upsertFacebookToken({
 }) {
   const FacebookToken = require('../models/FacebookToken');
   
-  const doc = await FacebookToken.findOneAndUpdate(
-    { clerkUserId, provider: 'facebook' },
-    {
-      provider: 'facebook',
-      clerkUserId,
-      userId: clerkUserId,
-      facebookUserId,
-      name,
-      email,
-      accessToken: userAccessToken,
-      tokenType: 'user',
-      grantedPermissions,
-      isActive: true,
-      pageId: pageId || undefined,
-      pageName: pageName || undefined,
-      pageAccessToken: pageAccessToken || undefined,
-      instagramBusinessAccountId: instagramBusinessAccountId || undefined
-    },
-    { upsert: true, new: true }
-  );
-  return doc;
+  // First check if a record with this facebookUserId exists
+  let existingDoc = await FacebookToken.findOne({ facebookUserId });
+  
+  if (existingDoc) {
+    // Update existing document - merge existing data with new data
+    existingDoc.provider = 'facebook';
+    existingDoc.clerkUserId = clerkUserId;
+    existingDoc.userId = clerkUserId;
+    existingDoc.name = name;
+    existingDoc.email = email;
+    existingDoc.accessToken = userAccessToken;
+    existingDoc.tokenType = 'user';
+    existingDoc.grantedPermissions = grantedPermissions;
+    existingDoc.isActive = true;
+    if (pageId) existingDoc.pageId = pageId;
+    if (pageName) existingDoc.pageName = pageName;
+    if (pageAccessToken) existingDoc.pageAccessToken = pageAccessToken;
+    if (instagramBusinessAccountId) existingDoc.instagramBusinessAccountId = instagramBusinessAccountId;
+    await existingDoc.save();
+    return existingDoc;
+  }
+  
+  // Create new document if none exists
+  const newDoc = new FacebookToken({
+    provider: 'facebook',
+    clerkUserId,
+    userId: clerkUserId,
+    facebookUserId,
+    name,
+    email,
+    accessToken: userAccessToken,
+    tokenType: 'user',
+    grantedPermissions,
+    isActive: true,
+    pageId: pageId || undefined,
+    pageName: pageName || undefined,
+    pageAccessToken: pageAccessToken || undefined,
+    instagramBusinessAccountId: instagramBusinessAccountId || undefined
+  });
+  await newDoc.save();
+  return newDoc;
 }
 
 /**

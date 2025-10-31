@@ -61,19 +61,11 @@ export default function App() {
           />
           <Route
             path="/app/sora"
-            element={
-              <ClerkProtectedRoute>
-                <SoraVideosDashboard />
-              </ClerkProtectedRoute>
-            }
+            element={<SoraVideosDashboard />}
           />
           <Route
             path="/app/sora/video-generator"
-            element={
-              <ClerkProtectedRoute>
-                <SoraVideoGenerator />
-              </ClerkProtectedRoute>
-            }
+            element={<SoraVideoGenerator />}
           />
           <Route
             path="/app/sora/platform-preview"
@@ -104,14 +96,6 @@ export default function App() {
             element={
               <ClerkProtectedRoute>
                 <SoraSchedulerPage />
-              </ClerkProtectedRoute>
-            }
-          />
-          <Route
-            path="/app/sora/video-generator"
-            element={
-              <ClerkProtectedRoute>
-                <SoraVideoGenerator />
               </ClerkProtectedRoute>
             }
           />

@@ -246,7 +246,7 @@ const LandingPage = () => {
               <span>Powered by OpenAI Sora 2</span>
             </div>
             <h1 className="hero-title">
-              <strong>AI Video Generator for High-Quality Videos in Seconds</strong>
+              <strong>Generate, Mix, and Add Your Logo to AI Videos in Seconds</strong>
             </h1>
             <p className="hero-description">
               Generate and remix videos from text descriptions 10× faster than Google Video and at 80% lower cost. Unleash endless creative possibilities with AI-powered video editing to create studio-quality, watermark-free videos, upload your logo, add text overlays and filters, and publish across social media in seconds, all from one place.
@@ -256,18 +256,28 @@ const LandingPage = () => {
                 Start Creating
               </button>
             </div>
-            <div className="hero-video">
-              <div className="video-embed-hero">
-                <iframe 
-                  width="100%" 
-                  height="100%" 
-                  src="https://www.youtube.com/embed/vsgzfu2y8_A?autoplay=0&loop=1&playlist=vsgzfu2y8_A&controls=1&showinfo=0&rel=0" 
-                  title="Sora-2 AI Video Generation Demo" 
-                  frameBorder="0" 
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                  allowFullScreen
-                ></iframe>
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+              <Link to="/app/sora" style={{ display: 'block', cursor: 'pointer' }}>
+                <img 
+                  src="/hero.png" 
+                  alt="Generate, Mix, and Add Your Logo to AI Videos" 
+                  style={{ 
+                    maxWidth: '100%', 
+                    height: 'auto',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
+                  }}
+                />
+              </Link>
             </div>
             <div className="social-proof">
               <div className="hero-badge">
@@ -488,6 +498,13 @@ const LandingPage = () => {
                 <div className="author-handle">@emmacontent</div>
               </div>
             </div>
+          </div>
+          
+          {/* Start Creating button for consistency */}
+          <div style={{ textAlign: 'center', marginTop: '3rem' }}>
+            <button onClick={handleSoraLogin} className="cta-primary cta-sora">
+              Start Creating
+            </button>
           </div>
         </div>
       </section>

@@ -242,31 +242,58 @@ router.get('/callback', async (req, res) => {
     }
 
     console.log('🔍 [Instagram OAuth Callback] Attempting to save to database...');
-    const savedToken = await InstagramToken.findOneAndUpdate(
-      { clerkUserId: userId, provider: 'instagram' },
-      { $set: {
-          clerkUserId: userId,
-          userId: userId,
-          email,
-          accessToken: longLived,
-          firstName,
-          lastName,
-          handle,
-          grantedPermissions,
-          isActive: true,
-          pageId, 
-          pageName, 
-          pageAccessToken: pageData?.pageAccessToken || null,
-          igUserId, 
-          name,
-          provider: 'instagram',
-        } },
-      { upsert: true, new: true }
-    );
-    console.log('✅ [Instagram OAuth Callback] Token saved successfully:', {
-      id: savedToken._id,
-      clerkUserId: savedToken.clerkUserId,
-      igUserId: savedToken.igUserId
+    
+    // First check if a record with this igUserId exists
+    let existingDoc = await InstagramToken.findOne({ igUserId });
+    
+    if (existingDoc) {
+      // Update existing document
+      existingDoc.clerkUserId = userId;
+      existingDoc.userId = userId;
+      existingDoc.email = email;
+      existingDoc.accessToken = longLived;
+      existingDoc.firstName = firstName;
+      existingDoc.lastName = lastName;
+      existingDoc.handle = handle;
+      existingDoc.grantedPermissions = grantedPermissions;
+      existingDoc.isActive = true;
+      existingDoc.pageId = pageId;
+      existingDoc.pageName = pageName;
+      existingDoc.pageAccessToken = pageData?.pageAccessToken || null;
+      existingDoc.name = name;
+      existingDoc.provider = 'instagram';
+      await existingDoc.save();
+      console.log('✅ [Instagram OAuth Callback] Updated existing token doc:', {
+        id: existingDoc._id,
+        clerkUserId: existingDoc.clerkUserId,
+        igUserId: existingDoc.igUserId
+      });
+      return res.redirect(abs('app?connected=instagram'));
+    }
+    
+    // Create new document if none exists
+    const newDoc = new InstagramToken({
+      clerkUserId: userId,
+      userId: userId,
+      email,
+      accessToken: longLived,
+      firstName,
+      lastName,
+      handle,
+      grantedPermissions,
+      isActive: true,
+      pageId,
+      pageName,
+      pageAccessToken: pageData?.pageAccessToken || null,
+      igUserId,
+      name,
+      provider: 'instagram'
+    });
+    await newDoc.save();
+    console.log('✅ [Instagram OAuth Callback] Saved new token doc:', {
+      id: newDoc._id,
+      clerkUserId: newDoc.clerkUserId,
+      igUserId: newDoc.igUserId
     });
 
     return res.redirect(abs('app?connected=instagram'));
