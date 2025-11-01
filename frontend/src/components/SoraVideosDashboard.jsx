@@ -281,7 +281,7 @@ const SoraVideosDashboard = () => {
 
   // Sora-specific features
   const features = [
-    { name: 'Generate Your Video', description: 'Download and share stunning AI-generated videos in seconds', icon: '🎬', link: '/app/sora/video-generator', price: '$20', credits: '8 Credits' },
+    { name: 'Describe Your Idea', description: 'Download and share stunning AI-generated videos in seconds', icon: '🎬', link: '/app/sora/video-generator', price: '$20', credits: '8 Credits' },
     { name: 'Upload Media', description: 'Upload images and videos for your social media content', icon: '📤', link: '/app/sora/upload-media', hidden: true },
     { name: 'Edit & Publish', description: 'Edit and publish content across social media platforms', icon: '✏️', link: '/app/sora/platform-preview', hidden: true },
     { name: 'Publish Now', description: 'Publish content immediately with scheduling options', icon: '🚀', link: '/app/sora/scheduler', hidden: true }
@@ -517,7 +517,9 @@ const SoraVideosDashboard = () => {
                                   : 'text-[#1976d2] hover:border-[#2196f3] border-[#2196f3]'
                                 : feature.name === 'Generate Your Video'
                                   ? 'bg-blue-50 hover:border-blue-200 border-blue-100'
-                                  : 'bg-white hover:border-gray-300 border-gray-200'
+                                  : feature.name === 'Describe Your Idea'
+                                    ? 'bg-green-700 hover:bg-green-800 text-white'
+                                    : 'bg-white hover:border-gray-300 border-gray-200'
                         }`
                       }
                     : {
@@ -539,7 +541,9 @@ const SoraVideosDashboard = () => {
                                   : 'text-[#1976d2] hover:border-[#2196f3] border-[#2196f3] cursor-pointer bg-blue-50'
                                 : feature.name === 'Generate Your Video'
                                   ? 'bg-blue-50 hover:border-blue-200 border-blue-100 cursor-pointer'
-                                  : 'bg-white hover:border-gray-300 border-gray-200 cursor-pointer'
+                                  : feature.name === 'Describe Your Idea'
+                                    ? 'bg-green-700 hover:bg-green-800 text-white cursor-pointer'
+                                    : 'bg-white hover:border-gray-300 border-gray-200 cursor-pointer'
                         }`
                       };
 
@@ -558,7 +562,9 @@ const SoraVideosDashboard = () => {
                                 ? 'text-gray-900'
                                 : feature.name === 'Generate AI Videos'
                                   ? 'text-[#1976d2]'
-                                  : 'text-gray-900'
+                                  : feature.name === 'Describe Your Idea'
+                                    ? 'text-white'
+                                    : 'text-gray-900'
                           }`}>
                             {feature.name}
                           </h4>
@@ -569,7 +575,9 @@ const SoraVideosDashboard = () => {
                                 ? 'text-gray-600'
                                 : feature.name === 'Generate AI Videos'
                                   ? 'text-[#424242]'
-                                  : 'text-gray-600'
+                                  : feature.name === 'Describe Your Idea'
+                                    ? 'text-green-100'
+                                    : 'text-gray-600'
                           }`}>{feature.description}</p>
                           
                           {/* Purchase button moved to Preview & Publish section in SoraVideoGenerator */}
@@ -588,7 +596,7 @@ const SoraVideosDashboard = () => {
                     to="/app/sora/video-generator"
                     className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                   >
-                    Go to Create Video Page
+                    Go to Generated Video
                   </Link>
                 </div>
               )}

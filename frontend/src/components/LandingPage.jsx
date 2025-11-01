@@ -238,7 +238,7 @@ const LandingPage = () => {
               <span>Powered by OpenAI Sora 2</span>
             </div>
             <h1 className="hero-title">
-              <strong>Generate, Mix, and Add Your Logo to AI Videos in Seconds</strong>
+              <strong>Create Watermark Free AI videos in seconds</strong>
             </h1>
             <p className="hero-description">
               Generate and remix videos from text descriptions 10× faster than Google Video and at 80% lower cost. Unleash endless creative possibilities with AI-powered video editing to create studio-quality, watermark-free videos, upload your logo, add text overlays and filters, and publish across social media in seconds, all from one place.

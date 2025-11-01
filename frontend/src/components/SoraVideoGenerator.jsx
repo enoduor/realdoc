@@ -85,6 +85,8 @@ const SoraVideoGenerator = () => {
           sessionStorage.setItem('reelpostly.generatorContent', JSON.stringify(content || {}));
           if (currentVideoId) sessionStorage.setItem('reelpostly.currentVideoId', String(currentVideoId));
           if (pendingNavigation) sessionStorage.setItem('reelpostly.pendingNavigation', 'true');
+          // Save the prompt so it's restored after payment
+          sessionStorage.setItem('reelpostly.savedPrompt', formData.prompt);
         } catch (_) {}
         window.location.href = url;
       } else {
@@ -155,6 +157,19 @@ const SoraVideoGenerator = () => {
     }
   }, [isSignedIn, user, getToken]);
 
+  // Restore saved prompt on mount if user just signed in/signed up via Clerk redirect
+  useEffect(() => {
+    if (isSignedIn && !formData.prompt) {
+      try {
+        const savedPrompt = sessionStorage.getItem('reelpostly.savedPrompt');
+        if (savedPrompt) {
+          setFormData(prev => ({ ...prev, prompt: savedPrompt }));
+          sessionStorage.removeItem('reelpostly.savedPrompt');
+        }
+      } catch (_) {}
+    }
+  }, [isSignedIn]);
+
   // Refresh credits when page/tab regains focus (user navigates back)
   useEffect(() => {
     if (!isSignedIn) return;
@@ -211,6 +226,16 @@ const SoraVideoGenerator = () => {
     if (isSignedIn && showAuthModal) {
       // Close auth modal
       setShowAuthModal(false);
+      
+      // Restore saved prompt if it exists
+      try {
+        const savedPrompt = sessionStorage.getItem('reelpostly.savedPrompt');
+        if (savedPrompt) {
+          setFormData(prev => ({ ...prev, prompt: savedPrompt }));
+          sessionStorage.removeItem('reelpostly.savedPrompt');
+        }
+      } catch (_) {}
+      
       // Refresh credits after authentication
       const fetchCredits = async () => {
         try {
@@ -300,9 +325,15 @@ const SoraVideoGenerator = () => {
         }
         const cachedId = sessionStorage.getItem('reelpostly.currentVideoId');
         if (cachedId) setCurrentVideoId(cachedId);
+        // Restore saved prompt if it exists
+        const savedPrompt = sessionStorage.getItem('reelpostly.savedPrompt');
+        if (savedPrompt && !formData.prompt) {
+          setFormData(prev => ({ ...prev, prompt: savedPrompt }));
+        }
         // Clear cache after restore
         sessionStorage.removeItem('reelpostly.generatorContent');
         sessionStorage.removeItem('reelpostly.currentVideoId');
+        sessionStorage.removeItem('reelpostly.savedPrompt');
       } catch (_) {}
       
       // Clean up URL
@@ -329,6 +360,13 @@ const SoraVideoGenerator = () => {
       const pendingNav = sessionStorage.getItem('reelpostly.pendingNavigation');
       if (pendingNav === 'true') {
         setPendingNavigation(true);
+      }
+
+      // Restore saved prompt if it exists (fallback for any mount scenario)
+      const savedPrompt = sessionStorage.getItem('reelpostly.savedPrompt');
+      if (savedPrompt && !formData.prompt) {
+        setFormData(prev => ({ ...prev, prompt: savedPrompt }));
+        sessionStorage.removeItem('reelpostly.savedPrompt');
       }
     } catch (_) {}
   }, [content, currentVideoId, updateContent]);
@@ -386,6 +424,10 @@ const SoraVideoGenerator = () => {
 
     // Check authentication first
     if (!isSignedIn) {
+      // Save prompt state before showing auth modal
+      try {
+        sessionStorage.setItem('reelpostly.savedPrompt', formData.prompt);
+      } catch (_) {}
       setShowAuthModal(true);
       setAuthMode('signin');
       return;
