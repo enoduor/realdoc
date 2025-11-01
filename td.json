@@ -1,9 +1,9 @@
 {
-    "taskDefinitionArn": "arn:aws:ecs:us-west-2:657053005765:task-definition/repostly-unified:1280",
+    "taskDefinitionArn": "arn:aws:ecs:us-west-2:657053005765:task-definition/repostly-unified:1285",
     "containerDefinitions": [
         {
             "name": "repostly-unified",
-            "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20251031183307-207563c",
+            "image": "657053005765.dkr.ecr.us-west-2.amazonaws.com/repostly-unified:v20251031222830-97128ae",
             "cpu": 0,
             "portMappings": [
                 {
@@ -188,7 +188,7 @@
     "taskRoleArn": "arn:aws:iam::657053005765:role/ecsTaskRole",
     "executionRoleArn": "arn:aws:iam::657053005765:role/ecsTaskExecutionRole",
     "networkMode": "awsvpc",
-    "revision": 1280,
+    "revision": 1285,
     "volumes": [],
     "status": "ACTIVE",
     "requiresAttributes": [
@@ -238,6 +238,6 @@
     ],
     "cpu": "1024",
     "memory": "4096",
-    "registeredAt": "2025-10-31T18:36:21.764000-04:00",
+    "registeredAt": "2025-10-31T22:31:23.777000-04:00",
     "registeredBy": "arn:aws:iam::657053005765:user/videograb-deploy"
 }

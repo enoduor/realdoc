@@ -6,6 +6,7 @@ import ClerkUserProfile from './Auth/ClerkUserProfile';
 import ErrorModal from './ErrorModal';
 import VideoDownloader from './VideoDownloader';
 import { useAuthContext } from '../context/AuthContext';
+import { useContent } from '../context/ContentContext';
 
 const SoraVideosDashboard = () => {
   const navigate = useNavigate();
@@ -14,6 +15,9 @@ const SoraVideosDashboard = () => {
 
   // 🔌 from AuthContext (DB-backed)
   const { me, loading, refresh } = useAuthContext();
+
+  // 🔌 from ContentContext (for checking if video exists)
+  const { content } = useContent();
 
   // Set sora dashboard preference when user visits
   useEffect(() => {
@@ -518,7 +522,7 @@ const SoraVideosDashboard = () => {
                                 : feature.name === 'Generate Your Video'
                                   ? 'bg-blue-50 hover:border-blue-200 border-blue-100'
                                   : feature.name === 'Describe Your Idea'
-                                    ? 'bg-green-700 hover:bg-green-800 text-white'
+                                    ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-none'
                                     : 'bg-white hover:border-gray-300 border-gray-200'
                         }`
                       }
@@ -542,7 +546,7 @@ const SoraVideosDashboard = () => {
                                 : feature.name === 'Generate Your Video'
                                   ? 'bg-blue-50 hover:border-blue-200 border-blue-100 cursor-pointer'
                                   : feature.name === 'Describe Your Idea'
-                                    ? 'bg-green-700 hover:bg-green-800 text-white cursor-pointer'
+                                    ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white border-none cursor-pointer'
                                     : 'bg-white hover:border-gray-300 border-gray-200 cursor-pointer'
                         }`
                       };
@@ -589,8 +593,8 @@ const SoraVideosDashboard = () => {
                 })}
               </div>
               
-              {/* Button to navigate back to Create Video page - only visible to logged-in users */}
-              {isSignedIn && (
+              {/* Button to navigate back to Create Video page - only visible to logged-in users with an existing video */}
+              {isSignedIn && content?.mediaUrl && (
                 <div className="mt-12 text-center">
                   <Link
                     to="/app/sora/video-generator"

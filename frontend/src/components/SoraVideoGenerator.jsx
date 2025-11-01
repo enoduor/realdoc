@@ -80,6 +80,19 @@ const SoraVideoGenerator = () => {
 
       const { url } = await response.json();
       if (url) {
+        // TikTok Pixel Tracking - InitiateCheckout event
+        if (window.ttq) {
+          window.ttq.track('InitiateCheckout', {
+            contents: [{
+              content_id: 'sora_credits',
+              content_type: 'product',
+              content_name: 'Sora Video Credits'
+            }],
+            value: 0,
+            currency: 'USD'
+          });
+        }
+
         // Persist generator state and pending navigation so it survives the Stripe redirect roundtrip
         try {
           sessionStorage.setItem('reelpostly.generatorContent', JSON.stringify(content || {}));
@@ -101,6 +114,19 @@ const SoraVideoGenerator = () => {
 
   // Fetch subscription information
   useEffect(() => {
+    // TikTok Pixel Tracking - ViewContent event for video generator page
+    if (window.ttq) {
+      window.ttq.track('ViewContent', {
+        contents: [{
+          content_id: 'video_generator_page',
+          content_type: 'product_group',
+          content_name: 'Sora Video Generator'
+        }],
+        value: 0,
+        currency: 'USD'
+      });
+    }
+
     const fetchSubscriptionInfo = async () => {
       if (!isSignedIn) {
         setSoraCredits(0);
@@ -591,6 +617,19 @@ const SoraVideoGenerator = () => {
               
               // Dispatch event to notify other components (e.g., dashboard)
               window.dispatchEvent(new CustomEvent('reelpostly:credits-updated'));
+            }
+
+            // TikTok Pixel Tracking - Purchase event for successful video generation
+            if (window.ttq) {
+              window.ttq.track('Purchase', {
+                contents: [{
+                  content_id: 'sora_video_generated',
+                  content_type: 'product',
+                  content_name: 'Sora AI Video'
+                }],
+                value: 0,
+                currency: 'USD'
+              });
             }
 
             // Reset form after a short delay

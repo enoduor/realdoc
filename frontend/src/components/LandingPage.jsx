@@ -44,6 +44,19 @@ const LandingPage = () => {
       }
     }
 
+    // TikTok Pixel Tracking - ViewContent event for landing page
+    if (window.ttq) {
+      window.ttq.track('ViewContent', {
+        contents: [{
+          content_id: 'landing_page',
+          content_type: 'product_group',
+          content_name: 'ReelPostly Landing Page'
+        }],
+        value: 0,
+        currency: 'USD'
+      });
+    }
+
     return () => {
       // Don't remove script on unmount as it may be needed elsewhere
     };
