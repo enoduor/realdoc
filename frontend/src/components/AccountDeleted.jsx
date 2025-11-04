@@ -1,9 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useClerk } from '@clerk/clerk-react';
+// import { useClerk } from '@clerk/clerk-react';
 
 const AccountDeleted = () => {
-  const { signOut } = useClerk();
+  // COMMENTED OUT: Clerk authentication
+  // const { signOut } = useClerk();
+  const signOut = async () => {};
 
   const handleSignOut = async () => {
     try {
@@ -54,8 +56,8 @@ const AccountDeleted = () => {
               <h3 className="text-sm font-medium text-gray-900 mb-2">Data that was removed:</h3>
               <ul className="text-sm text-gray-600 space-y-1">
                 <li>• Your user account and profile information</li>
-                <li>• All connected social media accounts (LinkedIn, Twitter, YouTube, TikTok, Facebook, Instagram)</li>
-                <li>• All scheduled posts and content</li>
+                <li>• All generated documentation</li>
+                <li>• All documentation history</li>
                 <li>• Your subscription and billing information</li>
                 <li>• All usage history and analytics</li>
               </ul>
@@ -83,7 +85,7 @@ const AccountDeleted = () => {
             
             {/* Footer message */}
             <p className="text-xs text-gray-500 mt-6">
-              Thank you for using ReelPostly. We're sorry to see you go!
+              Thank you for using RealDoc. We're sorry to see you go!
             </p>
           </div>
         </div>

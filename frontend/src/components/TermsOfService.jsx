@@ -31,14 +31,14 @@ const TermsOfService = () => {
                 <strong>Last Updated:</strong> {new Date().toLocaleDateString()}
               </p>
               <p className="legal-intro">
-                By accessing and using Reelpostly ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
+                By accessing and using RealDoc ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
               </p>
             </div>
 
             <div className="legal-section">
               <h3 className="legal-section-title">1. Description of Service</h3>
               <p>
-                Reelpostly is a social media management platform that allows users to create, schedule, and publish content across multiple social media platforms including LinkedIn, Twitter, Instagram, Facebook, TikTok, and YouTube. Our service includes AI-powered caption and hashtag generation, content scheduling, and analytics.
+                RealDoc is an AI-powered documentation generation platform that allows users to create comprehensive documentation for their online applications. Our service includes AI-powered documentation generation for user guides, API documentation, developer guides, and more.
               </p>
             </div>
 
@@ -80,19 +80,19 @@ const TermsOfService = () => {
               <div className="legal-subsection">
                 <h4 className="legal-subsection-title">4.2 Our Content</h4>
                 <p>
-                  The Service and its original content, features, and functionality are owned by Reelpostly and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.
+                  The Service and its original content, features, and functionality are owned by RealDoc and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.
                 </p>
               </div>
             </div>
 
             <div className="legal-section">
-              <h3 className="legal-section-title">5. Social Media Platform Integration</h3>
-              <p>Our Service integrates with third-party social media platforms. By connecting your social media accounts, you:</p>
+              <h3 className="legal-section-title">5. AI Service Integration</h3>
+              <p>Our Service integrates with third-party AI services for documentation generation. By using our service, you:</p>
               <ul className="legal-list">
-                <li>Grant us permission to access and publish content on your behalf</li>
-                <li>Agree to comply with each platform's terms of service</li>
-                <li>Understand that we are not responsible for platform-specific policies or changes</li>
-                <li>Accept that platform availability may affect our Service</li>
+                <li>Grant us permission to process your application information for documentation generation</li>
+                <li>Agree to comply with AI service providers' terms of service</li>
+                <li>Understand that we are not responsible for AI service provider policies or changes</li>
+                <li>Accept that AI service availability may affect our Service</li>
               </ul>
             </div>
 
@@ -124,7 +124,7 @@ const TermsOfService = () => {
             <div className="legal-section">
               <h3 className="legal-section-title">9. Limitation of Liability</h3>
               <p>
-                To the maximum extent permitted by law, Reelpostly shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses.
+                To the maximum extent permitted by law, RealDoc shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses.
               </p>
             </div>
 

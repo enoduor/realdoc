@@ -1,17 +1,65 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useUser, useSession, useAuth } from '@clerk/clerk-react';
-import { Linkedin, Twitter, Instagram, Youtube, Music, Facebook } from 'lucide-react';
+// import { useUser, useSession, useAuth } from '@clerk/clerk-react';
+
 import ClerkUserProfile from './Auth/ClerkUserProfile';
 import ErrorModal from './ErrorModal';
-import VideoDownloader from './VideoDownloader';
-import { getUserUsageStatus, getCheckoutSession } from '../api';
 import { useAuthContext } from '../context/AuthContext';
+
+// API functions moved inline
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:4001";
+
+const getAuthHeaders = async () => {
+  let token = null;
+  try {
+    if (window.Clerk && window.Clerk.session) {
+      token = await window.Clerk.session.getToken();
+    }
+  } catch (error) {
+    console.error('Error getting Clerk token:', error);
+  }
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+};
+
+const getUserUsageStatus = async () => {
+  try {
+    const response = await fetch(`${API_URL}/api/publisher/usage/status`, {
+      method: 'GET',
+      headers: await getAuthHeaders()
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting usage status:', error);
+    throw error;
+  }
+};
+
+const getCheckoutSession = async (sessionId) => {
+  const res = await fetch(`${API_URL}/api/stripe/subscription-by-session/${sessionId}`);
+  const text = await res.text();
+  const isJson = (res.headers.get("content-type") || "").includes("application/json");
+  const data = isJson ? JSON.parse(text) : text;
+  if (!res.ok) {
+    throw new Error(typeof data === "string" ? data : data?.error || "Failed to fetch checkout session");
+  }
+  return data;
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { isSignedIn, getToken } = useAuth();
-  const { user } = useUser();
+  // COMMENTED OUT: Clerk authentication
+  // const { isSignedIn, getToken } = useAuth();
+  // const { user } = useUser();
+  const isSignedIn = false;
+  const getToken = async () => null;
+  const user = null;
 
   // 🔌 from AuthContext (DB-backed)
   const { me, loading, refresh } = useAuthContext();
@@ -22,7 +70,7 @@ const Dashboard = () => {
   const [usageStatus, setUsageStatus] = useState(null);
   const [welcomeMsg, setWelcomeMsg] = useState('');
   const [checking, setChecking] = useState(false);
-  const [showVideoDownloader, setShowVideoDownloader] = useState(false);
+
   const [errorModal, setErrorModal] = useState({ 
     show: false, 
     title: '', 
@@ -47,71 +95,7 @@ const Dashboard = () => {
   // Handle URL parameters for success/error messages
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const connected = urlParams.get('connected');
-    const error = urlParams.get('error');
 
-    if (connected) {
-      const platformNames = {
-        'linkedin': 'LinkedIn',
-        'twitter': 'Twitter', 
-        'youtube': 'YouTube',
-        'tiktok': 'TikTok',
-        'facebook': 'Facebook',
-        'instagram': 'Instagram'
-      };
-      
-      const platformName = platformNames[connected] || connected;
-      setSuccessModal({
-        show: true,
-        title: 'Success!',
-        message: `${platformName} account connected successfully!`,
-        type: 'success',
-        onConfirm: () => {
-          setSuccessModal({ show: false, title: '', message: '', type: 'success' });
-          // Check if user came from Sora Videos Dashboard and redirect back
-          const preferredDashboard = localStorage.getItem('preferredDashboard');
-          if (preferredDashboard === 'sora') {
-            window.location.href = '/app/sora';
-          }
-        },
-        confirmText: 'OK'
-      });
-      
-      // Clean up URL parameters
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
-    }
-
-    if (error) {
-      const errorMessages = {
-        'linkedin_auth_failed': 'LinkedIn connection failed. Please try again.',
-        'twitter_auth_failed': 'Twitter connection failed. Please try again.',
-        'youtube_auth_failed': 'YouTube connection failed. Please try again.',
-        'tiktok_auth_failed': 'TikTok connection failed. Please try again.',
-        'facebook_auth_failed': 'Facebook connection failed. Please try again.',
-        'instagram_auth_failed': 'Instagram connection failed. Please try again.'
-      };
-      
-      setErrorModal({
-        show: true,
-        title: 'Connection Failed',
-        message: errorMessages[error] || 'Connection failed. Please try again.',
-        type: 'error',
-        onConfirm: () => {
-          setErrorModal({ ...errorModal, show: false });
-          // Check if user came from Sora Videos Dashboard and redirect back
-          const preferredDashboard = localStorage.getItem('preferredDashboard');
-          if (preferredDashboard === 'sora') {
-            window.location.href = '/app/sora';
-          }
-        },
-        confirmText: 'OK'
-      });
-      
-      // Clean up URL parameters
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
-    }
   }, []);
 
   // Handle account deletion
@@ -275,13 +259,7 @@ const Dashboard = () => {
   };
 
   const features = [
-    { name: 'Generate Captions', description: 'Generate & fine-tune caption to match your tone, audience, and brand voice.', icon: '🎯', link: '/app/caption-generator' },
-    { name: 'Download Videos', description: 'Dowbload already popular public videos and repurpose them for your content', icon: '📥', action: () => setShowVideoDownloader(true) },
-    { name: 'Generate Captions', description: 'Create engaging AI-powered captions for your social media posts', icon: '✍️', link: '/app/caption-generator', hidden: true },
-    { name: 'Generate Hashtags', description: 'Generate relevant hashtags to increase your content reach', icon: '#️⃣', link: '/app/hashtag-generator', hidden: true },
-    { name: 'Upload Media', description: 'Upload and manage your media content', icon: '📸', link: '/app/media-upload', hidden: true },
-    { name: 'Edit & Publish', description: 'Preview and publish your content to different platforms', icon: '🚀', link: '/app/platform-preview', hidden: true },
-    { name: 'Publish Now', description: 'Publish posts immediately across multiple platforms', icon: '🚀', link: '/app/scheduler', hidden: true }
+    { name: 'Documentation Generator', description: 'Generate comprehensive documentation for your online applications', icon: '📚', link: '/app/documentation-generator' }
   ];
 
   return (
@@ -306,7 +284,7 @@ const Dashboard = () => {
             <div className="mb-6 bg-white rounded-lg shadow p-6 overflow-hidden">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Posts Today</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Documentation Generated Today</h3>
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-bold text-blue-600">
@@ -479,33 +457,6 @@ const Dashboard = () => {
             </div>
           )}
 
-          {/* OAuth Connections */}
-          <div className="mb-8 p-6 bg-white rounded-lg shadow text-center">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Connect Your Social Media Accounts</h3>
-            <p className="text-sm text-gray-600 mb-4">Connect your accounts to start publishing content across platforms.</p>
-            <div className="flex flex-wrap gap-4 justify-center">
-              <a href={`/api/auth/linkedin/oauth2/start/linkedin?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-[#0A66C2] text-white rounded-lg hover:bg-[#004182] transition-colors" title="Connect LinkedIn">
-                <Linkedin size={24} />
-              </a>
-              <a href={`/api/auth/twitter/oauth/start/twitter?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors" title="Connect Twitter">
-                <Twitter size={24} />
-              </a>
-              <a href={`/api/auth/youtube/oauth2/start/google?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-[#FF0000] text-white rounded-lg hover:bg-[#cc0000] transition-colors" title="Connect YouTube">
-                <Youtube size={24} />
-              </a>
-              <a href={`/api/auth/facebook/oauth/start/facebook?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-[#1877F2] text-white rounded-lg hover:bg-[#166FE5] transition-colors" title="Connect Facebook">
-                <Facebook size={24} />
-              </a>
-              <a href={`/api/auth/instagram/oauth/start/instagram?userId=${user?.id}&amp;email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-colors" title="Connect Instagram">
-                <Instagram size={24} />
-              </a>
-              
-              <a href={`/api/auth/tiktok/oauth/start/tiktok?userId=${user?.id}&email=${user?.primaryEmailAddress?.emailAddress}`} className="inline-flex items-center justify-center w-12 h-12 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors" title="Connect TikTok">
-                <Music size={24} />
-              </a>
-            </div>
-          </div>
-
           {/* Feature cards - Centered both horizontally and vertically */}
           <div className="flex justify-center items-center min-h-[400px]">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
@@ -522,26 +473,18 @@ const Dashboard = () => {
                       feature.action();
                     },
                     className: `block p-8 rounded-2xl border shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
-                      feature.name === 'Generate Captions' 
+                      hasSubscription 
                         ? 'bg-white hover:border-blue-200 border-blue-100' 
-                        : feature.name === 'Download Videos'
-                          ? 'bg-white hover:border-blue-200 border-blue-100'
-                          : hasSubscription 
-                            ? 'bg-white hover:border-gray-300 border-gray-200' 
-                            : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
+                        : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
                     }`
                   }
                 : {
                     to: feature.link,
                     onClick: (e) => handleFeatureClick(e),
                     className: `block p-8 rounded-2xl border shadow-sm hover:shadow-md transition-all duration-300 ${
-                      feature.name === 'Generate Captions' 
+                      hasSubscription 
                         ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer' 
-                        : feature.name === 'Download Videos'
-                          ? 'bg-white hover:border-blue-200 border-blue-100 cursor-pointer'
-                          : hasSubscription 
-                            ? 'bg-white hover:border-gray-300 border-gray-200 cursor-pointer' 
-                            : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
+                        : 'bg-gray-100 cursor-not-allowed opacity-75 border-gray-200'
                     }`
                   };
 
@@ -550,23 +493,11 @@ const Dashboard = () => {
                   <div className="flex items-center">
                     <span className="text-4xl mr-4">{feature.icon}</span>
                     <div>
-                      <h3 className={`text-lg font-semibold ${
-                        feature.name === 'Generate Captions' 
-                          ? 'text-gray-900' 
-                          : feature.name === 'Download Videos'
-                            ? 'text-gray-900'
-                            : 'text-gray-900'
-                      }`}>
+                      <h3 className="text-lg font-semibold text-gray-900">
                         {feature.name}
                         {hasSubscription && <span className="ml-2 text-green-500">✅</span>}
                       </h3>
-                      <p className={`text-sm mt-1 ${
-                        feature.name === 'Generate Captions' 
-                          ? 'text-gray-600' 
-                          : feature.name === 'Download Videos'
-                            ? 'text-gray-600'
-                            : 'text-gray-600'
-                      }`}>{feature.description}</p>
+                      <p className="text-sm mt-1 text-gray-600">{feature.description}</p>
                       {!hasSubscription && <p className="mt-2 text-sm text-red-500">⚠️ Subscription required</p>}
                     </div>
                   </div>
@@ -576,25 +507,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Video Downloader Modal */}
-          {showVideoDownloader && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center p-4 border-b">
-                  <h3 className="text-lg font-semibold">Video Downloader</h3>
-                  <button
-                    onClick={() => setShowVideoDownloader(false)}
-                    className="text-gray-500 hover:text-gray-700 text-xl"
-                  >
-                    ×
-                  </button>
-                </div>
-                <div className="p-4">
-                  <VideoDownloader />
-                </div>
-              </div>
-            </div>
-          )}
+
 
           {/* Account Settings */}
           <div className="mb-8 p-6 bg-white rounded-lg shadow">
@@ -604,7 +517,7 @@ const Dashboard = () => {
                 onClick={() => setErrorModal({
                   show: true,
                   title: 'Delete Account',
-                  message: 'Are you sure you want to delete your account? This action cannot be undone and will remove all your data, including connected social media accounts and posts.',
+                  message: 'Are you sure you want to delete your account? This action cannot be undone and will remove all your data, including generated documentation.',
                   type: 'warning',
                   onConfirm: handleDeleteAccount,
                   confirmText: 'Delete Account',

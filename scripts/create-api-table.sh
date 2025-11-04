@@ -24,6 +24,4 @@ echo ""
 echo "Table schema:"
 echo "  - Primary Key: apiKeyId (String) - AWS API Gateway API key ID"
 echo "  - Attributes: tenantId, planId, credits, status, email, createdAt"
-echo ""
-echo "Now you can run: bash scripts/setup-reelpostly-api.sh"
 

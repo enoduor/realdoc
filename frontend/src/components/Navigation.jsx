@@ -1,57 +1,25 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';
+// import { useUser } from '@clerk/clerk-react';
 import './Navigation.css';
 
 const Navigation = () => {
-  const { isSignedIn, user } = useUser();
+  // COMMENTED OUT: Clerk authentication
+  // const { isSignedIn, user } = useUser();
+  const isSignedIn = false; // Allow access without authentication
+  const user = null;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  // Handle Sora Videos Dashboard login
-  const handleSoraLogin = () => {
-    window.location.href = '/login?redirect=sora';
-  };
-
-  // Handle Sora API login - redirect to API dashboard
-  const handleSoraApiLogin = () => {
+  // Navigate to Documentation Generator
+  const handleGetStarted = () => {
     if (isSignedIn) {
-      window.location.href = '/app/sora-api-dashboard';
+      window.location.href = '/app/documentation-generator';
     } else {
-      window.location.href = '/login?redirect=sora-api-dashboard';
-    }
-  };
-
-  // Determine which handler to use based on current page
-  const handleTryItFree = () => {
-    const currentPath = window.location.pathname;
-    if (currentPath.includes('/sora-api')) {
-      handleSoraApiLogin();
-    } else {
-      handleSoraLogin();
-    }
-  };
-
-  // Determine which Sign In redirect to use based on current page
-  const getSignInPath = () => {
-    const currentPath = window.location.pathname;
-    if (currentPath.includes('/sora-api')) {
-      return '/login?redirect=sora-api-dashboard'; // Sora API page Sign In goes to Sora API dashboard
-    } else {
-      return '/login?redirect=sora'; // Main page Sign In goes to Sora dashboard
-    }
-  };
-
-  // Get the appropriate button text based on current page
-  const getSignInButtonText = () => {
-    const currentPath = window.location.pathname;
-    if (currentPath.includes('/sora-api')) {
-      return 'Login';
-    } else {
-      return 'Sign In';
+      window.location.href = '/login';
     }
   };
 
@@ -60,26 +28,25 @@ const Navigation = () => {
       <div className="nav-container">
         <div className="nav-logo">
           <Link to="/" className="logo-link">
-            <img src="/logo.png" alt="ReelPostly" className="logo-image" />
+            <img src="/logo.png" alt="RealDoc" className="logo-image" />
           </Link>
         </div>
 
         {/* Desktop Navigation */}
         <div className="nav-links">
-          <a href="/#sora" className="nav-link">Create Videos</a>
           <a href="/#features" className="nav-link">Features</a>
-          {/* <a href="/#pricing" className="nav-link">Pricing</a> */}
-          <Link to="/sora-api" className="nav-link">Sora 2 API</Link>
+          <a href="/#pricing" className="nav-link">Pricing</a>
+          <Link to="/help" className="nav-link">Help</Link>
         </div>
 
         <div className="nav-actions">
           {isSignedIn ? (
             <>
-              <button onClick={handleTryItFree} className="nav-btn nav-btn-primary">Get Started</button>
+              <button onClick={handleGetStarted} className="nav-btn nav-btn-primary">Generate Docs</button>
             </>
             ) : (
               <>
-                <Link to={getSignInPath()} className="nav-btn nav-btn-primary">{getSignInButtonText()}</Link>
+                <Link to="/login" className="nav-btn nav-btn-primary">Sign In</Link>
               </>
             )}
         </div>
@@ -96,21 +63,19 @@ const Navigation = () => {
       {isMenuOpen && (
         <div className="mobile-nav">
           <div className="mobile-nav-links">
-            <a href="/#sora" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Create Videos</a>
             <a href="/#features" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Features</a>
-            {/* <a href="/#pricing" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Pricing</a> */}
+            <a href="/#pricing" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Pricing</a>
             <Link to="/about" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>About</Link>
             <Link to="/help" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Help</Link>
-            <Link to="/sora-api" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Sora API</Link>
           </div>
           <div className="mobile-nav-actions">
             {isSignedIn ? (
               <>
-                <button onClick={handleTryItFree} className="mobile-nav-btn mobile-nav-btn-primary">Get Started</button>
+                <button onClick={() => { handleGetStarted(); setIsMenuOpen(false); }} className="mobile-nav-btn mobile-nav-btn-primary">Generate Docs</button>
               </>
             ) : (
               <>
-                <Link to={getSignInPath()} className="mobile-nav-btn mobile-nav-btn-primary" onClick={() => setIsMenuOpen(false)}>{getSignInButtonText()}</Link>
+                <Link to="/login" className="mobile-nav-btn mobile-nav-btn-primary" onClick={() => setIsMenuOpen(false)}>Sign In</Link>
               </>
             )}
           </div>

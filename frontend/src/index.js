@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { ClerkProvider } from "@clerk/clerk-react";
+// import { ClerkProvider } from "@clerk/clerk-react";
 import { AuthProvider } from "./context/AuthContext";
 import { BrowserRouter } from "react-router-dom";
 import "./index.css";
@@ -23,43 +23,43 @@ const BASENAME = "/";                    // BrowserRouter basename (no trailing 
 const joinUrl = (a, b = "") =>
   `${String(a).replace(/\/+$/, "")}/${String(b).replace(/^\/+/, "")}`;
 
-/** ---------- Clerk key resolver (env or <meta>) ---------- */
-function resolveClerkKey() {
-  const k = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
-  if (k && k !== "undefined" && k !== "null") return k;
-  const meta = document.querySelector('meta[name="clerk-publishable-key"]');
-  return meta?.getAttribute("content") || "";
-}
+// /** ---------- Clerk key resolver (env or <meta>) ---------- */
+// function resolveClerkKey() {
+//   const k = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
+//   if (k && k !== "undefined" && k !== "null") return k;
+//   const meta = document.querySelector('meta[name="clerk-publishable-key"]');
+//   return meta?.getAttribute("content") || "";
+// }
 
-// Detect if we're running on production
-const isProdHost = typeof window !== "undefined" && 
-  (window.location.hostname === "reelpostly.com" || 
-   window.location.hostname === "www.reelpostly.com");
+// // Detect if we're running on production
+// const isProdHost = typeof window !== "undefined" && 
+//   (window.location.hostname === "realdoc.com" || 
+//    window.location.hostname === "www.realdoc.com");
 
 
-const clerkConfig = {
-  publishableKey: resolveClerkKey(),
-  fallbackRedirectUrl: joinUrl(PUBLIC_BASE, "app/sora"),
-  afterSignInUrl: joinUrl(PUBLIC_BASE, "app/sora"),
-  afterSignUpUrl: joinUrl(PUBLIC_BASE, "app/sora"),
-  afterSignOutUrl: PUBLIC_BASE,
-};
+// const clerkConfig = {
+//   publishableKey: resolveClerkKey(),
+//   fallbackRedirectUrl: joinUrl(PUBLIC_BASE, "app/documentation-generator"),
+//   afterSignInUrl: joinUrl(PUBLIC_BASE, "app/documentation-generator"),
+//   afterSignUpUrl: joinUrl(PUBLIC_BASE, "app/documentation-generator"),
+//   afterSignOutUrl: PUBLIC_BASE,
+// };
 
-// Only use custom frontendApi in production
-if (isProdHost) {
-  clerkConfig.frontendApi = "https://clerk.reelpostly.com";
-}
+// // Only use custom frontendApi in production
+// if (isProdHost) {
+//   clerkConfig.frontendApi = "https://clerk.realdoc.com";
+// }
 
 
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <ClerkProvider {...clerkConfig}>
+    {/* <ClerkProvider {...clerkConfig}> */}
       <AuthProvider>
         <BrowserRouter basename={BASENAME}>
           <App />
         </BrowserRouter>
       </AuthProvider>
-    </ClerkProvider>
+    {/* </ClerkProvider> */}
   </React.StrictMode>
 );

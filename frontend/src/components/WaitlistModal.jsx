@@ -23,22 +23,22 @@ const WaitlistModal = ({ isOpen, onClose }) => {
 
         <div className="waitlist-body">
           <p className="waitlist-intro">
-            We're experiencing demand for our <strong>Sora 2 AI video generation</strong> and are carefully onboarding users to ensure the best experience.
+            We're experiencing demand for our <strong>AI documentation generation</strong> and are carefully onboarding users to ensure the best experience.
           </p>
 
           <div className="waitlist-benefits">
             <div className="benefit-item">
               <span className="benefit-icon">⚡</span>
               <div className="benefit-text">
-                <strong>Sora 2 Video Generation</strong>
-                <p>Create stunning AI videos with OpenAI's latest Sora 2 model</p>
+                <strong>AI Documentation Generation</strong>
+                <p>Generate comprehensive documentation with AI-powered tools</p>
               </div>
             </div>
             <div className="benefit-item">
               <span className="benefit-icon">🎯</span>
               <div className="benefit-text">
-                <strong>Full Platform Access</strong>
-                <p>Publish to Instagram, TikTok, YouTube, Facebook, LinkedIn & Twitter</p>
+                <strong>Multiple Documentation Types</strong>
+                <p>Generate user guides, API docs, developer guides, and more</p>
               </div>
             </div>
             <div className="benefit-item">
@@ -62,7 +62,7 @@ const WaitlistModal = ({ isOpen, onClose }) => {
           </button>
 
           <p className="waitlist-note">
-            Takes less than 30 seconds • Get early access to Sora 2 AI
+            Takes less than 30 seconds • Get early access to AI documentation generation
           </p>
         </div>
       </div>

@@ -1,9 +1,12 @@
 import React from 'react';
-import { UserButton, useUser, useClerk } from '@clerk/clerk-react';
+// import { UserButton, useUser, useClerk } from '@clerk/clerk-react';
 
 const ClerkUserProfile = () => {
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  // COMMENTED OUT: Clerk authentication
+  // const { user } = useUser();
+  // const { signOut } = useClerk();
+  const user = null;
+  const signOut = async () => {};
 
   // Handle sign out and clear user-specific data
   const handleSignOut = async () => {
@@ -21,7 +24,7 @@ const ClerkUserProfile = () => {
       
       // Check current path to determine redirect destination
       const currentPath = window.location.pathname;
-      const redirectPath = currentPath.includes('/sora-api-dashboard') ? '/sora-api' : '/';
+      const redirectPath = '/';
       
       const ORIGIN = window.location.origin;
       const PUBLIC_BASE_RAW = process.env.PUBLIC_URL || '/';
@@ -40,7 +43,8 @@ const ClerkUserProfile = () => {
 
   return (
     <div className="flex items-center space-x-4">
-      <div className="text-sm text-gray-700">
+      {/* COMMENTED OUT: Clerk UserButton */}
+      {/* <div className="text-sm text-gray-700">
         <span className="font-medium">Welcome, </span>
         <span>{user?.firstName || user?.emailAddresses[0]?.emailAddress}</span>
       </div>
@@ -52,7 +56,10 @@ const ClerkUserProfile = () => {
           }
         }}
         signOutCallback={handleSignOut}
-      />
+      /> */}
+      <div className="text-sm text-gray-700">
+        <span className="font-medium">Guest User</span>
+      </div>
     </div>
   );
 };

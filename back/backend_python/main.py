@@ -5,10 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from routes.captions import router as captions_router
-from routes.hashtags import router as hashtags_router
-from routes.media import router as media_router
-from routes.video_generation import router as video_generation_router
+from routes.documentation import router as documentation_router
 
 load_dotenv()
 
@@ -31,7 +28,7 @@ AI_ROOT_PATH = os.getenv("AI_ROOT_PATH", "/ai")  # external prefix via ALB
 ENABLE_OPENAPI = os.getenv("AI_ENABLE_OPENAPI", "1") == "1"  # docs/schema toggle
 
 app = FastAPI(
-    title="Repostly AI Service",
+    title="DocsGen AI Service",
     root_path=AI_ROOT_PATH,
     openapi_url="/openapi.json" if ENABLE_OPENAPI else None,
     docs_url="/docs" if ENABLE_OPENAPI else None,
@@ -60,16 +57,10 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # ---- Routers (single mount; root_path=/ai makes them externally /ai/...) ----
 # Existing mounts (internal paths)
-app.include_router(captions_router, prefix="/api/v1/captions", tags=["captions"])
-app.include_router(hashtags_router, prefix="/api/v1/hashtags", tags=["hashtags"])
-app.include_router(media_router,    prefix="/api/v1",          tags=["media"])
-app.include_router(video_generation_router, prefix="/api/v1/video", tags=["video"])
+app.include_router(documentation_router, prefix="/api/v1/documentation", tags=["documentation"])
 
 # Mirror mounts (external /ai/* paths)
-app.include_router(captions_router, prefix="/ai/api/v1/captions", tags=["captions"])
-app.include_router(hashtags_router, prefix="/ai/api/v1/hashtags", tags=["hashtags"])
-app.include_router(media_router,    prefix="/ai/api/v1",          tags=["media"])
-app.include_router(video_generation_router, prefix="/ai/api/v1/video", tags=["video"])
+app.include_router(documentation_router, prefix="/ai/api/v1/documentation", tags=["documentation"])
 
 
 

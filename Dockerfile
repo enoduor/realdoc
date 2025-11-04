@@ -83,7 +83,7 @@ RUN npm install -g serve
 # ---- Startup script ----
 RUN printf '%s\n' '#!/bin/bash' \
   'set -euo pipefail' \
-  'echo "🚀 Starting Repostly services..."' \
+  'echo "🚀 Starting RealDoc services..."' \
   'export AI_ROOT_PATH="${AI_ROOT_PATH:-/ai}"' \
   'echo "🤖 AI_ROOT_PATH=${AI_ROOT_PATH}"' \
   'trap "echo Stopping...; kill -TERM ${AI_PID:-0} ${API_PID:-0} || true" TERM INT EXIT' \

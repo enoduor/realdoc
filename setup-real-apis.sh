@@ -302,7 +302,7 @@ main() {
     print_success "Your environment file has been updated with the API configurations."
     echo ""
     print_info "Next steps:"
-    echo "1. Restart your CreatorSync app: ./start-app.sh"
+    echo "1. Restart your RealDoc app: ./realdoc.sh start"
     echo "2. Test the APIs through the scheduler"
     echo "3. Check the logs for any connection issues"
     echo ""

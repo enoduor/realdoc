@@ -170,21 +170,6 @@ register_task_definition() {
                    {"name":"STRIPE_STARTER_YEARLY_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_STARTER_YEARLY_PRICE_ID")},
                    {"name":"STRIPE_CREATOR_MONTHLY_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_CREATOR_MONTHLY_PRICE_ID")},
                    {"name":"STRIPE_CREATOR_YEARLY_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_CREATOR_YEARLY_PRICE_ID")},
-                   {"name":"STRIPE_SORA_10_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_SORA_10_PRICE_ID")},
-                   {"name":"STRIPE_SORA_20_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_SORA_20_PRICE_ID")},
-                   {"name":"STRIPE_SORA_50_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_SORA_50_PRICE_ID")},
-                   {"name":"STRIPE_SORA_100_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_SORA_100_PRICE_ID")},
-                   {"name":"CREDITS_PER_USD","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/CREDITS_PER_USD")},
-                   {"name":"FACEBOOK_APP_ID",  "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/FACEBOOK_APP_ID")},
-                   {"name":"FACEBOOK_APP_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/FACEBOOK_APP_SECRET")},
-                   {"name":"LINKEDIN_CLIENT_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/LINKEDIN_CLIENT_ID")},
-                   {"name":"LINKEDIN_CLIENT_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/LINKEDIN_CLIENT_SECRET")},
-                   {"name":"TWITTER_API_KEY","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/TWITTER_API_KEY")},
-                   {"name":"TWITTER_API_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/TWITTER_API_SECRET")},
-                   {"name":"GOOGLE_CLIENT_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/GOOGLE_CLIENT_ID")},
-                   {"name":"GOOGLE_CLIENT_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/GOOGLE_CLIENT_SECRET")},
-                   {"name":"TIKTOK_CLIENT_KEY","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/TIKTOK_CLIENT_KEY")},
-                   {"name":"TIKTOK_CLIENT_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/TIKTOK_CLIENT_SECRET")},
                    {"name":"STATE_HMAC_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STATE_HMAC_SECRET")}
                  ])
           else . end))

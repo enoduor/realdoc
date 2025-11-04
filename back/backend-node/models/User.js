@@ -79,9 +79,6 @@ const UserSchema = new mongoose.Schema(
     lastPostDate: { type: Date, default: null },
     dailyLimitResetAt: { type: Date, default: null },
 
-    // Sora video credits
-    soraVideoCredits: { type: Number, default: 0, min: 0 },
-
     // Activity tracking
     lastActiveDate: { type: Date, default: null },
 
@@ -249,98 +246,28 @@ UserSchema.methods.canCreatePosts = function() {
 };
 
 /**
- * Helper method to delete all user tokens
+ * Helper method to clean up user data
+ * Note: This is a documentation generator, no social media tokens to clean up
  */
 UserSchema.methods.deleteAllTokens = async function() {
   const clerkUserId = this.clerkUserId;
   
-  console.log(`🔍 [Token Deletion] Starting token cleanup for user:`, {
+  console.log(`🔍 [User Cleanup] Starting cleanup for user:`, {
     clerkUserId: clerkUserId || 'MISSING',
     userDocumentId: this._id
   });
   
   if (!clerkUserId) {
-    console.error('❌ [Token Deletion] No clerkUserId found, skipping token deletion');
+    console.error('❌ [User Cleanup] No clerkUserId found, skipping cleanup');
     return;
   }
   
-  try {
-    console.log(`🗑️ [Token Deletion] Deleting all tokens for clerkUserId: ${clerkUserId}`);
-    
-    // Import token models
-    const TwitterToken = require('./TwitterToken');
-    const LinkedInToken = require('./LinkedInToken');
-    const InstagramToken = require('./InstagramToken');
-    const FacebookToken = require('./FacebookToken');
-    const TikTokToken = require('./TikTokToken');
-    const YouTubeToken = require('./YouTubeToken');
-    const ScheduledPost = require('./ScheduledPost');
-    
-    // Use only clerkUserId for deletion
-    const queryCondition = { clerkUserId };
-    console.log(`🔍 [Token Deletion] Query condition:`, JSON.stringify(queryCondition, null, 2));
-    
-    // Check existing tokens before deletion
-    console.log(`📊 [Token Deletion] Checking existing tokens before deletion:`);
-    const existingTokens = await Promise.allSettled([
-      TwitterToken.countDocuments(queryCondition),
-      LinkedInToken.countDocuments(queryCondition),
-      InstagramToken.countDocuments(queryCondition),
-      FacebookToken.countDocuments(queryCondition),
-      TikTokToken.countDocuments(queryCondition),
-      YouTubeToken.countDocuments(queryCondition),
-      ScheduledPost.countDocuments(queryCondition)
-    ]);
-    
-    const platforms = ['Twitter', 'LinkedIn', 'Instagram', 'Facebook', 'TikTok', 'YouTube', 'ScheduledPost'];
-    existingTokens.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        console.log(`📊 [Token Deletion] Found ${result.value} ${platforms[index]} records`);
-      } else {
-        console.error(`❌ [Token Deletion] Failed to count ${platforms[index]}:`, result.reason);
-      }
-    });
-    
-    // Delete all platform tokens by clerkUserId
-    console.log(`🗑️ [Token Deletion] Starting token deletion process...`);
-    const tokenDeletions = await Promise.allSettled([
-      TwitterToken.deleteMany(queryCondition),
-      LinkedInToken.deleteMany(queryCondition),
-      InstagramToken.deleteMany(queryCondition),
-      FacebookToken.deleteMany(queryCondition),
-      TikTokToken.deleteMany(queryCondition),
-      YouTubeToken.deleteMany(queryCondition),
-      ScheduledPost.deleteMany(queryCondition)
-    ]);
-    
-    // Log results
-    console.log(`📊 [Token Deletion] Deletion results:`);
-    tokenDeletions.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        console.log(`✅ [Token Deletion] Deleted ${result.value.deletedCount} ${platforms[index]} records`);
-      } else {
-        console.error(`❌ [Token Deletion] Failed to delete ${platforms[index]}:`, {
-          error: result.reason.message,
-          stack: result.reason.stack,
-          name: result.reason.name
-        });
-      }
-    });
-    
-    console.log(`🎉 [Token Deletion] Token cleanup completed for clerkUserId: ${clerkUserId}`);
-  } catch (error) {
-    console.error('❌ [Token Deletion] Error deleting user tokens:', {
-      error: error.message,
-      stack: error.stack,
-      name: error.name,
-      clerkUserId: clerkUserId
-    });
-    throw error; // Re-throw to let caller handle
-  }
+  console.log(`✅ [User Cleanup] Cleanup completed for clerkUserId: ${clerkUserId}`);
 };
 
 /**
- * Pre-delete hook: Delete all associated tokens when user is deleted
+ * Pre-delete hook: Clean up user data when user is deleted
+ * Note: This is a documentation generator, no social media tokens to clean up
  */
 UserSchema.pre('deleteOne', { document: false, query: true }, async function() {
   const query = this.getQuery();
@@ -349,87 +276,16 @@ UserSchema.pre('deleteOne', { document: false, query: true }, async function() {
   console.log(`🔍 [Pre-Delete Hook] User deletion triggered with query:`, JSON.stringify(query, null, 2));
   
   if (!clerkUserId) {
-    console.error('❌ [Pre-Delete Hook] No clerkUserId found in query, skipping token cleanup');
+    console.log('⚠️ [Pre-Delete Hook] No clerkUserId found in query');
     return;
   }
   
-  try {
-    console.log(`🗑️ [Pre-Delete Hook] Deleting all tokens for clerkUserId: ${clerkUserId}`);
-    
-    // Import token models
-    const TwitterToken = require('./TwitterToken');
-    const LinkedInToken = require('./LinkedInToken');
-    const InstagramToken = require('./InstagramToken');
-    const FacebookToken = require('./FacebookToken');
-    const TikTokToken = require('./TikTokToken');
-    const YouTubeToken = require('./YouTubeToken');
-    const ScheduledPost = require('./ScheduledPost');
-    
-    // Use only clerkUserId for deletion
-    const queryCondition = { clerkUserId };
-    console.log(`🔍 [Pre-Delete Hook] Query condition:`, JSON.stringify(queryCondition, null, 2));
-    
-    // Check existing tokens before deletion
-    console.log(`📊 [Pre-Delete Hook] Checking existing tokens before deletion:`);
-    const existingTokens = await Promise.allSettled([
-      TwitterToken.countDocuments(queryCondition),
-      LinkedInToken.countDocuments(queryCondition),
-      InstagramToken.countDocuments(queryCondition),
-      FacebookToken.countDocuments(queryCondition),
-      TikTokToken.countDocuments(queryCondition),
-      YouTubeToken.countDocuments(queryCondition),
-      ScheduledPost.countDocuments(queryCondition)
-    ]);
-    
-    const platforms = ['Twitter', 'LinkedIn', 'Instagram', 'Facebook', 'TikTok', 'YouTube', 'ScheduledPost'];
-    existingTokens.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        console.log(`📊 [Pre-Delete Hook] Found ${result.value} ${platforms[index]} records`);
-      } else {
-        console.error(`❌ [Pre-Delete Hook] Failed to count ${platforms[index]}:`, result.reason);
-      }
-    });
-    
-    // Delete all platform tokens by clerkUserId
-    console.log(`🗑️ [Pre-Delete Hook] Starting token deletion process...`);
-    const tokenDeletions = await Promise.allSettled([
-      TwitterToken.deleteMany(queryCondition),
-      LinkedInToken.deleteMany(queryCondition),
-      InstagramToken.deleteMany(queryCondition),
-      FacebookToken.deleteMany(queryCondition),
-      TikTokToken.deleteMany(queryCondition),
-      YouTubeToken.deleteMany(queryCondition),
-      ScheduledPost.deleteMany(queryCondition)
-    ]);
-    
-    // Log results
-    console.log(`📊 [Pre-Delete Hook] Deletion results:`);
-    tokenDeletions.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        console.log(`✅ [Pre-Delete Hook] Deleted ${result.value.deletedCount} ${platforms[index]} records`);
-      } else {
-        console.error(`❌ [Pre-Delete Hook] Failed to delete ${platforms[index]}:`, {
-          error: result.reason.message,
-          stack: result.reason.stack,
-          name: result.reason.name
-        });
-      }
-    });
-    
-    console.log(`🎉 [Pre-Delete Hook] Token cleanup completed for clerkUserId: ${clerkUserId}`);
-  } catch (error) {
-    console.error('❌ [Pre-Delete Hook] Error deleting user tokens:', {
-      error: error.message,
-      stack: error.stack,
-      name: error.name,
-      clerkUserId
-    });
-    // Don't throw error to prevent user deletion from failing
-  }
+  console.log(`✅ [Pre-Delete Hook] User deletion cleanup for clerkUserId: ${clerkUserId}`);
 });
 
 /**
- * Pre-delete hook for findOneAndDelete and deleteOne queries
+ * Pre-delete hook for findOneAndDelete queries
+ * Note: This is a documentation generator, no social media tokens to clean up
  */
 UserSchema.pre('findOneAndDelete', async function() {
   const query = this.getQuery();
@@ -438,83 +294,11 @@ UserSchema.pre('findOneAndDelete', async function() {
   console.log(`🔍 [FindOneAndDelete Hook] User deletion triggered with query:`, JSON.stringify(query, null, 2));
   
   if (!clerkUserId) {
-    console.error('❌ [FindOneAndDelete Hook] No clerkUserId found in query, skipping token cleanup');
+    console.log('⚠️ [FindOneAndDelete Hook] No clerkUserId found in query');
     return;
   }
   
-  try {
-    console.log(`🗑️ [FindOneAndDelete Hook] Deleting all tokens for clerkUserId: ${clerkUserId}`);
-    
-    // Import token models
-    const TwitterToken = require('./TwitterToken');
-    const LinkedInToken = require('./LinkedInToken');
-    const InstagramToken = require('./InstagramToken');
-    const FacebookToken = require('./FacebookToken');
-    const TikTokToken = require('./TikTokToken');
-    const YouTubeToken = require('./YouTubeToken');
-    const ScheduledPost = require('./ScheduledPost');
-    
-    // Use only clerkUserId for deletion
-    const queryCondition = { clerkUserId };
-    console.log(`🔍 [FindOneAndDelete Hook] Query condition:`, JSON.stringify(queryCondition, null, 2));
-    
-    // Check existing tokens before deletion
-    console.log(`📊 [FindOneAndDelete Hook] Checking existing tokens before deletion:`);
-    const existingTokens = await Promise.allSettled([
-      TwitterToken.countDocuments(queryCondition),
-      LinkedInToken.countDocuments(queryCondition),
-      InstagramToken.countDocuments(queryCondition),
-      FacebookToken.countDocuments(queryCondition),
-      TikTokToken.countDocuments(queryCondition),
-      YouTubeToken.countDocuments(queryCondition),
-      ScheduledPost.countDocuments(queryCondition)
-    ]);
-    
-    const platforms = ['Twitter', 'LinkedIn', 'Instagram', 'Facebook', 'TikTok', 'YouTube', 'ScheduledPost'];
-    existingTokens.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        console.log(`📊 [FindOneAndDelete Hook] Found ${result.value} ${platforms[index]} records`);
-      } else {
-        console.error(`❌ [FindOneAndDelete Hook] Failed to count ${platforms[index]}:`, result.reason);
-      }
-    });
-    
-    // Delete all platform tokens by clerkUserId
-    console.log(`🗑️ [FindOneAndDelete Hook] Starting token deletion process...`);
-    const tokenDeletions = await Promise.allSettled([
-      TwitterToken.deleteMany(queryCondition),
-      LinkedInToken.deleteMany(queryCondition),
-      InstagramToken.deleteMany(queryCondition),
-      FacebookToken.deleteMany(queryCondition),
-      TikTokToken.deleteMany(queryCondition),
-      YouTubeToken.deleteMany(queryCondition),
-      ScheduledPost.deleteMany(queryCondition)
-    ]);
-    
-    // Log results
-    console.log(`📊 [FindOneAndDelete Hook] Deletion results:`);
-    tokenDeletions.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        console.log(`✅ [FindOneAndDelete Hook] Deleted ${result.value.deletedCount} ${platforms[index]} records`);
-      } else {
-        console.error(`❌ [FindOneAndDelete Hook] Failed to delete ${platforms[index]}:`, {
-          error: result.reason.message,
-          stack: result.reason.stack,
-          name: result.reason.name
-        });
-      }
-    });
-    
-    console.log(`🎉 [FindOneAndDelete Hook] Token cleanup completed for clerkUserId: ${clerkUserId}`);
-  } catch (error) {
-    console.error('❌ [FindOneAndDelete Hook] Error deleting user tokens:', {
-      error: error.message,
-      stack: error.stack,
-      name: error.name,
-      clerkUserId
-    });
-    // Don't throw error to prevent user deletion from failing
-  }
+  console.log(`✅ [FindOneAndDelete Hook] User deletion cleanup for clerkUserId: ${clerkUserId}`);
 });
 
 module.exports = mongoose.model("User", UserSchema);

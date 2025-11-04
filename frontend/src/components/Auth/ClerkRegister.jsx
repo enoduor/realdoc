@@ -1,23 +1,24 @@
 import React from 'react';
-import { SignUp } from '@clerk/clerk-react';
+// import { SignUp } from '@clerk/clerk-react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';
+// import { useUser } from '@clerk/clerk-react';
 
 const ClerkRegister = () => {
-  const { isSignedIn, isLoaded } = useUser();
+  // COMMENTED OUT: Clerk authentication
+  // const { isSignedIn, isLoaded } = useUser();
+  const isSignedIn = false;
+  const isLoaded = true;
   const [searchParams] = useSearchParams();
   
   // Check for redirect parameter from URL only
   const redirectTo = searchParams.get('redirect');
   
-  let afterSignUpPath = '/app/sora'; // Default to Sora dashboard
+  let afterSignUpPath = '/app/documentation-generator'; // Default to Documentation Generator
   
-  if (redirectTo === 'sora-api-dashboard') {
-    afterSignUpPath = '/app/sora-api-dashboard';
-  } else if (redirectTo === 'sora') {
-    afterSignUpPath = '/app/sora';
-  } else if (redirectTo === 'sora/video-generator') {
-    afterSignUpPath = '/app/sora/video-generator';
+  if (redirectTo === 'documentation-generator') {
+    afterSignUpPath = '/app/documentation-generator';
+  } else if (redirectTo === 'dashboard') {
+    afterSignUpPath = '/app';
   }
 
   // Show loading while Clerk is initializing
@@ -42,7 +43,7 @@ const ClerkRegister = () => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
           <h2 className="text-3xl font-extrabold text-gray-900">
-            Join Repostly
+            Join RealDoc
           </h2>
           <p className="mt-2 text-sm text-gray-600">
             Create your account to get started
@@ -52,7 +53,8 @@ const ClerkRegister = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <SignUp 
+          {/* COMMENTED OUT: Clerk SignUp component */}
+          {/* <SignUp 
             redirectUrl={afterSignUpPath}
             afterSignUpUrl={afterSignUpPath}
             appearance={{
@@ -69,7 +71,13 @@ const ClerkRegister = () => {
                 footerActionLink: 'text-blue-600 hover:text-blue-500',
               }
             }}
-          />
+          /> */}
+          <div className="text-center">
+            <p className="text-gray-600 mb-4">Authentication is currently disabled. Redirecting to documentation generator...</p>
+            <Link to="/app/documentation-generator" className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md">
+              Continue to Documentation Generator
+            </Link>
+          </div>
           
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">

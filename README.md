@@ -1,6 +1,6 @@
-# CreatorSync
+# RealDoc
 
-AI-powered content creation assistant platform.
+AI-powered documentation generator platform for creating comprehensive documentation for online applications.
 
 ## Directory Structure
 ```

@@ -12,14 +12,6 @@ const checkDailyUsage = async (req, res, next) => {
       });
     }
 
-    // Check if request is from Sora Videos Dashboard flow - bypass daily limits
-    const isSoraFlow = req.body?.soraFlow || req.headers['x-sora-flow'];
-    if (isSoraFlow) {
-      // Skip daily usage check for Sora Videos Dashboard flow
-      req.bypassDailyLimit = true;
-      next();
-      return;
-    }
 
     // Get user from database
     const user = await User.findOne({ clerkUserId });
@@ -75,8 +67,8 @@ const incrementUsage = async (req, res, next) => {
   const originalJson = res.json;
   
   res.json = function(data) {
-    // Only increment if publish was successful and not from Sora flow
-    if (data && data.success !== false && req.user && !req.bypassDailyLimit) {
+    // Only increment if publish was successful
+    if (data && data.success !== false && req.user) {
       // Increment usage asynchronously (don't block response)
       req.user.incrementDailyUsage()
         .then(() => {

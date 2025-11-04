@@ -122,34 +122,21 @@ router.post("/create-checkout-session", async (req, res) => {
       console.log("✅ Created new Stripe customer:", stripeCustomerId);
     }
 
-    // Determine if this is a one-time payment for Sora video credits
-    const isSoraVideoCredits = priceId === 'price_1SIyQSLPiEjYBNcQyq9gryxu';
-    
     const sessionConfig = {
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       customer: stripeCustomerId,  // ✅ ALWAYS pass customer to prevent duplicates
       client_reference_id: clerkUserId,  // ✅ Join key for webhooks
       metadata: { clerkUserId, plan, billingCycle, priceId },
-      success_url: `https://reelpostly.com/app?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `https://reelpostly.com/pricing`,
-      allow_promotion_codes: true,
-    };
-
-    if (isSoraVideoCredits) {
-      // One-time payment for Sora video credits
-      sessionConfig.mode = "payment";
-      sessionConfig.metadata = { ...sessionConfig.metadata, productType: "sora-video-credits" };
-      sessionConfig.success_url = `https://reelpostly.com/app/sora/video-generator?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
-      sessionConfig.cancel_url = `https://reelpostly.com/app/sora/video-generator?checkout=canceled`;
-    } else {
-      // Regular subscription
-      sessionConfig.mode = "subscription";
-      sessionConfig.subscription_data = { 
+      mode: "subscription",
+      subscription_data: { 
         trial_period_days: 3,
         metadata: { clerkUserId, plan, billingCycle }
-      };
-    }
+      },
+      success_url: `https://realdoc.com/app?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `https://realdoc.com/pricing`,
+      allow_promotion_codes: true,
+    };
 
     const session = await stripe.checkout.sessions.create(sessionConfig);
 
@@ -227,8 +214,8 @@ router.post("/create-subscription-session", async (req, res) => {
         metadata: { plan, billingCycle, clerkUserId }
       },
       metadata: { plan, billingCycle, clerkUserId },
-      success_url: `https://reelpostly.com/app?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `https://reelpostly.com/pricing`,
+      success_url: `https://realdoc.com/app?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `https://realdoc.com/pricing`,
       allow_promotion_codes: true,
     });
 
@@ -521,7 +508,7 @@ router.post("/credits/checkout", requireAuth(), async (req, res) => {
           price_data: {
             currency: "usd",
             product_data: {
-              name: "ReelPostly API Credits",
+              name: "RealDoc API Credits",
               description: "One-time purchase of API usage credits",
             },
             unit_amount: unitAmount,
@@ -570,7 +557,7 @@ router.post("/portal-session", requireAuth(), async (req, res) => {
 
     const returnUrl =
       (process.env.APP_URL && `${process.env.APP_URL}/app`) ||
-      `${process.env.FRONTEND_URL || "https://reelpostly.com"}/app`;
+      `${process.env.FRONTEND_URL || "https://realdoc.com"}/app`;
 
     const params = {
       customer: user.stripeCustomerId,

@@ -261,8 +261,8 @@ button.nav-btn-primary:hover {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
-/* Override cta-primary when combined with cta-sora */
-.cta-primary.cta-sora {
+/* Override cta-primary */
+.cta-primary {
   background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%) !important;
   color: white !important;
   border: none !important;
@@ -280,50 +280,6 @@ button.nav-btn-primary:hover {
 .cta-primary:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-}
-
-.cta-primary.cta-sora:hover {
-  background: linear-gradient(135deg, #ff5252 0%, #ff7043 100%) !important;
-  transform: translateY(-3px) !important;
-  box-shadow: 0 12px 35px rgba(255, 107, 107, 0.6) !important;
-  color: white !important;
-}
-
-.cta-sora {
-  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%) !important;
-  color: white !important;
-  border: none !important;
-  box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4) !important;
-  font-weight: 700 !important;
-  font-size: 1rem !important;
-  padding: 16px 32px !important;
-  border-radius: 12px !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.5px !important;
-  position: relative !important;
-  overflow: hidden !important;
-}
-
-.cta-sora::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s;
-}
-
-.cta-sora:hover::before {
-  left: 100%;
-}
-
-.cta-sora:hover {
-  background: linear-gradient(135deg, #ff5252 0%, #ff7043 100%) !important;
-  transform: translateY(-3px) !important;
-  box-shadow: 0 12px 35px rgba(255, 107, 107, 0.6) !important;
-  color: white !important;
 }
 
 /* Button-specific styles to match Link */

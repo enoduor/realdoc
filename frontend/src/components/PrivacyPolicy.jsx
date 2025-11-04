@@ -31,7 +31,7 @@ const PrivacyPolicy = () => {
                 <strong>Last Updated:</strong> {new Date().toLocaleDateString()}
               </p>
               <p className="legal-intro">
-                Reelpostly ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our social media management platform and related services.
+                RealDoc ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our documentation generation platform and related services.
               </p>
             </div>
 
@@ -51,13 +51,12 @@ const PrivacyPolicy = () => {
               </div>
 
               <div className="legal-subsection">
-                <h4 className="legal-subsection-title">1.2 Social Media Account Information</h4>
+                <h4 className="legal-subsection-title">1.2 Documentation Content</h4>
                 <p>To provide our services, we may collect:</p>
                 <ul className="legal-list">
-                  <li>Social media account credentials (with your explicit consent)</li>
-                  <li>Posts, images, videos, and other content from your connected accounts</li>
-                  <li>Analytics and engagement data from your social media platforms</li>
-                  <li>Follower and audience information</li>
+                  <li>Documentation content you create and generate</li>
+                  <li>Application information you provide for documentation generation</li>
+                  <li>Preferences and settings for documentation generation</li>
                 </ul>
               </div>
 
@@ -94,7 +93,7 @@ const PrivacyPolicy = () => {
                 <h4 className="legal-subsection-title">3.1 Third-Party Services</h4>
                 <p>We may share your information with third-party service providers who assist us in operating our platform, including:</p>
                 <ul className="legal-list">
-                  <li>Social media platforms (for publishing and analytics)</li>
+                  <li>AI service providers (for documentation generation)</li>
                   <li>Payment processors</li>
                   <li>Cloud storage providers</li>
                   <li>Analytics services</li>

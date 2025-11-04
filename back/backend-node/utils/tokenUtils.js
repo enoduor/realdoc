@@ -1,9 +1,3 @@
-const TwitterToken = require('../models/TwitterToken');
-const LinkedInToken = require('../models/LinkedInToken');
-const InstagramToken = require('../models/InstagramToken');
-const FacebookToken = require('../models/FacebookToken');
-const TikTokToken = require('../models/TikTokToken');
-const YouTubeToken = require('../models/YouTubeToken');
 const User = require('../models/User');
 
 /**
@@ -20,8 +14,7 @@ const getUserSubscriptionStatus = async (clerkUserId) => {
         hasActiveSubscription: false,
         subscriptionStatus: 'none',
         selectedPlan: 'starter',
-        trialDaysRemaining: 0,
-        canCreatePosts: false
+        trialDaysRemaining: 0
       };
     }
 
@@ -30,10 +23,7 @@ const getUserSubscriptionStatus = async (clerkUserId) => {
       subscriptionStatus: user.subscriptionStatus,
       selectedPlan: user.selectedPlan,
       billingCycle: user.billingCycle,
-      trialDaysRemaining: user.calculateTrialDaysRemaining(),
-      canCreatePosts: user.canCreatePosts(),
-      accountsConnected: user.accountsConnected,
-      postsCreated: user.postsCreated
+      trialDaysRemaining: user.calculateTrialDaysRemaining()
     };
   } catch (error) {
     console.error('Error getting user subscription status:', error);
@@ -41,212 +31,11 @@ const getUserSubscriptionStatus = async (clerkUserId) => {
       hasActiveSubscription: false,
       subscriptionStatus: 'none',
       selectedPlan: 'starter',
-      trialDaysRemaining: 0,
-      canCreatePosts: false
+      trialDaysRemaining: 0
     };
-  }
-};
-
-/**
- * Get all platform tokens for a user by Clerk user ID
- * @param {string} clerkUserId - Clerk user ID
- * @returns {Object} Object with tokens for each platform
- */
-const getUserPlatformTokens = async (clerkUserId) => {
-  try {
-    const [twitterToken, linkedinToken, instagramToken, facebookToken, tiktokToken, youtubeToken] = await Promise.all([
-      TwitterToken.findOne({ clerkUserId }),
-      LinkedInToken.findOne({ clerkUserId }),
-      InstagramToken.findOne({ clerkUserId, isActive: true }),
-      FacebookToken.findOne({ clerkUserId, isActive: true }),
-      TikTokToken.findOne({ clerkUserId }),
-      YouTubeToken.findOne({ clerkUserId, isActive: true })
-    ]);
-
-    return {
-      twitter: twitterToken,
-      linkedin: linkedinToken,
-      instagram: instagramToken,
-      facebook: facebookToken,
-      tiktok: tiktokToken,
-      youtube: youtubeToken
-    };
-  } catch (error) {
-    console.error('Error getting user platform tokens:', error);
-    return {
-      twitter: null,
-      linkedin: null,
-      instagram: null,
-      facebook: null,
-      tiktok: null,
-      youtube: null
-    };
-  }
-};
-
-/**
- * Get platform connection status for a user
- * @param {string} clerkUserId - Clerk user ID
- * @returns {Object} Connection status for each platform
- */
-const getPlatformConnectionStatus = async (clerkUserId) => {
-  try {
-    const tokens = await getUserPlatformTokens(clerkUserId);
-    
-    return {
-      twitter: {
-        connected: !!tokens.twitter,
-        clerkUserId: clerkUserId,
-        userId: tokens.twitter?.twitterUserId,
-        handle: tokens.twitter?.handle
-      },
-      linkedin: {
-        connected: !!tokens.linkedin,
-        clerkUserId: clerkUserId,
-        userId: tokens.linkedin?.linkedinUserId,
-        handle: tokens.linkedin?.handle
-      },
-      instagram: {
-        connected: !!tokens.instagram,
-        clerkUserId: clerkUserId,
-        userId: tokens.instagram?.igUserId,
-        handle: tokens.instagram?.handle
-      },
-      facebook: {
-        connected: !!tokens.facebook,
-        clerkUserId: clerkUserId,
-        userId: tokens.facebook?.facebookUserId,
-        handle: tokens.facebook?.handle
-      },
-      tiktok: {
-        connected: !!tokens.tiktok,
-        clerkUserId: clerkUserId,
-        userId: tokens.tiktok?.tiktokUserOpenId,
-        handle: tokens.tiktok?.handle
-      },
-      youtube: {
-        connected: !!tokens.youtube,
-        clerkUserId: clerkUserId,
-        userId: tokens.youtube?.youtubeUserId,
-        handle: tokens.youtube?.handle
-      }
-    };
-  } catch (error) {
-    console.error('Error getting platform connection status:', error);
-    return {
-      twitter: { connected: false },
-      linkedin: { connected: false },
-      instagram: { connected: false },
-      facebook: { connected: false },
-      tiktok: { connected: false },
-      youtube: { connected: false }
-    };
-  }
-};
-
-/**
- * Create or update a platform token with Clerk user ID
- * @param {string} platform - Platform name (twitter, linkedin, instagram, facebook, tiktok)
- * @param {string} clerkUserId - Clerk user ID
- * @param {Object} tokenData - Token data to save
- * @returns {Object} Created/updated token
- */
-const createOrUpdatePlatformToken = async (platform, clerkUserId, tokenData) => {
-  try {
-    let TokenModel;
-    
-    switch (platform.toLowerCase()) {
-      case 'twitter':
-        TokenModel = TwitterToken;
-        break;
-      case 'linkedin':
-        TokenModel = LinkedInToken;
-        break;
-      case 'instagram':
-        TokenModel = InstagramToken;
-        break;
-      case 'facebook':
-        TokenModel = FacebookToken;
-        break;
-      case 'tiktok':
-        TokenModel = TikTokToken;
-        break;
-      case 'youtube':
-        TokenModel = YouTubeToken;
-        break;
-      default:
-        throw new Error(`Unsupported platform: ${platform}`);
-    }
-
-    // Add clerkUserId to token data
-    const dataWithClerkId = {
-      ...tokenData,
-      clerkUserId
-    };
-
-    // Try to find existing token and update, or create new one
-    const existingToken = await TokenModel.findOne({ clerkUserId });
-    
-    if (existingToken) {
-      Object.assign(existingToken, dataWithClerkId);
-      await existingToken.save();
-      return existingToken;
-    } else {
-      const newToken = new TokenModel(dataWithClerkId);
-      await newToken.save();
-      return newToken;
-    }
-  } catch (error) {
-    console.error(`Error creating/updating ${platform} token:`, error);
-    throw error;
-  }
-};
-
-/**
- * Delete a platform token for a user
- * @param {string} platform - Platform name
- * @param {string} clerkUserId - Clerk user ID
- * @returns {boolean} Success status
- */
-const deletePlatformToken = async (platform, clerkUserId) => {
-  try {
-    let TokenModel;
-    
-    switch (platform.toLowerCase()) {
-      case 'twitter':
-        TokenModel = TwitterToken;
-        break;
-      case 'linkedin':
-        TokenModel = LinkedInToken;
-        break;
-      case 'instagram':
-        TokenModel = InstagramToken;
-        break;
-      case 'facebook':
-        TokenModel = FacebookToken;
-        break;
-      case 'tiktok':
-        TokenModel = TikTokToken;
-        break;
-      case 'youtube':
-        TokenModel = YouTubeToken;
-        break;
-      default:
-        throw new Error(`Unsupported platform: ${platform}`);
-    }
-
-    const result = await TokenModel.deleteOne({ clerkUserId });
-    return result.deletedCount > 0;
-  } catch (error) {
-    console.error(`Error deleting ${platform} token:`, error);
-    throw error;
   }
 };
 
 module.exports = {
-  getUserSubscriptionStatus,
-  getUserPlatformTokens,
-  getPlatformConnectionStatus,
-  createOrUpdatePlatformToken,
-  deletePlatformToken
+  getUserSubscriptionStatus
 };

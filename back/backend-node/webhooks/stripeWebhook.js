@@ -100,15 +100,8 @@ router.post("/", express.raw({ type: "application/json" }), (req, res) => {
       case "checkout.session.completed": {
         const session = event.data.object;
         
-        // Check if this is a Sora API credit purchase
-        if (session.metadata?.productType === 'sora-api-credits') {
-          await handleSoraApiCredits(session);
-        } else if (session.metadata?.productType === 'sora-video-credits') {
-          await handleSoraVideoCredits(session);
-        } else {
-          // Regular subscription checkout
-          await upsertUserFromSession(session);
-        }
+        // Regular subscription checkout
+        await upsertUserFromSession(session);
         break;
       }
 
@@ -208,109 +201,6 @@ async function addUserPaymentRecord(userId, amountNetUsd, amountGrossUsd, credit
   }
 }
 
-// Handle Sora API token purchases
-async function handleSoraApiCredits(session) {
-  try {
-    const AWS = require('aws-sdk');
-    const dynamodb = new AWS.DynamoDB.DocumentClient({ region: 'us-west-2' });
-    const TABLE_NAME = 'reelpostly-tenants';
-    
-    const clerkUserId = session.client_reference_id;
-    const creditsToAdd = parseInt(session.metadata?.credits || 0);
-    
-    if (!clerkUserId || !creditsToAdd) {
-      console.error('❌ [Sora Webhook] Missing userId or credits in metadata');
-      return;
-    }
-    
-    console.log(`💳 [Sora Webhook] Processing token purchase for user ${clerkUserId}, tokens: ${creditsToAdd}`);
-    
-    // Find user's API keys
-    const result = await dynamodb.scan({
-      TableName: TABLE_NAME,
-      FilterExpression: 'tenantId = :userId',
-      ExpressionAttributeValues: {
-        ':userId': clerkUserId
-      }
-    }).promise();
-    
-    if (result.Items.length === 0) {
-      console.error(`❌ [Sora Webhook] No API keys found for user ${clerkUserId}`);
-      return;
-    }
-    
-    // Add credits to the most recent key
-    const mostRecentKey = result.Items.sort((a, b) => b.createdAt - a.createdAt)[0];
-    
-    await dynamodb.update({
-      TableName: TABLE_NAME,
-      Key: { apiKeyId: mostRecentKey.apiKeyId },
-      UpdateExpression: 'SET credits = credits + :credits',
-      ExpressionAttributeValues: {
-        ':credits': creditsToAdd
-      }
-    }).promise();
-    
-    // Update user payment record for lifetime purchases tracking
-    const netUsd = Number(session.amount_total || 0) / 100;
-    const grossUsd = netUsd; // For API credits, net and gross are the same
-    await addUserPaymentRecord(clerkUserId, netUsd, grossUsd, creditsToAdd);
-    
-    console.log(`✅ [Sora Webhook] Added ${creditsToAdd} tokens to API key ${mostRecentKey.apiKeyId}`);
-    console.log(`💰 [Sora Webhook] Updated payment record: net=$${netUsd.toFixed(2)}, gross=$${grossUsd.toFixed(2)}, tokens=${creditsToAdd}`);
-  } catch (error) {
-    console.error('❌ [Sora Webhook] Error adding credits:', error);
-  }
-}
-
-// Handle Sora video credit purchases
-async function handleSoraVideoCredits(session) {
-  try {
-    const clerkUserId = session.metadata?.clerkUserId || session.client_reference_id;
-    const priceId = session.metadata?.priceId;
-
-    if (!clerkUserId) {
-      console.error('❌ [Sora Video Webhook] Missing clerkUserId in session metadata');
-      return;
-    }
-
-    console.log(`🎬 [Sora Video Webhook] Processing Sora video credits purchase for user: ${clerkUserId}, priceId: ${priceId}`);
-
-    // Determine credits based on price ID
-    let creditsToAdd = 0;
-    if (priceId === 'price_1SIyQSLPiEjYBNcQyq9gryxu') {
-      creditsToAdd = 8; // $20 = 8 credits
-    }
-
-    if (creditsToAdd === 0) {
-      console.error('❌ [Sora Video Webhook] Unknown price ID:', priceId);
-      return;
-    }
-
-    // Find or create user
-    let user = await User.findOne({ clerkUserId });
-    if (!user) {
-      user = await User.create({
-        clerkUserId,
-        email: session.customer_email || '',
-        subscriptionStatus: "none",
-        selectedPlan: "none",
-        billingCycle: "none",
-        soraVideoCredits: creditsToAdd,
-      });
-      console.log(`✅ [Sora Video Webhook] Created new user with ${creditsToAdd} Sora video credits`);
-    } else {
-      // Add credits to existing user
-      const currentCredits = user.soraVideoCredits || 0;
-      user.soraVideoCredits = currentCredits + creditsToAdd;
-      await user.save();
-      console.log(`✅ [Sora Video Webhook] Added ${creditsToAdd} Sora video credits to user. New total: ${user.soraVideoCredits}`);
-    }
-
-  } catch (error) {
-    console.error('❌ [Sora Video Webhook] Error processing Sora video credits purchase:', error);
-  }
-}
 
 async function findUser({ stripeCustomerId, clerkUserId, email }) {
   let user = null;

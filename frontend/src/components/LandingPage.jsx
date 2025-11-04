@@ -2,76 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navigation from './Navigation';
 import PricingSection from './PricingSection';
-import PlatformIcons from './PlatformIcons';
 import Footer from './Footer';
-import WaitlistModal from './WaitlistModal';
 import './LandingPage.css';
 
 const LandingPage = () => {
   const [openFAQ, setOpenFAQ] = useState(null);
-  const [showWaitlistModal, setShowWaitlistModal] = useState(false);
 
-  // Navigate to Sora Videos Dashboard (public, no authentication required)
-  const handleSoraLogin = () => {
-    window.location.href = '/app/sora';
+  // Navigate to Documentation Generator
+  const handleGetStarted = () => {
+    window.location.href = '/app/documentation-generator';
   };
-
-  // Load TikTok embed script for video gallery with autoplay
-  useEffect(() => {
-    // Check if script already exists
-    let script = document.querySelector('script[src="https://www.tiktok.com/embed.js"]');
-    
-    if (!script) {
-      script = document.createElement('script');
-      script.src = 'https://www.tiktok.com/embed.js';
-      script.async = true;
-      document.body.appendChild(script);
-    }
-
-    // Process embeds when script loads
-    script.onload = () => {
-      // TikTok embed script automatically processes blockquotes
-      // Ensure all embeds are processed
-      if (window.tiktokEmbed && typeof window.tiktokEmbed.lib === 'function') {
-        window.tiktokEmbed.lib.renderAll();
-      }
-    };
-
-    // If script already loaded, trigger processing immediately
-    if (script.complete || script.readyState === 'complete') {
-      if (window.tiktokEmbed && typeof window.tiktokEmbed.lib === 'function') {
-        window.tiktokEmbed.lib.renderAll();
-      }
-    }
-
-    // TikTok Pixel Tracking - ViewContent event for landing page
-    if (window.ttq) {
-      window.ttq.track('ViewContent', {
-        contents: [{
-          content_id: 'landing_page',
-          content_type: 'product_group',
-          content_name: 'ReelPostly Landing Page'
-        }],
-        value: 0,
-        currency: 'USD'
-      });
-    }
-
-    return () => {
-      // Don't remove script on unmount as it may be needed elsewhere
-    };
-  }, []);
 
   // SEO and page setup
   useEffect(() => {
-    
     // SEO Optimization for Main Landing Page
-    document.title = 'ReelPostly - Create AI Videos That Reflect Your Brand | Sora 2 AI Video Generator';
+    document.title = 'RealDoc - AI-Powered Documentation Generator | Create Comprehensive Docs for Your Applications';
     
     // Update meta description
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'Create studio-quality, watermark-free Sora videos, upload your logo, add text overlays and filters, and publish across social media in seconds, all from one place. Create AI videos that reflect your brand with Sora 2 AI.');
+      metaDescription.setAttribute('content', 'Generate comprehensive documentation for your online applications with AI. Create user guides, API docs, developer guides, and more in minutes. Supports multiple formats and technical levels.');
     }
     
     // Update keywords meta tag
@@ -81,7 +31,7 @@ const LandingPage = () => {
       metaKeywords.setAttribute('name', 'keywords');
       document.head.appendChild(metaKeywords);
     }
-    metaKeywords.setAttribute('content', 'Sora 2, Sora AI video, OpenAI Sora, AI video generator, text-to-video, multi-platform posting, social media publisher, Instagram publisher, TikTok publisher, YouTube publisher, AI captions, video downloader, content repurposing, Sora video maker, cross-platform posting, social media automation, AI content creation, Sora 2 generator, video AI tool, sora watermark remover, sora watermark, remove sora watermark, ai watermark remover, video watermark removal, sora video watermark, free watermark remover, watermark removal, sora video tool, remove video watermark, ai video watermark remover, sora watermark tool, automatic watermark removal, video watermark cleaner, sora video editor, video watermark, watermark removal ai, sora watermark delete, video watermark eraser, sora video processing, Watermark Remover API, Sora AI video generator, Sora 2 video creator, OpenAI Sora videos, Sora video maker, Sora AI video creation, Sora text to video, Sora video generator free, Sora AI video tool, Sora video creation platform, Sora AI video maker, Sora video generator online, Sora AI video editor, Sora video creation tool, Sora AI video platform, Sora video generation, Sora AI video creator, Sora video maker tool, Sora AI video generator free, Sora video creation software, Sora AI video generation tool, Sora video creator platform, Sora AI video maker free, Sora video generation platform, Sora AI video creation tool, Sora video maker online, Sora AI video generator tool, Sora video creation service, Sora AI video maker platform, Sora video generator service, Sora AI video creation platform, Sora video maker service, Sora AI video generator platform, Sora video creation app, Sora AI video maker service, Sora video generator app, Sora AI video creation service, Sora video maker app, Sora AI video generator service, Sora video creation website, Sora AI video maker app, Sora video generator website, Sora AI video creation website, Sora video maker website, Sora AI video generator website, Sora video creation online, Sora AI video maker website, Sora video generator online tool, Sora AI video creation online, Sora video maker online tool, Sora AI video generator online tool, Sora video creation online tool, Sora AI video maker online tool, Sora video generator online platform, Sora AI video creation online platform, Sora video maker online platform, Sora AI video generator online platform, Sora video creation online platform, Sora AI video maker online platform, Sora video generator online service, Sora AI video creation online service, Sora video maker online service, Sora AI video generator online service, Sora video creation online service, Sora AI video maker online service, Sora video generator online app, Sora AI video creation online app, Sora video maker online app, Sora AI video generator online app, Sora video creation online app, Sora AI video maker online app, Sora video generator online website, Sora AI video creation online website, Sora video maker online website, Sora AI video generator online website, Sora video creation online website, Sora AI video maker online website');
+    metaKeywords.setAttribute('content', 'documentation generator, AI documentation, API documentation, user guide generator, developer guide, technical documentation, markdown generator, documentation automation, AI docs, API docs generator');
     
     // Update Open Graph tags
     let ogTitle = document.querySelector('meta[property="og:title"]');
@@ -90,7 +40,7 @@ const LandingPage = () => {
       ogTitle.setAttribute('property', 'og:title');
       document.head.appendChild(ogTitle);
     }
-    ogTitle.setAttribute('content', 'ReelPostly - Create AI Videos That Reflect Your Brand | Sora 2 AI Video Generator');
+    ogTitle.setAttribute('content', 'RealDoc - AI-Powered Documentation Generator');
     
     let ogDescription = document.querySelector('meta[property="og:description"]');
     if (!ogDescription) {
@@ -98,7 +48,7 @@ const LandingPage = () => {
       ogDescription.setAttribute('property', 'og:description');
       document.head.appendChild(ogDescription);
     }
-    ogDescription.setAttribute('content', 'Create studio-quality, watermark-free Sora videos, upload your logo, add text overlays and filters, and publish across social media in seconds, all from one place. Create AI videos that reflect your brand.');
+    ogDescription.setAttribute('content', 'Generate comprehensive documentation for your online applications with AI. Create user guides, API docs, developer guides, and more in minutes.');
     
     // Add structured data for SEO
     const existingScript = document.querySelector('script[type="application/ld+json"][data-page="main"]');
@@ -111,118 +61,39 @@ const LandingPage = () => {
       "@graph": [
         {
           "@type": "Organization",
-          "@id": "https://reelpostly.com/#org",
-          "name": "ReelPostly",
-          "url": "https://reelpostly.com/",
+          "@id": "https://realdoc.com/#org",
+          "name": "RealDoc",
+          "url": "https://realdoc.com/",
           "logo": {
             "@type": "ImageObject",
-            "url": "https://reelpostly.com/logo.png",
+            "url": "https://realdoc.com/logo.png",
             "width": 512,
             "height": 512
-          },
-          "sameAs": [
-            "https://www.linkedin.com/company/reelpostly",
-            "https://x.com/reelpostly",
-            "https://www.youtube.com/@reelpostly"
-          ]
-        },
-        {
-          "@type": "WebSite",
-          "@id": "https://reelpostly.com/#website",
-          "url": "https://reelpostly.com/",
-          "name": "ReelPostly",
-          "publisher": { "@id": "https://reelpostly.com/#org" },
-          "potentialAction": {
-            "@type": "SearchAction",
-            "target": "https://reelpostly.com/search?q={query}",
-            "query-input": "required name=query"
           }
         },
         {
+          "@type": "WebSite",
+          "@id": "https://realdoc.com/#website",
+          "url": "https://realdoc.com/",
+          "name": "RealDoc",
+          "publisher": { "@id": "https://realdoc.com/#org" }
+        },
+        {
           "@type": "WebApplication",
-          "@id": "https://reelpostly.com/#app",
-          "name": "ReelPostly",
+          "@id": "https://realdoc.com/#app",
+          "name": "RealDoc",
           "applicationCategory": "BusinessApplication",
           "operatingSystem": "Web",
-          "url": "https://reelpostly.com/",
-          "description": "AI-powered content automation: create once, publish everywhere across Instagram, TikTok, YouTube, Facebook, LinkedIn, and X. Features Sora 2 AI video generation, smart captions, and multi-platform publishing.",
+          "url": "https://realdoc.com/",
+          "description": "AI-powered documentation generator for creating comprehensive documentation for online applications, including user guides, API documentation, developer guides, and more.",
           "offers": {
             "@type": "Offer",
             "price": "0.00",
             "priceCurrency": "USD",
             "category": "FreeTrial",
-            "url": "https://reelpostly.com/register"
+            "url": "https://realdoc.com/register"
           },
-          "publisher": { "@id": "https://reelpostly.com/#org" }
-        },
-        {
-          "@type": "WebPage",
-          "@id": "https://reelpostly.com/#webpage",
-          "url": "https://reelpostly.com/",
-          "name": "ReelPostly - Create AI Videos That Reflect Your Brand | Sora 2 AI Video Generator",
-          "headline": "Create AI videos that reflect your brand",
-          "description": "Create studio-quality, watermark-free Sora videos, upload your logo, add text overlays and filters, and publish across social media in seconds, all from one place. Create AI videos that reflect your brand with Sora 2 AI.",
-          "inLanguage": "en",
-          "isPartOf": { "@id": "https://reelpostly.com/#website" },
-          "about": { "@id": "https://reelpostly.com/#app" },
-          "primaryImageOfPage": {
-            "@type": "ImageObject",
-            "url": "https://reelpostly.com/og-hero.jpg"
-          },
-          "publisher": { "@id": "https://reelpostly.com/#org" },
-          "mainEntity": {
-            "@type": "ItemList",
-            "name": "ReelPostly Features",
-            "itemListElement": [
-              {
-                "@type": "ListItem",
-                "position": 1,
-                "name": "Sora 2 AI Video Generation",
-                "item": "https://reelpostly.com/#ai-video-generation",
-                "description": "Create stunning AI videos with OpenAI Sora 2. Generate professional videos from text prompts in minutes."
-              },
-              {
-                "@type": "ListItem",
-                "position": 2,
-                "name": "Multi-Platform Publishing",
-                "item": "https://reelpostly.com/#multi-platform-posting",
-                "description": "Publish to Instagram, TikTok, YouTube, Facebook, LinkedIn, and X from one dashboard."
-              },
-              {
-                "@type": "ListItem",
-                "position": 3,
-                "name": "AI Captions & Hashtags",
-                "item": "https://reelpostly.com/#ai-captions",
-                "description": "AI-powered captions, hashtag recommendations, and per-platform customization."
-              },
-              {
-                "@type": "ListItem",
-                "position": 4,
-                "name": "Video Download & Repurposing",
-                "item": "https://reelpostly.com/#video-download",
-                "description": "Download trending videos and repurpose them with your unique perspective."
-              },
-              {
-                "@type": "ListItem",
-                "position": 5,
-                "name": "Instant Post Confirmation",
-                "item": "https://reelpostly.com/#confirmation-links",
-                "description": "Direct, hyperlinked previews for each live post after publishing."
-              }
-            ]
-          },
-          "potentialAction": {
-            "@type": "RegisterAction",
-            "name": "Start Free Today",
-            "target": {
-              "@type": "EntryPoint",
-              "urlTemplate": "https://reelpostly.com/register",
-              "actionPlatform": [
-                "https://schema.org/DesktopWebPlatform",
-                "https://schema.org/MobileWebPlatform"
-              ]
-            }
-          }
+          "publisher": { "@id": "https://realdoc.com/#org" }
         }
       ]
     };
@@ -243,452 +114,267 @@ const LandingPage = () => {
       <Navigation />
 
       {/* Hero Section */}
-      <section id="sora" className="hero-section modern-hero">
+      <section id="hero" className="hero-section modern-hero">
         <div className="hero-container">
           <div className="hero-content">
             <div className="hero-badge">
-              <span className="badge-icon">🎬</span>
-              <span>Powered by OpenAI Sora 2</span>
+              <span className="badge-icon">📚</span>
+              <span>AI-Powered Documentation</span>
             </div>
             <h1 className="hero-title">
-              <strong>Create Watermark Free AI videos in seconds</strong>
+              <strong>Get Complete, Ready-to-Use Documentation in Minutes</strong>
             </h1>
             <p className="hero-description">
-              Generate and remix videos from text descriptions 10× faster than Google Video and at 80% lower cost. Unleash endless creative possibilities with AI-powered video editing to create studio-quality, watermark-free videos, upload your logo, add text overlays and filters, and publish across social media in seconds, all from one place.
+              Generate professional documentation instantly. Fill out a simple form, click generate, and receive complete documentation with proper structure, formatting, and code examples. Copy, download, or use immediately - no technical writing skills required.
             </p>
             <div className="hero-cta">
-              <button onClick={handleSoraLogin} className="cta-primary cta-sora">
-                Start Creating
+              <button onClick={handleGetStarted} className="cta-primary">
+                Start Generating Docs
               </button>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
-              <Link to="/app/sora" style={{ display: 'block', cursor: 'pointer' }}>
-                <img 
-                  src="/hero.png" 
-                  alt="Generate, Mix, and Add Your Logo to AI Videos" 
-                  style={{ 
-                    maxWidth: '100%', 
-                    height: 'auto',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
-                  }}
-                />
-              </Link>
-            </div>
-            <div className="social-proof">
-              <div className="hero-badge">
-                <span>🎥 Remix Videos • 🔊 With Audio • ⚡ Ultra Fast • 💰 Affordable</span>
-              </div>
+              <Link to="/pricing" className="modern-link">View Pricing</Link>
             </div>
           </div>
         </div>
       </section>
-
-
-      {/* CROSS-POSTING Section */}
-      {/* <section className="modern-main-feature">
-        <div className="modern-container">
-          <div className="modern-content">
-            <div className="modern-text">
-              <h2 className="modern-badge">CROSS-POSTING</h2>
-              <h3 className="modern-title">Post to all platforms instantly</h3>
-              <p className="modern-description">
-                Publish everywhere in 30 seconds, not 30 minutes. Manage all your personal and brand accounts without switching back and forth. Connect your social media accounts and publish your content across all platforms with a single click - no learning curve required.
-              </p>
-              <div className="modern-actions">
-                <button onClick={() => setShowWaitlistModal(true)} className="modern-cta">Start posting</button>
-                <button className="modern-link">View platforms</button>
-              </div>
-            </div>
-            <div className="modern-visual">
-              <div className="platform-showcase">
-                <div className="platform-grid">
-                  <div className="platform-item">Facebook</div>
-                  <div className="platform-item">Instagram</div>
-                  <div className="platform-item">Twitter</div>
-                  <div className="platform-item">LinkedIn</div>
-                  <div className="platform-item">TikTok</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section> */}
-
-      {/* AI VIDEO GENERATION Section */}
-      {/* <section className="modern-main-feature">
-        <div className="modern-container">
-          <div className="modern-content modern-reverse">
-            <div className="modern-visual">
-              <div className="window-demo">
-                <div className="window-header">
-                  <div className="window-controls">
-                    <div className="control close"></div>
-                    <div className="control minimize"></div>
-                    <div className="control maximize"></div>
-                  </div>
-                  <div className="window-title">Sora Video Generator</div>
-                </div>
-                <div className="window-content">
-                  <img 
-                    src="/sora-demo.png" 
-                    alt="Sora-2 AI Video Generation Demo" 
-                    className="demo-image"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="modern-text">
-              <h2 className="modern-badge">AI VIDEO GENERATION</h2>
-              <h3 className="modern-title">Create stunning videos with Sora-2</h3>
-              <p className="modern-description">
-                Generate professional AI videos in minutes. Just describe what you want to see, and Sora-2 creates unique, high-quality videos for your content. No video editing skills required.
-              </p>
-              <div className="modern-actions">
-                <button onClick={() => setShowWaitlistModal(true)} className="modern-cta">Start Creating</button>
-                <button onClick={handleSoraLogin} className="modern-link">Sign In to Sora Dashboard</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section> */}
 
       {/* Features Section */}
       <section id="features" className="features-section">
-        {/* Video Downloads */}
-        {/* <div className="feature-block feature-block-dark modern-layout">
-          <div className="feature-container">
-            <div className="feature-content">
-              <div className="feature-visual">
-                <div className="window-demo">
-                  <div className="window-header">
-                    <div className="window-controls">
-                      <div className="control close"></div>
-                      <div className="control minimize"></div>
-                      <div className="control maximize"></div>
-                    </div>
-                    <div className="window-title">Caption Generator</div>
-                  </div>
-                  <div className="window-content">
-                    <img 
-                      src="/captions-demo.png" 
-                      alt="AI Caption Generation Demo - ReelPostly Smart Captions" 
-                      className="demo-image"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="feature-text">
-                <div className="feature-badge">AI CAPTIONS</div>
-                <h2 className="feature-title">Generate captions that convert</h2>
-                <p className="feature-description">
-                  Fine-tune every caption to match your tone, audience, and brand voice. Adjust for different demographics, content styles, and calls to action. Make each post feel truly personalized.
-                </p>
-                <button onClick={() => setShowWaitlistModal(true)} className="feature-cta">Try captions</button>
-              </div>
-            </div>
-          </div>
-        </div> */}
-
-        {/* Video Downloads */}
-        {/* <div className="feature-block feature-block-dark modern-layout">
-          <div className="feature-container">
-            <div className="feature-content">
-              <div className="feature-text">
-                <div className="feature-badge">CONTENT REPURPOSING</div>
-                <h2 className="feature-title">Download and repurpose trending videos</h2>
-                <p className="feature-description">
-                  Find popular videos across platforms and repurpose them for your content strategy. Download high-quality videos and give them new life with your unique perspective.
-                </p>
-                <button onClick={() => setShowWaitlistModal(true)} className="feature-cta">Start downloading</button>
-              </div>
-              <div className="feature-visual">
-                <div className="window-demo">
-                  <div className="window-header">
-                    <div className="window-controls">
-                      <div className="control close"></div>
-                      <div className="control minimize"></div>
-                      <div className="control maximize"></div>
-                    </div>
-                    <div className="window-title">Video Downloader</div>
-                  </div>
-                  <div className="window-content">
-                    <img 
-                      src="/download-demo.png" 
-                      alt="Video Download and Repurpose Demo" 
-                      className="demo-image"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div> */}
-      </section>
-
-      {/* Gallery Section */}
-      <section className="gallery-section">
-        <div className="gallery-container">
-          <h2 className="section-title">Video Gallery</h2>
-          <p className="section-subtitle">Explore our AI-generated video creations</p>
-          
-          {/* Start Creating button above gallery grid */}
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <button onClick={handleSoraLogin} className="cta-primary cta-sora">
-              Start Creating
-            </button>
-          </div>
-          
-          <div className="gallery-grid">
-            {[...Array(8)].map((_, index) => {
-              let gifSrc, title, description;
-              
-              if (index === 0) {
-                gifSrc = "/kangaroo.gif";
-                title = "Wildlife Adventure";
-                description = "Experience the beauty of nature with stunning wildlife footage. Perfect for nature enthusiasts and outdoor brands.";
-              } else if (index === 1) {
-                gifSrc = "/soccer.gif";
-                title = "Sports Action";
-                description = "Dynamic sports footage that captures game excitement. Ideal for sports content and athletic brands.";
-              } else if (index === 2) {
-                gifSrc = "/waltz.gif";
-                title = "Elegant Performance";
-                description = "Graceful and artistic video content showcasing elegance. Great for artistic and lifestyle content.";
-              } else if (index === 3) {
-                gifSrc = "/boys.gif";
-                title = "Lifestyle Content";
-                description = "Engaging lifestyle video content that resonates with audiences. Perfect for lifestyle brands and social content.";
-              } else if (index === 4) {
-                gifSrc = "/model.gif";
-                title = "Fashion Model";
-                description = "Professional fashion and modeling content with elegant style. Perfect for fashion brands and lifestyle content.";
-              } else if (index === 5) {
-                gifSrc = "/orchestra.gif";
-                title = "Musical Performance";
-                description = "Symphonic and orchestral performances capturing the essence of live music. Perfect for music events and cultural content.";
-              } else if (index === 6) {
-                gifSrc = "/ad.gif";
-                title = "Advertising Content";
-                description = "Engaging advertising content that captures attention and drives engagement. Perfect for marketing campaigns and brand promotions.";
-              } else if (index === 7) {
-                gifSrc = "/web.gif";
-                title = "Web Content";
-                description = "Modern web and digital content showcasing technology and innovation. Perfect for tech brands and digital marketing.";
-              }
-              
-              return (
-                <div key={index} className="gallery-item">
-                  <img 
-                    src={gifSrc} 
-                    alt={`Gallery video ${index + 1}`}
-                    className="gallery-gif"
-                    loading="lazy"
-                  />
-                  <div className="gallery-content">
-                    <h3 className="gallery-title">{title}</h3>
-                    <p className="gallery-description">{description}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section - Multi-Platform Publishing */}
-      <section id="features" className="features-section">
-        {/* Multi-Platform Publishing */}
         <div className="feature-block feature-block-light">
           <div className="feature-container">
-            <div className="feature-badge">CROSS-POSTING</div>
-            <h2 className="feature-title">Post to popular platforms instantly</h2>
+            <div className="feature-badge">DOCUMENTATION TYPES</div>
+            <h2 className="feature-title">Generate Any Type of Documentation</h2>
             <p className="feature-description">
-            Post to the platforms below in seconds, not minutes. Just connect your social accounts and share your content across these four platforms with one click.   </p>
-            <button onClick={handleSoraLogin} className="cta-primary cta-sora">Start Creating</button>
-            <div className="platforms-showcase">
-              <PlatformIcons />
+              From user guides to API documentation, developer guides to FAQs - generate comprehensive documentation tailored to your needs.
+            </p>
+            <div className="features-grid" style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
+              <div className="feature-card">
+                <h3>📖 User Guides</h3>
+                <p>Step-by-step instructions for end users</p>
+              </div>
+              <div className="feature-card">
+                <h3>🔌 API Documentation</h3>
+                <p>Endpoints, parameters, responses, examples</p>
+              </div>
+              <div className="feature-card">
+                <h3>👨‍💻 Developer Guides</h3>
+                <p>Setup, architecture, integration guides</p>
+              </div>
+              <div className="feature-card">
+                <h3>⚙️ Admin Documentation</h3>
+                <p>Configuration, management, troubleshooting</p>
+              </div>
+              <div className="feature-card">
+                <h3>🚀 Quick Start Guides</h3>
+                <p>Get started in minutes</p>
+              </div>
+              <div className="feature-card">
+                <h3>❓ FAQs</h3>
+                <p>Common questions and answers</p>
+              </div>
+              <div className="feature-card">
+                <h3>📝 Release Notes</h3>
+                <p>Version changes, new features, breaking changes</p>
+              </div>
+            </div>
+            <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+              <button onClick={handleGetStarted} className="cta-primary">Start Creating</button>
+            </div>
+          </div>
+        </div>
+
+        <div className="feature-block feature-block-dark">
+          <div className="feature-container">
+            <div className="feature-badge">WHAT YOU GET</div>
+            <h2 className="feature-title">Complete Documentation, Ready to Use</h2>
+            <p className="feature-description">
+              Receive fully formatted, professional documentation with everything you need. No editing required - just copy, download, and use.
+            </p>
+            <div className="features-grid" style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
+              <div className="feature-card">
+                <h3>📄 Complete Documentation</h3>
+                <p>Full documentation with headings, structure, and formatting - ready to use immediately</p>
+              </div>
+              <div className="feature-card">
+                <h3>📋 Multiple Formats</h3>
+                <p>Get Markdown, HTML, or Plain Text - download in the format you need</p>
+              </div>
+              <div className="feature-card">
+                <h3>📊 Metrics & Insights</h3>
+                <p>Word count, estimated read time, and format information included</p>
+              </div>
+              <div className="feature-card">
+                <h3>📥 Copy & Download</h3>
+                <p>One-click copy to clipboard or download with auto-generated filename</p>
+              </div>
+              <div className="feature-card">
+                <h3>🎯 Customized Content</h3>
+                <p>Tailored to your technical level, tone, audience, and style preferences</p>
+              </div>
+              <div className="feature-card">
+                <h3>⚡ Generated in Minutes</h3>
+                <p>What takes days or weeks manually is done in minutes with AI</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="feature-block feature-block-light">
+          <div className="feature-container">
+            <div className="feature-badge">CUSTOMIZATION</div>
+            <h2 className="feature-title">Tailor Documentation to Your Exact Needs</h2>
+            <p className="feature-description">
+              Control every aspect of your documentation. Choose technical level, style, tone, target audience, language, and output format to match your requirements.
+            </p>
+            <div className="features-grid" style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+              <div className="feature-card">
+                <h3>Technical Levels</h3>
+                <p>Beginner, Intermediate, Advanced</p>
+              </div>
+              <div className="feature-card">
+                <h3>Documentation Styles</h3>
+                <p>Tutorial, Reference, Conceptual</p>
+              </div>
+              <div className="feature-card">
+                <h3>Tone Options</h3>
+                <p>Technical, Friendly, Formal, Conversational</p>
+              </div>
+              <div className="feature-card">
+                <h3>Target Audiences</h3>
+                <p>Developers, End Users, Admins, Business Users</p>
+              </div>
+              <div className="feature-card">
+                <h3>Output Formats</h3>
+                <p>Markdown (.md), HTML (.html), Plain Text (.txt)</p>
+              </div>
+              <div className="feature-card">
+                <h3>Multi-Language</h3>
+                <p>10+ languages supported</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
-      
-      {/* Testimonials Section */}
+
+      {/* Value Proposition Section */}
       <section className="testimonials-section">
         <div className="testimonials-container">
-          <h2 className="testimonials-title">Loved by busy creators</h2>
-          <p className="testimonials-subtitle">Here's what our users are saying</p>
-          
-          {/* Start Creating button for consistency */}
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <button onClick={handleSoraLogin} className="cta-primary cta-sora">
-              Start Creating
-            </button>
-          </div>
+          <h2 className="testimonials-title">Why RealDoc?</h2>
+          <p className="testimonials-subtitle">Get professional documentation without the complexity</p>
           
           <div className="testimonials-grid">
             <div className="testimonial-card">
-              <p className="testimonial-text">"The video quality options are perfect! I use Sora-2 Pro for my premium content and Standard for quick posts. The quality difference is amazing."</p>
-              <div className="testimonial-author">
-                <div className="author-name">Sarah Chen</div>
-                <div className="author-handle">@sarahcreates</div>
-              </div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.75rem', color: '#2d3748' }}>⚡ Speed</h3>
+              <p className="testimonial-text">Generate complete documentation in minutes instead of spending days or weeks writing manually. Focus on building your product while we handle the docs.</p>
             </div>
             
             <div className="testimonial-card">
-              <p className="testimonial-text">"I love the 4, 8, and 12-second video options! Perfect for different platforms - quick clips for TikTok and longer stories for Instagram."</p>
-              <div className="testimonial-author">
-                <div className="author-name">Mike Rodriguez</div>
-                <div className="author-handle">@mikebuilds</div>
-              </div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.75rem', color: '#2d3748' }}>🎯 One Tool, All Types</h3>
+              <p className="testimonial-text">Generate user guides, API docs, developer guides, FAQs, and more from one platform. No need to switch between multiple tools or learn different systems.</p>
             </div>
             
             <div className="testimonial-card">
-              <p className="testimonial-text">"The portrait and landscape orientations are game-changers! Perfect for Instagram stories and YouTube shorts. No more cropping issues!"</p>
-              <div className="testimonial-author">
-                <div className="author-name">Jessica Park</div>
-                <div className="author-handle">@jessicaonline</div>
-              </div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.75rem', color: '#2d3748' }}>📚 No Technical Writing Skills Needed</h3>
+              <p className="testimonial-text">Simply describe your feature or application. Our AI generates professional, well-structured documentation that follows industry best practices.</p>
             </div>
             
             <div className="testimonial-card">
-              <p className="testimonial-text">"The video enhancement features are incredible! Adding captions, adjusting effects, and customizing every detail makes my videos stand out."</p>
-              <div className="testimonial-author">
-                <div className="author-name">David Kim</div>
-                <div className="author-handle">@davidtech</div>
-              </div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.75rem', color: '#2d3748' }}>🎨 Fully Customizable</h3>
+              <p className="testimonial-text">Control technical level, style, tone, target audience, language, and format. Get documentation that perfectly matches your needs and audience.</p>
             </div>
             
             <div className="testimonial-card">
-              <p className="testimonial-text">"Publishing directly to Facebook, Instagram, LinkedIn, and YouTube with one click saves me hours! The multi-platform publishing is seamless."</p>
-              <div className="testimonial-author">
-                <div className="author-name">Alex Johnson</div>
-                <div className="author-handle">@alexgrows</div>
-              </div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.75rem', color: '#2d3748' }}>📄 Ready to Use</h3>
+              <p className="testimonial-text">Receive complete documentation with proper structure, formatting, and code examples. Copy, download, and use immediately - no editing required.</p>
             </div>
             
             <div className="testimonial-card">
-              <p className="testimonial-text">"The credit system is perfect! $20 for 8 credits means I can create 8 high-quality videos. Much better than paying per platform!"</p>
-              <div className="testimonial-author">
-                <div className="author-name">Emma Watson</div>
-                <div className="author-handle">@emmacontent</div>
-              </div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.75rem', color: '#2d3748' }}>🌍 Multiple Formats & Languages</h3>
+              <p className="testimonial-text">Export in Markdown, HTML, or Plain Text. Generate documentation in 10+ languages. Get the format and language you need for your workflow.</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Pricing Section */}
-      {/* <section id="pricing">
+      <section id="pricing">
         <PricingSection />
-      </section> */}
-
-
-      {/* Final CTA */}
-      {/* <section className="final-cta-section">
-        <div className="final-cta-container">
-          <h2 className="final-cta-title">Ready to transform your content strategy?</h2>
-          <p className="final-cta-subtitle">
-            Join creators who save hours every week with Reelpostly. Start your free trial today.
-          </p>
-          <button onClick={handleSoraLogin} className="cta-primary cta-sora">
-            Try it for free
-          </button>
-          <p className="final-cta-note">3-day free trial • No credit card required • Cancel anytime</p>
-        </div>
-      </section> */}
+      </section>
 
       {/* FAQ Section */}
       <section id="faq" className="faq-section">
         <div className="faq-container">
           <h2 className="section-title">Frequently Asked Questions</h2>
-          <p className="section-subtitle">Everything you need to know about AI video generation with Reelpostly</p>
-          
-          {/* Start Creating button above FAQ questions */}
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <button onClick={handleSoraLogin} className="cta-primary cta-sora">
-              Start Creating
-            </button>
-          </div>
+          <p className="section-subtitle">Everything you need to know about RealDoc</p>
           
           <div className="faq-grid">
             <div className={`faq-item ${openFAQ === 0 ? 'active' : ''}`} onClick={() => toggleFAQ(0)}>
               <div className="faq-question-wrapper">
-                <h3 className="faq-question">What video quality options are available?</h3>
+                <h3 className="faq-question">What do I get when I generate documentation?</h3>
                 <span className="faq-icon">{openFAQ === 0 ? '−' : '+'}</span>
               </div>
               <div className={`faq-answer ${openFAQ === 0 ? 'open' : ''}`}>
                 <p>
-                  You can choose between Sora-2 Standard and Sora-2 Pro (TBD)  for highest quality. Both options generate professional videos with different quality levels to match your needs and budget.
+                  You receive complete, ready-to-use documentation with proper structure, headings, formatting, and code examples (if enabled). Each document includes word count, estimated read time, and format information. You can immediately copy to clipboard, download as a file, or preview the formatted output.
                 </p>
               </div>
             </div>
 
             <div className={`faq-item ${openFAQ === 1 ? 'active' : ''}`} onClick={() => toggleFAQ(1)}>
               <div className="faq-question-wrapper">
-                <h3 className="faq-question">What video durations can I create?</h3>
+                <h3 className="faq-question">What output formats can I download?</h3>
                 <span className="faq-icon">{openFAQ === 1 ? '−' : '+'}</span>
               </div>
               <div className={`faq-answer ${openFAQ === 1 ? 'open' : ''}`}>
                 <p>
-                  You can generate videos in 4, 8, or 12 (TBD)-second durations. Choose the length that works best for your content - shorter clips for quick attention or longer videos for more detailed storytelling.
+                  You can download your documentation in three formats: Markdown (.md) for GitHub and docs sites, HTML (.html) for web pages, or Plain Text (.txt) for universal compatibility. Files are automatically named based on your app name and documentation type.
                 </p>
               </div>
             </div>
 
             <div className={`faq-item ${openFAQ === 2 ? 'active' : ''}`} onClick={() => toggleFAQ(2)}>
               <div className="faq-question-wrapper">
-                <h3 className="faq-question">What video orientations are supported?</h3>
+                <h3 className="faq-question">How long does it take to generate documentation?</h3>
                 <span className="faq-icon">{openFAQ === 2 ? '−' : '+'}</span>
               </div>
               <div className={`faq-answer ${openFAQ === 2 ? 'open' : ''}`}>
                 <p>
-                  Create videos in Portrait (720x1280) for Instagram/TikTok or Landscape (1280x720) for YouTube/Twitter formats to match your platform requirements.
+                  Documentation generation typically takes just a few minutes. Fill out the form with your feature description, select your preferences, and click generate. You'll receive complete, formatted documentation ready to use immediately.
                 </p>
               </div>
             </div>
 
             <div className={`faq-item ${openFAQ === 3 ? 'active' : ''}`} onClick={() => toggleFAQ(3)}>
               <div className="faq-question-wrapper">
-                <h3 className="faq-question">How do I enhance my generated videos?</h3>
+                <h3 className="faq-question">What types of documentation can I generate?</h3>
                 <span className="faq-icon">{openFAQ === 3 ? '−' : '+'}</span>
               </div>
               <div className={`faq-answer ${openFAQ === 3 ? 'open' : ''}`}>
                 <p>
-                  After generating your video, you can add  text overlays, adjust effects, apply filters, and customize every detail to make your videos truly stand out with your own voice and style.
+                  You can generate 7 different types: User Guides (step-by-step for end users), API Documentation (endpoints, parameters, examples), Developer Guides (setup, architecture), Admin Documentation (configuration, troubleshooting), Quick Start Guides, FAQs, and Release Notes. All from one platform.
                 </p>
               </div>
             </div>
 
             <div className={`faq-item ${openFAQ === 4 ? 'active' : ''}`} onClick={() => toggleFAQ(4)}>
               <div className="faq-question-wrapper">
-                <h3 className="faq-question">Can I publish videos directly to social platforms?</h3>
+                <h3 className="faq-question">Can I customize the documentation output?</h3>
                 <span className="faq-icon">{openFAQ === 4 ? '−' : '+'}</span>
               </div>
               <div className={`faq-answer ${openFAQ === 4 ? 'open' : ''}`}>
                 <p>
-                  Yes! You can publish your enhanced videos directly to Facebook, Instagram, LinkedIn, and YouTube (More platforms coming soon) with one click. Connect your accounts and share your content across multiple platforms instantly.
+                  Yes! You have full control: choose technical level (Beginner, Intermediate, Advanced), documentation style (Tutorial, Reference, Conceptual), tone (Technical, Friendly, Formal, Conversational), target audience (Developers, End Users, Admins, Business Users), output format, and language (10+ languages supported).
                 </p>
               </div>
             </div>
 
             <div className={`faq-item ${openFAQ === 5 ? 'active' : ''}`} onClick={() => toggleFAQ(5)}>
               <div className="faq-question-wrapper">
-                <h3 className="faq-question">How do credits work for video generation?</h3>
+                <h3 className="faq-question">Do I need technical writing skills to use RealDoc?</h3>
                 <span className="faq-icon">{openFAQ === 5 ? '−' : '+'}</span>
               </div>
               <div className={`faq-answer ${openFAQ === 5 ? 'open' : ''}`}>
                 <p>
-                  Each video generation costs 1 credit. You can purchase 8 credits for $20. Credits are deducted from your account after successful video generation, and you can see your remaining balance in real-time.
+                  No technical writing skills required. Simply describe your feature or application, select your preferences, and our AI generates professional documentation following industry best practices. The documentation is complete and ready to use - no editing needed.
                 </p>
               </div>
             </div>
@@ -696,16 +382,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      
-      
-
       <Footer />
-
-      {/* Waitlist Modal */}
-      <WaitlistModal 
-        isOpen={showWaitlistModal} 
-        onClose={() => setShowWaitlistModal(false)} 
-      />
     </div>
   );
 };

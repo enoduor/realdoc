@@ -10,14 +10,6 @@ const requireSubscription = async (req, res, next) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Check if request is from Sora Videos Dashboard flow - bypass subscription requirement
-    const isSoraFlow = req.body?.soraFlow || req.headers['x-sora-flow'];
-    if (isSoraFlow) {
-      // Skip subscription check for Sora Videos Dashboard flow
-      req.userData = user;
-      next();
-      return;
-    }
 
     // Check if user has active subscription
     if (!user.hasActiveSubscription()) {

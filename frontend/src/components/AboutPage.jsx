@@ -1,157 +1,126 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import Navigation from './Navigation';
 import Footer from './Footer';
 import './LandingPage.css';
 
 const AboutPage = () => {
   return (
     <div className="landing-page">
-      {/* Navigation Bar */}
-      <nav className="landing-nav">
-        <div className="nav-container">
-          <div className="nav-logo">
-            <Link to="/" className="logo-link">
-              <img src="/logo.png" alt="Reelpostly" className="logo-image" />
-              <span className="logo-text">ReelPostly</span>
-            </Link>
-          </div>
-          <div className="nav-links">
-            <a href="/#features" className="nav-link">Features</a>
-            <a href="/#pricing" className="nav-link">Pricing</a>
-            <Link to="/about" className="nav-link">About</Link>
-            <a 
-              href="https://bigvideograb.com/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="nav-link"
-            >
-              Grab videos
-            </a>
-          </div>
-          <div className="nav-actions">
-            <Link to="/login" className="nav-btn nav-btn-secondary">Sign In</Link>
-            <Link to="/register" className="nav-btn nav-btn-primary">Get Started Now</Link>
-          </div>
-        </div>
-      </nav>
+      <Navigation />
 
       {/* Hero Section */}
-      <section className="hero-section">
+      <section className="hero-section modern-hero">
         <div className="hero-container">
           <div className="hero-content">
-            <h1 className="hero-title">The Problem We're Solving</h1>
+            <h1 className="hero-title">About RealDoc</h1>
             <p className="hero-subtitle">
-              Social media creators are drowning in complexity. We're here to simplify.
+              We're making documentation generation simple, fast, and accessible for everyone.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Problem Section */}
+      {/* Mission Section */}
       <section className="features-section">
         <div className="features-container">
           <div className="legal-content">
             <div className="legal-header">
-              <h2 className="legal-title">The Multi-Tool Nightmare</h2>
+              <h2 className="legal-title">Our Mission</h2>
               <p className="legal-intro">
-                Social media creators face an overwhelming challenge: managing content across multiple platforms with different tools, formats, and requirements.
+                RealDoc was created to solve a common problem: creating comprehensive documentation for applications is time-consuming and often requires specialized technical writing skills. We believe that great documentation should be accessible to everyone, regardless of their technical background.
               </p>
             </div>
 
             <div className="legal-section">
-              <h3 className="legal-section-title">The Problems Creators Face</h3>
+              <h3 className="legal-section-title">What We Do</h3>
               
               <div className="legal-subsection">
-                <h4 className="legal-subsection-title">😵‍💫 Tool Overload</h4>
-                <p>Creators juggle 5-10 different apps: Canva for design, Hootsuite for scheduling, CapCut for editing, Buffer for analytics, and separate apps for each platform. It's overwhelming and expensive.</p>
+                <h4 className="legal-subsection-title">📚 AI-Powered Documentation Generation</h4>
+                <p>We use advanced AI to generate comprehensive documentation for your applications, including user guides, API documentation, developer guides, and more.</p>
               </div>
 
               <div className="legal-subsection">
-                <h4 className="legal-subsection-title">⏰ Time Drain</h4>
-                <p>What should take 5 minutes becomes a 2-hour ordeal. Upload to Instagram, resize for TikTok, reformat for LinkedIn, adjust for Twitter, create thumbnails for YouTube. The same content, endless repetition.</p>
+                <h4 className="legal-subsection-title">⚡ Save Time and Resources</h4>
+                <p>What used to take days or weeks can now be done in minutes. Focus on building your product while we handle the documentation.</p>
               </div>
 
               <div className="legal-subsection">
-                <h4 className="legal-subsection-title">💰 Cost Explosion</h4>
-                <p>Monthly subscriptions add up fast: $30 for design tools, $50 for scheduling, $25 for analytics, $40 for video editing. That's $145/month just to post content across platforms.</p>
+                <h4 className="legal-subsection-title">🎯 Customizable Output</h4>
+                <p>Choose your technical level, style, tone, target audience, and output format. Generate documentation that matches your needs perfectly.</p>
               </div>
 
               <div className="legal-subsection">
-                <h4 className="legal-subsection-title">🤯 Mental Overload</h4>
-                <p>Remembering different posting times, platform-specific formats, hashtag strategies, and engagement patterns. Your brain becomes a social media operations center instead of a creative hub.</p>
-              </div>
-
-              <div className="legal-subsection">
-                <h4 className="legal-subsection-title">📱 Platform Confusion</h4>
-                <p>Each platform has different rules, formats, and best practices. What works on Instagram fails on LinkedIn. TikTok trends don't translate to YouTube. You're constantly learning new systems.</p>
-              </div>
-
-              <div className="legal-subsection">
-                <h4 className="legal-subsection-title">📊 Analytics Chaos</h4>
-                <p>Data scattered across multiple dashboards. Instagram insights here, TikTok analytics there, YouTube Studio somewhere else. No unified view of your content performance.</p>
+                <h4 className="legal-subsection-title">🔧 Multiple Documentation Types</h4>
+                <p>Generate user guides for end users, API documentation for developers, admin docs for system administrators, and more.</p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Solution Section */}
+      {/* Values Section */}
       <section className="features-section">
         <div className="features-container">
           <div className="legal-content">
             <div className="legal-header">
-              <h2 className="legal-title">Our Solution: One Tool, All Platforms</h2>
-              <p className="legal-intro">
-                Reelpostly eliminates the multi-tool nightmare. Create once, publish everywhere. 
-                Our AI handles the complexity while you focus on what matters: creating amazing content.
-              </p>
+              <h2 className="legal-title">Our Values</h2>
             </div>
-
-            <div className="legal-section">
-              <h3 className="legal-section-title">How We Solve the Problem</h3>
-              
-              <div className="legal-subsection">
-                <h4 className="legal-subsection-title">🎯 One Workspace</h4>
-                <p>All your social media management in one place. No more switching between apps.</p>
-              </div>
-
-              <div className="legal-subsection">
-                <h4 className="legal-subsection-title">🤖 AI-Powered</h4>
-                <p>Smart captions and hashtags that adapt to each platform automatically.</p>
-              </div>
-
-              <div className="legal-subsection">
-                <h4 className="legal-subsection-title">⚡ Instant Publishing</h4>
-                <p>One click publishes to all connected platforms simultaneously.</p>
-              </div>
-
-              <div className="legal-subsection">
-                <h4 className="legal-subsection-title">📊 Unified Analytics</h4>
-                <p>Track performance across all platforms from one comprehensive dashboard.</p>
-              </div>
+          
+          <div className="features-grid">
+            <div className="feature-card">
+              <div className="feature-icon">🎯</div>
+              <h3>Simplicity</h3>
+              <p>We believe documentation generation should be simple and straightforward. No complex workflows, no confusing interfaces.</p>
             </div>
+            <div className="feature-card">
+              <div className="feature-icon">⚡</div>
+              <h3>Speed</h3>
+              <p>Generate comprehensive documentation in minutes, not days. Get your documentation ready quickly so you can focus on what matters.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">🎨</div>
+              <h3>Quality</h3>
+              <p>We're committed to generating high-quality, well-structured documentation that follows best practices and industry standards.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">🔧</div>
+              <h3>Flexibility</h3>
+              <p>Customize your documentation to match your needs. Choose formats, styles, and technical levels that work for your audience.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">🤝</div>
+              <h3>Support</h3>
+              <p>We're here to help. Our team is committed to providing excellent support and continuously improving our platform.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">📈</div>
+              <h3>Innovation</h3>
+              <p>We're constantly improving our AI models and adding new features to make documentation generation even better.</p>
+            </div>
+          </div>
           </div>
         </div>
       </section>
 
-      {/* Feedback Section */}
-      <section className="features-section">
-        <div className="features-container">
-          <h2 className="section-title">Help Us Build Your Perfect Tool</h2>
-          <p style={{textAlign: 'center', marginBottom: '2rem', fontSize: '1.1rem'}}>
-            We're constantly evolving based on creator feedback. Tell us how you'd like us to modify 
-            the app to help you better reach your audience and grow your brand.
-          </p>
-          <div style={{textAlign: 'center'}}>
-            <a 
-              href="https://docs.google.com/forms/d/e/1FAIpQLSdXGiQBAVMQy3lXGkNdRwqgfWw20E_VlXODYloiMo7L3bwYCw/viewform"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="cta-button-large"
-            >
-              Share Your Ideas
-            </a>
-            <p className="cta-note">Your input shapes our roadmap</p>
+      {/* Contact Section */}
+      <section className="cta-section">
+        <div className="cta-container">
+          <div className="legal-content">
+            <div className="legal-header">
+              <h2 className="legal-title">Get in Touch</h2>
+              <p className="legal-intro">
+                Have questions or feedback? We'd love to hear from you.
+              </p>
+            </div>
+          <a 
+            href="https://docs.google.com/forms/d/e/1FAIpQLSdXGiQBAVMQy3lXGkNdRwqgfWw20E_VlXODYloiMo7L3bwYCw/viewform"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="cta-button-large"
+          >
+            Contact Us
+          </a>
           </div>
         </div>
       </section>

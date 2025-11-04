@@ -83,8 +83,8 @@ app.use(cors({
     'http://127.0.0.1:3000',
     // ALB + domains
     /\.us-west-2\.elb\.amazonaws\.com$/,
-    'https://reelpostly.com',
-    'https://www.reelpostly.com',
+    'https://realdoc.com',
+    'https://www.realdoc.com',
     'https://bigvideograb.com',
     'https://www.bigvideograb.com'
   ],
@@ -138,29 +138,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// --- OAuth routes (mount points) ---
-const youtubeAuthRoutes   = require('./routes/googleAuth');
-const twitterAuthRoutes   = require('./routes/twitterAuth');
-const linkedinAuthRoutes  = require('./routes/linkedinAuth');
-const facebookAuthRoutes  = require('./routes/facebookAuth');
-const instagramAuthRoutes = require('./routes/instagramAuth');
-const tiktokAuthRoutes    = require('./routes/tiktokAuth');
-
-app.use('/api/auth/youtube',   youtubeAuthRoutes);
-app.use('/api/auth/twitter',   twitterAuthRoutes);
-app.use('/api/auth/linkedin',  linkedinAuthRoutes);
-app.use('/api/auth/facebook',  facebookAuthRoutes);
-app.use('/api/auth/instagram', instagramAuthRoutes);
-app.use('/api/auth/tiktok',    tiktokAuthRoutes);
-
-// --- Regular auth + stripe + publisher ---
+// --- Auth and billing routes ---
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/stripe", require("./routes/stripe"));
 app.use("/api/billing", require("./routes/billing"));
-app.use('/api/publisher', require('./routes/publisher'));
-app.use('/api/video-downloader', require('./routes/videoDownloader'));
-app.use('/api/sora', require('./routes/soraApi'));
-app.use('/api/sora', require('./routes/soraVideo')); // Protected video generation endpoint
 
 // --- Simple root ---
 app.get("/", (_req, res) => {
@@ -216,8 +197,8 @@ app.get('/api/user/verify/:userId', async (req, res) => {
   }
 });
 
-// Legacy route for /repostly (redirect to root)
-app.get('/repostly', (_req, res) => {
+// Legacy route for /realdoc (redirect to root)
+app.get('/realdoc', (_req, res) => {
   res.redirect('/');
 });
 

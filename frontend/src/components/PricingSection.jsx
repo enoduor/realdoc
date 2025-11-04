@@ -1,7 +1,47 @@
 import React, { useState } from 'react';
-import { createSubscriptionSession, getPriceId } from '../api';
 import ErrorModal from './ErrorModal';
 import './PricingSection.css';
+
+// API functions moved inline
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:4001";
+
+const getPriceId = async (plan, cycle) => {
+  const r = await fetch(`${API_URL}/api/stripe/get-price-id`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan, billingCycle: cycle })
+  });
+  const text = await r.text();
+  const isJson = (r.headers.get("content-type") || "").includes("application/json");
+  const data = isJson ? JSON.parse(text) : text;
+  if (!r.ok) {
+    if (r.status === 400 && typeof data === "object" && data.varName) {
+      throw new Error(`Pricing configuration error: ${data.error}. Please contact support.`);
+    }
+    throw new Error(`getPriceId: ${r.status} ${typeof data === "string" ? data : data?.error || 'Unknown error'}`);
+  }
+  return data;
+};
+
+const createSubscriptionSession = async (priceId, { clerkUserId, plan, billingCycle, promoCode, email } = {}) => {
+  try {
+    const res = await fetch(`${API_URL}/api/stripe/create-checkout-session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ priceId, clerkUserId, plan, billingCycle, promoCode, email }),
+    });
+    const text = await res.text();
+    const isJson = (res.headers.get("content-type") || "").includes("application/json");
+    const data = isJson ? JSON.parse(text) : text;
+    if (!res.ok) {
+      throw new Error(typeof data === "string" ? data : data?.error || res.statusText);
+    }
+    return data;
+  } catch (error) {
+    console.error('Error creating subscription session:', error);
+    throw error;
+  }
+};
 
 const PricingSection = () => {
   const [billingCycle, setBillingCycle] = useState('monthly');
@@ -21,13 +61,12 @@ const PricingSection = () => {
       yearlyTotal: 64,
       yearlySavings: 44,
       features: [
-        'Social media downloads',
-        '1 Post → 6 platform posts',
-        'AI captions & hashtags',
-        '1 post per day limit',
-        '6 platform posts per day',
-        '3MB video upload limit'
-        
+        'Documentation generation',
+        'User guides, API docs, developer guides',
+        'Multiple output formats (Markdown, HTML, Text)',
+        '10 documentation generations per month',
+        'Basic customization options',
+        'Email support'
       ],
       popular: false,
       bestDeal: false
@@ -40,12 +79,12 @@ const PricingSection = () => {
       yearlyTotal: 129,
       yearlySavings: 87,
       features: [
-        'Social media downloads',
-        'AI captions & hashtags',
-        'Content studio access',
-        '5 posts per day limit',
-        '30 platform posts per day',
-        '50MB video upload limit'
+        'Unlimited documentation generation',
+        'All documentation types',
+        'Advanced customization options',
+        'Code examples support',
+        'Multiple output formats',
+        'Priority support'
       ],
       popular: true,
       bestDeal: false
@@ -60,7 +99,7 @@ const PricingSection = () => {
         'Customized analytics & reporting',
         'Custom training & onboarding',
         'Priority technical support',
-        'Full platform upload limits'
+        'Unlimited documentation generation'
       ],
       popular: false,
       bestDeal: false
@@ -110,7 +149,7 @@ const PricingSection = () => {
       <div className="pricing-container">
         {/* Header */}
         <div className="pricing-header">
-          <h2 className="pricing-title">Eliminate Platform Fragmentation</h2>
+          <h2 className="pricing-title">Generate Professional Documentation</h2>
           <p className="pricing-subtitle">Start your 3-day free trial and cancel anytime. 30-day money-back guarantee</p>
           
           {/* Billing Toggle */}

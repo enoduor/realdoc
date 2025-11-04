@@ -1,5 +1,5 @@
 {
-  "name": "frontend",
+  "name": "realdoc-frontend",
   "version": "0.1.0",
   "private": true,
   "homepage": ".",
@@ -47,6 +47,7 @@
     ]
   },
   "devDependencies": {
+    "ajv": "^8.17.1",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.31",
     "postcss-flexbugs-fixes": "^5.0.2",
