@@ -2,14 +2,24 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 from typing import Optional
-from utils.web_crawler import crawl_and_extract, format_crawled_content_for_prompt
+from utils.web_crawler import (
+    crawl_and_extract, 
+    format_crawled_content_for_prompt,
+    analyze_competitors_and_crawl
+)
 
 # Load environment variables
 load_dotenv()
 
 # Initialize OpenAI client dynamically
 def get_openai_client():
-    return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key or api_key == "sk-placeholder" or api_key.startswith("sk-placeholder"):
+        raise ValueError(
+            "OpenAI API key is not configured. Please set OPENAI_API_KEY in your .env file. "
+            "Get your API key from https://platform.openai.com/api-keys"
+        )
+    return OpenAI(api_key=api_key)
 
 async def generate_documentation(
     app_name: str,
@@ -85,6 +95,8 @@ async def generate_documentation(
     
     # Crawl URL if provided
     crawled_context = ""
+    competitor_analysis = ""
+    
     if app_url:
         try:
             crawled_data = await crawl_and_extract(app_url)
@@ -93,9 +105,39 @@ async def generate_documentation(
                 # Update app_name if we found a better title
                 if crawled_data.get("title") and not app_name:
                     app_name = crawled_data["title"]
+            
+            # Perform competitor analysis after crawling the main app
+            print("Starting competitor analysis...")
+            competitor_result = await analyze_competitors_and_crawl(
+                app_name=app_name,
+                app_type=app_type,
+                app_url=app_url
+            )
+            if competitor_result.get("analysis"):
+                competitor_analysis = competitor_result["analysis"]
+                print(f"Competitor analysis completed: {competitor_result.get('count', 0)} competitors analyzed")
         except Exception as e:
             print(f"Warning: Could not crawl URL {app_url}: {str(e)}")
             # Continue without crawled content
+    else:
+        # Even without app_url, we can still do competitor analysis if we have app_name
+        if app_name:
+            try:
+                print(f"Starting competitor analysis for '{app_name}' (without app URL)...")
+                competitor_result = await analyze_competitors_and_crawl(
+                    app_name=app_name,
+                    app_type=app_type,
+                    app_url=None
+                )
+                if competitor_result and competitor_result.get("analysis"):
+                    competitor_analysis = competitor_result["analysis"]
+                    print(f"Competitor analysis completed: {competitor_result.get('count', 0)} competitors analyzed")
+                else:
+                    print("Competitor analysis returned no results")
+            except Exception as e:
+                print(f"Warning: Could not perform competitor analysis: {str(e)}")
+                import traceback
+                traceback.print_exc()
     
     # Build context parts
     context_parts = []
@@ -119,7 +161,7 @@ async def generate_documentation(
         "plain-text": "Use clear plain text with proper spacing and structure"
     }
     
-    # Build prompt with crawled context if available
+    # Build prompt with crawled context and competitor analysis
     context_section = ""
     if crawled_context:
         context_section = f"""
@@ -143,22 +185,68 @@ YOU MUST USE THIS INFORMATION AS THE PRIMARY SOURCE for creating the documentati
 
 """
     
-    prompt = f"""Create {doc_description} for an application called "{app_name}", which is a {app_type} application.
+    # Add competitor analysis section
+    competitor_section = ""
+    if competitor_analysis:
+        competitor_section = f"""
+
+{competitor_analysis}
+
+IMPORTANT: Use competitor information to enhance documentation comprehensiveness:
+- Include features and sections that competitors commonly address
+- Follow industry best practices for documentation structure
+- Ensure the documentation is competitive and comprehensive
+- However, ALWAYS prioritize accuracy - only include features that are relevant to "{app_name}" based on the feature description and website information
+- Do NOT copy competitor features verbatim - use them as inspiration for comprehensive coverage
+
+"""
+    
+    # Check if feature description is too vague
+    is_vague = len(feature_description.strip()) < 20 or feature_description.lower() in [
+        "documentation", "docs", "guide", "tutorial", "help", "information", 
+        "documentation for", "docs for", "guide for", "documentation about"
+    ]
+    
+    vague_warning = ""
+    if is_vague:
+        vague_warning = f"""
+⚠️⚠️⚠️ CRITICAL: The feature description "{feature_description}" is too vague!
+You MUST expand on this and create COMPREHENSIVE, DETAILED documentation.
+DO NOT create generic placeholder content like "First step", "Second step", "Follow these steps".
+Instead, you MUST:
+- Research what "{app_name}" actually does (it's a well-known platform)
+- Create SPECIFIC, DETAILED instructions based on real functionality
+- Include actual code examples, commands, or procedures that would work for "{app_name}"
+- Write at least 1000+ words of meaningful content
+- Include multiple detailed sections with real information
+- If "{app_name}" is GitHub, include actual Git commands, repository setup, branching strategies, etc.
+- If it's a developer guide, include actual setup steps, architecture diagrams descriptions, integration examples
+- NEVER use generic placeholders like "First step", "Second step", "Additional Resources" without real content
+
+FAILURE TO CREATE DETAILED CONTENT WILL RESULT IN USELESS GENERIC OUTPUT.
+"""
+    
+    prompt = f"""Create a COMPREHENSIVE, DETAILED {doc_description} for an application called "{app_name}", which is a {app_type} application.
 {context_section if context_section else ""}
+{competitor_section if competitor_section else ""}
+{vague_warning}
 
 DOCUMENTATION TYPE: {doc_type}
 {doc_type_guidance}
 
-CRITICAL REQUIREMENTS:
-1. Use the EXACT app name "{app_name}" throughout - NEVER use placeholders like "example", "your-app", "mzmzma", or generic names
-2. Base ALL content on this specific feature: "{feature_description}"
-3. **IF APPLICATION INFORMATION FROM WEBSITE WAS PROVIDED ABOVE, IT IS THE PRIMARY SOURCE** - You MUST use that information to understand what the application actually does and document it accurately
-4. **If website information mentions specific platforms, features, or APIs, document ONLY those** - Do NOT add platforms or features not mentioned (e.g., if website says "TikTok, Twitter, Facebook", do NOT add YouTube or Instagram)
-5. Do NOT include features, APIs, or functionality NOT mentioned in the feature description or the application information from the website
-6. **CRITICAL: Do NOT invent API endpoints, request/response formats, or code examples** - If the website mentions "API" but doesn't provide specific endpoint details, document that APIs exist but DO NOT create example endpoints, request formats, or response structures. Only include technical details that are explicitly mentioned in the website information.
-7. If the website says "API Integration" or "RESTful APIs" but doesn't provide specific endpoints, write: "API integration is available. Contact the service provider for API access and documentation." DO NOT create example API calls.
-8. All code examples, configuration, and instructions must be directly related to "{feature_description}" and the actual application capabilities
-9. Create realistic, specific content based on "{app_name}" being a {app_type} application and the information provided from the website
+ABSOLUTE REQUIREMENTS - NO EXCEPTIONS:
+1. **NEVER use generic placeholders** like "First step", "Second step", "Third step", "Follow these steps", "Additional Resources", "For more information, please refer to the main documentation"
+2. **NEVER create template content** - Every single sentence must be specific and meaningful
+3. Use the EXACT app name "{app_name}" throughout - NEVER use placeholders
+4. Base ALL content on this specific feature: "{feature_description}"
+5. **IF APPLICATION INFORMATION FROM WEBSITE WAS PROVIDED ABOVE, IT IS THE PRIMARY SOURCE** - You MUST use that information
+6. **If "{app_name}" is a well-known platform (like GitHub, GitLab, etc.), you MUST use your knowledge of that platform to create accurate, detailed documentation**
+7. **For developer guides**: Include actual setup commands, configuration files, architecture explanations, integration code examples
+8. **For API docs**: Include actual endpoint structures, request/response examples, authentication methods (if known for the platform)
+9. **For user guides**: Include actual step-by-step procedures with specific UI elements, buttons, menus
+10. **Minimum content requirement**: Create at least 1000+ words of meaningful, specific content - NOT generic templates
+11. All code examples must be REAL, WORKING examples relevant to "{app_name}" and "{feature_description}"
+12. Every section must contain SUBSTANTIAL, SPECIFIC content - not just headings with placeholder text
 
 FEATURE TO DOCUMENT:
 {feature_description}
@@ -174,29 +262,62 @@ DOCUMENTATION REQUIREMENTS:
 ADDITIONAL INSTRUCTIONS:
 {context_str}
 
-DOCUMENTATION STRUCTURE:
-- Clear headings and subheadings
+DOCUMENTATION STRUCTURE (with REAL content, not placeholders):
+- Clear headings and subheadings with ACTUAL content under each
 - Table of contents (if document is longer than 5 sections)
-- Step-by-step instructions where applicable (for tutorials)
-- Code blocks with syntax highlighting (if code examples are included)
-- Screenshot placeholders with descriptions (if screenshots are included)
-- Warnings and tips callout boxes where relevant
+- Step-by-step instructions with SPECIFIC, DETAILED steps (for tutorials)
+- Code blocks with REAL, WORKING code examples (if code examples are included)
+- Screenshot placeholders with DESCRIPTIVE descriptions (if screenshots are included)
+- Warnings and tips callout boxes with ACTUAL useful information
 - Proper formatting for {format} format
 
-VALIDATION CHECKLIST:
-✓ Every section relates to "{feature_description}"
-✓ App name "{app_name}" is used consistently (not placeholders)
-✓ If API endpoints are included, they are ONLY from the website information - no invented endpoints
-✓ Code examples are relevant to the feature AND match what's on the website
-✓ No unrelated features or examples are included
-✓ Content is specific to "{app_name}" as a {app_type} application
-✓ If website mentions APIs but doesn't provide endpoints, documentation states "contact for API access" rather than inventing examples
+WHAT TO INCLUDE (be specific):
+- For "{app_name}" as a {app_type} application, include actual:
+  * Setup/installation procedures
+  * Configuration examples
+  * Code snippets that would actually work
+  * Real-world use cases
+  * Troubleshooting tips
+  * Best practices specific to this platform/application
 
-REMEMBER: This is documentation for "{app_name}" about "{feature_description}". Create specific, accurate content - not generic templates."""
+WHAT TO NEVER INCLUDE:
+- Generic "First step", "Second step" without actual steps
+- "For more information, please refer to..." without providing information
+- "Additional Resources" sections with no actual resources
+- Placeholder text of any kind
+- Generic templates
+
+VALIDATION CHECKLIST (ALL must be true):
+✓ Every section has SUBSTANTIAL, SPECIFIC content (not just headings)
+✓ App name "{app_name}" is used consistently
+✓ Content is specific to "{app_name}" as a {app_type} application
+✓ At least 1000+ words of meaningful content
+✓ NO generic placeholders like "First step", "Second step"
+✓ Code examples are REAL and would work for "{app_name}"
+✓ All instructions are DETAILED and SPECIFIC
+✓ Content demonstrates deep understanding of "{app_name}" and "{feature_description}"
+
+REMEMBER: This is documentation for "{app_name}" about "{feature_description}". 
+Create COMPREHENSIVE, DETAILED, SPECIFIC content - NOT generic templates or placeholders.
+If you create generic content, you have FAILED. Be specific, be detailed, be comprehensive."""
     
     try:
         import asyncio
-        client = get_openai_client()
+        # Validate API key before proceeding
+        try:
+            client = get_openai_client()
+        except ValueError as e:
+            error_msg = str(e)
+            print(f"ERROR: {error_msg}")
+            return f"""# {app_name} - {doc_description}
+
+## ⚠️ Configuration Error
+
+{error_msg}
+
+## Feature: {feature_description}
+
+Please configure your OpenAI API key in the backend .env file to generate documentation."""
         
         # Prepare the OpenAI call
         def make_openai_call():
@@ -206,34 +327,41 @@ REMEMBER: This is documentation for "{app_name}" about "{feature_description}". 
                     {
                         "role": "system",
                         "content": f"""You are an expert technical writer specializing in software documentation. 
-                        You create documentation that is SPECIFIC, ACCURATE, and RELEVANT to the exact feature described by the user.
+                        You create documentation that is SPECIFIC, ACCURATE, DETAILED, and COMPREHENSIVE.
                         
-                    CRITICAL RULES:
-                    1. NEVER use generic templates or placeholder content
-                    2. If website information was provided, it is the PRIMARY SOURCE - use it to understand what the application actually does
-                    3. NEVER include features or functionality not mentioned in the feature description OR the website information
-                    4. ALWAYS use the exact app name provided - never use "example" or "your-app" placeholders
-                    5. If website mentions specific platforms (e.g., "TikTok, Twitter, Facebook"), document ONLY those platforms - do NOT add others
-                    6. **CRITICAL: Do NOT invent API endpoints, request/response formats, or code examples** - Only include technical details explicitly mentioned in the website information. If website says "API" but doesn't provide endpoints, document that APIs exist but DO NOT create example API calls.
-                    7. If website mentions "API Integration" or "RESTful APIs" without specific details, write: "API integration is available. Contact the service provider for API access and documentation." DO NOT create example endpoints or request/response formats.
-                    8. ALL code examples and instructions must be directly related to the feature description AND match what the website says the app does
-                    9. If the feature description mentions specific functionality, document ONLY that functionality
-                    10. Create realistic, specific content based on the app name, feature description, AND website information (if provided)
-                    11. Do NOT invent unrelated features or use examples from other domains
-                    12. If website information contradicts generic assumptions, TRUST THE WEBSITE INFORMATION
+                    ABSOLUTE RULES - NO EXCEPTIONS:
+                    1. **NEVER use generic templates or placeholder content** - Every sentence must be specific and meaningful
+                    2. **NEVER write "First step", "Second step", "Third step"** without actual detailed steps
+                    3. **NEVER write "For more information, please refer to..."** without providing the information
+                    4. **NEVER create "Additional Resources" sections** with no actual resources
+                    5. **ALWAYS create at least 1000+ words** of meaningful, specific content
+                    6. If website information was provided, it is the PRIMARY SOURCE - use it to understand what the application actually does
+                    7. If the app name is a well-known platform (GitHub, GitLab, etc.), use your knowledge to create accurate, detailed documentation
+                    8. ALWAYS use the exact app name provided - never use "example" or "your-app" placeholders
+                    9. **For developer guides**: Include actual setup commands, configuration files, architecture details, integration examples
+                    10. **For API docs**: Include actual endpoint structures, request/response examples (if known for the platform)
+                    11. **For user guides**: Include actual step-by-step procedures with specific UI elements
+                    12. ALL code examples must be REAL, WORKING examples relevant to the app and feature
+                    13. Every section must contain SUBSTANTIAL, SPECIFIC content - not just headings
+                    14. If website mentions specific platforms, document ONLY those platforms
+                    15. **CRITICAL: Do NOT invent API endpoints** - Only include technical details explicitly mentioned OR use your knowledge of well-known platforms
+                    16. Create realistic, specific content based on the app name, feature description, AND website information (if provided)
+                    17. Do NOT invent unrelated features or use examples from other domains
+                    18. If website information contradicts generic assumptions, TRUST THE WEBSITE INFORMATION
                         
                         You adapt content for different technical levels ({technical_level}) and audiences ({target_audience}).
-                        You create documentation that is comprehensive, accurate, and professionally formatted.
+                        You create documentation that is comprehensive (1000+ words), detailed, accurate, and professionally formatted.
                         
-                        Your documentation must be specific to the application and feature described, not generic templates."""
+                        Your documentation must be SPECIFIC, DETAILED, and COMPREHENSIVE - NOT generic templates or placeholders.
+                        If you create generic content like "First step", "Second step", you have FAILED."""
                     },
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.5,  # Lower temperature for more focused, accurate output
-                max_tokens=4000,  # Increased for more comprehensive documentation
-                top_p=0.9,
-                frequency_penalty=0.2,  # Slightly higher to avoid repetition
-                presence_penalty=0.1
+                temperature=0.7,  # Slightly higher for more creative, detailed content
+                max_tokens=6000,  # Increased for comprehensive documentation
+                top_p=0.95,
+                frequency_penalty=0.1,  # Lower to allow more detailed content
+                presence_penalty=0.05
             )
         
         # Run synchronous OpenAI call in executor to avoid blocking
@@ -242,7 +370,32 @@ REMEMBER: This is documentation for "{app_name}" about "{feature_description}". 
         documentation = response.choices[0].message.content.strip()
         return documentation
     except Exception as e:
-        print(f"Error generating documentation: Error code: {getattr(e, 'code', 'unknown')} - {str(e)}")
+        error_code = getattr(e, 'code', 'unknown')
+        error_type = type(e).__name__
+        error_message = str(e)
+        print(f"Error generating documentation: Type={error_type}, Code={error_code}, Message={error_message}")
+        
+        # Handle API key errors
+        if 'api key' in error_message.lower() or 'authentication' in error_message.lower() or 'invalid' in error_message.lower():
+            return f"""# {app_name} - {doc_description}
+
+## ⚠️ OpenAI API Key Error
+
+The OpenAI API key is invalid or not configured correctly.
+
+**Error Details:**
+- Error Type: {error_type}
+- Error Code: {error_code}
+- Message: {error_message}
+
+**To fix this:**
+1. Get your API key from https://platform.openai.com/api-keys
+2. Set it in `back/backend_python/.env` as: `OPENAI_API_KEY=sk-your-actual-key-here`
+3. Restart the backend server
+
+## Feature: {feature_description}
+
+Once the API key is configured, you can generate comprehensive documentation for this feature."""
         
         # Handle specific OpenAI errors
         if hasattr(e, 'code') and e.code == 'insufficient_quota':

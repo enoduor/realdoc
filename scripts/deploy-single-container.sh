@@ -1,19 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
-# Deploy single Repostly container to AWS ECS (Fargate)
+# Deploy single RealDoc container to AWS ECS (Fargate)
 # Usage: AWS_ACCOUNT_ID=657053005765 AWS_REGION=us-west-2 ./scripts/deploy-single-container.sh
 
 AWS_REGION="${AWS_REGION:-us-west-2}"
 AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-657053005765}"
-CLUSTER="repostly-cluster"
+CLUSTER="realdoc-cluster"
 ECR_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
-REPO_NAME="repostly-unified"
-SERVICE_NAME="repostly-unified"
-TASK_FAMILY="repostly-unified"
+REPO_NAME="realdoc-unified"
+SERVICE_NAME="realdoc-unified"
+TASK_FAMILY="realdoc-unified"
 
 # Public URLs for the built frontend bundle (root hosting)
-DOMAIN="${DOMAIN:-reelpostly.com}"
+DOMAIN="${DOMAIN:-realdoc.com}"
 BASE_URL="https://${DOMAIN}"
 
 # Build-time env (React build)
@@ -22,7 +22,7 @@ export REACT_APP_AI_API="${REACT_APP_AI_API:-${BASE_URL}/ai}"
 export REACT_APP_PYTHON_API_URL="${REACT_APP_PYTHON_API_URL:-${BASE_URL}/ai}"
 # Clerk publishable key is public; safe to embed at build time
 export REACT_APP_CLERK_PUBLISHABLE_KEY="${REACT_APP_CLERK_PUBLISHABLE_KEY:-pk_live_Y2xlcmsucmVlbHBvc3RseS5jb20k}"
-# We now serve at root, not /repostly
+# We now serve at root
 PUBLIC_URL="${PUBLIC_URL:-/}"
 
 # ECS container ports (frontend / node API / python AI)
@@ -81,8 +81,8 @@ ensure_log_group() {
 ensure_builder() {
   # Fresh, robust buildx builder (prevents stuck/EOF states on macOS)
   log "[Buildx] Preparing builder…"
-  docker buildx rm -f repostly-builder >/dev/null 2>&1 || true
-  retry 3 2 docker buildx create --name repostly-builder --use --driver docker-container --driver-opt network=host
+  docker buildx rm -f realdoc-builder >/dev/null 2>&1 || true
+  retry 3 2 docker buildx create --name realdoc-builder --use --driver docker-container --driver-opt network=host
   retry 3 2 docker buildx inspect --bootstrap >/dev/null
   log "[Buildx] Builder ready."
 }
@@ -159,18 +159,18 @@ register_task_definition() {
                    {"name":"AI_ROOT_PATH","value":"/ai"}
                  ]) |
                  (.secrets = [
-                   {"name":"MONGODB_URI",      "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/MONGODB_URI")},
-                   {"name":"CLERK_SECRET_KEY", "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/CLERK_SECRET_KEY")},
-                   {"name":"CLERK_PUBLISHABLE_KEY", "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/CLERK_PUBLISHABLE_KEY")},
-                   {"name":"CLERK_ISSUER_URL", "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/CLERK_ISSUER_URL")},
-                   {"name":"OPENAI_API_KEY",   "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/ai/OPENAI_API_KEY")},
-                   {"name":"STRIPE_SECRET_KEY","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_SECRET_KEY")},
-                   {"name":"STRIPE_WEBHOOK_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_WEBHOOK_SECRET")},
-                   {"name":"STRIPE_STARTER_MONTHLY_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_STARTER_MONTHLY_PRICE_ID")},
-                   {"name":"STRIPE_STARTER_YEARLY_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_STARTER_YEARLY_PRICE_ID")},
-                   {"name":"STRIPE_CREATOR_MONTHLY_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_CREATOR_MONTHLY_PRICE_ID")},
-                   {"name":"STRIPE_CREATOR_YEARLY_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STRIPE_CREATOR_YEARLY_PRICE_ID")},
-                   {"name":"STATE_HMAC_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/repostly/api/STATE_HMAC_SECRET")}
+                   {"name":"MONGODB_URI",      "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/realdoc/api/MONGODB_URI")},
+                   {"name":"CLERK_SECRET_KEY", "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/realdoc/api/CLERK_SECRET_KEY")},
+                   {"name":"CLERK_PUBLISHABLE_KEY", "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/realdoc/api/CLERK_PUBLISHABLE_KEY")},
+                   {"name":"CLERK_ISSUER_URL", "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/realdoc/api/CLERK_ISSUER_URL")},
+                   {"name":"OPENAI_API_KEY",   "valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/realdoc/ai/OPENAI_API_KEY")},
+                   {"name":"STRIPE_SECRET_KEY","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/realdoc/api/STRIPE_SECRET_KEY")},
+                   {"name":"STRIPE_WEBHOOK_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/realdoc/api/STRIPE_WEBHOOK_SECRET")},
+                   {"name":"STRIPE_STARTER_MONTHLY_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/realdoc/api/STRIPE_STARTER_MONTHLY_PRICE_ID")},
+                   {"name":"STRIPE_STARTER_YEARLY_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/realdoc/api/STRIPE_STARTER_YEARLY_PRICE_ID")},
+                   {"name":"STRIPE_CREATOR_MONTHLY_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/realdoc/api/STRIPE_CREATOR_MONTHLY_PRICE_ID")},
+                   {"name":"STRIPE_CREATOR_YEARLY_PRICE_ID","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/realdoc/api/STRIPE_CREATOR_YEARLY_PRICE_ID")},
+                   {"name":"STATE_HMAC_SECRET","valueFrom":("arn:aws:ssm:" + $AWS_REGION + ":" + $AWS_ACCOUNT_ID + ":parameter/realdoc/api/STATE_HMAC_SECRET")}
                  ])
           else . end))
     ' td.json > td.new.json
@@ -209,7 +209,7 @@ update_service() {
       --desired-count 1 \
       --launch-type FARGATE \
       --network-configuration "awsvpcConfiguration={subnets=[subnet-0840b774ddc688987,subnet-0113e0c8e2cafde02],securityGroups=[sg-05a357e17fb04284b],assignPublicIp=ENABLED}" \
-      --load-balancers "targetGroupArn=arn:aws:elasticloadbalancing:$AWS_REGION:$AWS_ACCOUNT_ID:targetgroup/tg-repostly-unified/6ac02528aefcdd85,containerName=$REPO_NAME,containerPort=$PORT_WEB" \
+      --load-balancers "targetGroupArn=arn:aws:elasticloadbalancing:$AWS_REGION:$AWS_ACCOUNT_ID:targetgroup/tg-realdoc-unified/6ac02528aefcdd85,containerName=$REPO_NAME,containerPort=$PORT_WEB" \
       --region "$AWS_REGION" >/dev/null
   fi
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 // import { useUser } from '@clerk/clerk-react';
 import './Navigation.css';
 
@@ -9,6 +9,7 @@ const Navigation = () => {
   const isSignedIn = false; // Allow access without authentication
   const user = null;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -17,9 +18,9 @@ const Navigation = () => {
   // Navigate to Documentation Generator
   const handleGetStarted = () => {
     if (isSignedIn) {
-      window.location.href = '/app/documentation-generator';
+      navigate('/app/documentation-generator');
     } else {
-      window.location.href = '/login';
+      navigate('/login');
     }
   };
 

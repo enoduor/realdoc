@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import {
     DOCUMENTATION_TYPES,
@@ -12,10 +12,17 @@ import {
 } from '../constants/documentationTypes';
 
 const DocumentationGenerator = () => {
+    const [searchParams] = useSearchParams();
+    const urlDocType = searchParams.get('type');
+    
+    // Validate that the URL doc type is valid
+    const validDocTypes = DOCUMENTATION_TYPES.map(dt => dt.id);
+    const initialDocType = urlDocType && validDocTypes.includes(urlDocType) ? urlDocType : 'user-guide';
+    
     const [formData, setFormData] = useState({
         app_name: '',
         app_type: 'web',
-        doc_type: 'user-guide',
+        doc_type: initialDocType,
         feature_description: '',
         technical_level: 'intermediate',
         style: 'tutorial',
@@ -28,9 +35,21 @@ const DocumentationGenerator = () => {
         app_url: ''
     });
     
+    // Update doc_type when URL parameter changes
+    useEffect(() => {
+        if (urlDocType && validDocTypes.includes(urlDocType)) {
+            setFormData(prev => ({
+                ...prev,
+                doc_type: urlDocType
+            }));
+        }
+    }, [urlDocType, validDocTypes]);
+    
     const [documentation, setDocumentation] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedDocumentation, setEditedDocumentation] = useState('');
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -61,6 +80,8 @@ const DocumentationGenerator = () => {
                 headers: { 'Content-Type': 'application/json' }
             });
             setDocumentation(response.data);
+            setEditedDocumentation(response.data.documentation);
+            setIsEditing(false);
         } catch (err) {
             const errorMessage = err?.response?.data?.detail || 
                 err?.response?.data?.message || 
@@ -72,22 +93,17 @@ const DocumentationGenerator = () => {
         }
     };
 
-    const handleCopyToClipboard = () => {
-        if (documentation?.documentation) {
-            navigator.clipboard.writeText(documentation.documentation);
-            alert('Documentation copied to clipboard!');
-        }
-    };
 
     const handleDownload = () => {
-        if (!documentation?.documentation) return;
+        const docToDownload = isEditing ? editedDocumentation : (documentation?.documentation || '');
+        if (!docToDownload) return;
         
         const format = documentation.format || 'markdown';
         const formatInfo = DOCUMENTATION_FORMATS.find(f => f.id === format);
         const extension = formatInfo?.extension || '.md';
         const filename = `${formData.app_name.replace(/\s+/g, '_')}_${formData.doc_type}${extension}`;
         
-        const blob = new Blob([documentation.documentation], { 
+        const blob = new Blob([docToDownload], { 
             type: format === 'html' ? 'text/html' : 'text/plain' 
         });
         const url = URL.createObjectURL(blob);
@@ -98,6 +114,65 @@ const DocumentationGenerator = () => {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+    };
+
+    const handleEdit = () => {
+        setEditedDocumentation(documentation.documentation);
+        setIsEditing(true);
+    };
+
+    const handleSave = () => {
+        if (!documentation) return;
+        
+        // Update the documentation with edited content
+        const updatedDoc = {
+            ...documentation,
+            documentation: editedDocumentation,
+            word_count: editedDocumentation.split(/\s+/).filter(word => word.length > 0).length,
+            estimated_read_time: Math.max(1, Math.round(editedDocumentation.split(/\s+/).filter(word => word.length > 0).length / 200))
+        };
+        
+        setDocumentation(updatedDoc);
+        setIsEditing(false);
+        
+        // Save to localStorage for persistence
+        try {
+            const savedDocs = JSON.parse(localStorage.getItem('realdoc_saved_documentation') || '[]');
+            const docToSave = {
+                ...updatedDoc,
+                app_name: formData.app_name,
+                doc_type: formData.doc_type,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Check if this doc already exists (by app_name and doc_type)
+            const existingIndex = savedDocs.findIndex(
+                (doc) => doc.app_name === formData.app_name && doc.doc_type === formData.doc_type
+            );
+            
+            if (existingIndex >= 0) {
+                savedDocs[existingIndex] = docToSave;
+            } else {
+                savedDocs.push(docToSave);
+            }
+            
+            localStorage.setItem('realdoc_saved_documentation', JSON.stringify(savedDocs));
+        } catch (e) {
+            console.error('Failed to save to localStorage:', e);
+        }
+    };
+
+    const handleCancel = () => {
+        setEditedDocumentation(documentation.documentation);
+        setIsEditing(false);
+    };
+
+    const handleCopyToClipboard = () => {
+        const docToCopy = isEditing ? editedDocumentation : (documentation?.documentation || '');
+        if (docToCopy) {
+            navigator.clipboard.writeText(docToCopy);
+            alert('Documentation copied to clipboard!');
+        }
     };
 
     return (
@@ -194,6 +269,17 @@ const DocumentationGenerator = () => {
                                 rows="4"
                                 required
                             />
+                            {formData.feature_description && formData.feature_description.length < 30 && (
+                                <div className="mt-2 p-2 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded text-sm">
+                                    ⚠️ <strong>Tip:</strong> A more detailed description (30+ characters) will generate better, more specific documentation. 
+                                    Generic descriptions like "documentation" or "guide" may result in template content.
+                                </div>
+                            )}
+                            {formData.feature_description && (
+                                <div className="mt-1 text-xs text-gray-500">
+                                    {formData.feature_description.length} characters
+                                </div>
+                            )}
                         </div>
 
                         {/* Configuration Options */}
@@ -338,40 +424,87 @@ const DocumentationGenerator = () => {
                     {documentation && (
                         <div className="mt-6">
                             <div className="flex justify-between items-center mb-2">
-                                <h3 className="text-lg font-medium">Generated Documentation</h3>
+                                <h3 className="text-lg font-medium">
+                                    {isEditing ? 'Editing Documentation' : 'Generated Documentation'}
+                                </h3>
                                 <div className="flex gap-2">
-                                    <button
-                                        onClick={handleCopyToClipboard}
-                                        className="px-3 py-1 text-sm bg-gray-600 text-white hover:bg-gray-700 rounded"
-                                    >
-                                        Copy to Clipboard
-                                    </button>
-                                    <button
-                                        onClick={handleDownload}
-                                        className="px-3 py-1 text-sm bg-green-600 text-white hover:bg-green-700 rounded"
-                                    >
-                                        Download ({documentation.format?.toUpperCase() || 'MD'})
-                                    </button>
+                                    {isEditing ? (
+                                        <>
+                                            <button
+                                                onClick={handleSave}
+                                                className="px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded"
+                                            >
+                                                Save Changes
+                                            </button>
+                                            <button
+                                                onClick={handleCancel}
+                                                className="px-3 py-1 text-sm bg-gray-500 text-white hover:bg-gray-600 rounded"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <button
+                                                onClick={handleEdit}
+                                                className="px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded"
+                                            >
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={handleCopyToClipboard}
+                                                className="px-3 py-1 text-sm bg-gray-600 text-white hover:bg-gray-700 rounded"
+                                            >
+                                                Copy to Clipboard
+                                            </button>
+                                            <button
+                                                onClick={handleDownload}
+                                                className="px-3 py-1 text-sm bg-green-600 text-white hover:bg-green-700 rounded"
+                                            >
+                                                Download ({documentation.format?.toUpperCase() || 'MD'})
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                             
                             <div className="mb-2 text-sm text-gray-600">
-                                <span>Words: {documentation.word_count}</span>
-                                <span className="ml-4">Est. Read Time: {documentation.estimated_read_time} min</span>
+                                <span>Words: {isEditing ? editedDocumentation.split(/\s+/).filter(word => word.length > 0).length : documentation.word_count}</span>
+                                <span className="ml-4">Est. Read Time: {isEditing ? Math.max(1, Math.round(editedDocumentation.split(/\s+/).filter(word => word.length > 0).length / 200)) : documentation.estimated_read_time} min</span>
                                 <span className="ml-4">Format: {documentation.format?.toUpperCase() || 'MARKDOWN'}</span>
                             </div>
 
-                            <div className="p-4 bg-gray-100 rounded border">
-                                {documentation.format === 'html' ? (
-                                    <div 
-                                        dangerouslySetInnerHTML={{ __html: documentation.documentation }}
-                                        className="prose max-w-none text-left"
-                                        style={{ textAlign: 'left' }}
+                            {isEditing ? (
+                                <div className="p-4 bg-white rounded border">
+                                    <textarea
+                                        value={editedDocumentation}
+                                        onChange={(e) => setEditedDocumentation(e.target.value)}
+                                        className="w-full p-4 border rounded-lg font-mono text-sm"
+                                        rows={20}
+                                        style={{ 
+                                            minHeight: '400px',
+                                            fontFamily: 'monospace',
+                                            whiteSpace: 'pre-wrap',
+                                            textAlign: 'left'
+                                        }}
                                     />
-                                ) : (
-                                    <pre className="whitespace-pre-wrap font-mono text-sm text-left" style={{ textAlign: 'left' }}>{documentation.documentation}</pre>
-                                )}
-                            </div>
+                                    <div className="mt-2 text-xs text-gray-500">
+                                        Tip: You can edit the documentation directly. Changes will be saved when you click "Save Changes".
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="p-4 bg-gray-100 rounded border">
+                                    {documentation.format === 'html' ? (
+                                        <div 
+                                            dangerouslySetInnerHTML={{ __html: documentation.documentation }}
+                                            className="prose max-w-none text-left"
+                                            style={{ textAlign: 'left' }}
+                                        />
+                                    ) : (
+                                        <pre className="whitespace-pre-wrap font-mono text-sm text-left" style={{ textAlign: 'left' }}>{documentation.documentation}</pre>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
