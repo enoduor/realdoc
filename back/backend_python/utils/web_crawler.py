@@ -2,7 +2,7 @@
 Web crawler utility for extracting content from URLs to enhance documentation generation.
 """
 import re
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 import aiohttp
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, quote_plus
@@ -413,4 +413,527 @@ def format_crawled_content_for_prompt(crawled_data: Dict[str, str]) -> str:
         parts.append(f"Content Overview: {content_preview}")
     
     return "\n\n".join(parts) if parts else ""
+
+
+def extract_keywords_from_content(crawled_data: Dict[str, str], max_keywords: int = 15) -> List[str]:
+    """
+    Extract potential keywords from crawled website content.
+    
+    Args:
+        crawled_data: Dictionary with extracted content (title, description, headings, content)
+        max_keywords: Maximum number of keywords to extract
+        
+    Returns:
+        List of potential keywords/phrases
+    """
+    if not crawled_data:
+        return []
+    
+    keywords = []
+    
+    # Extract from title (usually contains main keywords)
+    if crawled_data.get("title"):
+        title_words = re.findall(r'\b\w{3,}\b', crawled_data["title"].lower())
+        # Filter out common stop words
+        stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those'}
+        title_keywords = [w for w in title_words if w not in stop_words and len(w) > 2]
+        keywords.extend(title_keywords[:5])
+    
+    # Extract from headings (H1, H2, H3)
+    if crawled_data.get("headings"):
+        for heading in crawled_data["headings"][:5]:
+            heading_words = re.findall(r'\b\w{4,}\b', heading.lower())
+            heading_keywords = [w for w in heading_words if w not in stop_words and len(w) > 3]
+            keywords.extend(heading_keywords[:3])
+    
+    # Extract from description
+    if crawled_data.get("description"):
+        desc_words = re.findall(r'\b\w{4,}\b', crawled_data["description"].lower())
+        desc_keywords = [w for w in desc_words if w not in stop_words and len(w) > 3]
+        keywords.extend(desc_keywords[:5])
+    
+    # Extract from content (look for repeated important words)
+    if crawled_data.get("content"):
+        content_lower = crawled_data["content"].lower()
+        # Find words that appear multiple times (likely important keywords)
+        words = re.findall(r'\b\w{4,}\b', content_lower)
+        word_freq = {}
+        for word in words:
+            if word not in stop_words and len(word) > 3:
+                word_freq[word] = word_freq.get(word, 0) + 1
+        
+        # Get most frequent words
+        sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
+        content_keywords = [word for word, freq in sorted_words[:10] if freq >= 2]
+        keywords.extend(content_keywords)
+    
+    # Extract 2-3 word phrases from title and headings
+    if crawled_data.get("title"):
+        title_phrases = re.findall(r'\b\w{3,}\s+\w{3,}\b', crawled_data["title"].lower())
+        keywords.extend(title_phrases[:3])
+    
+    if crawled_data.get("headings"):
+        for heading in crawled_data["headings"][:3]:
+            heading_phrases = re.findall(r'\b\w{3,}\s+\w{3,}\b', heading.lower())
+            keywords.extend(heading_phrases[:2])
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_keywords = []
+    for kw in keywords:
+        kw_lower = kw.lower().strip()
+        if kw_lower and kw_lower not in seen and len(kw_lower) > 2:
+            seen.add(kw_lower)
+            unique_keywords.append(kw)
+    
+    return unique_keywords[:max_keywords]
+
+
+async def check_keyword_ranking(keyword: str, website_url: str, max_results: int = 20) -> Optional[Dict[str, Any]]:
+    """
+    Check if a website appears in search results for a given keyword.
+    
+    Args:
+        keyword: The keyword to search for
+        website_url: The website URL to check ranking for
+        max_results: Maximum number of search results to check
+        
+    Returns:
+        Dictionary with ranking information:
+        - keyword: The searched keyword
+        - found: Boolean indicating if website was found
+        - position: Position in search results (1-based, or None if not found)
+        - url: The website URL
+    """
+    try:
+        # Normalize website URL for comparison
+        parsed_url = urlparse(website_url)
+        website_domain = parsed_url.netloc.lower().replace('www.', '')
+        
+        # Build search query
+        encoded_query = quote_plus(keyword)
+        search_url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
+        
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
+            async with session.get(search_url, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5'
+            }) as response:
+                if response.status == 200:
+                    html = await response.text()
+                    soup = BeautifulSoup(html, 'lxml')
+                    
+                    # Extract result URLs
+                    result_links = soup.find_all('a', class_='result__a', href=True)
+                    if not result_links:
+                        result_links = soup.find_all('a', class_='result-link', href=True)
+                    if not result_links:
+                        result_links = soup.find_all('a', {'class': re.compile(r'result', re.I)}, href=True)
+                    
+                    # Check each result
+                    for position, link in enumerate(result_links[:max_results], 1):
+                        href = link.get('href', '')
+                        actual_url = None
+                        
+                        # Handle DuckDuckGo redirect URLs
+                        if 'uddg=' in href:
+                            import urllib.parse
+                            try:
+                                parsed = urllib.parse.parse_qs(urllib.parse.urlparse(href).query)
+                                if 'uddg' in parsed:
+                                    actual_url = urllib.parse.unquote(parsed['uddg'][0])
+                            except:
+                                pass
+                        elif href.startswith('http'):
+                            actual_url = href
+                        
+                        if actual_url:
+                            # Normalize for comparison
+                            parsed_result = urlparse(actual_url)
+                            result_domain = parsed_result.netloc.lower().replace('www.', '')
+                            
+                            # Check if this is the target website
+                            if website_domain in result_domain or result_domain in website_domain:
+                                return {
+                                    "keyword": keyword,
+                                    "found": True,
+                                    "position": position,
+                                    "url": website_url,
+                                    "search_url": actual_url
+                                }
+                    
+                    # Website not found in top results
+                    return {
+                        "keyword": keyword,
+                        "found": False,
+                        "position": None,
+                        "url": website_url
+                    }
+                else:
+                    return None
+    except Exception as e:
+        print(f"Error checking ranking for keyword '{keyword}': {str(e)}")
+        return None
+
+
+async def analyze_keyword_rankings(crawled_data: Dict[str, str], website_url: str, target_keywords: Optional[str] = None, max_keywords: int = 10) -> Dict[str, Any]:
+    """
+    Analyze keyword rankings for a website by extracting keywords and checking rankings.
+    
+    Args:
+        crawled_data: Dictionary with crawled website content
+        website_url: The website URL to check rankings for
+        target_keywords: Optional comma-separated list of target keywords to check
+        max_keywords: Maximum number of keywords to analyze
+        
+    Returns:
+        Dictionary with ranking analysis:
+        - extracted_keywords: List of keywords extracted from content
+        - target_keywords: List of user-provided target keywords
+        - rankings: List of ranking results for each keyword
+        - summary: Summary of ranking performance
+    """
+    rankings = []
+    extracted_keywords = []
+    target_keyword_list = []
+    
+    # Extract keywords from content
+    if crawled_data:
+        extracted_keywords = extract_keywords_from_content(crawled_data, max_keywords=max_keywords)
+        print(f"Extracted {len(extracted_keywords)} keywords from website content")
+    
+    # Parse target keywords
+    if target_keywords:
+        target_keyword_list = [kw.strip() for kw in target_keywords.split(',') if kw.strip()]
+        print(f"Checking {len(target_keyword_list)} target keywords")
+    
+    # Combine and deduplicate keywords to check
+    all_keywords = list(set(extracted_keywords + target_keyword_list))[:max_keywords]
+    
+    if not all_keywords:
+        return {
+            "extracted_keywords": extracted_keywords,
+            "target_keywords": target_keyword_list,
+            "rankings": [],
+            "summary": "No keywords found to analyze."
+        }
+    
+    print(f"Checking rankings for {len(all_keywords)} keywords...")
+    
+    # Check rankings for each keyword (with rate limiting)
+    semaphore = asyncio.Semaphore(3)  # Limit concurrent requests
+    
+    async def check_with_semaphore(keyword):
+        async with semaphore:
+            return await check_keyword_ranking(keyword, website_url)
+    
+    tasks = [check_with_semaphore(kw) for kw in all_keywords]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    # Process results
+    for result in results:
+        if result and isinstance(result, dict):
+            rankings.append(result)
+        elif isinstance(result, Exception):
+            print(f"Error checking ranking: {str(result)}")
+    
+    # Generate summary
+    found_count = sum(1 for r in rankings if r.get("found", False))
+    top_10_count = sum(1 for r in rankings if r.get("found", False) and r.get("position", 0) <= 10)
+    top_3_count = sum(1 for r in rankings if r.get("found", False) and r.get("position", 0) <= 3)
+    
+    summary = f"Ranking Analysis: {found_count}/{len(rankings)} keywords found in search results. "
+    summary += f"{top_10_count} in top 10, {top_3_count} in top 3."
+    
+    return {
+        "extracted_keywords": extracted_keywords,
+        "target_keywords": target_keyword_list,
+        "rankings": rankings,
+        "summary": summary,
+        "found_count": found_count,
+        "top_10_count": top_10_count,
+        "top_3_count": top_3_count,
+        "total_checked": len(rankings)
+    }
+
+
+async def get_google_autocomplete_suggestions(keyword: str) -> List[str]:
+    """
+    Get Google Autocomplete suggestions for a keyword (indicates search volume).
+    
+    Args:
+        keyword: The keyword to get suggestions for
+        
+    Returns:
+        List of autocomplete suggestions
+    """
+    try:
+        encoded_keyword = quote_plus(keyword)
+        # Use Google's autocomplete API endpoint
+        autocomplete_url = f"https://www.google.com/complete/search?client=firefox&q={encoded_keyword}"
+        
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
+            async with session.get(autocomplete_url, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'application/json'
+            }) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    if data and len(data) > 1:
+                        suggestions = data[1]  # Second element contains suggestions
+                        return [s[0] for s in suggestions[:10]]  # Return top 10 suggestions
+        return []
+    except Exception as e:
+        print(f"Error getting autocomplete suggestions for '{keyword}': {str(e)}")
+        return []
+
+
+async def find_competitors_by_website(website_url: str, max_results: int = 5) -> List[str]:
+    """
+    Find competitors by searching for similar websites based on the website's content.
+    
+    Args:
+        website_url: The website URL to find competitors for
+        max_results: Maximum number of competitor URLs to return
+        
+    Returns:
+        List of competitor URLs
+    """
+    try:
+        # First, crawl the website to get its title/description
+        crawled_data = await crawl_and_extract(website_url)
+        if not crawled_data:
+            return []
+        
+        # Extract key terms from the website
+        title = crawled_data.get("title", "")
+        description = crawled_data.get("description", "")
+        
+        # Build search query from title and description
+        search_terms = []
+        if title:
+            # Extract main words from title (first 3-4 words)
+            title_words = title.split()[:4]
+            search_terms.extend(title_words)
+        
+        if description:
+            # Extract key phrases from description
+            desc_words = description.split()[:5]
+            search_terms.extend(desc_words)
+        
+        if not search_terms:
+            # Fallback: use domain name
+            parsed = urlparse(website_url)
+            domain = parsed.netloc.replace('www.', '').split('.')[0]
+            search_terms = [domain]
+        
+        # Build search query
+        search_query = f"{' '.join(search_terms[:3])} alternatives competitors similar"
+        encoded_query = quote_plus(search_query)
+        
+        # Use DuckDuckGo HTML search
+        search_url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
+        
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
+            async with session.get(search_url, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5'
+            }) as response:
+                if response.status == 200:
+                    html = await response.text()
+                    soup = BeautifulSoup(html, 'lxml')
+                    
+                    # Extract result URLs
+                    competitor_urls = []
+                    result_links = soup.find_all('a', class_='result__a', href=True)
+                    if not result_links:
+                        result_links = soup.find_all('a', class_='result-link', href=True)
+                    if not result_links:
+                        result_links = soup.find_all('a', {'class': re.compile(r'result', re.I)}, href=True)
+                    
+                    # Normalize target URL for comparison
+                    parsed_target = urlparse(website_url)
+                    target_domain = parsed_target.netloc.lower().replace('www.', '')
+                    
+                    for link in result_links[:max_results * 3]:
+                        href = link.get('href', '')
+                        actual_url = None
+                        
+                        # Handle DuckDuckGo redirect URLs
+                        if 'uddg=' in href:
+                            import urllib.parse
+                            try:
+                                parsed = urllib.parse.parse_qs(urllib.parse.urlparse(href).query)
+                                if 'uddg' in parsed:
+                                    actual_url = urllib.parse.unquote(parsed['uddg'][0])
+                            except:
+                                pass
+                        elif href.startswith('http'):
+                            actual_url = href
+                        
+                        if actual_url:
+                            # Exclude the target website itself
+                            parsed_result = urlparse(actual_url)
+                            result_domain = parsed_result.netloc.lower().replace('www.', '')
+                            
+                            if target_domain not in result_domain and result_domain not in target_domain:
+                                # Filter out unwanted domains
+                                skip_domains = [
+                                    'wikipedia.org', 'reddit.com', 'quora.com', 'youtube.com',
+                                    'twitter.com', 'facebook.com', 'linkedin.com', 'pinterest.com',
+                                    'instagram.com', 'tiktok.com', 'duckduckgo.com', 'google.com'
+                                ]
+                                
+                                if not any(skip in actual_url.lower() for skip in skip_domains):
+                                    if actual_url not in competitor_urls:
+                                        competitor_urls.append(actual_url)
+                                        if len(competitor_urls) >= max_results:
+                                            break
+                    
+                    return competitor_urls[:max_results]
+    except Exception as e:
+        print(f"Error finding competitors for {website_url}: {str(e)}")
+        return []
+    
+    return []
+
+
+async def analyze_competitor_keywords(competitor_data_list: List[Dict[str, str]], max_keywords: int = 10) -> Dict[str, Any]:
+    """
+    Analyze keywords from competitor websites and identify high-volume keywords they rank for.
+    
+    Args:
+        competitor_data_list: List of competitor crawled data
+        max_keywords: Maximum number of high-volume keywords to return
+        
+    Returns:
+        Dictionary with competitor keyword analysis:
+        - competitor_keywords: Dict mapping competitor URL to their keywords
+        - high_volume_keywords: List of high-volume keywords with autocomplete data
+        - keyword_rankings: Ranking data for each keyword
+    """
+    if not competitor_data_list:
+        return {
+            "competitor_keywords": {},
+            "high_volume_keywords": [],
+            "keyword_rankings": []
+        }
+    
+    all_competitor_keywords = {}
+    all_keywords_set = set()
+    
+    # Extract keywords from each competitor
+    for competitor in competitor_data_list:
+        competitor_url = competitor.get("url", "unknown")
+        if competitor_url:
+            keywords = extract_keywords_from_content(competitor, max_keywords=20)
+            all_competitor_keywords[competitor_url] = keywords
+            all_keywords_set.update(keywords)
+    
+    # Get autocomplete suggestions for all keywords (indicates search volume)
+    print(f"Getting autocomplete suggestions for {len(all_keywords_set)} keywords...")
+    semaphore = asyncio.Semaphore(5)  # Limit concurrent requests
+    
+    async def get_suggestions_with_semaphore(keyword):
+        async with semaphore:
+            suggestions = await get_google_autocomplete_suggestions(keyword)
+            return (keyword, suggestions)
+    
+    tasks = [get_suggestions_with_semaphore(kw) for kw in list(all_keywords_set)[:30]]  # Limit to 30 keywords
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    # Process results and identify high-volume keywords
+    keyword_volume_data = {}
+    for result in results:
+        if isinstance(result, tuple):
+            keyword, suggestions = result
+            # More suggestions = higher search volume indicator
+            keyword_volume_data[keyword] = {
+                "keyword": keyword,
+                "autocomplete_count": len(suggestions),
+                "suggestions": suggestions[:5]  # Top 5 suggestions
+            }
+        elif isinstance(result, Exception):
+            print(f"Error getting suggestions: {str(result)}")
+    
+    # Sort by autocomplete count (indicator of search volume)
+    sorted_keywords = sorted(
+        keyword_volume_data.items(),
+        key=lambda x: x[1]["autocomplete_count"],
+        reverse=True
+    )
+    
+    # Get top high-volume keywords
+    high_volume_keywords = []
+    for keyword, data in sorted_keywords[:max_keywords]:
+        high_volume_keywords.append({
+            "keyword": keyword,
+            "search_volume_indicator": data["autocomplete_count"],
+            "related_suggestions": data["suggestions"],
+            "competitors_using": [
+                url for url, keywords in all_competitor_keywords.items()
+                if keyword in keywords
+            ]
+        })
+    
+    return {
+        "competitor_keywords": all_competitor_keywords,
+        "high_volume_keywords": high_volume_keywords,
+        "total_competitors_analyzed": len(competitor_data_list),
+        "total_keywords_found": len(all_keywords_set)
+    }
+
+
+async def get_competitor_high_volume_keywords(website_url: str, max_competitors: int = 5, max_keywords: int = 10) -> Dict[str, Any]:
+    """
+    Complete workflow: Find competitors, crawl them, and extract high-volume keywords they rank for.
+    
+    Args:
+        website_url: The website URL to analyze
+        max_competitors: Maximum number of competitors to analyze
+        max_keywords: Maximum number of high-volume keywords to return
+        
+    Returns:
+        Dictionary with competitor keyword analysis and recommendations
+    """
+    try:
+        print(f"Finding competitors for {website_url}...")
+        competitor_urls = await find_competitors_by_website(website_url, max_results=max_competitors)
+        
+        if not competitor_urls:
+            print("No competitors found")
+            return {
+                "competitors_found": 0,
+                "high_volume_keywords": [],
+                "recommendations": "No competitors found. Unable to analyze competitor keywords."
+            }
+        
+        print(f"Found {len(competitor_urls)} competitors, crawling...")
+        competitor_data = await crawl_competitors(competitor_urls, max_concurrent=3)
+        
+        if not competitor_data:
+            print("Failed to crawl competitor data")
+            return {
+                "competitors_found": len(competitor_urls),
+                "high_volume_keywords": [],
+                "recommendations": "Found competitors but failed to crawl their content."
+            }
+        
+        print(f"Successfully crawled {len(competitor_data)} competitors, analyzing keywords...")
+        keyword_analysis = await analyze_competitor_keywords(competitor_data, max_keywords=max_keywords)
+        
+        return {
+            "competitors_found": len(competitor_urls),
+            "competitors_crawled": len(competitor_data),
+            **keyword_analysis
+        }
+    except Exception as e:
+        print(f"Error in competitor keyword analysis: {str(e)}")
+        return {
+            "competitors_found": 0,
+            "high_volume_keywords": [],
+            "recommendations": f"Error analyzing competitors: {str(e)}"
+        }
 

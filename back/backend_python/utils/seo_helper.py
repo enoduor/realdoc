@@ -2,7 +2,7 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 from typing import Optional, List
-from utils.web_crawler import crawl_and_extract, format_crawled_content_for_prompt
+from utils.web_crawler import crawl_and_extract, format_crawled_content_for_prompt, analyze_keyword_rankings, get_competitor_high_volume_keywords
 
 # Load environment variables
 load_dotenv()
@@ -53,6 +53,7 @@ async def generate_seo_report(
     # Crawl the website
     crawled_data = None
     website_context = ""
+    keyword_rankings_data = None
     
     try:
         print(f"Attempting to crawl website: {normalized_url}")
@@ -68,6 +69,36 @@ async def generate_seo_report(
         website_context = f"Note: Could not crawl website {normalized_url} ({error_msg}). Analysis will proceed with provided information."
         print(f"Error crawling website {normalized_url}: {error_msg}")
     
+    # Analyze keyword rankings
+    try:
+        print("Analyzing keyword rankings...")
+        keyword_rankings_data = await analyze_keyword_rankings(
+            crawled_data=crawled_data,
+            website_url=normalized_url,
+            target_keywords=target_keywords,
+            max_keywords=10
+        )
+        print(f"Keyword ranking analysis complete: {keyword_rankings_data.get('summary', 'N/A')}")
+    except Exception as e:
+        error_msg = str(e)
+        print(f"Error analyzing keyword rankings: {error_msg}")
+        keyword_rankings_data = None
+    
+    # Analyze competitor high-volume keywords
+    competitor_keywords_data = None
+    try:
+        print("Analyzing competitor high-volume keywords...")
+        competitor_keywords_data = await get_competitor_high_volume_keywords(
+            website_url=normalized_url,
+            max_competitors=5,
+            max_keywords=10
+        )
+        print(f"Competitor keyword analysis complete: Found {competitor_keywords_data.get('competitors_crawled', 0)} competitors, {len(competitor_keywords_data.get('high_volume_keywords', []))} high-volume keywords")
+    except Exception as e:
+        error_msg = str(e)
+        print(f"Error analyzing competitor keywords: {error_msg}")
+        competitor_keywords_data = None
+    
     # Build the prompt
     focus_areas_text = ", ".join(focus_areas)
     
@@ -78,15 +109,94 @@ CRITICAL REQUIREMENTS:
 2. Include concrete examples and specific fixes
 3. Minimum 2000 words of detailed analysis
 4. Use real data from the crawled website when available
-5. Provide step-by-step implementation guides
-6. Include code examples for technical SEO fixes
-7. Reference specific pages, elements, or issues found on the website
-8. DO NOT provide generic, templated advice
+5. Use the KEYWORD RANKING ANALYSIS data provided to give specific insights about current rankings
+6. Reference actual ranking positions and keywords when discussing SEO performance
+7. CRITICALLY IMPORTANT: Use the COMPETITOR HIGH-VOLUME KEYWORDS ANALYSIS to provide specific meta-tag recommendations:
+   - Create actual title tag examples using competitor keywords
+   - Create actual meta description examples using competitor keywords
+   - Provide specific H1, H2, H3 header tag suggestions with competitor keywords
+   - Show how to incorporate competitor keywords into content naturally
+   - **ALWAYS explicitly list the competitor website names and URLs when discussing competitor keywords** - DO NOT use generic phrases like "competitors" or "similar websites"
+8. **IF COMPETITOR DATA IS PROVIDED**: You MUST explicitly list each competitor's name and URL in the Competitor Keyword Analysis section. When mentioning keywords that competitors use, explicitly state which competitor website(s) use that keyword. DO NOT use generic competitor names or phrases - ALWAYS use the actual competitor URLs from the data provided.
+9. Provide step-by-step implementation guides
+10. Include code examples for technical SEO fixes
+11. Reference specific pages, elements, or issues found on the website
+12. DO NOT provide generic, templated advice
 
 Focus Areas to Cover: {focus_areas_text}
 Business Type: {business_type}
 Language: {language}"""
 
+    # Format keyword rankings data for prompt
+    keyword_rankings_text = ""
+    if keyword_rankings_data:
+        rankings = keyword_rankings_data.get("rankings", [])
+        if rankings:
+            keyword_rankings_text = "\n\n═══════════════════════════════════════════════════════════════\n"
+            keyword_rankings_text += "KEYWORD RANKING ANALYSIS\n"
+            keyword_rankings_text += "═══════════════════════════════════════════════════════════════\n"
+            keyword_rankings_text += f"Summary: {keyword_rankings_data.get('summary', 'N/A')}\n"
+            keyword_rankings_text += f"Keywords Checked: {keyword_rankings_data.get('total_checked', 0)}\n"
+            keyword_rankings_text += f"Keywords Found in Top 20: {keyword_rankings_data.get('found_count', 0)}\n"
+            keyword_rankings_text += f"Keywords in Top 10: {keyword_rankings_data.get('top_10_count', 0)}\n"
+            keyword_rankings_text += f"Keywords in Top 3: {keyword_rankings_data.get('top_3_count', 0)}\n\n"
+            
+            if keyword_rankings_data.get("extracted_keywords"):
+                keyword_rankings_text += f"Extracted Keywords from Content: {', '.join(keyword_rankings_data['extracted_keywords'][:10])}\n\n"
+            
+            keyword_rankings_text += "Ranking Details:\n"
+            for ranking in rankings[:15]:  # Show top 15 rankings
+                if ranking.get("found"):
+                    keyword_rankings_text += f"  ✓ '{ranking['keyword']}' - Position #{ranking.get('position', 'N/A')} in search results\n"
+                else:
+                    keyword_rankings_text += f"  ✗ '{ranking['keyword']}' - Not found in top 20 results\n"
+            keyword_rankings_text += "\n═══════════════════════════════════════════════════════════════\n"
+    
+    # Format competitor high-volume keywords data for prompt
+    competitor_keywords_text = ""
+    if competitor_keywords_data and competitor_keywords_data.get("high_volume_keywords"):
+        high_volume_kw = competitor_keywords_data.get("high_volume_keywords", [])
+        competitor_keywords_map = competitor_keywords_data.get("competitor_keywords", {})
+        if high_volume_kw:
+            competitor_keywords_text = "\n\n═══════════════════════════════════════════════════════════════\n"
+            competitor_keywords_text += "COMPETITOR HIGH-VOLUME KEYWORDS ANALYSIS\n"
+            competitor_keywords_text += "═══════════════════════════════════════════════════════════════\n"
+            competitor_keywords_text += f"Competitors Analyzed: {competitor_keywords_data.get('competitors_crawled', 0)}\n"
+            competitor_keywords_text += f"Total Keywords Found: {competitor_keywords_data.get('total_keywords_found', 0)}\n"
+            competitor_keywords_text += f"Top High-Volume Keywords: {len(high_volume_kw)}\n\n"
+            
+            # List all competitor URLs analyzed
+            if competitor_keywords_map:
+                competitor_keywords_text += "COMPETITOR WEBSITES ANALYZED:\n"
+                for idx, comp_url in enumerate(competitor_keywords_map.keys(), 1):
+                    competitor_keywords_text += f"  {idx}. {comp_url}\n"
+                competitor_keywords_text += "\n"
+            
+            competitor_keywords_text += "HIGH-VOLUME KEYWORDS COMPETITORS RANK FOR:\n"
+            competitor_keywords_text += "(Keywords with more autocomplete suggestions indicate higher search volume)\n\n"
+            
+            for idx, kw_data in enumerate(high_volume_kw[:10], 1):
+                keyword = kw_data.get("keyword", "")
+                volume_indicator = kw_data.get("search_volume_indicator", 0)
+                suggestions = kw_data.get("related_suggestions", [])
+                competitors_using = kw_data.get("competitors_using", [])
+                
+                competitor_keywords_text += f"{idx}. '{keyword}'\n"
+                competitor_keywords_text += f"   Search Volume Indicator: {volume_indicator} autocomplete suggestions\n"
+                if suggestions:
+                    competitor_keywords_text += f"   Related High-Volume Terms: {', '.join(suggestions[:3])}\n"
+                if competitors_using:
+                    competitor_keywords_text += f"   Used by {len(competitors_using)} competitor(s): {', '.join(competitors_using)}\n"
+                competitor_keywords_text += "\n"
+            
+            competitor_keywords_text += "═══════════════════════════════════════════════════════════════\n"
+            competitor_keywords_text += "IMPORTANT: Use these high-volume keywords to:\n"
+            competitor_keywords_text += "1. Design optimized meta tags (title, description)\n"
+            competitor_keywords_text += "2. Create content that targets these keywords\n"
+            competitor_keywords_text += "3. Optimize existing content with these keywords\n"
+            competitor_keywords_text += "4. Build internal linking strategy around these keywords\n"
+            competitor_keywords_text += "═══════════════════════════════════════════════════════════════\n"
+    
     user_prompt = f"""Analyze the following website and provide a comprehensive SEO report:
 
 Website URL: {normalized_url}
@@ -97,6 +207,10 @@ Business Type: {business_type}
 
 Website Content (crawled):
 {website_context if website_context else "No website content available. Provide general SEO recommendations based on the business type."}
+
+{keyword_rankings_text if keyword_rankings_text else ""}
+
+{competitor_keywords_text if competitor_keywords_text else ""}
 
 Please provide a comprehensive SEO analysis report covering:
 
@@ -127,34 +241,51 @@ Please provide a comprehensive SEO analysis report covering:
    - URL optimization
    - Specific recommendations for each page type
 
-4. **Content SEO**
+4. **Content SEO & Keyword Rankings**
+   - Current keyword ranking performance (based on actual search results analysis)
+   - Keywords the website currently ranks for and their positions
+   - Keywords that need optimization (not ranking or ranking low)
    - Content quality assessment
-   - Keyword research and targeting
+   - Keyword research and targeting recommendations
    - Content gaps and opportunities
    - Content optimization recommendations
    - Blog/content strategy
    - E-A-T (Expertise, Authoritativeness, Trustworthiness) signals
+   - Specific recommendations to improve rankings for target keywords
 
-5. **Off-Page SEO** (if in focus areas)
+5. **Competitor Keyword Analysis & Meta-Tag Optimization**
+   - **CRITICAL**: Start this section by explicitly listing each competitor website name and URL that was analyzed. For example: "Competitors Analyzed: [Competitor Name 1] (competitor1.com), [Competitor Name 2] (competitor2.com), etc."
+   - High-volume keywords that competitors rank for (from competitor analysis)
+   - **For each keyword mentioned**: Explicitly state which competitor website(s) use that keyword (e.g., "Keyword 'X' is used by [Competitor Name] (competitor-url.com)")
+   - Specific meta-tag recommendations using competitor keywords:
+     * Title tag optimization with high-volume keywords
+     * Meta description optimization with competitor keywords
+     * Header tag (H1, H2, H3) optimization suggestions
+   - Content strategy recommendations based on competitor keyword analysis
+   - How to incorporate competitor keywords into existing content
+   - Internal linking opportunities using high-volume competitor keywords
+   - Content creation ideas targeting competitor keywords
+
+6. **Off-Page SEO** (if in focus areas)
    - Backlink profile analysis
    - Link building opportunities
    - Social signals
    - Local SEO (if applicable)
    - Brand mentions
 
-6. **Mobile SEO** (if in focus areas)
+7. **Mobile SEO** (if in focus areas)
    - Mobile-first indexing readiness
    - Mobile usability issues
    - AMP implementation
    - Mobile page speed
 
-7. **Local SEO** (if in focus areas)
+8. **Local SEO** (if in focus areas)
    - Google Business Profile optimization
    - Local citations
    - NAP consistency
    - Local keyword targeting
 
-8. **Page Speed Optimization** (if in focus areas)
+9. **Page Speed Optimization** (if in focus areas)
    - Current performance metrics
    - Specific optimization recommendations
    - Code minification
@@ -162,20 +293,20 @@ Please provide a comprehensive SEO analysis report covering:
    - Caching strategies
    - CDN recommendations
 
-9. **Accessibility** (if in focus areas)
+10. **Accessibility** (if in focus areas)
    - WCAG compliance
    - Screen reader compatibility
    - Keyboard navigation
    - Color contrast
    - ARIA labels
 
-10. **Implementation Roadmap**
+11. **Implementation Roadmap**
     - Priority 1 (Quick wins - implement immediately)
     - Priority 2 (High impact - implement within 1 month)
     - Priority 3 (Long-term - implement within 3-6 months)
     - Timeline and resource requirements
 
-11. **Tools and Resources**
+12. **Tools and Resources**
     - Recommended SEO tools
     - Monitoring and tracking setup
     - Analytics configuration

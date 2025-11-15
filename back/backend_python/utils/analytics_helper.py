@@ -156,7 +156,7 @@ CRITICAL REQUIREMENTS:
 7. Analyze revenue models and monetization strategies
 8. Reference specific pages, features, or elements found on the website
 9. DO NOT provide generic, templated analysis
-10. **IF COMPETITOR DATA IS PROVIDED**: You MUST explicitly list each competitor's name and URL in the Competitive Analysis section. Reference specific features, content, and strategies from the competitor data provided. DO NOT use generic competitor names - use the actual competitor names and URLs from the data provided.
+10. **IF COMPETITOR DATA IS PROVIDED**: You MUST explicitly list each competitor's name and URL in the Competitive Analysis section AND in any section where you use competitor data for estimates (especially Traffic Analysis). Reference specific features, content, and strategies from the competitor data provided. DO NOT use generic competitor names or phrases like "similar niche websites" - ALWAYS use the actual competitor names and URLs from the data provided. When making estimates based on competitors, explicitly state: "Based on comparison with [Competitor Name] ([competitor-url.com]), [Competitor Name 2] ([competitor-url2.com]), etc."
 
 Analysis Depth: {analysis_depth}
 Language: {language}"""
@@ -180,7 +180,9 @@ Please provide a comprehensive website analytics report covering:
    - Priority recommendations
 
 2. **Traffic Analysis** {"(SimilarWeb-style insights)" if include_traffic_analysis else ""}
+   - **CRITICAL**: If you provide traffic estimates based on competitor comparison, you MUST explicitly list the specific competitor websites used for comparison. For example: "Based on comparison with [Competitor Name 1] (competitor1.com), [Competitor Name 2] (competitor2.com), and [Competitor Name 3] (competitor3.com), estimated monthly traffic is..."
    - Estimated monthly traffic (based on website structure and content)
+   - **If using competitor data for estimates**: List each competitor website name and URL that informed the traffic estimate
    - Traffic sources breakdown:
      * Direct traffic
      * Organic search
