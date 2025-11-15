@@ -51,6 +51,36 @@ yarn-error.log*
 
 # Files with secrets (keep local, don't commit)
 setup.sh
+setup-env.sh
+setup-real-apis.sh
 REALDOC_COMPLETE_SETUP_GUIDE.md
 td.json
 td.new.json
+
+# Backend environment files
+back/backend-node/.env
+back/backend-node/.env.*
+back/backend_python/.env
+back/backend_python/.env.*
+
+# Log files
+*.log
+back/*.log
+frontend/*.log
+python-backend.log
+node-backend.log
+frontend.log
+
+# Build artifacts
+frontend/build/
+frontend/dist/
+back/backend-node/node_modules/
+back/backend_python/venv/
+back/backend_python/__pycache__/
+back/backend_python/**/__pycache__/
+frontend/node_modules/
+
+# Temporary files
+*.pid
+*.pids
+frontend/.app-pids

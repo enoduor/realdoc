@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from routes.documentation import router as documentation_router
+from routes.seo import router as seo_router
+from routes.analytics import router as analytics_router
 
 load_dotenv()
 
@@ -58,9 +60,13 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # ---- Routers (single mount; root_path=/ai makes them externally /ai/...) ----
 # Existing mounts (internal paths)
 app.include_router(documentation_router, prefix="/api/v1/documentation", tags=["documentation"])
+app.include_router(seo_router, prefix="/api/v1/seo", tags=["seo"])
+app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["analytics"])
 
 # Mirror mounts (external /ai/* paths)
 app.include_router(documentation_router, prefix="/ai/api/v1/documentation", tags=["documentation"])
+app.include_router(seo_router, prefix="/ai/api/v1/seo", tags=["seo"])
+app.include_router(analytics_router, prefix="/ai/api/v1/analytics", tags=["analytics"])
 
 
 

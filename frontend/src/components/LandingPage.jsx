@@ -124,36 +124,57 @@ const LandingPage = () => {
           </div>
           
           <h1 className="hero-title-aidoc">
-            Get Complete, Ready-to-Use Documentation in Minutes
+            AI-Powered Solutions for SEO, Analytics, and Documentation
           </h1>
           
           <p className="hero-subtitle-aidoc">
-            Generate professional documentation instantly. Fill out a simple form, click generate, and receive complete documentation with proper structure, formatting, and code examples. Copy, download, or use immediately - no technical writing skills required.
+            Transform your workflow with three powerful AI tools. Optimize your SEO, analyze your website with competitor insights, and generate comprehensive documentation - all in minutes, no technical skills required.
           </p>
 
-          <div className="doc-types-selector">
-            <div className="doc-type-icon active" onClick={() => handleGetStarted('user-guide')} style={{ cursor: 'pointer' }}>📖 User Guide</div>
-            <div className="doc-type-icon" onClick={() => handleGetStarted('api-docs')} style={{ cursor: 'pointer' }}>🔌 API Docs</div>
-            <div className="doc-type-icon" onClick={() => handleGetStarted('developer-guide')} style={{ cursor: 'pointer' }}>👨‍💻 Developer Guide</div>
-            <div className="doc-type-icon" onClick={() => handleGetStarted('admin-docs')} style={{ cursor: 'pointer' }}>⚙️ Admin Docs</div>
-            <div className="doc-type-icon" onClick={() => handleGetStarted('quick-start')} style={{ cursor: 'pointer' }}>🚀 Quick Start</div>
-            <div className="doc-type-icon" onClick={() => handleGetStarted('faq')} style={{ cursor: 'pointer' }}>❓ FAQ</div>
-            <div className="doc-type-icon" onClick={() => handleGetStarted('release-notes')} style={{ cursor: 'pointer' }}>📝 Release Notes</div>
+          {/* Three Hero Cards */}
+          <div className="hero-cards-container" style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '30px' }}>
+            <div 
+              onClick={() => navigate('/seo')} 
+              style={{ cursor: 'pointer', padding: '24px', border: '2px solid #e5e7eb', borderRadius: '12px', textAlign: 'center', minWidth: '250px', transition: 'all 0.3s' }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.15)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              <div style={{ fontSize: '48px', marginBottom: '12px' }}>🔍</div>
+              <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px' }}>SEO Generator</h3>
+              <p style={{ fontSize: '14px', color: '#6b7280' }}>AI-powered SEO analysis and optimization recommendations</p>
+            </div>
+            <div 
+              onClick={() => navigate('/analytics')} 
+              style={{ cursor: 'pointer', padding: '24px', border: '2px solid #e5e7eb', borderRadius: '12px', textAlign: 'center', minWidth: '250px', transition: 'all 0.3s' }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.15)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              <div style={{ fontSize: '48px', marginBottom: '12px' }}>📊</div>
+              <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px' }}>Website Analyzer</h3>
+              <p style={{ fontSize: '14px', color: '#6b7280' }}>Competitor analysis, traffic insights, and revenue intelligence</p>
+            </div>
+            <div 
+              onClick={() => navigate('/documentation')} 
+              style={{ cursor: 'pointer', padding: '24px', border: '2px solid #e5e7eb', borderRadius: '12px', textAlign: 'center', minWidth: '250px', transition: 'all 0.3s' }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.15)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              <div style={{ fontSize: '48px', marginBottom: '12px' }}>📚</div>
+              <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px' }}>Document Generator</h3>
+              <p style={{ fontSize: '14px', color: '#6b7280' }}>Create comprehensive docs, user guides, API docs, and more</p>
+            </div>
           </div>
 
-          <button onClick={handleGetStarted} className="generate-btn-aidoc">
-            Generate
-          </button>
 
           {/* Steps Section */}
           <div className="steps-section-aidoc">
             <div className="step-item">
               <div className="step-number">Step 1</div>
-              <h3>Fill out the form with your app details</h3>
+              <h3>Fill out the form with your website or app details</h3>
             </div>
             <div className="step-item">
               <div className="step-number">Step 2</div>
-              <h3>AI generates comprehensive documentation</h3>
+              <h3>AI generates SEO reports, analytics, and comprehensive documentation</h3>
             </div>
             <div className="step-item">
               <div className="step-number">Step 3</div>
@@ -166,23 +187,33 @@ const LandingPage = () => {
       {/* Featured In Section */}
       <section className="featured-section-aidoc">
         <p className="featured-label">Featured in</p>
-        <div className="featured-logos">
-          <span className="logo-text">Wired</span>
-          <span className="logo-text">PC Guide</span>
-          <span className="logo-text">GVS</span>
-          <span className="logo-text">Geeky Gadgets</span>
-          <span className="logo-text">Beebom</span>
+        <div className="featured-logos" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '40px', flexWrap: 'wrap' }}>
+          <svg width="80" height="24" viewBox="0 0 80 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <text x="0" y="18" fontFamily="Arial, sans-serif" fontSize="16" fontWeight="600" fill="#333">WIRED</text>
+          </svg>
+          <svg width="100" height="24" viewBox="0 0 100 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <text x="0" y="18" fontFamily="Arial, sans-serif" fontSize="16" fontWeight="600" fill="#333">PC Guide</text>
+          </svg>
+          <svg width="60" height="24" viewBox="0 0 60 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <text x="0" y="18" fontFamily="Arial, sans-serif" fontSize="16" fontWeight="600" fill="#333">GVS</text>
+          </svg>
+          <svg width="140" height="24" viewBox="0 0 140 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <text x="0" y="18" fontFamily="Arial, sans-serif" fontSize="16" fontWeight="600" fill="#333">Geeky Gadgets</text>
+          </svg>
+          <svg width="90" height="24" viewBox="0 0 90 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <text x="0" y="18" fontFamily="Arial, sans-serif" fontSize="16" fontWeight="600" fill="#333">Beebom</text>
+          </svg>
         </div>
       </section>
 
       {/* Stats Section */}
       <section className="stats-section-aidoc">
         <div className="stats-container">
-          <h2 className="stats-title">Super Fast AI Documentation Generator</h2>
-          <p className="stats-subtitle">Transform your app ideas into comprehensive documentation in seconds with AI</p>
+          <h2 className="stats-title">Super Fast AI-Powered Solutions</h2>
+          <p className="stats-subtitle">Transform your workflow with SEO optimization, analytics, and documentation generation in seconds with AI</p>
           
           <div className="stats-badge">
-            <p className="stats-text">Generate <strong>complete documentation</strong> in minutes, not days</p>
+            <p className="stats-text">Generate <strong>SEO reports, analytics, and complete documentation</strong> in minutes, not days</p>
           </div>
         </div>
       </section>
@@ -193,81 +224,34 @@ const LandingPage = () => {
           <h2 className="section-title-aidoc">Key Features</h2>
           
           <div className="features-grid-aidoc">
-            <div className="feature-card-aidoc" onClick={() => handleGetStarted()} style={{ cursor: 'pointer' }}>
+            <div className="feature-card-aidoc" onClick={() => navigate('/seo')} style={{ cursor: 'pointer' }}>
+              <h3>Comprehensive SEO Analysis</h3>
+              <p>Get detailed SEO reports covering technical SEO, on-page optimization, content strategy, mobile SEO, and page speed.</p>
+            </div>
+            
+            <div className="feature-card-aidoc" onClick={() => navigate('/seo')} style={{ cursor: 'pointer' }}>
+              <h3>8 SEO Focus Areas</h3>
+              <p>Analyze Technical SEO, On-Page SEO, Content SEO, Off-Page SEO, Local SEO, Mobile SEO, Page Speed, and Accessibility.</p>
+            </div>
+            
+            <div className="feature-card-aidoc" onClick={() => navigate('/analytics')} style={{ cursor: 'pointer' }}>
+              <h3>Traffic & Competitor Analysis</h3>
+              <p>Analyze website traffic patterns, compare with competitors, and get SimilarWeb-style insights for your site.</p>
+            </div>
+            
+            <div className="feature-card-aidoc" onClick={() => navigate('/analytics')} style={{ cursor: 'pointer' }}>
+              <h3>Revenue Intelligence</h3>
+              <p>Discover how competitors make money - identify subscription models, advertising revenue, e-commerce, and monetization strategies.</p>
+            </div>
+            
+            <div className="feature-card-aidoc" onClick={() => navigate('/documentation')} style={{ cursor: 'pointer' }}>
               <h3>7 Documentation Types</h3>
               <p>Generate User Guides, API Documentation, Developer Guides, Admin Docs, Quick Start Guides, FAQs, and Release Notes.</p>
             </div>
             
-            <div className="feature-card-aidoc" onClick={() => handleGetStarted()} style={{ cursor: 'pointer' }}>
+            <div className="feature-card-aidoc" onClick={() => navigate('/documentation')} style={{ cursor: 'pointer' }}>
               <h3>Web Crawling & Competitor Analysis</h3>
               <p>Provide your app URL and we'll crawl it, analyze competitors, and generate comprehensive documentation.</p>
-            </div>
-            
-            <div className="feature-card-aidoc" onClick={() => handleGetStarted()} style={{ cursor: 'pointer' }}>
-              <h3>Multiple Output Formats</h3>
-              <p>Export to Markdown (.md), HTML (.html), or Plain Text (.txt) - download in the format you need.</p>
-            </div>
-            
-            <div className="feature-card-aidoc" onClick={() => handleGetStarted()} style={{ cursor: 'pointer' }}>
-              <h3>Fully Customizable</h3>
-              <p>Control technical level, style, tone, target audience, language, and format to match your needs.</p>
-            </div>
-            
-            <div className="feature-card-aidoc" onClick={() => handleGetStarted()} style={{ cursor: 'pointer' }}>
-              <h3>Ready to Use</h3>
-              <p>Receive complete documentation with proper structure, formatting, and code examples - no editing required.</p>
-            </div>
-            
-            <div className="feature-card-aidoc" onClick={() => handleGetStarted()} style={{ cursor: 'pointer' }}>
-              <h3>Multi-Language Support</h3>
-              <p>Generate documentation in 10+ languages including English, Spanish, French, German, and more.</p>
-            </div>
-            
-            <div className="feature-card-aidoc" onClick={() => handleGetStarted()} style={{ cursor: 'pointer' }}>
-              <h3>Code Examples Included</h3>
-              <p>Automatically include code examples with syntax highlighting placeholders when enabled.</p>
-            </div>
-            
-            <div className="feature-card-aidoc" onClick={() => handleGetStarted()} style={{ cursor: 'pointer' }}>
-              <h3>Instant Generation</h3>
-              <p>What takes days or weeks manually is done in minutes with AI-powered documentation generation.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Documentation Types Section */}
-      <section className="free-tools-section-aidoc">
-        <div className="free-tools-container">
-          <h2 className="section-title-aidoc">Documentation Types</h2>
-          <div className="free-tools-grid">
-            <div className="free-tool-item" onClick={() => handleGetStarted('user-guide')} style={{ cursor: 'pointer' }}>
-              <h3>📖 User Guide</h3>
-              <p>Step-by-step instructions for end users</p>
-            </div>
-            <div className="free-tool-item" onClick={() => handleGetStarted('api-docs')} style={{ cursor: 'pointer' }}>
-              <h3>🔌 API Documentation</h3>
-              <p>Endpoints, parameters, responses, examples</p>
-            </div>
-            <div className="free-tool-item" onClick={() => handleGetStarted('developer-guide')} style={{ cursor: 'pointer' }}>
-              <h3>👨‍💻 Developer Guide</h3>
-              <p>Setup, architecture, integration guides</p>
-            </div>
-            <div className="free-tool-item" onClick={() => handleGetStarted('admin-docs')} style={{ cursor: 'pointer' }}>
-              <h3>⚙️ Admin Documentation</h3>
-              <p>Configuration, management, troubleshooting</p>
-            </div>
-            <div className="free-tool-item" onClick={() => handleGetStarted('quick-start')} style={{ cursor: 'pointer' }}>
-              <h3>🚀 Quick Start Guide</h3>
-              <p>Get started in minutes</p>
-            </div>
-            <div className="free-tool-item" onClick={() => handleGetStarted('faq')} style={{ cursor: 'pointer' }}>
-              <h3>❓ FAQ</h3>
-              <p>Common questions and answers</p>
-            </div>
-            <div className="free-tool-item" onClick={() => handleGetStarted('release-notes')} style={{ cursor: 'pointer' }}>
-              <h3>📝 Release Notes</h3>
-              <p>Version changes, new features, breaking changes</p>
             </div>
           </div>
         </div>
@@ -276,47 +260,52 @@ const LandingPage = () => {
       {/* Why RealDoc Section */}
       <section className="why-section-aidoc">
         <div className="why-container">
-          <h2 className="section-title-aidoc">Why RealDoc for AI documentation generation?</h2>
+          <h2 className="section-title-aidoc">Why RealDoc for AI-Powered Solutions?</h2>
           
           <div className="why-grid">
             <div className="why-item">
               <h3>⚡ Speed</h3>
-              <p>Generate complete documentation in minutes instead of spending days or weeks writing manually. Focus on building your product while we handle the docs.</p>
+              <p>Generate SEO reports, analytics, and complete documentation in minutes instead of spending days or weeks manually. Focus on building your product while we handle the analysis.</p>
             </div>
             
             <div className="why-item">
-              <h3>🎯 One Tool, All Types</h3>
-              <p>Generate user guides, API docs, developer guides, FAQs, and more from one platform. No need to switch between multiple tools or learn different systems.</p>
+              <h3>🎯 Three Powerful Tools</h3>
+              <p>SEO Generator, Website Analyzer, and Document Generator - all in one platform. No need to switch between multiple tools or learn different systems.</p>
             </div>
             
             <div className="why-item">
-              <h3>📚 No Technical Writing Skills Needed</h3>
-              <p>Simply describe your feature or application. Our AI generates professional, well-structured documentation that follows industry best practices.</p>
+              <h3>📚 No Technical Skills Needed</h3>
+              <p>Simply provide your website URL, enter competitor sites, or describe your feature. Our AI generates professional SEO reports, analytics, and documentation that follow industry best practices.</p>
             </div>
             
             <div className="why-item">
               <h3>🎨 Fully Customizable</h3>
-              <p>Control technical level, style, tone, target audience, language, and format. Get documentation that perfectly matches your needs and audience.</p>
+              <p>Choose SEO focus areas and analytics components to match your needs. Control technical level, style, tone, target audience, language, and format for documentation.</p>
             </div>
             
             <div className="why-item">
               <h3>📄 Ready to Use</h3>
-              <p>Receive complete documentation with proper structure, formatting, and code examples. Copy, download, and use immediately - no editing required.</p>
+              <p>Receive comprehensive SEO reports, detailed analytics, and complete documentation with proper structure and formatting. Copy, download, and use immediately - no editing required.</p>
             </div>
             
             <div className="why-item">
               <h3>🌍 Multiple Formats & Languages</h3>
-              <p>Export in Markdown, HTML, or Plain Text. Generate documentation in 10+ languages. Get the format and language you need for your workflow.</p>
+              <p>Export documentation in Markdown, HTML, or Plain Text. Generate reports in 10+ languages. Get the format and language you need for your workflow.</p>
             </div>
             
             <div className="why-item">
               <h3>🕷️ Web Crawling & Competitor Analysis</h3>
-              <p>Provide your app URL and we'll automatically crawl your website, analyze competitors, and generate comprehensive documentation based on real data.</p>
+              <p>Provide your website URL and we'll automatically crawl your site, analyze competitors, and generate comprehensive SEO insights, analytics, and documentation based on real data.</p>
             </div>
             
             <div className="why-item">
               <h3>🔍 Comprehensive & Accurate</h3>
-              <p>Our AI analyzes your app and competitors to ensure documentation covers all aspects and follows industry best practices.</p>
+              <p>Our AI analyzes your website and competitors across SEO, analytics, and documentation to ensure all reports cover all aspects and follow industry best practices.</p>
+            </div>
+            
+            <div className="why-item">
+              <h3>🚀 All-in-One Platform</h3>
+              <p>Get SEO optimization, website analytics, and documentation generation from a single platform. Streamline your workflow and save time with integrated AI-powered solutions.</p>
             </div>
           </div>
         </div>
@@ -399,9 +388,13 @@ const LandingPage = () => {
       {/* Final CTA Section */}
       <section className="final-cta-section-aidoc">
         <div className="final-cta-container-aidoc">
-          <h2 className="final-cta-title-aidoc">Start Creating Powerful AI Documents Today</h2>
-          <p className="final-cta-subtitle-aidoc">Sign up now and see how AI can transform your document creation process.</p>
-          <button onClick={handleGetStarted} className="cta-button-aidoc">Get Started</button>
+          <h2 className="final-cta-title-aidoc">Start Using AI-Powered Solutions Today</h2>
+          <p className="final-cta-subtitle-aidoc">Optimize your SEO, analyze your website with competitor insights, and generate comprehensive documentation - all powered by AI.</p>
+          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button onClick={() => navigate('/seo')} className="cta-button-aidoc">SEO Generator</button>
+            <button onClick={() => navigate('/analytics')} className="cta-button-aidoc">Website Analyzer</button>
+            <button onClick={() => navigate('/documentation')} className="cta-button-aidoc">Document Generator</button>
+          </div>
         </div>
       </section>
 

@@ -5,6 +5,11 @@ import ClerkLogin from "./components/Auth/ClerkLogin";
 import ClerkRegister from "./components/Auth/ClerkRegister";
 import ClerkProtectedRoute from "./components/Auth/ClerkProtectedRoute";
 import DocumentationGenerator from "./components/DocumentationGenerator";
+import DocumentationLanding from "./components/DocumentationLanding";
+import SEOGenerator from "./components/SEOGenerator";
+import SEOLanding from "./components/SEOLanding";
+import WebsiteAnalytics from "./components/WebsiteAnalytics";
+import AnalyticsLanding from "./components/AnalyticsLanding";
 import Dashboard from "./components/Dashboard";
 import LandingPage from "./components/LandingPage";
 import PricingPage from "./components/PricingPage";
@@ -35,6 +40,11 @@ export default function App() {
                         <Route path="/partner" element={<PartnerWithUs />} />
           <Route path="/account-deleted" element={<AccountDeleted />} />
 
+          {/* Feature Landing Pages */}
+          <Route path="/documentation" element={<DocumentationLanding />} />
+          <Route path="/seo" element={<SEOLanding />} />
+          <Route path="/analytics" element={<AnalyticsLanding />} />
+
           {/* Protected */}
           <Route
             path="/app"
@@ -49,6 +59,22 @@ export default function App() {
             element={
               <ClerkProtectedRoute>
                 <DocumentationGenerator />
+              </ClerkProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/seo-generator"
+            element={
+              <ClerkProtectedRoute>
+                <SEOGenerator />
+              </ClerkProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/website-analytics"
+            element={
+              <ClerkProtectedRoute>
+                <WebsiteAnalytics />
               </ClerkProtectedRoute>
             }
           />

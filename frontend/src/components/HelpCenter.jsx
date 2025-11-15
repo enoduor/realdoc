@@ -47,7 +47,7 @@ const HelpCenter = () => {
               <div className="legal-subsection">
                 <h4 className="legal-subsection-title">📚 First Steps with Documentation Generator</h4>
                 <p>Learn how to create your first documentation and get started with RealDoc</p>
-                <Link to="/register" className="legal-link">Get Started →</Link>
+                <Link to="/" className="legal-link">Get Started →</Link>
               </div>
             </div>
 
@@ -56,7 +56,7 @@ const HelpCenter = () => {
               <div className="legal-subsection">
                 <h4 className="legal-subsection-title">🔧 Generate Different Documentation Types</h4>
                 <p>Learn how to generate user guides, API documentation, developer guides, and more</p>
-                <Link to="/register" className="legal-link">Get Started →</Link>
+                <Link to="/" className="legal-link">Get Started →</Link>
               </div>
             </div>
 
@@ -65,7 +65,7 @@ const HelpCenter = () => {
               <div className="legal-subsection">
                 <h4 className="legal-subsection-title">🤖 AI-Powered Tools</h4>
                 <p>Learn how to use our AI-powered video downloader and caption generation tools</p>
-                <Link to="/register" className="legal-link">Try AI Features →</Link>
+                <Link to="/" className="legal-link">Try AI Features →</Link>
               </div>
             </div>
 
@@ -74,7 +74,7 @@ const HelpCenter = () => {
               <div className="legal-subsection">
                 <h4 className="legal-subsection-title">📱 Mobile Usage</h4>
                 <p>Test RealDoc documentation generator on mobile devices and troubleshooting common issues</p>
-                <Link to="/register" className="legal-link">Mobile Guide →</Link>
+                <Link to="/" className="legal-link">Mobile Guide →</Link>
               </div>
             </div>
 
@@ -83,7 +83,7 @@ const HelpCenter = () => {
               <div className="legal-subsection">
                 <h4 className="legal-subsection-title">💳 Payment Management</h4>
                 <p>Manage your subscription, update payment methods, and understand billing cycles</p>
-                <Link to="/register" className="legal-link">Manage Billing →</Link>
+                <Link to="/" className="legal-link">Manage Billing →</Link>
               </div>
             </div>
 
@@ -92,7 +92,7 @@ const HelpCenter = () => {
               <div className="legal-subsection">
                 <h4 className="legal-subsection-title">🔒 Security & Privacy</h4>
                 <p>Secure your account, manage passwords, and understand our privacy and security measures</p>
-                <Link to="/privacy" className="legal-link">Security Guide →</Link>
+                <Link to="/" className="legal-link">Security Guide →</Link>
               </div>
             </div>
           </div>

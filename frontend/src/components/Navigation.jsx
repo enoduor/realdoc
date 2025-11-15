@@ -29,15 +29,16 @@ const Navigation = () => {
       <div className="nav-container">
         <div className="nav-logo">
           <Link to="/" className="logo-link">
-            <img src="/logo.png" alt="RealDoc" className="logo-image" />
+            <span className="logo-text">RealDoc</span>
           </Link>
         </div>
 
         {/* Desktop Navigation */}
         <div className="nav-links">
-          <a href="/#features" className="nav-link">Features</a>
+          <Link to="/seo" className="nav-link">SEO Generator</Link>
+          <Link to="/analytics" className="nav-link">Website Analyzer</Link>
+          <Link to="/documentation" className="nav-link">Document Generator</Link>
           <a href="/#pricing" className="nav-link">Pricing</a>
-          <Link to="/help" className="nav-link">Help</Link>
         </div>
 
         <div className="nav-actions">
@@ -64,10 +65,11 @@ const Navigation = () => {
       {isMenuOpen && (
         <div className="mobile-nav">
           <div className="mobile-nav-links">
-            <a href="/#features" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Features</a>
             <a href="/#pricing" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Pricing</a>
             <Link to="/about" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>About</Link>
-            <Link to="/help" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Help</Link>
+            <Link to="/seo" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>SEO Generator</Link>
+            <Link to="/analytics" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Website Analyzer</Link>
+            <Link to="/documentation" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Document Generator</Link>
           </div>
           <div className="mobile-nav-actions">
             {isSignedIn ? (

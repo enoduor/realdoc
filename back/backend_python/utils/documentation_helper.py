@@ -93,31 +93,44 @@ async def generate_documentation(
     doc_description = doc_info["description"]
     doc_type_guidance = doc_info["guidance"]
     
+    # Normalize URL if provided
+    normalized_app_url = None
+    if app_url:
+        normalized_app_url = app_url.strip()
+        if not normalized_app_url.startswith(('http://', 'https://')):
+            normalized_app_url = f"https://{normalized_app_url}"
+        normalized_app_url = normalized_app_url.rstrip('/')
+    
     # Crawl URL if provided
     crawled_context = ""
     competitor_analysis = ""
     
-    if app_url:
+    if normalized_app_url:
         try:
-            crawled_data = await crawl_and_extract(app_url)
+            print(f"Attempting to crawl website: {normalized_app_url}")
+            crawled_data = await crawl_and_extract(normalized_app_url)
             if crawled_data:
                 crawled_context = format_crawled_content_for_prompt(crawled_data)
                 # Update app_name if we found a better title
                 if crawled_data.get("title") and not app_name:
                     app_name = crawled_data["title"]
+                print(f"Successfully crawled website: {normalized_app_url}")
+            else:
+                print(f"Failed to crawl website: {normalized_app_url} - No data returned")
             
             # Perform competitor analysis after crawling the main app
             print("Starting competitor analysis...")
             competitor_result = await analyze_competitors_and_crawl(
                 app_name=app_name,
                 app_type=app_type,
-                app_url=app_url
+                app_url=normalized_app_url
             )
             if competitor_result.get("analysis"):
                 competitor_analysis = competitor_result["analysis"]
                 print(f"Competitor analysis completed: {competitor_result.get('count', 0)} competitors analyzed")
         except Exception as e:
-            print(f"Warning: Could not crawl URL {app_url}: {str(e)}")
+            error_msg = str(e)
+            print(f"Warning: Could not crawl URL {normalized_app_url}: {error_msg}")
             # Continue without crawled content
     else:
         # Even without app_url, we can still do competitor analysis if we have app_name

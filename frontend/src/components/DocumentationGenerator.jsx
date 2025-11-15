@@ -186,10 +186,10 @@ const DocumentationGenerator = () => {
                     </div>
                     
                     <Link
-                        to="/app"
+                        to="/"
                         className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md"
                     >
-                        Back to Dashboard
+                        Back to Home
                     </Link>
                 </div>
             </header>
@@ -197,6 +197,34 @@ const DocumentationGenerator = () => {
             <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
                 <div className="bg-white shadow rounded-lg p-6">
                     <form onSubmit={handleSubmit} className="space-y-4">
+                        {/* Documentation Type Selector */}
+                        <div>
+                            <label className="block text-sm font-medium mb-3">Select Documentation Type *</label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                                {[
+                                    { id: 'user-guide', name: 'User Guide', icon: '📖' },
+                                    { id: 'api-docs', name: 'API Docs', icon: '🔌' },
+                                    { id: 'developer-guide', name: 'Developer Guide', icon: '👨‍💻' },
+                                    { id: 'admin-docs', name: 'Admin Docs', icon: '⚙️' },
+                                    { id: 'quick-start', name: 'Quick Start', icon: '🚀' },
+                                    { id: 'faq', name: 'FAQ', icon: '❓' }
+                                ].map(type => (
+                                    <div
+                                        key={type.id}
+                                        onClick={() => setFormData(prev => ({ ...prev, doc_type: type.id }))}
+                                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                            formData.doc_type === type.id
+                                                ? 'border-blue-600 bg-blue-50 shadow-md'
+                                                : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                                        }`}
+                                    >
+                                        <div className="text-2xl mb-2 text-center">{type.icon}</div>
+                                        <div className="text-sm font-medium text-center">{type.name}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
                         {/* Basic Information */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -226,21 +254,6 @@ const DocumentationGenerator = () => {
                                     ))}
                                 </select>
                             </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Documentation Type *</label>
-                            <select
-                                name="doc_type"
-                                value={formData.doc_type}
-                                onChange={handleInputChange}
-                                className="w-full p-2 border rounded"
-                                required
-                            >
-                                {DOCUMENTATION_TYPES.map(type => (
-                                    <option key={type.id} value={type.id}>{type.name} - {type.description}</option>
-                                ))}
-                            </select>
                         </div>
 
                         <div>
@@ -281,6 +294,107 @@ const DocumentationGenerator = () => {
                                 </div>
                             )}
                         </div>
+
+                        {/* Detailed Documentation Preview Based on Selected Type */}
+                        {formData.doc_type && (
+                            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                <h3 className="text-sm font-semibold text-blue-900 mb-3">
+                                    What will be included in your {formData.doc_type === 'user-guide' ? 'User Guide' : 
+                                                                    formData.doc_type === 'api-docs' ? 'API Documentation' :
+                                                                    formData.doc_type === 'developer-guide' ? 'Developer Guide' :
+                                                                    formData.doc_type === 'admin-docs' ? 'Admin Documentation' :
+                                                                    formData.doc_type === 'quick-start' ? 'Quick Start Guide' :
+                                                                    formData.doc_type === 'faq' ? 'FAQ' : 'Documentation'}:
+                                </h3>
+                                <div className="space-y-2">
+                                    {formData.doc_type === 'user-guide' && (
+                                        <div className="text-sm text-blue-700">
+                                            <p className="mb-2"><strong className="text-blue-800">📖 User Guide will include:</strong></p>
+                                            <ul className="list-disc list-inside space-y-1 ml-2">
+                                                <li>Step-by-step instructions for end users</li>
+                                                <li>Clear explanations of features and functionality</li>
+                                                <li>Screenshot placeholders (if enabled)</li>
+                                                <li>User-friendly language and terminology</li>
+                                                <li>Common use cases and examples</li>
+                                                <li>Troubleshooting tips and FAQs</li>
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {formData.doc_type === 'api-docs' && (
+                                        <div className="text-sm text-blue-700">
+                                            <p className="mb-2"><strong className="text-blue-800">🔌 API Documentation will include:</strong></p>
+                                            <ul className="list-disc list-inside space-y-1 ml-2">
+                                                <li>API endpoints with HTTP methods (GET, POST, PUT, DELETE)</li>
+                                                <li>Request parameters and query strings</li>
+                                                <li>Request/response formats and examples</li>
+                                                <li>Authentication requirements</li>
+                                                <li>Code examples in multiple languages (if enabled)</li>
+                                                <li>Error codes and handling</li>
+                                                <li>Rate limits and usage guidelines</li>
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {formData.doc_type === 'developer-guide' && (
+                                        <div className="text-sm text-blue-700">
+                                            <p className="mb-2"><strong className="text-blue-800">👨‍💻 Developer Guide will include:</strong></p>
+                                            <ul className="list-disc list-inside space-y-1 ml-2">
+                                                <li>Setup and installation instructions</li>
+                                                <li>Architecture overview and design patterns</li>
+                                                <li>Integration guides and examples</li>
+                                                <li>Configuration options and environment setup</li>
+                                                <li>Code examples and snippets (if enabled)</li>
+                                                <li>Best practices and conventions</li>
+                                                <li>Testing and debugging information</li>
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {formData.doc_type === 'admin-docs' && (
+                                        <div className="text-sm text-blue-700">
+                                            <p className="mb-2"><strong className="text-blue-800">⚙️ Admin Documentation will include:</strong></p>
+                                            <ul className="list-disc list-inside space-y-1 ml-2">
+                                                <li>Configuration and settings management</li>
+                                                <li>User and permission management</li>
+                                                <li>System administration tasks</li>
+                                                <li>Troubleshooting and maintenance procedures</li>
+                                                <li>Backup and recovery instructions</li>
+                                                <li>Security best practices</li>
+                                                <li>Monitoring and logging information</li>
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {formData.doc_type === 'quick-start' && (
+                                        <div className="text-sm text-blue-700">
+                                            <p className="mb-2"><strong className="text-blue-800">🚀 Quick Start Guide will include:</strong></p>
+                                            <ul className="list-disc list-inside space-y-1 ml-2">
+                                                <li>Essential setup steps to get started quickly</li>
+                                                <li>Minimal configuration requirements</li>
+                                                <li>Basic usage examples</li>
+                                                <li>Common first steps and workflows</li>
+                                                <li>Quick troubleshooting tips</li>
+                                                <li>Links to more detailed documentation</li>
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {formData.doc_type === 'faq' && (
+                                        <div className="text-sm text-blue-700">
+                                            <p className="mb-2"><strong className="text-blue-800">❓ FAQ will include:</strong></p>
+                                            <ul className="list-disc list-inside space-y-1 ml-2">
+                                                <li>Common questions and detailed answers</li>
+                                                <li>Troubleshooting solutions</li>
+                                                <li>Usage patterns and best practices</li>
+                                                <li>Feature clarifications</li>
+                                                <li>Common issues and resolutions</li>
+                                                <li>Tips and tricks for users</li>
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-xs text-blue-600 mt-3 italic">
+                                    The AI will generate comprehensive documentation based on your feature description, app details, and selected preferences.
+                                    {formData.app_url && ' Your app URL will be crawled to gather additional context.'}
+                                </p>
+                            </div>
+                        )}
 
                         {/* Configuration Options */}
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
