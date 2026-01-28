@@ -3,6 +3,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from typing import Optional, List
 from utils.web_crawler import crawl_and_extract, format_crawled_content_for_prompt, crawl_competitors
+from utils.traffic_data_helper import get_traffic_data_for_domain, format_traffic_data_for_prompt
 
 # Load environment variables
 load_dotenv()
@@ -67,6 +68,20 @@ async def generate_analytics_report(
         website_context = f"Note: Could not crawl website {normalized_url} ({error_msg}). Analysis will proceed with available information."
         print(f"Error crawling website {normalized_url}: {error_msg}")
     
+    # Fetch real traffic data for main website
+    traffic_data_text = ""
+    if include_traffic_analysis:
+        try:
+            print(f"Fetching real traffic data for: {normalized_url}")
+            traffic_data = await get_traffic_data_for_domain(normalized_url)
+            if traffic_data.get('available'):
+                traffic_data_text = format_traffic_data_for_prompt(traffic_data, normalized_url)
+                print(f"✅ Real traffic data obtained from {traffic_data.get('source', 'unknown')}")
+            else:
+                print("⚠️  No real traffic data available, will use AI estimates")
+        except Exception as e:
+            print(f"Error fetching traffic data: {e}")
+    
     # Normalize competitor URLs
     normalized_competitor_urls = []
     if competitor_urls:
@@ -76,6 +91,23 @@ async def generate_analytics_report(
                 normalized = f"https://{normalized}"
             normalized = normalized.rstrip('/')
             normalized_competitor_urls.append(normalized)
+    
+    # Fetch real traffic data for competitors
+    competitor_traffic_data_text = ""
+    if normalized_competitor_urls and include_competitor_comparison and include_traffic_analysis:
+        try:
+            print(f"Fetching real traffic data for {len(normalized_competitor_urls)} competitor(s)")
+            competitor_traffic_parts = []
+            for comp_url in normalized_competitor_urls:
+                comp_traffic = await get_traffic_data_for_domain(comp_url)
+                if comp_traffic.get('available'):
+                    competitor_traffic_parts.append(format_traffic_data_for_prompt(comp_traffic, comp_url))
+            
+            if competitor_traffic_parts:
+                competitor_traffic_data_text = "\n".join(competitor_traffic_parts)
+                print(f"✅ Real traffic data obtained for {len(competitor_traffic_parts)} competitor(s)")
+        except Exception as e:
+            print(f"Error fetching competitor traffic data: {e}")
     
     # Crawl competitors if provided
     competitor_analysis = ""
@@ -168,6 +200,10 @@ Website URL: {normalized_url}
 Website Content (crawled):
 {website_context if website_context else "No website content available. Provide general analytics insights based on the URL and industry."}
 
+{f"REAL TRAFFIC DATA:\n{traffic_data_text}\n" if traffic_data_text else ""}
+
+{f"COMPETITOR TRAFFIC DATA:\n{competitor_traffic_data_text}\n" if competitor_traffic_data_text else ""}
+
 {f"Competitor Analysis Data:\n{competitor_analysis}" if competitor_analysis and include_competitor_comparison else ""}
 
 Please provide a comprehensive website analytics report covering:
@@ -179,9 +215,9 @@ Please provide a comprehensive website analytics report covering:
    - Top strategic insights
    - Priority recommendations
 
-2. **Traffic Analysis** {"(SimilarWeb-style insights)" if include_traffic_analysis else ""}
-   - **CRITICAL**: If you provide traffic estimates based on competitor comparison, you MUST explicitly list the specific competitor websites used for comparison. For example: "Based on comparison with [Competitor Name 1] (competitor1.com), [Competitor Name 2] (competitor2.com), and [Competitor Name 3] (competitor3.com), estimated monthly traffic is..."
-   - Estimated monthly traffic (based on website structure and content)
+2. **Traffic Analysis** {"(Using REAL traffic data from SimilarWeb API)" if traffic_data_text else "(SimilarWeb-style insights)" if include_traffic_analysis else ""}
+   - **CRITICAL**: {"Use the REAL TRAFFIC DATA provided above. If real data is available, prioritize it over estimates. Clearly indicate when you're using real data vs estimates." if traffic_data_text else "If you provide traffic estimates based on competitor comparison, you MUST explicitly list the specific competitor websites used for comparison. For example: "Based on comparison with [Competitor Name 1] (competitor1.com), [Competitor Name 2] (competitor2.com), and [Competitor Name 3] (competitor3.com), estimated monthly traffic is...""}
+   - {"Monthly traffic (from real data)" if traffic_data_text else "Estimated monthly traffic (based on website structure and content)"}
    - **If using competitor data for estimates**: List each competitor website name and URL that informed the traffic estimate
    - Traffic sources breakdown:
      * Direct traffic

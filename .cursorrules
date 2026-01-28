@@ -1,9 +1,9 @@
-# DocsGen Cursor Rules
+# RealDoc Cursor Rules
 
 ## Project Context
 
-### DocsGen Application Overview
-DocsGen is an AI-powered documentation generation platform that allows users to create comprehensive documentation for their online applications, including user guides, API documentation, developer guides, and more.
+### RealDoc Application Overview
+RealDoc is an AI-powered documentation generation platform that allows users to create comprehensive documentation for their online applications, including user guides, API documentation, developer guides, SEO analysis, and website analytics.
 
 ### Architecture
 - **Frontend**: React.js with Clerk authentication
@@ -15,7 +15,9 @@ DocsGen is an AI-powered documentation generation platform that allows users to 
 
 ### Key Components
 - **Documentation Generator**: Multi-type documentation creation (user guides, API docs, developer guides, etc.)
-- **AI Content Generation**: OpenAI-powered documentation generation
+- **SEO Generator**: Comprehensive SEO analysis with keyword ranking, competitor analysis, and meta-tag optimization
+- **Website Analytics**: Traffic analysis, competitor comparison, and revenue intelligence
+- **AI Content Generation**: OpenAI-powered content generation for all features
 - **Multiple Formats**: Support for Markdown, HTML, and plain text output
 - **Customization Options**: Technical level, style, tone, target audience customization
 
@@ -27,17 +29,23 @@ DocsGen is an AI-powered documentation generation platform that allows users to 
 - ✅ Quick Start Guide Generation
 - ✅ FAQ Generation
 - ✅ Release Notes Generation
+- ✅ SEO Analysis & Recommendations
+- ✅ Website Analytics & Competitor Analysis
+- ✅ Keyword Ranking Analysis
+- ✅ Competitor Keyword Analysis
 - ✅ Multiple Output Formats (Markdown, HTML, Plain Text)
 - ✅ Code Examples Support
 - ✅ Customizable Technical Level and Tone
 
 ### File Structure
 ```
-docsgen/
+realdoc/
 ├── frontend/
 │   └── src/
 │       ├── components/
-│       │   └── DocumentationGenerator.jsx  # Main documentation generator UI
+│       │   ├── DocumentationGenerator.jsx  # Main documentation generator UI
+│       │   ├── SEOGenerator.jsx            # SEO analysis generator UI
+│       │   └── WebsiteAnalytics.jsx         # Website analytics generator UI
 │       ├── constants/
 │       │   └── documentationTypes.js       # Documentation type constants
 │       └── api/
@@ -52,37 +60,48 @@ docsgen/
 │   │       └── User.js                    # User model
 │   └── backend_python/
 │       ├── routes/
-│       │   └── documentation.py           # Documentation generation API
+│       │   ├── documentation.py           # Documentation generation API
+│       │   ├── seo.py                     # SEO analysis API
+│       │   └── analytics.py               # Website analytics API
 │       └── utils/
-│           └── documentation_helper.py    # OpenAI documentation generation logic
-└── scripts/                               # Deployment and utility scripts
+│           ├── documentation_helper.py     # OpenAI documentation generation logic
+│           ├── seo_helper.py              # SEO analysis logic
+│           ├── analytics_helper.py         # Analytics report generation logic
+│           └── web_crawler.py             # Web crawling and content extraction
+└── scripts/                               # Utility scripts (test-local.sh)
 ```
 
 ### Development Workflow
-1. **Feature Branch**: Create feature branches for new documentation types or features
-2. **Testing**: Test thoroughly with various documentation types
-3. **Deployment**: Deploy when stable
+1. **Feature Branch**: Create feature branches for new features or improvements
+2. **Testing**: Test thoroughly with various documentation types, SEO analysis, and analytics
+3. **Local Testing**: Use `./scripts/test-local.sh` to test all services
+4. **Start Services**: Use `./realdoc.sh start` to start all services locally
 
 ## General Rules
 
-1. **Always focus on documentation generation functionality**
+1. **Always focus on documentation generation, SEO analysis, and website analytics functionality**
 2. **Test thoroughly before committing changes**
-3. **Document any changes made**
-4. **Follow existing patterns for consistency**
+3. **Use `./scripts/test-local.sh` to verify all services work correctly**
+4. **Document any changes made**
+5. **Follow existing patterns for consistency**
 
 ### File Modification Guidelines
 
 **Before modifying any file:**
-1. Understand the documentation generation context
-2. Ensure changes align with the documentation generator purpose
-3. Test with real documentation generation use cases
+1. Understand the context (documentation generation, SEO analysis, or analytics)
+2. Ensure changes align with the feature's purpose
+3. Test with real use cases for the affected feature
+4. Verify all three main features still work (Documentation, SEO, Analytics)
 
 ### Testing Requirements
 
-1. **Always test the documentation generation**
+1. **Always test the affected feature (Documentation, SEO, or Analytics)**
 2. **Verify all documentation types work correctly**
-3. **Test output formats (Markdown, HTML, Plain Text)**
-4. **Check for any breaking changes**
+3. **Test SEO analysis with real websites**
+4. **Test analytics reports with real URLs**
+5. **Test output formats (Markdown, HTML, Plain Text)**
+6. **Run `./scripts/test-local.sh` to verify all services**
+7. **Check for any breaking changes**
 
 ### Commit Guidelines
 
@@ -91,12 +110,19 @@ docsgen/
 3. **Document any API changes**
 4. **Update documentation if needed**
 
-### Deployment and Infrastructure Rules
+### Local Development Rules
 
-**CRITICAL: NO HARDCODED VALUES IN TASK DEFINITIONS**
-- NEVER add hardcoded values to task-definition.json
-- The deployment script generates task definitions dynamically - do not override with static values
-- If task-definition.json exists with hardcoded values, DELETE IT immediately
-- All task definition values must be dynamic and generated by the deployment script
-- Memory allocation: Use appropriate memory for containers
-- Environment variables: Must be included in deployment script
+**CRITICAL: LOCAL TESTING**
+- Always use `./realdoc.sh start` to start all services locally
+- Use `./scripts/test-local.sh` to verify all services are working
+- Frontend runs on `http://localhost:3000`
+- Node.js API runs on `http://localhost:4001`
+- Python AI API runs on `http://localhost:5001`
+- All services must be running for full functionality
+
+### Environment Configuration
+
+- Node.js backend requires: `back/backend-node/.env` with MongoDB URI and Clerk keys
+- Python backend requires: `back/backend_python/.env` with OpenAI API key
+- Frontend requires: `frontend/.env` with API URLs and Clerk publishable key
+- Never commit `.env` files to git

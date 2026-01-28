@@ -37,15 +37,34 @@ console.log("- CLERK_SECRET_KEY:", process.env.CLERK_SECRET_KEY ? "Set" : "Not s
 console.log("- CLERK_PUBLISHABLE_KEY:", process.env.CLERK_PUBLISHABLE_KEY ? "Set" : "Not set");
 console.log("- CLERK_ISSUER_URL:", process.env.CLERK_ISSUER_URL || "Not set");
 
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
-    console.log("✅ MongoDB Connected");
-    console.log("📊 Database:", mongoose.connection.db.databaseName);
-  })
-  .catch(err => {
-    console.error("❌ MongoDB Error:", err);
+// Make MongoDB connection optional for local development
+const isDevelopment = process.env.NODE_ENV !== 'production';
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (MONGODB_URI) {
+  mongoose.connect(MONGODB_URI)
+    .then(() => {
+      console.log("✅ MongoDB Connected");
+      console.log("📊 Database:", mongoose.connection.db.databaseName);
+    })
+    .catch(err => {
+      if (isDevelopment) {
+        console.warn("⚠️  MongoDB connection failed (continuing without DB):", err.message);
+        console.warn("⚠️  Some features requiring MongoDB will not work, but the app will continue running.");
+      } else {
+        console.error("❌ MongoDB Error:", err);
+        process.exit(1);
+      }
+    });
+} else {
+  if (isDevelopment) {
+    console.warn("⚠️  MONGODB_URI not set - running without MongoDB");
+    console.warn("⚠️  Some features requiring MongoDB will not work, but the app will continue running.");
+  } else {
+    console.error("❌ MONGODB_URI is required in production");
     process.exit(1);
-  });
+  }
+}
 
 const app = express();
 
