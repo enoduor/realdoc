@@ -1,8 +1,8 @@
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
-from typing import Optional, List
-from utils.web_crawler import crawl_and_extract, format_crawled_content_for_prompt, analyze_keyword_rankings, get_competitor_high_volume_keywords
+from typing import Optional, List, Dict, Any
+from utils.web_crawler import crawl_and_extract, format_crawled_content_for_prompt, analyze_keyword_rankings, get_competitor_high_volume_keywords, cluster_keywords_by_intent_difficulty_opportunity
 
 # Load environment variables
 load_dotenv()
@@ -98,6 +98,23 @@ async def generate_seo_report(
         error_msg = str(e)
         print(f"Error analyzing competitor keywords: {error_msg}")
         competitor_keywords_data = None
+    
+    # Cluster keywords by intent, difficulty, and opportunity
+    keyword_clusters = None
+    if keyword_rankings_data and keyword_rankings_data.get("rankings"):
+        try:
+            print("Clustering keywords by intent, difficulty, and opportunity...")
+            all_keywords = keyword_rankings_data.get("extracted_keywords", []) + keyword_rankings_data.get("target_keywords", [])
+            keyword_clusters = await cluster_keywords_by_intent_difficulty_opportunity(
+                keywords=all_keywords[:30],
+                rankings_data=keyword_rankings_data.get("rankings", []),
+                website_url=normalized_url
+            )
+            print("Keyword clustering complete")
+        except Exception as e:
+            error_msg = str(e)
+            print(f"Error clustering keywords: {error_msg}")
+            keyword_clusters = None
     
     # Build the prompt
     focus_areas_text = ", ".join(focus_areas)
@@ -197,6 +214,45 @@ Language: {language}"""
             competitor_keywords_text += "4. Build internal linking strategy around these keywords\n"
             competitor_keywords_text += "═══════════════════════════════════════════════════════════════\n"
     
+    # Format keyword clusters data for prompt
+    keyword_clusters_text = ""
+    if keyword_clusters and not keyword_clusters.get("error"):
+        clusters = keyword_clusters
+        keyword_clusters_text = "\n\n═══════════════════════════════════════════════════════════════\n"
+        keyword_clusters_text += "KEYWORD CLUSTERING: INTENT, DIFFICULTY & OPPORTUNITY\n"
+        keyword_clusters_text += "═══════════════════════════════════════════════════════════════\n"
+        
+        # Intent clusters
+        intent = clusters.get("intent", {})
+        if intent:
+            keyword_clusters_text += "\n📊 SEARCH INTENT CLUSTERS:\n"
+            for intent_type, keywords in intent.items():
+                if keywords:
+                    keyword_clusters_text += f"  • {intent_type.title()}: {', '.join(keywords[:10])}\n"
+        
+        # Difficulty clusters
+        difficulty = clusters.get("difficulty", {})
+        if difficulty:
+            keyword_clusters_text += "\n⚡ RANKING DIFFICULTY:\n"
+            for diff_level, kw_list in difficulty.items():
+                if kw_list:
+                    kw_str = ', '.join([f"{kw.get('keyword', kw)} (score: {kw.get('score', 'N/A')})" if isinstance(kw, dict) else kw for kw in kw_list[:5]])
+                    keyword_clusters_text += f"  • {diff_level.title()}: {kw_str}\n"
+        
+        # Opportunity clusters
+        opportunity = clusters.get("opportunity", {})
+        if opportunity:
+            keyword_clusters_text += "\n🎯 OPPORTUNITY SCORE:\n"
+            for opp_level, kw_list in opportunity.items():
+                if kw_list:
+                    kw_str = ', '.join([f"{kw.get('keyword', kw)} (score: {kw.get('score', 'N/A')}, reason: {kw.get('reason', 'N/A')})" if isinstance(kw, dict) else kw for kw in kw_list[:5]])
+                    keyword_clusters_text += f"  • {opp_level.title()}: {kw_str}\n"
+        
+        keyword_clusters_text += "\n═══════════════════════════════════════════════════════════════\n"
+        keyword_clusters_text += "Use these clusters to prioritize keyword targeting and content strategy.\n"
+        keyword_clusters_text += "Focus on HIGH OPPORTUNITY + LOW/MEDIUM DIFFICULTY keywords first.\n"
+        keyword_clusters_text += "═══════════════════════════════════════════════════════════════\n"
+    
     user_prompt = f"""Analyze the following website and provide a comprehensive SEO report:
 
 Website URL: {normalized_url}
@@ -211,6 +267,8 @@ Website Content (crawled):
 {keyword_rankings_text if keyword_rankings_text else ""}
 
 {competitor_keywords_text if competitor_keywords_text else ""}
+
+{keyword_clusters_text if keyword_clusters_text else ""}
 
 Please provide a comprehensive SEO analysis report covering:
 
@@ -245,6 +303,11 @@ Please provide a comprehensive SEO analysis report covering:
    - Current keyword ranking performance (based on actual search results analysis)
    - Keywords the website currently ranks for and their positions
    - Keywords that need optimization (not ranking or ranking low)
+   - **KEYWORD CLUSTERING ANALYSIS** (if provided):
+     * Keywords clustered by search intent (Informational, Navigational, Transactional, Commercial)
+     * Keywords categorized by ranking difficulty (Low, Medium, High)
+     * Keywords prioritized by opportunity score (High, Medium, Low)
+     * Strategic recommendations based on intent, difficulty, and opportunity clusters
    - Content quality assessment
    - Keyword research and targeting recommendations
    - Content gaps and opportunities
@@ -417,4 +480,278 @@ An error occurred while generating the SEO report.
 ## SEO Analysis for {website_url}
 
 Please check the backend logs for more details and try again."""
+
+
+async def generate_production_ready_meta_tags(
+    website_url: str,
+    page_type: str = "homepage",
+    business_type: str = "saas",
+    target_keywords: Optional[str] = None,
+    crawled_data: Optional[Dict] = None
+) -> Dict[str, Any]:
+    """
+    Generate production-ready meta tags, schema markup, and HTML code.
+    
+    Args:
+        website_url: Website URL
+        page_type: Type of page (homepage, product, blog, etc.)
+        business_type: Type of business
+        target_keywords: Target keywords
+        crawled_data: Crawled website data
+        
+    Returns:
+        Dictionary with production-ready code:
+        - meta_tags: HTML meta tags
+        - schema_markup: JSON-LD schema
+        - open_graph: Open Graph tags
+        - twitter_card: Twitter Card tags
+    """
+    try:
+        client = get_openai_client()
+        
+        # Extract current data
+        current_title = crawled_data.get("title", "") if crawled_data else ""
+        current_description = crawled_data.get("description", "") if crawled_data else ""
+        
+        prompt = f"""Generate production-ready SEO code for:
+- Website: {website_url}
+- Page Type: {page_type}
+- Business Type: {business_type}
+- Target Keywords: {target_keywords or 'Not specified'}
+- Current Title: {current_title}
+- Current Description: {current_description}
+
+Generate the following in valid HTML/JSON format:
+
+1. **Meta Tags** (HTML):
+   - Title tag (50-60 characters, includes primary keyword)
+   - Meta description (150-160 characters, includes keywords)
+   - Meta keywords (optional, comma-separated)
+   - Canonical URL
+   - Robots meta tag
+   - Viewport meta tag
+   - Charset meta tag
+
+2. **Schema Markup** (JSON-LD):
+   - Organization schema (if homepage)
+   - WebSite schema with SearchAction
+   - WebPage schema
+   - BreadcrumbList (if applicable)
+   - Product schema (if e-commerce)
+   - Article schema (if blog)
+   - LocalBusiness schema (if local business)
+
+3. **Open Graph Tags**:
+   - og:title
+   - og:description
+   - og:url
+   - og:type
+   - og:image (suggest placeholder URL)
+   - og:site_name
+
+4. **Twitter Card Tags**:
+   - twitter:card
+   - twitter:title
+   - twitter:description
+   - twitter:image
+
+Return ONLY valid HTML and JSON code, ready to copy-paste into production. Format as:
+
+META TAGS:
+[HTML code here]
+
+SCHEMA MARKUP:
+[JSON-LD code here]
+
+OPEN GRAPH:
+[HTML code here]
+
+TWITTER CARD:
+[HTML code here]"""
+        
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are an expert SEO developer. Generate production-ready, valid HTML and JSON-LD code."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            max_tokens=2000
+        )
+        
+        generated_code = response.choices[0].message.content.strip()
+        
+        # Parse the response into structured format
+        result = {
+            "meta_tags": "",
+            "schema_markup": "",
+            "open_graph": "",
+            "twitter_card": "",
+            "full_code": generated_code
+        }
+        
+        # Simple parsing (can be enhanced)
+        sections = generated_code.split("\n\n")
+        current_section = None
+        for section in sections:
+            if "META TAGS:" in section.upper():
+                current_section = "meta_tags"
+                result["meta_tags"] = section.replace("META TAGS:", "").strip()
+            elif "SCHEMA MARKUP:" in section.upper():
+                current_section = "schema_markup"
+                result["schema_markup"] = section.replace("SCHEMA MARKUP:", "").strip()
+            elif "OPEN GRAPH:" in section.upper():
+                current_section = "open_graph"
+                result["open_graph"] = section.replace("OPEN GRAPH:", "").strip()
+            elif "TWITTER CARD:" in section.upper():
+                current_section = "twitter_card"
+                result["twitter_card"] = section.replace("TWITTER CARD:", "").strip()
+            elif current_section:
+                result[current_section] += "\n" + section
+        
+        return result
+        
+    except Exception as e:
+        return {
+            "error": str(e),
+            "meta_tags": "",
+            "schema_markup": "",
+            "open_graph": "",
+            "twitter_card": "",
+            "full_code": ""
+        }
+
+
+async def ai_rewrite_seo_content(
+    original_content: str,
+    rewrite_type: str = "improve",
+    focus: Optional[str] = None
+) -> str:
+    """
+    Use AI to rewrite/improve SEO content.
+    
+    Args:
+        original_content: Original content to rewrite
+        rewrite_type: Type of rewrite (improve, simplify, expand, optimize)
+        focus: Focus area (meta tags, headings, content, etc.)
+        
+    Returns:
+        Rewritten content
+    """
+    try:
+        client = get_openai_client()
+        
+        rewrite_instructions = {
+            "improve": "Improve the SEO content while maintaining the original meaning and making it more engaging and optimized for search engines.",
+            "simplify": "Simplify the content to make it more readable while maintaining SEO value.",
+            "expand": "Expand the content with more details, examples, and SEO-optimized information.",
+            "optimize": "Optimize the content specifically for SEO, improving keyword density, readability, and structure."
+        }
+        
+        instruction = rewrite_instructions.get(rewrite_type, rewrite_instructions["improve"])
+        
+        prompt = f"""Rewrite the following SEO content. {instruction}
+
+{f"Focus on: {focus}" if focus else ""}
+
+Original Content:
+{original_content}
+
+Return the rewritten content, maintaining the same format and structure but with improved SEO optimization."""
+        
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are an expert SEO content writer. Rewrite content to improve SEO while maintaining quality and readability."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=4000
+        )
+        
+        return response.choices[0].message.content.strip()
+        
+    except Exception as e:
+        return f"Error rewriting content: {str(e)}"
+
+
+def quality_assurance_check(report: str, website_url: str) -> Dict[str, Any]:
+    """
+    Perform quality assurance checks on the SEO report.
+    
+    Args:
+        report: Generated SEO report
+        website_url: Website URL
+        
+    Returns:
+        Dictionary with QA results:
+        - word_count: Word count
+        - sections: Number of sections
+        - has_meta_tags: Whether meta tag recommendations are present
+        - has_schema: Whether schema recommendations are present
+        - has_keywords: Whether keyword analysis is present
+        - has_competitor_analysis: Whether competitor analysis is present
+        - quality_score: Overall quality score (0-100)
+        - issues: List of issues found
+    """
+    issues = []
+    quality_score = 100
+    
+    # Check word count
+    word_count = len(report.split())
+    if word_count < 1000:
+        issues.append("Report is too short (less than 1000 words)")
+        quality_score -= 20
+    elif word_count < 2000:
+        issues.append("Report could be more comprehensive (less than 2000 words)")
+        quality_score -= 10
+    
+    # Check for key sections
+    required_sections = [
+        "Executive Summary",
+        "Technical SEO",
+        "On-Page SEO",
+        "Content SEO",
+        "Keyword",
+        "Competitor"
+    ]
+    
+    found_sections = sum(1 for section in required_sections if section.lower() in report.lower())
+    if found_sections < len(required_sections) * 0.7:
+        issues.append(f"Missing key sections (found {found_sections}/{len(required_sections)})")
+        quality_score -= 15
+    
+    # Check for meta tags
+    if "meta" not in report.lower() and "title tag" not in report.lower():
+        issues.append("Missing meta tag recommendations")
+        quality_score -= 10
+    
+    # Check for schema
+    if "schema" not in report.lower():
+        issues.append("Missing schema markup recommendations")
+        quality_score -= 5
+    
+    # Check for keywords
+    if "keyword" not in report.lower():
+        issues.append("Missing keyword analysis")
+        quality_score -= 15
+    
+    # Check for competitor analysis
+    if "competitor" not in report.lower():
+        issues.append("Missing competitor analysis")
+        quality_score -= 5
+    
+    quality_score = max(0, quality_score)
+    
+    return {
+        "word_count": word_count,
+        "sections_found": found_sections,
+        "has_meta_tags": "meta" in report.lower() or "title tag" in report.lower(),
+        "has_schema": "schema" in report.lower(),
+        "has_keywords": "keyword" in report.lower(),
+        "has_competitor_analysis": "competitor" in report.lower(),
+        "quality_score": quality_score,
+        "issues": issues,
+        "status": "excellent" if quality_score >= 90 else "good" if quality_score >= 70 else "needs_improvement"
+    }
 

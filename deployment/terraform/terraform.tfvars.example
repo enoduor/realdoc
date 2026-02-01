@@ -1,0 +1,29 @@
+# Copy this file to terraform.tfvars and update with your values
+
+aws_region   = "us-west-2"  # Oregon
+project_name = "realdoc"
+environment  = "prod"
+
+# VPC Configuration
+vpc_cidr = "10.0.0.0/16"
+
+# Domain Configuration
+domain_name         = "app.reelpostly.com"
+additional_domains = []
+enable_https        = true
+create_route53_zone = false  # Use existing Route 53 zone for reelpostly.com
+
+# ECS Task Resources
+frontend_cpu    = 256
+frontend_memory = 512
+
+node_backend_cpu    = 512
+node_backend_memory = 1024
+
+python_backend_cpu    = 512
+python_backend_memory = 1024
+
+# Scaling Configuration
+desired_count = 1
+min_capacity  = 1
+max_capacity  = 10

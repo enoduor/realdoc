@@ -17,6 +17,9 @@ const SEOGenerator = () => {
     const [error, setError] = useState('');
     const [isEditing, setIsEditing] = useState(false);
     const [editedReport, setEditedReport] = useState('');
+    const [productionMetaTags, setProductionMetaTags] = useState(null);
+    const [rewriteLoading, setRewriteLoading] = useState(false);
+    const [qaResult, setQaResult] = useState(null);
 
     const handleInputChange = (e) => {
         const { name, value, type } = e.target;
@@ -153,6 +156,94 @@ const SEOGenerator = () => {
         if (reportToCopy) {
             navigator.clipboard.writeText(reportToCopy);
             alert('SEO Report copied to clipboard!');
+        }
+    };
+
+    const handleGenerateMetaTags = async () => {
+        if (!formData.website_url) {
+            alert('Please enter a website URL first');
+            return;
+        }
+        
+        setLoading(true);
+        try {
+            const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+            const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
+                (process.env.NODE_ENV === 'production' ? `${ORIGIN}/ai` : 'http://localhost:5001');
+            
+            const normalizedUrl = normalizeUrl(formData.website_url);
+            const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/seo/production-meta-tags`, {
+                website_url: normalizedUrl,
+                page_type: 'homepage',
+                business_type: formData.business_type,
+                target_keywords: formData.target_keywords
+            });
+            
+            setProductionMetaTags(response.data);
+        } catch (err) {
+            alert(`Error generating meta tags: ${err?.response?.data?.detail || err?.message || 'Unknown error'}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAIRewrite = async (rewriteType = 'improve') => {
+        const contentToRewrite = isEditing ? editedReport : (seoReport?.report || '');
+        if (!contentToRewrite) {
+            alert('No content to rewrite');
+            return;
+        }
+        
+        setRewriteLoading(true);
+        try {
+            const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+            const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
+                (process.env.NODE_ENV === 'production' ? `${ORIGIN}/ai` : 'http://localhost:5001');
+            
+            const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/seo/rewrite`, {
+                content: contentToRewrite,
+                rewrite_type: rewriteType,
+                focus: 'SEO optimization'
+            });
+            
+            if (isEditing) {
+                setEditedReport(response.data.rewritten_content);
+            } else {
+                setSeoReport({
+                    ...seoReport,
+                    report: response.data.rewritten_content,
+                    word_count: response.data.rewritten_length
+                });
+                setEditedReport(response.data.rewritten_content);
+            }
+            alert('Content rewritten successfully!');
+        } catch (err) {
+            alert(`Error rewriting content: ${err?.response?.data?.detail || err?.message || 'Unknown error'}`);
+        } finally {
+            setRewriteLoading(false);
+        }
+    };
+
+    const handleQualityCheck = async () => {
+        const reportToCheck = isEditing ? editedReport : (seoReport?.report || '');
+        if (!reportToCheck) {
+            alert('No report to check');
+            return;
+        }
+        
+        try {
+            const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+            const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
+                (process.env.NODE_ENV === 'production' ? `${ORIGIN}/ai` : 'http://localhost:5001');
+            
+            const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/seo/quality-check`, {
+                report: reportToCheck,
+                website_url: formData.website_url
+            });
+            
+            setQaResult(response.data);
+        } catch (err) {
+            alert(`Error checking quality: ${err?.response?.data?.detail || err?.message || 'Unknown error'}`);
         }
     };
 
@@ -417,6 +508,26 @@ const SEOGenerator = () => {
                                                 Edit
                                             </button>
                                             <button
+                                                onClick={() => handleAIRewrite('improve')}
+                                                disabled={rewriteLoading}
+                                                className="px-3 py-1 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded disabled:bg-gray-400"
+                                            >
+                                                {rewriteLoading ? 'Rewriting...' : 'AI Rewrite'}
+                                            </button>
+                                            <button
+                                                onClick={handleGenerateMetaTags}
+                                                disabled={loading}
+                                                className="px-3 py-1 text-sm bg-indigo-600 text-white hover:bg-indigo-700 rounded disabled:bg-gray-400"
+                                            >
+                                                Meta Tags
+                                            </button>
+                                            <button
+                                                onClick={handleQualityCheck}
+                                                className="px-3 py-1 text-sm bg-yellow-600 text-white hover:bg-yellow-700 rounded"
+                                            >
+                                                Quality Check
+                                            </button>
+                                            <button
                                                 onClick={handleCopyToClipboard}
                                                 className="px-3 py-1 text-sm bg-gray-600 text-white hover:bg-gray-700 rounded"
                                             >
@@ -458,6 +569,82 @@ const SEOGenerator = () => {
                                     <pre className="whitespace-pre-wrap font-mono text-sm text-left" style={{ textAlign: 'left' }}>{seoReport.report}</pre>
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {/* Quality Assurance Results */}
+                    {qaResult && (
+                        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <h4 className="font-semibold mb-2">Quality Assurance Check</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                <div>
+                                    <strong>Quality Score:</strong> {qaResult.quality_score}/100
+                                    <span className={`ml-2 ${qaResult.quality_score >= 90 ? 'text-green-600' : qaResult.quality_score >= 70 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                        ({qaResult.status})
+                                    </span>
+                                </div>
+                                <div><strong>Word Count:</strong> {qaResult.word_count}</div>
+                                <div><strong>Sections:</strong> {qaResult.sections_found}</div>
+                                <div>
+                                    <strong>Checks:</strong> 
+                                    {qaResult.has_meta_tags && ' ✓ Meta'}
+                                    {qaResult.has_schema && ' ✓ Schema'}
+                                    {qaResult.has_keywords && ' ✓ Keywords'}
+                                    {qaResult.has_competitor_analysis && ' ✓ Competitor'}
+                                </div>
+                            </div>
+                            {qaResult.issues && qaResult.issues.length > 0 && (
+                                <div className="mt-3">
+                                    <strong>Issues Found:</strong>
+                                    <ul className="list-disc list-inside mt-1">
+                                        {qaResult.issues.map((issue, idx) => (
+                                            <li key={idx} className="text-red-700">{issue}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Production Meta Tags */}
+                    {productionMetaTags && (
+                        <div className="mt-6 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                            <h4 className="font-semibold mb-3">Production-Ready Meta Tags & Schema</h4>
+                            <div className="space-y-4">
+                                <div>
+                                    <h5 className="font-medium mb-2">Meta Tags:</h5>
+                                    <pre className="bg-white p-3 rounded border text-xs overflow-x-auto">{productionMetaTags.meta_tags || productionMetaTags.full_code}</pre>
+                                </div>
+                                {productionMetaTags.schema_markup && (
+                                    <div>
+                                        <h5 className="font-medium mb-2">Schema Markup (JSON-LD):</h5>
+                                        <pre className="bg-white p-3 rounded border text-xs overflow-x-auto">{productionMetaTags.schema_markup}</pre>
+                                    </div>
+                                )}
+                                {productionMetaTags.open_graph && (
+                                    <div>
+                                        <h5 className="font-medium mb-2">Open Graph Tags:</h5>
+                                        <pre className="bg-white p-3 rounded border text-xs overflow-x-auto">{productionMetaTags.open_graph}</pre>
+                                    </div>
+                                )}
+                                {productionMetaTags.twitter_card && (
+                                    <div>
+                                        <h5 className="font-medium mb-2">Twitter Card Tags:</h5>
+                                        <pre className="bg-white p-3 rounded border text-xs overflow-x-auto">{productionMetaTags.twitter_card}</pre>
+                                    </div>
+                                )}
+                                <button
+                                    onClick={() => {
+                                        const fullCode = productionMetaTags.full_code || 
+                                            `${productionMetaTags.meta_tags}\n\n${productionMetaTags.schema_markup}\n\n${productionMetaTags.open_graph}\n\n${productionMetaTags.twitter_card}`;
+                                        navigator.clipboard.writeText(fullCode);
+                                        alert('Meta tags copied to clipboard!');
+                                    }}
+                                    className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                                >
+                                    Copy All Code
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>

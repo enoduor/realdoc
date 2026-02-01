@@ -88,6 +88,7 @@ app.use('/ai', createProxyMiddleware({
 
 // --- Minimal API root + health (single definition) ---
 app.get('/api', (_req, res) => res.status(200).send('ok'));
+app.get('/health', (_req, res) => res.json({ status: 'ok', message: 'Node.js backend running' }));
 app.get('/api/health', (_req, res) =>
   res.status(200).json({ status: 'ok', service: 'api' })
 );

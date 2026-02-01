@@ -124,7 +124,7 @@ const LandingPage = () => {
           </div>
           
           <h1 className="hero-title-aidoc">
-            AI-Powered Solutions for SEO, Analytics, and Documentation
+            SEO, Analytics & Docs in Minutes
           </h1>
           
           <p className="hero-subtitle-aidoc">
@@ -265,47 +265,47 @@ const LandingPage = () => {
           <div className="why-grid">
             <div className="why-item">
               <h3>⚡ Speed</h3>
-              <p>Generate SEO reports, analytics, and complete documentation in minutes instead of spending days or weeks manually. Focus on building your product while we handle the analysis.</p>
+              <p>Get SEO reports, analytics, and documentation in minutes - not days or weeks.</p>
             </div>
             
             <div className="why-item">
               <h3>🎯 Three Powerful Tools</h3>
-              <p>SEO Generator, Website Analyzer, and Document Generator - all in one platform. No need to switch between multiple tools or learn different systems.</p>
+              <p>SEO Generator, Website Analyzer, and Document Generator - all in one platform.</p>
             </div>
             
             <div className="why-item">
               <h3>📚 No Technical Skills Needed</h3>
-              <p>Simply provide your website URL, enter competitor sites, or describe your feature. Our AI generates professional SEO reports, analytics, and documentation that follow industry best practices.</p>
+              <p>Just provide your website URL. Our AI handles the rest and generates professional reports.</p>
             </div>
             
             <div className="why-item">
               <h3>🎨 Fully Customizable</h3>
-              <p>Choose SEO focus areas and analytics components to match your needs. Control technical level, style, tone, target audience, language, and format for documentation.</p>
+              <p>Control technical level, style, tone, language, and format to match your needs.</p>
             </div>
             
             <div className="why-item">
               <h3>📄 Ready to Use</h3>
-              <p>Receive comprehensive SEO reports, detailed analytics, and complete documentation with proper structure and formatting. Copy, download, and use immediately - no editing required.</p>
+              <p>Copy, download, and use immediately - no editing required.</p>
             </div>
             
             <div className="why-item">
               <h3>🌍 Multiple Formats & Languages</h3>
-              <p>Export documentation in Markdown, HTML, or Plain Text. Generate reports in 10+ languages. Get the format and language you need for your workflow.</p>
+              <p>Export in Markdown, HTML, or Plain Text. Generate reports in 10+ languages.</p>
             </div>
             
             <div className="why-item">
               <h3>🕷️ Web Crawling & Competitor Analysis</h3>
-              <p>Provide your website URL and we'll automatically crawl your site, analyze competitors, and generate comprehensive SEO insights, analytics, and documentation based on real data.</p>
+              <p>We automatically crawl your site and analyze competitors to generate insights based on real data.</p>
             </div>
             
             <div className="why-item">
               <h3>🔍 Comprehensive & Accurate</h3>
-              <p>Our AI analyzes your website and competitors across SEO, analytics, and documentation to ensure all reports cover all aspects and follow industry best practices.</p>
+              <p>AI analyzes your website and competitors to ensure reports follow industry best practices.</p>
             </div>
             
             <div className="why-item">
               <h3>🚀 All-in-One Platform</h3>
-              <p>Get SEO optimization, website analytics, and documentation generation from a single platform. Streamline your workflow and save time with integrated AI-powered solutions.</p>
+              <p>SEO, analytics, and documentation from one platform. Streamline your workflow.</p>
             </div>
           </div>
         </div>

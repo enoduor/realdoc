@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_AI_API=http://localhost:5001
+      - REACT_APP_API_URL=http://localhost:4001
+    depends_on:
+      - node-backend
+      - python-backend
+    networks:
+      - realdoc-network
+
+  node-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+    ports:
+      - "4001:4001"
+    environment:
+      - NODE_ENV=production
+      - PORT=4001
+    env_file:
+      - back/backend-node/.env
+    networks:
+      - realdoc-network
+
+  python-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+    env_file:
+      - back/backend_python/.env
+    networks:
+      - realdoc-network
+
+networks:
+  realdoc-network:
+    driver: bridge

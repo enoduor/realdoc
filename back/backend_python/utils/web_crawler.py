@@ -886,6 +886,151 @@ async def analyze_competitor_keywords(competitor_data_list: List[Dict[str, str]]
     }
 
 
+async def cluster_keywords_by_intent_difficulty_opportunity(
+    keywords: List[str],
+    rankings_data: List[Dict[str, Any]],
+    website_url: str
+) -> Dict[str, Any]:
+    """
+    Cluster keywords by intent, difficulty, and opportunity using AI analysis.
+    
+    Args:
+        keywords: List of keywords to cluster
+        rankings_data: List of ranking results for keywords
+        website_url: Website URL for context
+        
+    Returns:
+        Dictionary with clustered keywords:
+        - informational: Keywords with informational intent
+        - navigational: Keywords with navigational intent
+        - transactional: Keywords with transactional intent
+        - commercial: Keywords with commercial intent
+        - low_difficulty: Easy to rank keywords
+        - medium_difficulty: Medium difficulty keywords
+        - high_difficulty: Hard to rank keywords
+        - high_opportunity: High opportunity keywords
+        - medium_opportunity: Medium opportunity keywords
+        - low_opportunity: Low opportunity keywords
+    """
+    import os
+    from openai import OpenAI
+    from dotenv import load_dotenv
+    
+    load_dotenv()
+    
+    def get_openai_client():
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key or api_key == "sk-placeholder" or api_key.startswith("sk-placeholder"):
+            raise ValueError("OpenAI API key is not configured.")
+        return OpenAI(api_key=api_key)
+    
+    # Create ranking map for quick lookup
+    ranking_map = {r.get('keyword', ''): r for r in rankings_data if r}
+    
+    # Prepare keyword data with ranking info
+    keyword_data = []
+    for kw in keywords[:30]:  # Limit to 30 keywords for analysis
+        ranking_info = ranking_map.get(kw, {})
+        keyword_data.append({
+            'keyword': kw,
+            'ranking': ranking_info.get('position') if ranking_info.get('found') else None,
+            'found': ranking_info.get('found', False)
+        })
+    
+    try:
+        client = get_openai_client()
+        
+        prompt = f"""Analyze and cluster the following keywords for the website {website_url}:
+
+Keywords with Ranking Data:
+{chr(10).join([f"- {kw['keyword']}: {'Ranking #' + str(kw['ranking']) if kw['ranking'] else 'Not ranking'} ({'Found' if kw['found'] else 'Not found'})" for kw in keyword_data])}
+
+Cluster these keywords into the following categories:
+
+1. **Search Intent** (categorize each keyword):
+   - Informational: User wants to learn/understand something
+   - Navigational: User wants to find a specific website/page
+   - Transactional: User wants to buy/purchase something
+   - Commercial: User wants to compare/buy (research phase)
+
+2. **Difficulty** (estimate ranking difficulty 1-10, where 1=easy, 10=very hard):
+   - Low (1-4): Easy to rank, low competition
+   - Medium (5-7): Moderate competition
+   - High (8-10): High competition, difficult to rank
+
+3. **Opportunity** (estimate opportunity score 1-10, based on search volume, competition, and current ranking):
+   - High (8-10): High search volume, low competition, not ranking well
+   - Medium (5-7): Moderate opportunity
+   - Low (1-4): Low opportunity (already ranking well or very competitive)
+
+Return a JSON object with this structure:
+{{
+  "intent": {{
+    "informational": ["keyword1", "keyword2"],
+    "navigational": ["keyword3"],
+    "transactional": ["keyword4"],
+    "commercial": ["keyword5"]
+  }},
+  "difficulty": {{
+    "low": [{{"keyword": "kw1", "score": 3}}],
+    "medium": [{{"keyword": "kw2", "score": 6}}],
+    "high": [{{"keyword": "kw3", "score": 9}}]
+  }},
+  "opportunity": {{
+    "high": [{{"keyword": "kw1", "score": 9, "reason": "High volume, low competition"}}],
+    "medium": [{{"keyword": "kw2", "score": 6}}],
+    "low": [{{"keyword": "kw3", "score": 3}}]
+  }}
+}}
+
+Only return valid JSON, no additional text."""
+        
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are an expert SEO analyst specializing in keyword research and clustering. Return only valid JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            max_tokens=2000
+        )
+        
+        import json
+        result_text = response.choices[0].message.content.strip()
+        # Remove markdown code blocks if present
+        if result_text.startswith("```"):
+            result_text = result_text.split("```")[1]
+            if result_text.startswith("json"):
+                result_text = result_text[4:]
+        result_text = result_text.strip()
+        
+        clustered = json.loads(result_text)
+        return clustered
+        
+    except Exception as e:
+        print(f"Error clustering keywords: {str(e)}")
+        # Return basic structure on error
+        return {
+            "intent": {
+                "informational": [],
+                "navigational": [],
+                "transactional": [],
+                "commercial": []
+            },
+            "difficulty": {
+                "low": [],
+                "medium": [],
+                "high": []
+            },
+            "opportunity": {
+                "high": [],
+                "medium": [],
+                "low": []
+            },
+            "error": str(e)
+        }
+
+
 async def get_competitor_high_volume_keywords(website_url: str, max_competitors: int = 5, max_keywords: int = 10) -> Dict[str, Any]:
     """
     Complete workflow: Find competitors, crawl them, and extract high-volume keywords they rank for.

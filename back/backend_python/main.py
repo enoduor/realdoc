@@ -79,6 +79,14 @@ def ping():
 def ai_ping():
     return {"status": "ok", "message": "AI service running"}
 
+@app.get("/health")
+def health():
+    return {"status": "ok", "message": "AI service running"}
+
+@app.get("/ai/health")
+def ai_health():
+    return {"status": "ok", "message": "AI service running"}
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 5001))

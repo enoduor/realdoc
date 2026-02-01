@@ -216,7 +216,7 @@ Please provide a comprehensive website analytics report covering:
    - Priority recommendations
 
 2. **Traffic Analysis** {"(Using REAL traffic data from SimilarWeb API)" if traffic_data_text else "(SimilarWeb-style insights)" if include_traffic_analysis else ""}
-   - **CRITICAL**: {"Use the REAL TRAFFIC DATA provided above. If real data is available, prioritize it over estimates. Clearly indicate when you're using real data vs estimates." if traffic_data_text else "If you provide traffic estimates based on competitor comparison, you MUST explicitly list the specific competitor websites used for comparison. For example: "Based on comparison with [Competitor Name 1] (competitor1.com), [Competitor Name 2] (competitor2.com), and [Competitor Name 3] (competitor3.com), estimated monthly traffic is...""}
+   - **CRITICAL**: {"Use the REAL TRAFFIC DATA provided above. If real data is available, prioritize it over estimates. Clearly indicate when you're using real data vs estimates." if traffic_data_text else "If you provide traffic estimates based on competitor comparison, you MUST explicitly list the specific competitor websites used for comparison. For example: 'Based on comparison with [Competitor Name 1] (competitor1.com), [Competitor Name 2] (competitor2.com), and [Competitor Name 3] (competitor3.com), estimated monthly traffic is...'"}
    - {"Monthly traffic (from real data)" if traffic_data_text else "Estimated monthly traffic (based on website structure and content)"}
    - **If using competitor data for estimates**: List each competitor website name and URL that informed the traffic estimate
    - Traffic sources breakdown:
