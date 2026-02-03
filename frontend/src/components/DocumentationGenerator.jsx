@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+import { useUser, useClerk } from '@clerk/clerk-react';
 import {
     DOCUMENTATION_TYPES,
     APP_TYPES,
@@ -12,6 +13,8 @@ import {
 } from '../constants/documentationTypes';
 
 const DocumentationGenerator = () => {
+    const { isSignedIn } = useUser();
+    const { openSignUp } = useClerk();
     const [searchParams] = useSearchParams();
     const urlDocType = searchParams.get('type');
     
@@ -62,13 +65,22 @@ const DocumentationGenerator = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
+        // Check if user is signed in
+        if (!isSignedIn) {
+            openSignUp();
+            return;
+        }
+        
         setLoading(true);
         setError('');
 
         try {
             const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+            // Always use current origin in browser (ALB routes /ai/* to Python backend)
+            // Only use localhost if explicitly in development and ORIGIN is localhost
+            const isLocalhost = ORIGIN.includes('localhost') || ORIGIN.includes('127.0.0.1');
             const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
-                (process.env.NODE_ENV === 'production' ? `${ORIGIN}/ai` : 'http://localhost:5001');
+                (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
             
             // Only include app_url if it's provided
             const requestData = { ...formData };

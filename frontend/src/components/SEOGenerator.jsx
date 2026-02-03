@@ -1,8 +1,73 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { useUser, useClerk } from '@clerk/clerk-react';
+import { useAuthContext } from '../context/AuthContext';
+import ErrorModal from './ErrorModal';
+
+// API functions for subscription
+const getApiUrl = () => {
+  if (typeof window !== 'undefined' && window.location) {
+    return window.location.origin;
+  }
+  throw new Error('Unable to determine API URL: window.location is not available');
+};
+
+const getPriceId = async (plan, cycle) => {
+  const API_URL = getApiUrl();
+  const r = await fetch(`${API_URL}/api/stripe/get-price-id`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan, billingCycle: cycle })
+  });
+  const text = await r.text();
+  const isJson = (r.headers.get("content-type") || "").includes("application/json");
+  const data = isJson ? JSON.parse(text) : text;
+  if (!r.ok) {
+    if (r.status === 400 && typeof data === "object" && data.varName) {
+      throw new Error(`Pricing configuration error: ${data.error}. Please contact support.`);
+    }
+    throw new Error(`getPriceId: ${r.status} ${typeof data === "string" ? data : data?.error || 'Unknown error'}`);
+  }
+  return data;
+};
+
+const createSubscriptionSession = async (priceId, { plan, billingCycle, promoCode, email, clerkUserId } = {}, authToken) => {
+  const API_URL = getApiUrl();
+  const headers = {
+    "Content-Type": "application/json",
+  };
+  
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  }
+  
+  const res = await fetch(`${API_URL}/api/billing/create-checkout-session`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ priceId, plan, billingCycle, promoCode, email, clerkUserId }),
+  });
+  
+  const text = await res.text();
+  const isJson = (res.headers.get("content-type") || "").includes("application/json");
+  const data = isJson ? JSON.parse(text) : text;
+  
+  if (!res.ok) {
+    throw new Error(typeof data === "string" ? data : data?.error || res.statusText);
+  }
+  
+  if (!data || !data.url) {
+    throw new Error('Checkout URL not found');
+  }
+  
+  return data;
+};
 
 const SEOGenerator = () => {
+    const { isSignedIn } = useUser();
+    const { openSignUp } = useClerk();
+    const { me, loading: authLoading } = useAuthContext();
+    
     const [formData, setFormData] = useState({
         website_url: '',
         business_type: 'saas',
@@ -20,6 +85,13 @@ const SEOGenerator = () => {
     const [productionMetaTags, setProductionMetaTags] = useState(null);
     const [rewriteLoading, setRewriteLoading] = useState(false);
     const [qaResult, setQaResult] = useState(null);
+    const [errorModal, setErrorModal] = useState({ 
+        show: false, 
+        title: '', 
+        message: '', 
+        type: 'error'
+    });
+    const [checkoutLoading, setCheckoutLoading] = useState(false);
 
     const handleInputChange = (e) => {
         const { name, value, type } = e.target;
@@ -55,13 +127,87 @@ const SEOGenerator = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
+        // Check if user is signed in
+        if (!isSignedIn) {
+            openSignUp();
+            return;
+        }
+
+        // Wait for auth data to load if still loading
+        if (authLoading) {
+            setError('Please wait while we verify your subscription...');
+            return;
+        }
+
+        // Check subscription status - must have active subscription
+        const sub = (me?.subscriptionStatus || 'none').toLowerCase();
+        const hasSubscription = sub === 'active' || sub === 'trialing';
+
+        // If no subscription or subscription data not loaded, redirect to Stripe checkout
+        if (!me || !hasSubscription) {
+            console.log('🔒 No subscription found, redirecting to Stripe checkout...', { me, hasSubscription, sub });
+            
+            try {
+                setCheckoutLoading(true);
+                setError('');
+                
+                console.log('📦 Getting price ID...');
+                // Get price ID from backend (default to monthly)
+                const priceResponse = await getPriceId('creator', 'monthly');
+                const priceId = priceResponse.priceId;
+                console.log('✅ Price ID received:', priceId);
+                
+                if (!priceId) {
+                    throw new Error('Price ID not found. Please contact support.');
+                }
+                
+                // Get Clerk auth token
+                let authToken = null;
+                let clerkUserId = null;
+                
+                if (window.Clerk && window.Clerk.user) {
+                    clerkUserId = window.Clerk.user.id;
+                    if (window.Clerk.session) {
+                        authToken = await window.Clerk.session.getToken();
+                    }
+                }
+                
+                // Create checkout session
+                const response = await createSubscriptionSession(priceId, {
+                    plan: 'creator',
+                    billingCycle: 'monthly',
+                    clerkUserId,
+                }, authToken);
+                
+                if (response && response.url) {
+                    window.location.replace(response.url);
+                    return;
+                }
+                
+                throw new Error('Failed to create checkout session');
+                
+            } catch (error) {
+                setCheckoutLoading(false);
+                setErrorModal({
+                    show: true,
+                    title: 'Subscription Required',
+                    message: `You need an active subscription to generate SEO reports. ${error.message || 'Failed to start checkout. Please try again.'}`,
+                    type: 'error'
+                });
+            }
+            return;
+        }
+        
         setLoading(true);
         setError('');
 
         try {
             const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+            // Always use current origin in browser (ALB routes /ai/* to Python backend)
+            // Only use localhost if explicitly in development and ORIGIN is localhost
+            const isLocalhost = ORIGIN.includes('localhost') || ORIGIN.includes('127.0.0.1');
             const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
-                (process.env.NODE_ENV === 'production' ? `${ORIGIN}/ai` : 'http://localhost:5001');
+                (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
             
             // Normalize the URL before sending
             const normalizedUrl = normalizeUrl(formData.website_url);
@@ -168,8 +314,11 @@ const SEOGenerator = () => {
         setLoading(true);
         try {
             const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+            // Always use current origin in browser (ALB routes /ai/* to Python backend)
+            // Only use localhost if explicitly in development and ORIGIN is localhost
+            const isLocalhost = ORIGIN.includes('localhost') || ORIGIN.includes('127.0.0.1');
             const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
-                (process.env.NODE_ENV === 'production' ? `${ORIGIN}/ai` : 'http://localhost:5001');
+                (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
             
             const normalizedUrl = normalizeUrl(formData.website_url);
             const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/seo/production-meta-tags`, {
@@ -197,8 +346,11 @@ const SEOGenerator = () => {
         setRewriteLoading(true);
         try {
             const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+            // Always use current origin in browser (ALB routes /ai/* to Python backend)
+            // Only use localhost if explicitly in development and ORIGIN is localhost
+            const isLocalhost = ORIGIN.includes('localhost') || ORIGIN.includes('127.0.0.1');
             const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
-                (process.env.NODE_ENV === 'production' ? `${ORIGIN}/ai` : 'http://localhost:5001');
+                (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
             
             const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/seo/rewrite`, {
                 content: contentToRewrite,
@@ -233,8 +385,11 @@ const SEOGenerator = () => {
         
         try {
             const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+            // Always use current origin in browser (ALB routes /ai/* to Python backend)
+            // Only use localhost if explicitly in development and ORIGIN is localhost
+            const isLocalhost = ORIGIN.includes('localhost') || ORIGIN.includes('127.0.0.1');
             const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
-                (process.env.NODE_ENV === 'production' ? `${ORIGIN}/ai` : 'http://localhost:5001');
+                (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
             
             const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/seo/quality-check`, {
                 report: reportToCheck,
@@ -452,14 +607,14 @@ const SEOGenerator = () => {
 
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || checkoutLoading}
                             className={`py-2 px-4 rounded font-medium text-white ${
-                                loading 
+                                (loading || checkoutLoading)
                                     ? 'bg-gray-400 cursor-not-allowed'
                                     : 'bg-blue-600 hover:bg-blue-700'
                             }`}
                         >
-                            {loading ? 'Crawling website and analyzing SEO...' : 'Generate SEO Report'}
+                            {checkoutLoading ? 'Redirecting to checkout...' : loading ? 'Crawling website and analyzing SEO...' : 'Generate SEO Report'}
                         </button>
                         
                         {loading && (
@@ -649,6 +804,19 @@ const SEOGenerator = () => {
                     )}
                 </div>
             </main>
+
+            {/* Error Modal */}
+            <ErrorModal
+                isOpen={errorModal.show}
+                onClose={() => setErrorModal({ show: false, title: '', message: '', type: 'error' })}
+                title={errorModal.title}
+                message={errorModal.message}
+                type={errorModal.type}
+                onConfirm={() => setErrorModal({ show: false, title: '', message: '', type: 'error' })}
+                confirmText="OK"
+                showCancel={false}
+                cancelText="Cancel"
+            />
         </div>
     );
 };

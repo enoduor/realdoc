@@ -4,7 +4,6 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 const rateLimit = require("express-rate-limit");
-const { createProxyMiddleware } = require('http-proxy-middleware');
 const stripeWebhook = require("./webhooks/stripeWebhook");
 const { requireAuth, clerkMiddleware } = require('@clerk/express');
 const path = require('path');
@@ -73,18 +72,8 @@ app.set('trust proxy', 1);
 
 // --- Path-prefix stripping removed (running on root domain) ---
 
-// --- Proxy AI requests to Python backend ---
-app.use('/ai', createProxyMiddleware({
-  target: 'http://localhost:5001',
-  changeOrigin: true,
-  pathRewrite: {
-    '^/ai': '', // remove /ai prefix when forwarding to Python backend
-  },
-  onError: (err, req, res) => {
-    console.error('AI Proxy Error:', err.message);
-    res.status(500).json({ error: 'AI service unavailable' });
-  }
-}));
+// --- AI requests are handled by ALB routing /ai/* to Python backend ---
+// No proxy needed - ALB handles routing in production
 
 // --- Minimal API root + health (single definition) ---
 app.get('/api', (_req, res) => res.status(200).send('ok'));
@@ -105,6 +94,9 @@ app.use(cors({
     /\.us-west-2\.elb\.amazonaws\.com$/,
     'https://realdoc.com',
     'https://www.realdoc.com',
+    'https://app.reelpostly.com',
+    'https://reelpostly.com',
+    'https://www.reelpostly.com',
     'https://bigvideograb.com',
     'https://www.bigvideograb.com'
   ],

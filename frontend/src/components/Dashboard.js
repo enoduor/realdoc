@@ -259,7 +259,7 @@ const Dashboard = () => {
   };
 
   const features = [
-    { name: 'Documentation Generator', description: 'Generate comprehensive documentation for your online applications', icon: '📚', link: '/app/documentation-generator' }
+    { name: 'Documentation Generator', description: 'Generate comprehensive documentation for your online applications', icon: '📚', link: '/documentation-generator' }
   ];
 
   return (

@@ -149,59 +149,6 @@ function normEmail(e) {
   return (e || "").trim().toLowerCase() || null;
 }
 
-// Helper: track payments on the user record
-async function addUserPaymentRecord(userId, amountNetUsd, amountGrossUsd, credits) {
-  const AWS = require('aws-sdk');
-  const dynamodb = new AWS.DynamoDB.DocumentClient({ region: 'us-west-2' });
-  const TABLE_NAME = 'reelpostly-tenants';
-  
-  try {
-    // First, try to get the existing record to see if it exists
-    const existingRecord = await dynamodb.get({
-      TableName: TABLE_NAME,
-      Key: { apiKeyId: `USER#${userId}` }
-    }).promise();
-    
-    if (existingRecord.Item) {
-      // Record exists, use ADD to increment values
-      await dynamodb.update({
-        TableName: TABLE_NAME,
-        Key: { apiKeyId: `USER#${userId}` },
-        UpdateExpression: 'ADD totalPaidNet :net, totalPaidGross :gross, totalCreditsPurchased :creds, totalPurchases :one SET lastPurchaseAt = :now',
-        ExpressionAttributeValues: {
-          ':net': Number(amountNetUsd || 0),
-          ':gross': Number(amountGrossUsd || 0),
-          ':creds': Number(credits || 0),
-          ':one': 1,
-          ':now': Math.floor(Date.now() / 1000)
-        },
-        ReturnValues: 'UPDATED_NEW'
-      }).promise();
-    } else {
-      // Record doesn't exist, create it with initial values
-      await dynamodb.put({
-        TableName: TABLE_NAME,
-        Item: {
-          apiKeyId: `USER#${userId}`,
-          tenantId: userId,
-          totalPaidNet: Number(amountNetUsd || 0),
-          totalPaidGross: Number(amountGrossUsd || 0),
-          totalCreditsPurchased: Number(credits || 0),
-          totalPurchases: 1,
-          lastPurchaseAt: Math.floor(Date.now() / 1000),
-          createdAt: Math.floor(Date.now() / 1000)
-        }
-      }).promise();
-    }
-    
-    console.log(`💰 [Payment Record] Updated for user ${userId}: net=$${amountNetUsd}, gross=$${amountGrossUsd}, credits=${credits}`);
-  } catch (error) {
-    console.error('❌ [Payment Record] Error updating user payment record:', error);
-    throw error;
-  }
-}
-
-
 async function findUser({ stripeCustomerId, clerkUserId, email }) {
   let user = null;
 

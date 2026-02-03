@@ -4,12 +4,21 @@ const router = express.Router();
 const Stripe = require("stripe");
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const User = require("../models/User");
+const { requireAuth } = require("@clerk/express");
+
+// Utility: normalize Clerk auth accessor (supports req.auth() and req.auth)
+function getClerkAuth(req) {
+  try {
+    if (typeof req.auth === "function") return req.auth();
+    return req.auth;
+  } catch {
+    return undefined;
+  }
+}
 
 /* -------------------- Config validation -------------------- */
 const REQUIRED = [
   "STRIPE_SECRET_KEY",
-  "STRIPE_STARTER_MONTHLY_PRICE_ID",
-  "STRIPE_STARTER_YEARLY_PRICE_ID",
   "STRIPE_CREATOR_MONTHLY_PRICE_ID",
   "STRIPE_CREATOR_YEARLY_PRICE_ID",
 ];
@@ -25,10 +34,6 @@ const REQUIRED = [
 
 /* -------------------- Price resolver -------------------- */
 const PRICE_ENV = {
-  starter: {
-    monthly: process.env.STRIPE_STARTER_MONTHLY_PRICE_ID,
-    yearly: process.env.STRIPE_STARTER_YEARLY_PRICE_ID,
-  },
   creator: {
     monthly: process.env.STRIPE_CREATOR_MONTHLY_PRICE_ID,
     yearly: process.env.STRIPE_CREATOR_YEARLY_PRICE_ID,
@@ -88,8 +93,6 @@ router.get("/health", (req, res) => res.json({ ok: true, route: "/api/billing" }
 
 router.get("/_config", (req, res) => {
   res.json({
-    STRIPE_STARTER_MONTHLY_PRICE_ID: !!process.env.STRIPE_STARTER_MONTHLY_PRICE_ID,
-    STRIPE_STARTER_YEARLY_PRICE_ID: !!process.env.STRIPE_STARTER_YEARLY_PRICE_ID,
     STRIPE_CREATOR_MONTHLY_PRICE_ID: !!process.env.STRIPE_CREATOR_MONTHLY_PRICE_ID,
     STRIPE_CREATOR_YEARLY_PRICE_ID: !!process.env.STRIPE_CREATOR_YEARLY_PRICE_ID,
     STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
@@ -99,21 +102,25 @@ router.get("/_config", (req, res) => {
 /* -------------------- Create Checkout Session (single path) -------------------- */
 /**
  * POST /api/billing/create-checkout-session
+ * Requires: Clerk authentication (requireAuth middleware)
  * body:
- *  - plan: 'starter'|'creator'          (required unless priceId provided)
+ *  - plan: 'creator'                    (required unless priceId provided)
  *  - billingCycle: 'monthly'|'yearly'   (required unless priceId provided)
- *  - clerkUserId: string                (required)
  *  - promoCode?: string
  *  - priceId?: string                   (optional override, otherwise resolved server-side)
  *  - email?: string                     (optional hint, used only to pre-sync Stripe customer)
  */
-router.post("/create-checkout-session", async (req, res) => {
+router.post("/create-checkout-session", requireAuth(), async (req, res) => {
   try {
-    let { priceId, plan, billingCycle, clerkUserId, promoCode, email } = req.body || {};
+    // Get clerkUserId from authenticated session (more secure than request body)
+    const auth = getClerkAuth(req);
+    const clerkUserId = auth?.userId || null;
 
     if (!clerkUserId) {
-      return res.status(400).json({ error: "clerkUserId is required" });
+      return res.status(401).json({ error: "User authentication required" });
     }
+
+    let { priceId, plan, billingCycle, promoCode, email } = req.body || {};
 
     // Resolve priceId server-side if not provided
     if (!priceId) {
@@ -136,10 +143,47 @@ router.post("/create-checkout-session", async (req, res) => {
         limit: 1,
         expand: ["data.coupon.applies_to"],
       });
+      
       if (!promos?.data?.[0]) {
-        return res.status(400).json({ error: "Invalid or inactive promotion code" });
+        return res.status(400).json({ 
+          error: "This promotion code is invalid or no longer active. Please check the code and try again." 
+        });
       }
-      discounts = [{ promotion_code: promos.data[0].id }];
+      
+      const promo = promos.data[0];
+      const couponId = promo.coupon?.id;
+      
+      // Check if coupon is valid, not deleted, and not stopped
+      if (couponId) {
+        try {
+          const coupon = await stripe.coupons.retrieve(couponId);
+          
+          // Check if coupon is valid (not stopped/deleted)
+          if (!coupon.valid) {
+            return res.status(400).json({ 
+              error: "This coupon has been stopped and is no longer valid. Please contact support if you believe this is an error." 
+            });
+          }
+          
+          // Check if promotion code is active
+          if (!promo.active) {
+            return res.status(400).json({ 
+              error: "This promotion code is no longer active. Please check the code and try again." 
+            });
+          }
+        } catch (err) {
+          // If coupon retrieval fails, it might be deleted
+          if (err.code === 'resource_missing') {
+            return res.status(400).json({ 
+              error: "This coupon has been deleted and is no longer available. Please contact support if you believe this is an error." 
+            });
+          }
+          // Re-throw other errors
+          throw err;
+        }
+      }
+      
+      discounts = [{ promotion_code: promo.id }];
     }
 
     // Optional: pre-sync the user's email onto the Stripe Customer
@@ -169,9 +213,27 @@ router.post("/create-checkout-session", async (req, res) => {
       metadata: { clerkUserId, plan, billingCycle }, // duplicate for safety in webhooks
       client_reference_id: clerkUserId,              // join key in webhooks
       customer: stripeCustomerId,                    // ✅ ALWAYS pass customer
-      success_url: `https://reelpostly.com/app?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `https://reelpostly.com/pricing`,
+      success_url: `${process.env.FRONTEND_URL || 'https://realdoc.com'}/app?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL || 'https://realdoc.com'}/pricing`,
     });
+
+    console.log("✅ Checkout session created:", {
+      sessionId: session.id,
+      url: session.url,
+      hasUrl: !!session.url,
+      customer: stripeCustomerId,
+      clerkUserId,
+    });
+
+    if (!session.url) {
+      console.error("❌ Stripe session created but URL is missing!", {
+        sessionId: session.id,
+        session: JSON.stringify(session, null, 2),
+      });
+      return res.status(500).json({ 
+        error: "Stripe checkout session created but URL is missing. Please contact support." 
+      });
+    }
 
     return res.status(200).json({ url: session.url, sessionId: session.id });
   } catch (err) {

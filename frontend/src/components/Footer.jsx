@@ -8,7 +8,7 @@ const Footer = () => {
       <div className="footer-container">
         <div className="footer-content">
           <div className="footer-section">
-            <h4>RealDoc</h4>
+            <img src="/logo.png" alt="RealDoc" className="footer-logo" />
             <p>AI-powered documentation generator for creating comprehensive documentation for your online applications.</p>
           </div>
           <div className="footer-section">

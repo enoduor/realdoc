@@ -12,17 +12,9 @@ const stripe = Stripe(stripeKey);
 
 // --- Price map (from SSM env) ---
 const STRIPE_PRICES = {
-  starter: {
-    monthly: process.env.STRIPE_STARTER_MONTHLY_PRICE_ID,
-    yearly: process.env.STRIPE_STARTER_YEARLY_PRICE_ID,
-  },
   creator: {
     monthly: process.env.STRIPE_CREATOR_MONTHLY_PRICE_ID,
     yearly: process.env.STRIPE_CREATOR_YEARLY_PRICE_ID,
-  },
-  pro: {
-    monthly: process.env.STRIPE_PRO_MONTHLY_PRICE_ID,
-    yearly: process.env.STRIPE_PRO_YEARLY_PRICE_ID,
   },
 };
 
@@ -45,7 +37,7 @@ router.post("/get-price-id", async (req, res) => {
     if (!plan || !billingCycle) {
       return res.status(400).json({ error: "Plan and billing cycle required" });
     }
-    if (!["starter", "creator", "pro"].includes(plan)) {
+    if (!["creator"].includes(plan)) {
       return res.status(400).json({ error: "Invalid plan" });
     }
     if (!["monthly", "yearly"].includes(billingCycle)) {
@@ -165,7 +157,7 @@ router.post("/create-subscription-session", async (req, res) => {
     const auth = getClerkAuth(req);
     const clerkUserId = auth?.userId || null;
 
-    if (!["starter", "creator", "pro"].includes(plan)) {
+    if (!["creator"].includes(plan)) {
       return res.status(400).json({ error: "Invalid plan" });
     }
     if (!["monthly", "yearly"].includes(billingCycle)) {

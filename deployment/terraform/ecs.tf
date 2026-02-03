@@ -97,8 +97,20 @@ resource "aws_ecs_task_definition" "node_backend" {
           valueFrom = aws_secretsmanager_secret.clerk_secret_key.arn
         },
         {
+          name      = "CLERK_PUBLISHABLE_KEY"
+          valueFrom = aws_secretsmanager_secret.clerk_publishable_key.arn
+        },
+        {
           name      = "STRIPE_SECRET_KEY"
           valueFrom = aws_secretsmanager_secret.stripe_secret_key.arn
+        },
+        {
+          name      = "STRIPE_CREATOR_MONTHLY_PRICE_ID"
+          valueFrom = aws_secretsmanager_secret.stripe_creator_monthly_price_id.arn
+        },
+        {
+          name      = "STRIPE_CREATOR_YEARLY_PRICE_ID"
+          valueFrom = aws_secretsmanager_secret.stripe_creator_yearly_price_id.arn
         }
       ]
 
@@ -151,6 +163,14 @@ resource "aws_ecs_task_definition" "python_backend" {
         {
           name  = "PORT"
           value = "5001"
+        },
+        {
+          name  = "AI_ROOT_PATH"
+          value = "/ai"
+        },
+        {
+          name  = "ENVIRONMENT"
+          value = "production"
         }
       ]
 
@@ -291,6 +311,14 @@ resource "aws_secretsmanager_secret" "clerk_secret_key" {
   }
 }
 
+resource "aws_secretsmanager_secret" "clerk_publishable_key" {
+  name = "${var.project_name}/clerk-publishable-key"
+  
+  tags = {
+    Name = "${var.project_name}-clerk-publishable-key-secret"
+  }
+}
+
 resource "aws_secretsmanager_secret" "stripe_secret_key" {
   name = "${var.project_name}/stripe-secret-key"
   
@@ -315,6 +343,23 @@ resource "aws_secretsmanager_secret" "similarweb_api_key" {
   }
 }
 
+resource "aws_secretsmanager_secret" "stripe_creator_monthly_price_id" {
+  name = "${var.project_name}/stripe-creator-monthly-price-id"
+  
+  tags = {
+    Name = "${var.project_name}-stripe-creator-monthly-price-id-secret"
+  }
+}
+
+resource "aws_secretsmanager_secret" "stripe_creator_yearly_price_id" {
+  name = "${var.project_name}/stripe-creator-yearly-price-id"
+  
+  tags = {
+    Name = "${var.project_name}-stripe-creator-yearly-price-id-secret"
+  }
+}
+
+
 # IAM Policy for Secrets Manager access
 resource "aws_iam_role_policy" "ecs_task_secrets" {
   name = "${var.project_name}-ecs-task-secrets-policy"
@@ -332,9 +377,12 @@ resource "aws_iam_role_policy" "ecs_task_secrets" {
         Resource = [
           aws_secretsmanager_secret.mongodb_uri.arn,
           aws_secretsmanager_secret.clerk_secret_key.arn,
+          aws_secretsmanager_secret.clerk_publishable_key.arn,
           aws_secretsmanager_secret.stripe_secret_key.arn,
           aws_secretsmanager_secret.openai_api_key.arn,
-          aws_secretsmanager_secret.similarweb_api_key.arn
+          aws_secretsmanager_secret.similarweb_api_key.arn,
+          aws_secretsmanager_secret.stripe_creator_monthly_price_id.arn,
+          aws_secretsmanager_secret.stripe_creator_yearly_price_id.arn
         ]
       }
     ]

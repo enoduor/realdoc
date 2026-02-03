@@ -8,7 +8,7 @@ const SEOLanding = () => {
     const navigate = useNavigate();
 
     const handleGetStarted = () => {
-        navigate('/app/seo-generator');
+        navigate('/seo-generator');
     };
 
     return (
@@ -25,7 +25,7 @@ const SEOLanding = () => {
                     </div>
                     
                     <h1 className="hero-title-aidoc">
-                        Get Complete SEO Analysis and Recommendations in Minutes
+                        Make People Discover Your Business
                     </h1>
                     
                     <p className="hero-subtitle-aidoc">

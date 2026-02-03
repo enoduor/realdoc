@@ -3,7 +3,6 @@ import sys
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from routes.documentation import router as documentation_router
 from routes.seo import router as seo_router
@@ -38,24 +37,15 @@ app = FastAPI(
 )
 
 # ---- CORS ----
+# Allow all origins to support users accessing from any URL
+# Users will input their own URLs, and the frontend needs to make API calls without CORS blocking
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://reelpostly.com",
-        "https://www.reelpostly.com",
-        "https://bigvideograb.com",
-        "https://www.bigvideograb.com",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],  # Allow all origins - no CORS blocking
+    allow_credentials=False,  # Must be False when using allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# ---- Static uploads ----
-os.makedirs("uploads", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # ---- Routers (single mount; root_path=/ai makes them externally /ai/...) ----
 # Existing mounts (internal paths)

@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { requireAuth } = require('@clerk/express');
@@ -60,7 +60,7 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "User already exists" });
     }
 
-    // Create new user with bcrypt (not bcryptjs)
+    // Create new user with bcryptjs (pure JavaScript, no native bindings)
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(req.body.password, salt);
     
@@ -95,7 +95,7 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // Check password using bcrypt (not bcryptjs)
+    // Check password using bcryptjs (pure JavaScript, no native bindings)
     const validPassword = await bcrypt.compare(req.body.password, user.password);
     if (!validPassword) {
       console.log("❌ Invalid password for:", req.body.email);

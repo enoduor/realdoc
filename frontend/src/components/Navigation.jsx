@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-// import { useUser } from '@clerk/clerk-react';
+import { useUser, useClerk } from '@clerk/clerk-react';
 import './Navigation.css';
 
 const Navigation = () => {
-  // COMMENTED OUT: Clerk authentication
-  // const { isSignedIn, user } = useUser();
-  const isSignedIn = false; // Allow access without authentication
-  const user = null;
+  const { isSignedIn, user } = useUser();
+  const { openSignIn } = useClerk();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -18,7 +16,17 @@ const Navigation = () => {
   // Navigate to Documentation Generator
   const handleGetStarted = () => {
     if (isSignedIn) {
-      navigate('/app/documentation-generator');
+      navigate('/documentation-generator');
+    } else {
+      navigate('/login');
+    }
+  };
+
+  // Handle sign in button click
+  const handleSignIn = (e) => {
+    e.preventDefault();
+    if (openSignIn) {
+      openSignIn();
     } else {
       navigate('/login');
     }
@@ -29,7 +37,7 @@ const Navigation = () => {
       <div className="nav-container">
         <div className="nav-logo">
           <Link to="/" className="logo-link">
-            <span className="logo-text">RealDoc</span>
+            <img src="/logo.png" alt="RealDoc" className="logo-image" />
           </Link>
         </div>
 
@@ -48,7 +56,7 @@ const Navigation = () => {
             </>
             ) : (
               <>
-                <Link to="/login" className="nav-btn nav-btn-primary">Sign In</Link>
+                <button onClick={handleSignIn} className="nav-btn nav-btn-primary">Sign In</button>
               </>
             )}
         </div>
@@ -78,7 +86,7 @@ const Navigation = () => {
               </>
             ) : (
               <>
-                <Link to="/login" className="mobile-nav-btn mobile-nav-btn-primary" onClick={() => setIsMenuOpen(false)}>Sign In</Link>
+                <button onClick={(e) => { handleSignIn(e); setIsMenuOpen(false); }} className="mobile-nav-btn mobile-nav-btn-primary">Sign In</button>
               </>
             )}
           </div>

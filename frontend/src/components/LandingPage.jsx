@@ -12,9 +12,9 @@ const LandingPage = () => {
   // Navigate to Documentation Generator
   const handleGetStarted = (docType = null) => {
     if (docType) {
-      navigate(`/app/documentation-generator?type=${docType}`);
+      navigate(`/documentation-generator?type=${docType}`);
     } else {
-      navigate('/app/documentation-generator');
+      navigate('/documentation-generator');
     }
   };
 
@@ -128,7 +128,7 @@ const LandingPage = () => {
           </h1>
           
           <p className="hero-subtitle-aidoc">
-            Transform your workflow with three powerful AI tools. Optimize your SEO, analyze your website with competitor insights, and generate comprehensive documentation - all in minutes, no technical skills required.
+            See what's holding your site back, understand why competitors win, and fix exactly what matters. Optimize SEO, analyze your website, and generate clear, actionable documentation in minutes, without technical skills.
           </p>
 
           {/* Three Hero Cards */}

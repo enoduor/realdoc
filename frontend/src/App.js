@@ -47,7 +47,7 @@ export default function App() {
 
           {/* Protected */}
           <Route
-            path="/app"
+            path="/dashboard"
             element={
               <ClerkProtectedRoute>
                 <Dashboard />
@@ -55,7 +55,7 @@ export default function App() {
             }
           />
           <Route
-            path="/app/documentation-generator"
+            path="/documentation-generator"
             element={
               <ClerkProtectedRoute>
                 <DocumentationGenerator />
@@ -63,7 +63,7 @@ export default function App() {
             }
           />
           <Route
-            path="/app/seo-generator"
+            path="/seo-generator"
             element={
               <ClerkProtectedRoute>
                 <SEOGenerator />
@@ -71,7 +71,7 @@ export default function App() {
             }
           />
           <Route
-            path="/app/website-analytics"
+            path="/website-analytics"
             element={
               <ClerkProtectedRoute>
                 <WebsiteAnalytics />

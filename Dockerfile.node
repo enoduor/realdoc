@@ -3,8 +3,13 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Install curl for health checks
+RUN apk add --no-cache curl
+
 # Copy package files
 COPY back/backend-node/package*.json ./
+
+# Install dependencies (no native modules needed - using bcryptjs)
 RUN npm ci --only=production
 
 # Copy source code

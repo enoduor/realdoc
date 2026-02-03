@@ -253,6 +253,68 @@ Language: {language}"""
         keyword_clusters_text += "Focus on HIGH OPPORTUNITY + LOW/MEDIUM DIFFICULTY keywords first.\n"
         keyword_clusters_text += "═══════════════════════════════════════════════════════════════\n"
     
+    # Build sections based on selected focus areas
+    sections = []
+    section_num = 1
+    
+    # Always include Executive Summary
+    sections.append(f"{section_num}. **Executive Summary** (ALWAYS INCLUDE)\n   - Current SEO health score (0-100)\n   - Key strengths and weaknesses\n   - Priority action items")
+    section_num += 1
+    
+    # Technical SEO
+    if "technical" in focus_areas:
+        sections.append(f"{section_num}. **Technical SEO Analysis** (REQUIRED - Selected Focus Area)\n   - Site structure and architecture\n   - Page speed and Core Web Vitals\n   - Mobile responsiveness\n   - Schema markup\n   - XML sitemap and robots.txt\n   - HTTPS and security\n   - URL structure\n   - Canonical tags\n   - 404 errors and redirects\n   - Specific technical issues found and fixes")
+        section_num += 1
+    
+    # On-Page SEO
+    if "on-page" in focus_areas:
+        sections.append(f"{section_num}. **On-Page SEO** (REQUIRED - Selected Focus Area)\n   - Title tags optimization (provide specific examples)\n   - Meta descriptions (provide specific examples)\n   - Header tags (H1, H2, H3) structure\n   - Image alt text optimization\n   - Internal linking structure\n   - Content quality and keyword optimization\n   - URL optimization\n   - Specific recommendations for each page type")
+        section_num += 1
+    
+    # Content SEO
+    if "content" in focus_areas:
+        sections.append(f"{section_num}. **Content SEO & Keyword Rankings** (REQUIRED - Selected Focus Area)\n   - Current keyword ranking performance (based on actual search results analysis)\n   - Keywords the website currently ranks for and their positions\n   - Keywords that need optimization (not ranking or ranking low)\n   - **KEYWORD CLUSTERING ANALYSIS** (if provided):\n     * Keywords clustered by search intent (Informational, Navigational, Transactional, Commercial)\n     * Keywords categorized by ranking difficulty (Low, Medium, High)\n     * Keywords prioritized by opportunity score (High, Medium, Low)\n     * Strategic recommendations based on intent, difficulty, and opportunity clusters\n   - Content quality assessment\n   - Keyword research and targeting recommendations\n   - Content gaps and opportunities\n   - Content optimization recommendations\n   - Blog/content strategy\n   - E-A-T (Expertise, Authoritativeness, Trustworthiness) signals\n   - Specific recommendations to improve rankings for target keywords")
+        section_num += 1
+    
+    # Competitor Analysis (always include if data available)
+    if competitor_keywords_text:
+        sections.append(f"{section_num}. **Competitor Keyword Analysis & Meta-Tag Optimization** (ALWAYS INCLUDE if competitor data available)\n   - **CRITICAL**: Start this section by explicitly listing each competitor website name and URL that was analyzed. For example: \"Competitors Analyzed: [Competitor Name 1] (competitor1.com), [Competitor Name 2] (competitor2.com), etc.\"\n   - High-volume keywords that competitors rank for (from competitor analysis)\n   - **For each keyword mentioned**: Explicitly state which competitor website(s) use that keyword (e.g., \"Keyword 'X' is used by [Competitor Name] (competitor-url.com)\")\n   - Specific meta-tag recommendations using competitor keywords:\n     * Title tag optimization with high-volume keywords\n     * Meta description optimization with competitor keywords\n     * Header tag (H1, H2, H3) optimization suggestions\n   - Content strategy recommendations based on competitor keyword analysis\n   - How to incorporate competitor keywords into existing content\n   - Internal linking opportunities using high-volume competitor keywords\n   - Content creation ideas targeting competitor keywords")
+        section_num += 1
+    
+    # Off-Page SEO
+    if "off-page" in focus_areas:
+        sections.append(f"{section_num}. **Off-Page SEO** (REQUIRED - Selected Focus Area)\n   - Backlink profile analysis\n   - Link building opportunities\n   - Social signals\n   - Local SEO (if applicable)\n   - Brand mentions")
+        section_num += 1
+    
+    # Mobile SEO
+    if "mobile" in focus_areas:
+        sections.append(f"{section_num}. **Mobile SEO** (REQUIRED - Selected Focus Area)\n   - Mobile-first indexing readiness\n   - Mobile usability issues\n   - AMP implementation\n   - Mobile page speed")
+        section_num += 1
+    
+    # Local SEO
+    if "local" in focus_areas:
+        sections.append(f"{section_num}. **Local SEO** (REQUIRED - Selected Focus Area)\n   - Google Business Profile optimization\n   - Local citations\n   - NAP consistency\n   - Local keyword targeting")
+        section_num += 1
+    
+    # Page Speed
+    if "speed" in focus_areas:
+        sections.append(f"{section_num}. **Page Speed Optimization** (REQUIRED - Selected Focus Area)\n   - Current performance metrics\n   - Specific optimization recommendations\n   - Code minification\n   - Image optimization\n   - Caching strategies\n   - CDN recommendations")
+        section_num += 1
+    
+    # Accessibility
+    if "accessibility" in focus_areas:
+        sections.append(f"{section_num}. **Accessibility** (REQUIRED - Selected Focus Area)\n   - WCAG compliance\n   - Screen reader compatibility\n   - Keyboard navigation\n   - Color contrast\n   - ARIA labels")
+        section_num += 1
+    
+    # Always include Implementation Roadmap
+    sections.append(f"{section_num}. **Implementation Roadmap** (ALWAYS INCLUDE)\n    - Priority 1 (Quick wins - implement immediately)\n    - Priority 2 (High impact - implement within 1 month)\n    - Priority 3 (Long-term - implement within 3-6 months)\n    - Timeline and resource requirements")
+    section_num += 1
+    
+    # Always include Tools and Resources
+    sections.append(f"{section_num}. **Tools and Resources** (ALWAYS INCLUDE)\n    - Recommended SEO tools\n    - Monitoring and tracking setup\n    - Analytics configuration")
+    
+    sections_text = "\n\n".join(sections)
+    
     user_prompt = f"""Analyze the following website and provide a comprehensive SEO report:
 
 Website URL: {normalized_url}
@@ -270,111 +332,17 @@ Website Content (crawled):
 
 {keyword_clusters_text if keyword_clusters_text else ""}
 
-Please provide a comprehensive SEO analysis report covering:
+Please provide a comprehensive SEO analysis report covering ONLY the following sections based on the selected focus areas:
 
-1. **Executive Summary**
-   - Current SEO health score (0-100)
-   - Key strengths and weaknesses
-   - Priority action items
+{sections_text}
 
-2. **Technical SEO Analysis**
-   - Site structure and architecture
-   - Page speed and Core Web Vitals
-   - Mobile responsiveness
-   - Schema markup
-   - XML sitemap and robots.txt
-   - HTTPS and security
-   - URL structure
-   - Canonical tags
-   - 404 errors and redirects
-   - Specific technical issues found and fixes
-
-3. **On-Page SEO**
-   - Title tags optimization (provide specific examples)
-   - Meta descriptions (provide specific examples)
-   - Header tags (H1, H2, H3) structure
-   - Image alt text optimization
-   - Internal linking structure
-   - Content quality and keyword optimization
-   - URL optimization
-   - Specific recommendations for each page type
-
-4. **Content SEO & Keyword Rankings**
-   - Current keyword ranking performance (based on actual search results analysis)
-   - Keywords the website currently ranks for and their positions
-   - Keywords that need optimization (not ranking or ranking low)
-   - **KEYWORD CLUSTERING ANALYSIS** (if provided):
-     * Keywords clustered by search intent (Informational, Navigational, Transactional, Commercial)
-     * Keywords categorized by ranking difficulty (Low, Medium, High)
-     * Keywords prioritized by opportunity score (High, Medium, Low)
-     * Strategic recommendations based on intent, difficulty, and opportunity clusters
-   - Content quality assessment
-   - Keyword research and targeting recommendations
-   - Content gaps and opportunities
-   - Content optimization recommendations
-   - Blog/content strategy
-   - E-A-T (Expertise, Authoritativeness, Trustworthiness) signals
-   - Specific recommendations to improve rankings for target keywords
-
-5. **Competitor Keyword Analysis & Meta-Tag Optimization**
-   - **CRITICAL**: Start this section by explicitly listing each competitor website name and URL that was analyzed. For example: "Competitors Analyzed: [Competitor Name 1] (competitor1.com), [Competitor Name 2] (competitor2.com), etc."
-   - High-volume keywords that competitors rank for (from competitor analysis)
-   - **For each keyword mentioned**: Explicitly state which competitor website(s) use that keyword (e.g., "Keyword 'X' is used by [Competitor Name] (competitor-url.com)")
-   - Specific meta-tag recommendations using competitor keywords:
-     * Title tag optimization with high-volume keywords
-     * Meta description optimization with competitor keywords
-     * Header tag (H1, H2, H3) optimization suggestions
-   - Content strategy recommendations based on competitor keyword analysis
-   - How to incorporate competitor keywords into existing content
-   - Internal linking opportunities using high-volume competitor keywords
-   - Content creation ideas targeting competitor keywords
-
-6. **Off-Page SEO** (if in focus areas)
-   - Backlink profile analysis
-   - Link building opportunities
-   - Social signals
-   - Local SEO (if applicable)
-   - Brand mentions
-
-7. **Mobile SEO** (if in focus areas)
-   - Mobile-first indexing readiness
-   - Mobile usability issues
-   - AMP implementation
-   - Mobile page speed
-
-8. **Local SEO** (if in focus areas)
-   - Google Business Profile optimization
-   - Local citations
-   - NAP consistency
-   - Local keyword targeting
-
-9. **Page Speed Optimization** (if in focus areas)
-   - Current performance metrics
-   - Specific optimization recommendations
-   - Code minification
-   - Image optimization
-   - Caching strategies
-   - CDN recommendations
-
-10. **Accessibility** (if in focus areas)
-   - WCAG compliance
-   - Screen reader compatibility
-   - Keyboard navigation
-   - Color contrast
-   - ARIA labels
-
-11. **Implementation Roadmap**
-    - Priority 1 (Quick wins - implement immediately)
-    - Priority 2 (High impact - implement within 1 month)
-    - Priority 3 (Long-term - implement within 3-6 months)
-    - Timeline and resource requirements
-
-12. **Tools and Resources**
-    - Recommended SEO tools
-    - Monitoring and tracking setup
-    - Analytics configuration
-
-Format the report in Markdown with clear sections, code examples where applicable, and actionable recommendations. Be specific and reference actual elements from the website when possible."""
+**CRITICAL INSTRUCTIONS:**
+- ONLY include sections that match the selected focus areas: {focus_areas_text}
+- DO NOT include sections that were not selected
+- Executive Summary, Implementation Roadmap, and Tools sections should always be included
+- Competitor Analysis should be included if competitor data is available
+- Format the report in Markdown with clear sections, code examples where applicable, and actionable recommendations
+- Be specific and reference actual elements from the website when possible"""
 
     try:
         client = get_openai_client()

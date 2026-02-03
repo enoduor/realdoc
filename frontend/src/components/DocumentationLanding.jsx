@@ -8,7 +8,7 @@ const DocumentationLanding = () => {
     const navigate = useNavigate();
 
     const handleGenerate = () => {
-        navigate('/app/documentation-generator');
+        navigate('/documentation-generator');
     };
 
     return (
@@ -25,7 +25,7 @@ const DocumentationLanding = () => {
                     </div>
                     
                     <h1 className="hero-title-aidoc">
-                        Get Complete, Ready-to-Use Documentation in Minutes
+                        Get documentation for your app 
                     </h1>
                     
                     <p className="hero-subtitle-aidoc">

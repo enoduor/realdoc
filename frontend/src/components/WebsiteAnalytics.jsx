@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { useUser, useClerk } from '@clerk/clerk-react';
 
 const WebsiteAnalytics = () => {
+    const { isSignedIn } = useUser();
+    const { openSignUp } = useClerk();
+    
     const [formData, setFormData] = useState({
         website_url: '',
         competitor_urls: '',
@@ -50,13 +54,22 @@ const WebsiteAnalytics = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
+        // Check if user is signed in
+        if (!isSignedIn) {
+            openSignUp();
+            return;
+        }
+        
         setLoading(true);
         setError('');
 
         try {
             const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+            // Always use current origin in browser (ALB routes /ai/* to Python backend)
+            // Only use localhost if explicitly in development and ORIGIN is localhost
+            const isLocalhost = ORIGIN.includes('localhost') || ORIGIN.includes('127.0.0.1');
             const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
-                (process.env.NODE_ENV === 'production' ? `${ORIGIN}/ai` : 'http://localhost:5001');
+                (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
             
             // Normalize URLs before sending
             const normalizedUrl = normalizeUrl(formData.website_url);

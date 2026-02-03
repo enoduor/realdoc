@@ -8,7 +8,7 @@ const AnalyticsLanding = () => {
     const navigate = useNavigate();
 
     const handleGetStarted = () => {
-        navigate('/app/website-analytics');
+        navigate('/website-analytics');
     };
 
     return (
@@ -25,11 +25,11 @@ const AnalyticsLanding = () => {
                     </div>
                     
                     <h1 className="hero-title-aidoc">
-                        Get Complete Website Analysis with Competitor Intelligence in Minutes
+                        Get an edge over your Competitors
                     </h1>
                     
                     <p className="hero-subtitle-aidoc">
-                        Generate professional analytics reports instantly. Enter your website URL, and receive comprehensive analysis with traffic insights, competitor comparison, revenue model analysis, and strategic recommendations. SimilarWeb-style analytics powered by AI - no expensive tools required.
+                        See what's holding your site back, understand why competitors win, and fix exactly what matters. Optimize SEO, analyze your website, and generate clear, actionable documentation in minutes, without technical skills.
                     </p>
 
                     <div className="doc-types-selector">

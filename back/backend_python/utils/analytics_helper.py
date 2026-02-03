@@ -193,136 +193,109 @@ CRITICAL REQUIREMENTS:
 Analysis Depth: {analysis_depth}
 Language: {language}"""
 
-    user_prompt = f"""Analyze the following website and provide a comprehensive analytics report:
+    # Build sections based on selected components
+    sections = []
+    section_num = 1
+    
+    # Always include Executive Summary
+    sections.append(f"{section_num}. **Executive Summary** (ALWAYS INCLUDE)\n   - Website overview and primary purpose\n   - Key performance indicators (KPIs)\n   - Overall health score (0-100)\n   - Top strategic insights\n   - Priority recommendations")
+    section_num += 1
+    
+    # Traffic Analysis (if selected)
+    if include_traffic_analysis:
+        traffic_label = "(Using REAL traffic data from SimilarWeb API)" if traffic_data_text else "(SimilarWeb-style insights)"
+        traffic_instruction = "Use the REAL TRAFFIC DATA provided above. If real data is available, prioritize it over estimates. Clearly indicate when you're using real data vs estimates." if traffic_data_text else "If you provide traffic estimates based on competitor comparison, you MUST explicitly list the specific competitor websites used for comparison. For example: 'Based on comparison with [Competitor Name 1] (competitor1.com), [Competitor Name 2] (competitor2.com), and [Competitor Name 3] (competitor3.com), estimated monthly traffic is...'"
+        traffic_data_label = "Monthly traffic (from real data)" if traffic_data_text else "Estimated monthly traffic (based on website structure and content)"
+        
+        sections.append(f"{section_num}. **Traffic Analysis** {traffic_label} (REQUIRED - Selected Component)\n   - **CRITICAL**: {traffic_instruction}\n   - {traffic_data_label}\n   - **If using competitor data for estimates**: List each competitor website name and URL that informed the traffic estimate\n   - Traffic sources breakdown:\n     * Direct traffic\n     * Organic search\n     * Referral traffic\n     * Social media\n     * Paid advertising\n   - Geographic distribution (if identifiable)\n   - Device breakdown (desktop vs mobile)\n   - Bounce rate estimates\n   - Average session duration estimates\n   - Pages per session estimates\n   - Top performing pages (based on content analysis)\n   - Traffic trends and patterns")
+        section_num += 1
+    
+    # Website Performance Metrics (always include)
+    sections.append(f"{section_num}. **Website Performance Metrics** (ALWAYS INCLUDE)\n   - Page load speed analysis\n   - Core Web Vitals assessment\n   - Mobile responsiveness\n   - User experience metrics\n   - Conversion funnel analysis (if applicable)\n   - Engagement metrics")
+    section_num += 1
+    
+    # Content Analysis (always include)
+    sections.append(f"{section_num}. **Content Analysis** (ALWAYS INCLUDE)\n   - Content quality assessment\n   - Content depth and comprehensiveness\n   - Content freshness\n   - Content gaps and opportunities\n   - SEO content performance\n   - Content marketing effectiveness")
+    section_num += 1
+    
+    # Competitive Analysis (if selected)
+    if include_competitor_comparison:
+        sections.append(f"{section_num}. **Competitive Analysis** (REQUIRED - Selected Component)\n   - **List of Competitors Analyzed**: Start by explicitly listing each competitor's name and URL that was analyzed\n   - Competitive positioning\n   - Market share estimates\n   - Feature comparison with competitors (create a detailed comparison table if possible)\n   - Content comparison\n   - Traffic comparison (relative estimates)\n   - Strengths and weaknesses vs competitors (be specific about each competitor)\n   - Competitive advantages and disadvantages\n   - Market opportunities\n   - **Specific competitor insights**: For each competitor listed, provide 2-3 specific insights about their approach, features, or strategy")
+        section_num += 1
+    
+    # Revenue Model Analysis (if selected)
+    if include_revenue_analysis:
+        sections.append(f"{section_num}. **Revenue Model Analysis** (REQUIRED - Selected Component)\n   - Identified revenue streams:\n     * Subscription/SaaS model\n     * Advertising revenue\n     * E-commerce/sales\n     * Affiliate marketing\n     * Freemium model\n     * Enterprise sales\n     * Other monetization methods\n   - Revenue model assessment\n   - Pricing strategy analysis\n   - Monetization effectiveness\n   - Revenue potential estimates (if possible)\n   - Revenue optimization opportunities\n   - Business model strengths and weaknesses")
+        section_num += 1
+    
+    # Marketing & Growth Analysis (always include)
+    sections.append(f"{section_num}. **Marketing & Growth Analysis** (ALWAYS INCLUDE)\n   - Marketing channels effectiveness\n   - Brand presence and awareness\n   - Social media presence\n   - Content marketing strategy\n   - SEO performance\n   - Paid advertising presence\n   - Growth opportunities")
+    section_num += 1
+    
+    # Technical Infrastructure (always include)
+    sections.append(f"{section_num}. **Technical Infrastructure** (ALWAYS INCLUDE)\n   - Website architecture\n   - Technology stack (if identifiable)\n   - Hosting and CDN analysis\n   - Security assessment\n   - Scalability considerations")
+    section_num += 1
+    
+    # User Experience & Conversion (always include)
+    sections.append(f"{section_num}. **User Experience & Conversion** (ALWAYS INCLUDE)\n   - UX/UI assessment\n   - Conversion optimization opportunities\n   - User journey analysis\n   - Friction points identification\n   - Improvement recommendations")
+    section_num += 1
+    
+    # Strategic Recommendations (always include)
+    sections.append(f"{section_num}. **Strategic Recommendations** (ALWAYS INCLUDE)\n    - Quick wins (implement immediately)\n    - High-impact improvements (1-3 months)\n    - Long-term strategic initiatives (3-12 months)\n    - Investment priorities\n    - Risk assessment")
+    section_num += 1
+    
+    # Benchmarking & Industry Comparison (always include)
+    sections.append(f"{section_num}. **Benchmarking & Industry Comparison** (ALWAYS INCLUDE)\n    - Industry benchmarks\n    - Performance vs industry standards\n    - Market positioning\n    - Competitive advantages")
+    section_num += 1
+    
+    # Tools & Monitoring Recommendations (always include)
+    sections.append(f"{section_num}. **Tools & Monitoring Recommendations** (ALWAYS INCLUDE)\n    - Analytics tools setup\n    - Key metrics to track\n    - Reporting dashboards\n    - Monitoring strategies")
+    
+    sections_text = "\n\n".join(sections)
+    
+    # Build selected components text
+    selected_components = []
+    if include_traffic_analysis:
+        selected_components.append("Traffic Analysis")
+    if include_competitor_comparison:
+        selected_components.append("Competitor Comparison")
+    if include_revenue_analysis:
+        selected_components.append("Revenue Intelligence")
+    selected_components_text = ", ".join(selected_components) if selected_components else "None"
+    
+    # Build traffic data sections (avoid backslashes in f-string expressions)
+    traffic_section = ""
+    if traffic_data_text:
+        traffic_section = f"REAL TRAFFIC DATA:\n{traffic_data_text}\n"
+    
+    competitor_traffic_section = ""
+    if competitor_traffic_data_text:
+        competitor_traffic_section = f"COMPETITOR TRAFFIC DATA:\n{competitor_traffic_data_text}\n"
+    
+    competitor_analysis_section = ""
+    if competitor_analysis and include_competitor_comparison:
+        competitor_analysis_section = f"Competitor Analysis Data:\n{competitor_analysis}"
+    
+    user_prompt = f"""Analyze the following website and provide a comprehensive website analytics report:
 
 Website URL: {normalized_url}
 
 Website Content (crawled):
 {website_context if website_context else "No website content available. Provide general analytics insights based on the URL and industry."}
 
-{f"REAL TRAFFIC DATA:\n{traffic_data_text}\n" if traffic_data_text else ""}
+{traffic_section}{competitor_traffic_section}{competitor_analysis_section}
 
-{f"COMPETITOR TRAFFIC DATA:\n{competitor_traffic_data_text}\n" if competitor_traffic_data_text else ""}
+Please provide a comprehensive website analytics report covering ONLY the following sections based on the selected components:
 
-{f"Competitor Analysis Data:\n{competitor_analysis}" if competitor_analysis and include_competitor_comparison else ""}
+{sections_text}
 
-Please provide a comprehensive website analytics report covering:
-
-1. **Executive Summary**
-   - Website overview and primary purpose
-   - Key performance indicators (KPIs)
-   - Overall health score (0-100)
-   - Top strategic insights
-   - Priority recommendations
-
-2. **Traffic Analysis** {"(Using REAL traffic data from SimilarWeb API)" if traffic_data_text else "(SimilarWeb-style insights)" if include_traffic_analysis else ""}
-   - **CRITICAL**: {"Use the REAL TRAFFIC DATA provided above. If real data is available, prioritize it over estimates. Clearly indicate when you're using real data vs estimates." if traffic_data_text else "If you provide traffic estimates based on competitor comparison, you MUST explicitly list the specific competitor websites used for comparison. For example: 'Based on comparison with [Competitor Name 1] (competitor1.com), [Competitor Name 2] (competitor2.com), and [Competitor Name 3] (competitor3.com), estimated monthly traffic is...'"}
-   - {"Monthly traffic (from real data)" if traffic_data_text else "Estimated monthly traffic (based on website structure and content)"}
-   - **If using competitor data for estimates**: List each competitor website name and URL that informed the traffic estimate
-   - Traffic sources breakdown:
-     * Direct traffic
-     * Organic search
-     * Referral traffic
-     * Social media
-     * Paid advertising
-   - Geographic distribution (if identifiable)
-   - Device breakdown (desktop vs mobile)
-   - Bounce rate estimates
-   - Average session duration estimates
-   - Pages per session estimates
-   - Top performing pages (based on content analysis)
-   - Traffic trends and patterns
-
-3. **Website Performance Metrics**
-   - Page load speed analysis
-   - Core Web Vitals assessment
-   - Mobile responsiveness
-   - User experience metrics
-   - Conversion funnel analysis (if applicable)
-   - Engagement metrics
-
-4. **Content Analysis**
-   - Content quality assessment
-   - Content depth and comprehensiveness
-   - Content freshness
-   - Content gaps and opportunities
-   - SEO content performance
-   - Content marketing effectiveness
-
-5. **Competitive Analysis** {"(if competitors provided)" if include_competitor_comparison else ""}
-   {f"""
-   - **List of Competitors Analyzed**: Start by explicitly listing each competitor's name and URL that was analyzed
-   - Competitive positioning
-   - Market share estimates
-   - Feature comparison with competitors (create a detailed comparison table if possible)
-   - Content comparison
-   - Traffic comparison (relative estimates)
-   - Strengths and weaknesses vs competitors (be specific about each competitor)
-   - Competitive advantages and disadvantages
-   - Market opportunities
-   - **Specific competitor insights**: For each competitor listed, provide 2-3 specific insights about their approach, features, or strategy
-   """ if include_competitor_comparison else ""}
-
-6. **Revenue Model Analysis** {"(How they make money)" if include_revenue_analysis else ""}
-   {f"""
-   - Identified revenue streams:
-     * Subscription/SaaS model
-     * Advertising revenue
-     * E-commerce/sales
-     * Affiliate marketing
-     * Freemium model
-     * Enterprise sales
-     * Other monetization methods
-   - Revenue model assessment
-   - Pricing strategy analysis
-   - Monetization effectiveness
-   - Revenue potential estimates (if possible)
-   - Revenue optimization opportunities
-   - Business model strengths and weaknesses
-   """ if include_revenue_analysis else ""}
-
-7. **Marketing & Growth Analysis**
-   - Marketing channels effectiveness
-   - Brand presence and awareness
-   - Social media presence
-   - Content marketing strategy
-   - SEO performance
-   - Paid advertising presence
-   - Growth opportunities
-
-8. **Technical Infrastructure**
-   - Website architecture
-   - Technology stack (if identifiable)
-   - Hosting and CDN analysis
-   - Security assessment
-   - Scalability considerations
-
-9. **User Experience & Conversion**
-   - UX/UI assessment
-   - Conversion optimization opportunities
-   - User journey analysis
-   - Friction points identification
-   - Improvement recommendations
-
-10. **Strategic Recommendations**
-    - Quick wins (implement immediately)
-    - High-impact improvements (1-3 months)
-    - Long-term strategic initiatives (3-12 months)
-    - Investment priorities
-    - Risk assessment
-
-11. **Benchmarking & Industry Comparison**
-    - Industry benchmarks
-    - Performance vs industry standards
-    - Market positioning
-    - Competitive advantages
-
-12. **Tools & Monitoring Recommendations**
-    - Analytics tools setup
-    - Key metrics to track
-    - Reporting dashboards
-    - Monitoring strategies
-
+**CRITICAL INSTRUCTIONS:**
+- ONLY include sections that match the selected components: {selected_components_text}
+- DO NOT include sections that were not selected
+- Executive Summary, Website Performance, Content Analysis, Marketing & Growth, Technical Infrastructure, User Experience, Strategic Recommendations, Benchmarking, and Tools sections should always be included
+- Traffic Analysis should ONLY be included if "Traffic Analysis" component is selected
+- Competitive Analysis should ONLY be included if "Competitor Comparison" component is selected
+- Revenue Model Analysis should ONLY be included if "Revenue Intelligence" component is selected
 {depth_instruction}
 
 Format the report in Markdown with clear sections, data tables where appropriate, and actionable insights. Be specific and reference actual elements from the website when possible. When providing estimates, clearly mark them as such."""

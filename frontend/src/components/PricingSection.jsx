@@ -1,11 +1,22 @@
 import React, { useState } from 'react';
+import { useClerk, useUser } from '@clerk/clerk-react';
 import ErrorModal from './ErrorModal';
 import './PricingSection.css';
 
 // API functions moved inline
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:4001";
+const getApiUrl = () => {
+  // Always use current origin (ALB routes /api/* to node backend)
+  // This works in both production and development when running locally
+  if (typeof window !== 'undefined' && window.location) {
+    return window.location.origin;
+  }
+  
+  // Fallback only for non-browser environments (should never happen in React)
+  throw new Error('Unable to determine API URL: window.location is not available');
+};
 
 const getPriceId = async (plan, cycle) => {
+  const API_URL = getApiUrl();
   const r = await fetch(`${API_URL}/api/stripe/get-price-id`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -23,12 +34,22 @@ const getPriceId = async (plan, cycle) => {
   return data;
 };
 
-const createSubscriptionSession = async (priceId, { clerkUserId, plan, billingCycle, promoCode, email } = {}) => {
+const createSubscriptionSession = async (priceId, { plan, billingCycle, promoCode, email, clerkUserId } = {}, authToken) => {
   try {
-    const res = await fetch(`${API_URL}/api/stripe/create-checkout-session`, {
+    const API_URL = getApiUrl();
+    const headers = {
+      "Content-Type": "application/json",
+    };
+    
+    // Add Authorization header if auth token is provided
+    if (authToken) {
+      headers["Authorization"] = `Bearer ${authToken}`;
+    }
+    
+    const res = await fetch(`${API_URL}/api/billing/create-checkout-session`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priceId, clerkUserId, plan, billingCycle, promoCode, email }),
+      headers,
+      body: JSON.stringify({ priceId, plan, billingCycle, promoCode, email, clerkUserId }),
     });
     const text = await res.text();
     const isJson = (res.headers.get("content-type") || "").includes("application/json");
@@ -52,87 +73,69 @@ const PricingSection = () => {
     type: 'error'
   });
 
-  const plans = [
-    {
-      name: 'Starter',
-      description: 'Perfect for solo creators',
-      monthlyPrice: 9,
-      yearlyPrice: 5.33,
-      yearlyTotal: 64,
-      yearlySavings: 44,
-      features: [
-        'Documentation generation',
-        'User guides, API docs, developer guides',
-        'Multiple output formats (Markdown, HTML, Text)',
-        '10 documentation generations per month',
-        'Basic customization options',
-        'Email support'
-      ],
-      popular: false,
-      bestDeal: false
-    },
-    {
-      name: 'Creator',
-      description: 'For growing creators & startups',
-      monthlyPrice: 18,
-      yearlyPrice: 10.75,
-      yearlyTotal: 129,
-      yearlySavings: 87,
-      features: [
-        'Unlimited documentation generation',
-        'All documentation types',
-        'Advanced customization options',
-        'Code examples support',
-        'Multiple output formats',
-        'Priority support'
-      ],
-      popular: true,
-      bestDeal: false
-    },
-    {
-      name: 'Enterprise',
-      description: 'For organizations & institutions',
-      isEnterprise: true,
-      features: [
-        'Custom integrations & workflows',
-        'White-label solutions',
-        'Customized analytics & reporting',
-        'Custom training & onboarding',
-        'Priority technical support',
-        'Unlimited documentation generation'
-      ],
-      popular: false,
-      bestDeal: false
-    }
-  ];
+  const plan = {
+    name: 'All in One',
+    monthlyPrice: 18,
+    originalPrice: 36,
+    yearlyPrice: 10.75,
+    yearlyTotal: 129,
+    yearlySavings: 87,
+    features: [
+      'Unlimited documentation generation',
+      'All documentation types (User guides, API docs, Developer guides, etc.)',
+      'SEO analysis & recommendations',
+      'Website analytics & competitor insights',
+      'Multiple output formats (Markdown, HTML, Text)',
+      'Advanced customization options',
+      'Code examples support',
+      'Priority support'
+    ]
+  };
 
   const [loading, setLoading] = useState(false);
+  const { isSignedIn } = useUser();
+  const { openSignUp } = useClerk();
 
-  const handleStartTrial = async (plan) => {
+  const handleStartTrial = async () => {
+    // If user is not signed in, open Clerk signup
+    if (!isSignedIn) {
+      openSignUp();
+      return;
+    }
+
+    // User is signed in - proceed to Stripe checkout
     try {
       setLoading(true);
       
-      // Debug logging (removed for security)
+      // Get price ID from backend
+      const { priceId } = await getPriceId('creator', billingCycle);
       
-      // Get price ID from backend (not hardcoded)
-      const { priceId } = await getPriceId(plan.name.toLowerCase(), billingCycle);
-      const { id: clerkUserId } = window.Clerk?.user || {};  // or from your auth context
+      // Get Clerk auth token
+      let authToken = null;
+      let clerkUserId = null;
+      if (window.Clerk && window.Clerk.user) {
+        clerkUserId = window.Clerk.user.id;
+        if (window.Clerk.session) {
+          try {
+            authToken = await window.Clerk.session.getToken();
+          } catch (error) {
+            console.error('Error getting Clerk token:', error);
+          }
+        }
+      }
       
+      // Create checkout session
       const response = await createSubscriptionSession(priceId, {
-        clerkUserId,
-        plan: plan.name.toLowerCase(),
+        plan: 'creator',
         billingCycle,
-        // promoCode: 'FIRSTPURCHASE' // optional
-      });
+        clerkUserId,
+      }, authToken);
       
-      // API response received (logging removed for security)
-      
-      // Redirect to Stripe checkout (browser will log navigation)
-      window.location.replace(response.url);
+      // Redirect to Stripe checkout
+      window.location.href = response.url;
       
     } catch (error) {
       console.error('❌ Error starting trial:', error);
-      console.error('❌ Error details:', error.message, error.stack);
       setErrorModal({
         show: true,
         title: 'Trial Start Failed',
@@ -149,8 +152,8 @@ const PricingSection = () => {
       <div className="pricing-container">
         {/* Header */}
         <div className="pricing-header">
-          <h2 className="pricing-title">Generate Professional Documentation</h2>
-          <p className="pricing-subtitle">Start your 3-day free trial and cancel anytime. 30-day money-back guarantee</p>
+          <h2 className="pricing-title">Pricing</h2>
+          <p className="pricing-subtitle">Start your free trial. No credit card required.</p>
           
           {/* Billing Toggle */}
           <div className="billing-toggle">
@@ -158,66 +161,74 @@ const PricingSection = () => {
             <button 
               className="toggle-switch"
               onClick={() => setBillingCycle(billingCycle === 'monthly' ? 'yearly' : 'monthly')}
+              aria-label="Toggle billing cycle"
             >
               <div className={`toggle-slider ${billingCycle === 'yearly' ? 'yearly' : ''}`}></div>
             </button>
             <span className={billingCycle === 'yearly' ? 'active' : ''}>
               Yearly
-              {billingCycle === 'yearly' && <span className="discount-badge">40% OFF</span>}
+              {billingCycle === 'yearly' && <span className="discount-badge">Save 40%</span>}
             </span>
           </div>
         </div>
 
-        {/* Pricing Cards */}
+        {/* Pricing Card */}
         <div className="pricing-cards">
-          {plans.map((plan, index) => (
-            <div 
-              key={index} 
-              className={`pricing-card ${plan.popular ? 'popular' : ''} ${plan.bestDeal ? 'best-deal' : ''}`}
-            >
-              {/* Badges */}
-              {plan.popular && <div className="badge popular-badge">Most Popular</div>}
-              {plan.bestDeal && <div className="badge best-deal-badge">Best Deal</div>}
-              {billingCycle === 'yearly' && !plan.isEnterprise && (
-                <div className="badge discount-badge">40% OFF</div>
-              )}
-
-              {/* Plan Header */}
-              <div className="plan-header">
+          <div className="pricing-card single-card">
+            <div className="pricing-card-content">
+              {/* Left Column - Pricing & CTA */}
+              <div className="pricing-left">
                 <h3 className="plan-name">{plan.name}</h3>
-                <p className="plan-description">{plan.description}</p>
-              </div>
-
-              {/* Pricing */}
-              {!plan.isEnterprise ? (
+                
                 <div className="plan-pricing">
                   <div className="price-container">
                     <span className="currency">$</span>
                     <span className="price">
                       {billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}
                     </span>
-                    <span className="period">/month</span>
-                  </div>
-                  
-                  {billingCycle === 'yearly' && (
-                    <div className="yearly-info">
-                      <p className="yearly-total">Billed as ${plan.yearlyTotal}/year</p>
-                      <p className="yearly-savings">Save ${plan.yearlySavings} with yearly pricing</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="plan-pricing enterprise-pricing">
-                  <div className="enterprise-price">
-                    <span className="custom-text">Custom</span>
-                    <p className="enterprise-subtitle">Tailored to your organization's needs</p>
+                    {billingCycle === 'monthly' && plan.originalPrice && (
+                      <span className="original-price-inline">
+                        <span className="strikethrough">${plan.originalPrice}/monthly</span>
+                      </span>
+                    )}
+                    {billingCycle === 'yearly' && (
+                      <span className="yearly-savings-inline">
+                        Billed ${plan.yearlyTotal}/year • Save ${plan.yearlySavings}
+                      </span>
+                    )}
                   </div>
                 </div>
-              )}
 
-              {/* Features */}
-              <div className="plan-features">
-                <ul>
+                <div className="plan-cta">
+                  <button 
+                    className="cta-button"
+                    onClick={handleStartTrial}
+                    disabled={loading}
+                  >
+                    {loading ? 'Loading...' : (
+                      <>
+                        Start Growing Traffic Today
+                        <svg className="arrow-icon" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      </>
+                    )}
+                  </button>
+                  <p className="cancel-text">Cancel anytime. No questions asked!</p>
+                </div>
+
+                <div className="guarantee-box">
+                  <svg className="shield-icon" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>7-Day Money-Back Guarantee</span>
+                </div>
+              </div>
+
+              {/* Right Column - Features */}
+              <div className="pricing-right">
+                <h4 className="features-title">What's included:</h4>
+                <ul className="plan-features">
                   {plan.features.map((feature, featureIndex) => (
                     <li key={featureIndex}>
                       <svg className="check-icon" viewBox="0 0 20 20" fill="currentColor">
@@ -228,46 +239,8 @@ const PricingSection = () => {
                   ))}
                 </ul>
               </div>
-
-              {/* CTA */}
-              <div className="plan-cta">
-                {!plan.isEnterprise ? (
-                  <>
-                    <p className="trial-info">Start your 3-day free trial and cancel anytime.</p>
-                    <button 
-                      className={`cta-button ${plan.popular ? 'popular' : ''} ${plan.bestDeal ? 'best-deal' : ''}`}
-                      onClick={() => handleStartTrial(plan)}
-                      disabled={loading}
-                    >
-                      {loading ? 'Loading...' : 'Start Free Trial'}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <p className="trial-info">Get personalized guidance and custom solutions for your organization.</p>
-                    <a 
-                      href="https://docs.google.com/forms/d/e/1FAIpQLSdXGiQBAVMQy3lXGkNdRwqgfWw20E_VlXODYloiMo7L3bwYCw/viewform"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="cta-button enterprise"
-                    >
-                      Contact Us
-                    </a>
-                  </>
-                )}
-              </div>
             </div>
-          ))}
-        </div>
-
-        {/* Footer */}
-        <div className="pricing-footer">
-          <p className="guarantee">
-            <svg className="shield-icon" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            30-day money-back guarantee
-          </p>
+          </div>
         </div>
       </div>
 
