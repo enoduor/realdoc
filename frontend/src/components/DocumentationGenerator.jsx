@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { useUser, useClerk } from '@clerk/clerk-react';
+import usePaymentModal from './PaymentModal';
 import {
     DOCUMENTATION_TYPES,
     APP_TYPES,
@@ -13,8 +13,6 @@ import {
 } from '../constants/documentationTypes';
 
 const DocumentationGenerator = () => {
-    const { isSignedIn } = useUser();
-    const { openSignUp } = useClerk();
     const [searchParams] = useSearchParams();
     const urlDocType = searchParams.get('type');
     
@@ -62,47 +60,60 @@ const DocumentationGenerator = () => {
         }));
     };
 
+    // Use payment modal hook
+    const { createCheckoutSession, loading: paymentLoading, ErrorModalComponent } = usePaymentModal({
+        formData,
+        validateForm: () => {
+            if (!formData.app_name || !formData.app_name.trim()) {
+                return { valid: false, error: 'Please enter an app name' };
+            }
+            if (!formData.feature_description || !formData.feature_description.trim()) {
+                return { valid: false, error: 'Please enter a feature description' };
+            }
+            return { valid: true };
+        },
+        onPaymentSuccess: async (savedFormData) => {
+            try {
+                setLoading(true);
+                setError('');
+                
+                // Generate documentation with saved form data
+                const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+                const isLocalhost = ORIGIN.includes('localhost') || ORIGIN.includes('127.0.0.1');
+                const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
+                    (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
+                
+                // Only include app_url if it's provided
+                const requestData = { ...savedFormData };
+                if (!requestData.app_url || requestData.app_url.trim() === '') {
+                    delete requestData.app_url;
+                }
+                
+                const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/documentation/`, requestData, {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                setDocumentation(response.data);
+                setEditedDocumentation(response.data.documentation);
+                setIsEditing(false);
+            } catch (err) {
+                const errorMessage = err?.response?.data?.detail || 
+                    err?.response?.data?.message || 
+                    err?.message || 
+                    'Failed to generate documentation';
+                setError(errorMessage);
+                throw err;
+            } finally {
+                setLoading(false);
+            }
+        },
+        successRedirectPath: '/documentation-generator',
+        cancelRedirectPath: '/documentation-generator'
+    });
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        // Check if user is signed in
-        if (!isSignedIn) {
-            openSignUp();
-            return;
-        }
-        
-        setLoading(true);
-        setError('');
-
-        try {
-            const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
-            // Always use current origin in browser (ALB routes /ai/* to Python backend)
-            // Only use localhost if explicitly in development and ORIGIN is localhost
-            const isLocalhost = ORIGIN.includes('localhost') || ORIGIN.includes('127.0.0.1');
-            const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
-                (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
-            
-            // Only include app_url if it's provided
-            const requestData = { ...formData };
-            if (!requestData.app_url || requestData.app_url.trim() === '') {
-                delete requestData.app_url;
-            }
-            
-            const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/documentation/`, requestData, {
-                headers: { 'Content-Type': 'application/json' }
-            });
-            setDocumentation(response.data);
-            setEditedDocumentation(response.data.documentation);
-            setIsEditing(false);
-        } catch (err) {
-            const errorMessage = err?.response?.data?.detail || 
-                err?.response?.data?.message || 
-                err?.message || 
-                'Failed to generate documentation';
-            setError(errorMessage);
-        } finally {
-            setLoading(false);
-        }
+        await createCheckoutSession();
     };
 
 
@@ -530,14 +541,14 @@ const DocumentationGenerator = () => {
 
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || paymentLoading}
                             className={`py-2 px-4 rounded font-medium text-white ${
-                                loading 
+                                (loading || paymentLoading)
                                     ? 'bg-gray-400 cursor-not-allowed'
                                     : 'bg-blue-600 hover:bg-blue-700'
                             }`}
                         >
-                            {loading ? 'Generating Documentation...' : 'Generate Documentation'}
+                            {(loading || paymentLoading) ? 'Processing...' : 'Generate Documentation'}
                         </button>
                     </form>
 
@@ -635,6 +646,9 @@ const DocumentationGenerator = () => {
                     )}
                 </div>
             </main>
+
+            {/* Payment Error Modal */}
+            {ErrorModalComponent}
         </div>
     );
 };

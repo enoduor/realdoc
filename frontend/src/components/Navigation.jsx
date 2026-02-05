@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useUser, useClerk } from '@clerk/clerk-react';
 import './Navigation.css';
 
 const Navigation = () => {
-  const { isSignedIn, user } = useUser();
-  const { openSignIn } = useClerk();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -15,21 +12,7 @@ const Navigation = () => {
 
   // Navigate to Documentation Generator
   const handleGetStarted = () => {
-    if (isSignedIn) {
-      navigate('/documentation-generator');
-    } else {
-      navigate('/login');
-    }
-  };
-
-  // Handle sign in button click
-  const handleSignIn = (e) => {
-    e.preventDefault();
-    if (openSignIn) {
-      openSignIn();
-    } else {
-      navigate('/login');
-    }
+    navigate('/documentation-generator');
   };
 
   return (
@@ -46,19 +29,11 @@ const Navigation = () => {
           <Link to="/seo" className="nav-link">SEO Generator</Link>
           <Link to="/analytics" className="nav-link">Website Analyzer</Link>
           <Link to="/documentation" className="nav-link">Document Generator</Link>
-          <a href="/#pricing" className="nav-link">Pricing</a>
+          <a href="https://reelpostly.com/app/sora/video-generator" target="_blank" rel="noopener noreferrer" className="nav-link">AI UGC Creator</a>
         </div>
 
         <div className="nav-actions">
-          {isSignedIn ? (
-            <>
-              <button onClick={handleGetStarted} className="nav-btn nav-btn-primary">Generate Docs</button>
-            </>
-            ) : (
-              <>
-                <button onClick={handleSignIn} className="nav-btn nav-btn-primary">Sign In</button>
-              </>
-            )}
+          <button onClick={handleGetStarted} className="nav-btn nav-btn-primary">Generate Docs</button>
         </div>
 
         {/* Mobile Menu Button */}
@@ -73,22 +48,14 @@ const Navigation = () => {
       {isMenuOpen && (
         <div className="mobile-nav">
           <div className="mobile-nav-links">
-            <a href="/#pricing" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Pricing</a>
+            <a href="https://reelpostly.com/app/sora/video-generator" target="_blank" rel="noopener noreferrer" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>UGC Creator</a>
             <Link to="/about" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>About</Link>
             <Link to="/seo" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>SEO Generator</Link>
             <Link to="/analytics" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Website Analyzer</Link>
             <Link to="/documentation" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Document Generator</Link>
           </div>
           <div className="mobile-nav-actions">
-            {isSignedIn ? (
-              <>
-                <button onClick={() => { handleGetStarted(); setIsMenuOpen(false); }} className="mobile-nav-btn mobile-nav-btn-primary">Generate Docs</button>
-              </>
-            ) : (
-              <>
-                <button onClick={(e) => { handleSignIn(e); setIsMenuOpen(false); }} className="mobile-nav-btn mobile-nav-btn-primary">Sign In</button>
-              </>
-            )}
+            <button onClick={() => { handleGetStarted(); setIsMenuOpen(false); }} className="mobile-nav-btn mobile-nav-btn-primary">Generate Docs</button>
           </div>
         </div>
       )}

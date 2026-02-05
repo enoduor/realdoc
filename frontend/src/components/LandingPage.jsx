@@ -311,6 +311,7 @@ const LandingPage = () => {
         </div>
       </section>
 
+
       {/* Pricing Section */}
       <section id="pricing">
         <PricingSection />

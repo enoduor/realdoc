@@ -590,6 +590,91 @@ TWITTER CARD:
         }
 
 
+async def generate_ai_optimized_recommendations(
+    website_url: str,
+    seo_report: str,
+    business_type: str = "saas",
+    target_keywords: Optional[str] = None,
+    crawled_data: Optional[Dict] = None
+) -> str:
+    """
+    Generate AI-optimized, prioritized SEO recommendations with direct implementation code.
+    
+    Args:
+        website_url: Website URL
+        seo_report: The full SEO report generated earlier
+        business_type: Type of business
+        target_keywords: Target keywords
+        crawled_data: Crawled website data
+        
+    Returns:
+        String with prioritized recommendations and code examples
+    """
+    try:
+        client = get_openai_client()
+        
+        # Extract current meta tags and structure from crawled data
+        current_title = crawled_data.get("title", "") if crawled_data else ""
+        current_description = crawled_data.get("description", "") if crawled_data else ""
+        current_headings = crawled_data.get("headings", []) if crawled_data else []
+        
+        prompt = f"""Based on the following SEO report for {website_url}, generate a prioritized list of AI-optimized SEO recommendations that users can DIRECTLY IMPLEMENT.
+
+Business Type: {business_type}
+Target Keywords: {target_keywords or 'Not specified'}
+
+Current Website Data:
+- Title: {current_title}
+- Description: {current_description}
+- Headings: {', '.join(current_headings[:5]) if current_headings else 'None found'}
+
+SEO Report Summary:
+{seo_report[:3000]}...
+
+**CRITICAL REQUIREMENTS:**
+1. Provide ONLY actionable recommendations that users can implement directly
+2. Include actual CODE EXAMPLES for each recommendation (HTML, JSON-LD, robots.txt, etc.)
+3. Prioritize recommendations by impact (High, Medium, Low) and difficulty (Easy, Medium, Hard)
+4. For each recommendation, provide:
+   - Clear title
+   - Why it matters (1-2 sentences)
+   - Current state (what's wrong/missing)
+   - Implementation steps (numbered list)
+   - Complete code example (ready to copy-paste)
+   - Expected impact
+
+5. Focus on these areas (in priority order):
+   a. Meta Tags (title, description) - MUST include actual HTML code
+   b. Schema Markup (JSON-LD) - MUST include complete JSON-LD code
+   c. Header Tags (H1, H2, H3) - MUST include HTML examples
+   d. robots.txt - MUST include complete robots.txt content
+   e. XML Sitemap - MUST include sitemap structure example
+   f. Technical fixes (canonical tags, redirects, etc.) - MUST include code
+   g. Content optimization - MUST include before/after examples
+
+6. Format as Markdown with clear sections
+7. Each code block must be complete and production-ready
+8. NO generic advice - only specific, implementable recommendations
+9. NO references to external tools (like Ahrefs) - focus on what they can do directly
+
+Generate 10-15 prioritized recommendations with complete code examples."""
+
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are an expert SEO developer. Generate specific, actionable SEO recommendations with complete, production-ready code examples that users can directly implement."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=4000
+        )
+        
+        return response.choices[0].message.content.strip()
+        
+    except Exception as e:
+        return f"# Error Generating AI Optimized Recommendations\n\nAn error occurred: {str(e)}\n\nPlease try again or refer to the main SEO report for recommendations."
+
+
 async def ai_rewrite_seo_content(
     original_content: str,
     rewrite_type: str = "improve",

@@ -66,6 +66,12 @@ fi
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --region "${AWS_REGION}" --query Account --output text)
 ECR_BASE_URL="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
+# Check for required tools
+if ! command -v jq &> /dev/null; then
+    error "jq is required but not installed. Please install jq: brew install jq (macOS) or apt-get install jq (Linux)"
+    exit 1
+fi
+
 log "Region: ${AWS_REGION} | Account: ${AWS_ACCOUNT_ID} | Cluster: ${CLUSTER}"
 echo ""
 
@@ -234,11 +240,103 @@ build_and_push_images() {
     return 0
 }
 
+# Function: Wait for ECS service to be stable
+wait_for_service_stable() {
+    local SERVICE=$1
+    local MAX_WAIT=${2:-600}  # Default 10 minutes
+    local INTERVAL=10
+    local ELAPSED=0
+    
+    log "Waiting for ${SERVICE} to be stable..."
+    
+    while [ $ELAPSED -lt $MAX_WAIT ]; do
+        # Get service status
+        local SERVICE_STATUS=$(aws ecs describe-services \
+            --cluster "${CLUSTER}" \
+            --services "${SERVICE}" \
+            --region "${AWS_REGION}" \
+            --query 'services[0]' \
+            --output json 2>/dev/null)
+        
+        if [ -z "$SERVICE_STATUS" ] || [ "$SERVICE_STATUS" = "null" ]; then
+            warning "${SERVICE} not found, skipping..."
+            return 1
+        fi
+        
+        # Check if service is stable
+        local RUNNING_COUNT=$(echo "$SERVICE_STATUS" | jq -r '.runningCount // 0')
+        local DESIRED_COUNT=$(echo "$SERVICE_STATUS" | jq -r '.desiredCount // 0')
+        local DEPLOYMENTS=$(echo "$SERVICE_STATUS" | jq -r '.deployments | length')
+        
+        # Service is stable when:
+        # 1. Running count equals desired count
+        # 2. Only one active deployment (old one is drained)
+        # 3. All tasks are running and healthy
+        if [ "$RUNNING_COUNT" -eq "$DESIRED_COUNT" ] && [ "$DEPLOYMENTS" -eq 1 ]; then
+            # Check if all tasks are healthy
+            local TASKS=$(aws ecs list-tasks \
+                --cluster "${CLUSTER}" \
+                --service-name "${SERVICE}" \
+                --region "${AWS_REGION}" \
+                --desired-status RUNNING \
+                --query 'taskArns[]' \
+                --output json 2>/dev/null | jq -r '.[]' | head -n ${DESIRED_COUNT})
+            
+            if [ -z "$TASKS" ] || [ "$TASKS" = "null" ]; then
+                echo -n "."
+                sleep $INTERVAL
+                ELAPSED=$((ELAPSED + INTERVAL))
+                continue
+            fi
+            
+            # Check task health status
+            local ALL_HEALTHY=true
+            for TASK in $TASKS; do
+                local TASK_STATUS=$(aws ecs describe-tasks \
+                    --cluster "${CLUSTER}" \
+                    --tasks "$TASK" \
+                    --region "${AWS_REGION}" \
+                    --query 'tasks[0]' \
+                    --output json 2>/dev/null)
+                
+                local LAST_STATUS=$(echo "$TASK_STATUS" | jq -r '.lastStatus // "UNKNOWN"')
+                local HEALTH_STATUS=$(echo "$TASK_STATUS" | jq -r '.healthStatus // "UNKNOWN"')
+                
+                if [ "$LAST_STATUS" != "RUNNING" ]; then
+                    ALL_HEALTHY=false
+                    break
+                fi
+                
+                # If health check is enabled, verify it's healthy
+                if [ "$HEALTH_STATUS" != "UNKNOWN" ] && [ "$HEALTH_STATUS" != "HEALTHY" ]; then
+                    ALL_HEALTHY=false
+                    break
+                fi
+            done
+            
+            if [ "$ALL_HEALTHY" = true ]; then
+                success "${SERVICE} is stable (${RUNNING_COUNT}/${DESIRED_COUNT} tasks running)"
+                return 0
+            fi
+        fi
+        
+        echo -n "."
+        sleep $INTERVAL
+        ELAPSED=$((ELAPSED + INTERVAL))
+    done
+    
+    error "${SERVICE} did not become stable within ${MAX_WAIT} seconds"
+    return 1
+}
+
 # Function: Update ECS services
 update_ecs_services() {
+    local WAIT_FOR_STABLE=${1:-true}
+    
     log "Updating ECS services..."
     updated=0
     failed=0
+    services_to_wait=()
     
     for SERVICE in "${PROJECT_NAME}-node-backend" "${PROJECT_NAME}-python-backend" "${PROJECT_NAME}-frontend"; do
         log "Updating ${SERVICE}..."
@@ -251,6 +349,9 @@ update_ecs_services() {
             --output table &>/dev/null; then
             success "${SERVICE} update initiated"
             updated=$((updated + 1))
+            if [ "$WAIT_FOR_STABLE" = true ]; then
+                services_to_wait+=("${SERVICE}")
+            fi
         else
             warning "${SERVICE} update failed or service doesn't exist"
             failed=$((failed + 1))
@@ -259,10 +360,32 @@ update_ecs_services() {
     
     echo ""
     if [ $updated -gt 0 ]; then
-        success "${updated} service(s) updated"
+        success "${updated} service(s) update initiated"
     fi
     if [ $failed -gt 0 ]; then
         warning "${failed} service(s) failed to update"
+    fi
+    
+    # Wait for services to be stable
+    if [ "$WAIT_FOR_STABLE" = true ] && [ ${#services_to_wait[@]} -gt 0 ]; then
+        echo ""
+        log "Waiting for services to become stable..."
+        local all_stable=true
+        
+        for SERVICE in "${services_to_wait[@]}"; do
+            if ! wait_for_service_stable "${SERVICE}"; then
+                all_stable=false
+            fi
+        done
+        
+        echo ""
+        if [ "$all_stable" = true ]; then
+            success "All services are stable"
+            return 0
+        else
+            warning "Some services did not become stable"
+            return 1
+        fi
     fi
     
     return 0
@@ -300,19 +423,22 @@ else
     }
     echo ""
     
-    # Step 4: Update ECS services
-    update_ecs_services
-    echo ""
-    
-    # Get access URL from Terraform
-    log "Getting deployment URL..."
-    cd "${TERRAFORM_DIR}"
-    DOMAIN_NAME=$(grep "^domain_name" terraform.tfvars 2>/dev/null | cut -d'"' -f2 || echo "app.reelpostly.com")
-    cd ../..
-    
-    ACCESS_URL="https://${DOMAIN_NAME}"
-    
-    success "Deployment complete! Services are updating..."
+    # Step 4: Update ECS services and wait for stability
+    if update_ecs_services true; then
+        echo ""
+        # Get access URL from Terraform
+        log "Getting deployment URL..."
+        cd "${TERRAFORM_DIR}"
+        DOMAIN_NAME=$(grep "^domain_name" terraform.tfvars 2>/dev/null | cut -d'"' -f2 || echo "app.reelpostly.com")
+        cd ../..
+        
+        ACCESS_URL="https://${DOMAIN_NAME}"
+        
+        success "Deployment complete! All services are stable and running."
+    else
+        error "Deployment completed but some services are not stable"
+        exit 1
+    fi
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     success "🌐 Your application is available at:"

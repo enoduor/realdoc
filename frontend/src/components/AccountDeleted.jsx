@@ -1,32 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-// import { useClerk } from '@clerk/clerk-react';
 
 const AccountDeleted = () => {
-  // COMMENTED OUT: Clerk authentication
-  // const { signOut } = useClerk();
-  const signOut = async () => {};
-
-  const handleSignOut = async () => {
-    try {
-      // Clear any remaining user data
-      localStorage.clear();
-      
-      // Sign out from Clerk
-      const ORIGIN = window.location.origin;
-      const PUBLIC_BASE_RAW = process.env.PUBLIC_URL || '/';
-      const PUBLIC_BASE = PUBLIC_BASE_RAW.endsWith('/') ? PUBLIC_BASE_RAW : `${PUBLIC_BASE_RAW}/`;
-      const redirectUrl = `${ORIGIN}${PUBLIC_BASE}`;
-      
-      await signOut({
-        redirectUrl: redirectUrl,
-        callbackUrl: redirectUrl
-      });
-    } catch (error) {
-      console.error('Error during sign out:', error);
-      // Force redirect to home page
-      window.location.href = '/';
-    }
+  const handleSignOut = () => {
+    // Clear any remaining user data
+    localStorage.clear();
+    // Redirect to home page
+    window.location.href = '/';
   };
 
   return (

@@ -1,72 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { useUser, useClerk } from '@clerk/clerk-react';
-import { useAuthContext } from '../context/AuthContext';
-import ErrorModal from './ErrorModal';
+import usePaymentModal from './PaymentModal';
 
-// API functions for subscription
-const getApiUrl = () => {
-  if (typeof window !== 'undefined' && window.location) {
-    return window.location.origin;
-  }
-  throw new Error('Unable to determine API URL: window.location is not available');
-};
-
-const getPriceId = async (plan, cycle) => {
-  const API_URL = getApiUrl();
-  const r = await fetch(`${API_URL}/api/stripe/get-price-id`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ plan, billingCycle: cycle })
-  });
-  const text = await r.text();
-  const isJson = (r.headers.get("content-type") || "").includes("application/json");
-  const data = isJson ? JSON.parse(text) : text;
-  if (!r.ok) {
-    if (r.status === 400 && typeof data === "object" && data.varName) {
-      throw new Error(`Pricing configuration error: ${data.error}. Please contact support.`);
-    }
-    throw new Error(`getPriceId: ${r.status} ${typeof data === "string" ? data : data?.error || 'Unknown error'}`);
-  }
-  return data;
-};
-
-const createSubscriptionSession = async (priceId, { plan, billingCycle, promoCode, email, clerkUserId } = {}, authToken) => {
-  const API_URL = getApiUrl();
-  const headers = {
-    "Content-Type": "application/json",
-  };
-  
-  if (authToken) {
-    headers["Authorization"] = `Bearer ${authToken}`;
-  }
-  
-  const res = await fetch(`${API_URL}/api/billing/create-checkout-session`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ priceId, plan, billingCycle, promoCode, email, clerkUserId }),
-  });
-  
-  const text = await res.text();
-  const isJson = (res.headers.get("content-type") || "").includes("application/json");
-  const data = isJson ? JSON.parse(text) : text;
-  
-  if (!res.ok) {
-    throw new Error(typeof data === "string" ? data : data?.error || res.statusText);
-  }
-  
-  if (!data || !data.url) {
-    throw new Error('Checkout URL not found');
-  }
-  
-  return data;
-};
 
 const SEOGenerator = () => {
-    const { isSignedIn } = useUser();
-    const { openSignUp } = useClerk();
-    const { me, loading: authLoading } = useAuthContext();
     
     const [formData, setFormData] = useState({
         website_url: '',
@@ -85,13 +23,8 @@ const SEOGenerator = () => {
     const [productionMetaTags, setProductionMetaTags] = useState(null);
     const [rewriteLoading, setRewriteLoading] = useState(false);
     const [qaResult, setQaResult] = useState(null);
-    const [errorModal, setErrorModal] = useState({ 
-        show: false, 
-        title: '', 
-        message: '', 
-        type: 'error'
-    });
-    const [checkoutLoading, setCheckoutLoading] = useState(false);
+    const [aiOptimizedRecommendations, setAiOptimizedRecommendations] = useState(null);
+    const [recommendationsLoading, setRecommendationsLoading] = useState(false);
 
     const handleInputChange = (e) => {
         const { name, value, type } = e.target;
@@ -124,114 +57,58 @@ const SEOGenerator = () => {
         return url;
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        
-        // Check if user is signed in
-        if (!isSignedIn) {
-            openSignUp();
-            return;
-        }
-
-        // Wait for auth data to load if still loading
-        if (authLoading) {
-            setError('Please wait while we verify your subscription...');
-            return;
-        }
-
-        // Check subscription status - must have active subscription
-        const sub = (me?.subscriptionStatus || 'none').toLowerCase();
-        const hasSubscription = sub === 'active' || sub === 'trialing';
-
-        // If no subscription or subscription data not loaded, redirect to Stripe checkout
-        if (!me || !hasSubscription) {
-            console.log('🔒 No subscription found, redirecting to Stripe checkout...', { me, hasSubscription, sub });
-            
+    // Use payment modal hook
+    const { createCheckoutSession, loading: paymentLoading, ErrorModalComponent } = usePaymentModal({
+        formData,
+        validateForm: () => {
+            if (!formData.website_url || !formData.website_url.trim()) {
+                return { valid: false, error: 'Please enter a website URL' };
+            }
+            return { valid: true };
+        },
+        onPaymentSuccess: async (savedFormData) => {
             try {
-                setCheckoutLoading(true);
+                setLoading(true);
                 setError('');
                 
-                console.log('📦 Getting price ID...');
-                // Get price ID from backend (default to monthly)
-                const priceResponse = await getPriceId('creator', 'monthly');
-                const priceId = priceResponse.priceId;
-                console.log('✅ Price ID received:', priceId);
+                // Generate SEO report with saved form data
+                const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+                const isLocalhost = ORIGIN.includes('localhost') || ORIGIN.includes('127.0.0.1');
+                const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
+                    (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
                 
-                if (!priceId) {
-                    throw new Error('Price ID not found. Please contact support.');
-                }
+                const normalizedUrl = normalizeUrl(savedFormData.website_url);
+                const requestData = {
+                    ...savedFormData,
+                    website_url: normalizedUrl
+                };
                 
-                // Get Clerk auth token
-                let authToken = null;
-                let clerkUserId = null;
-                
-                if (window.Clerk && window.Clerk.user) {
-                    clerkUserId = window.Clerk.user.id;
-                    if (window.Clerk.session) {
-                        authToken = await window.Clerk.session.getToken();
-                    }
-                }
-                
-                // Create checkout session
-                const response = await createSubscriptionSession(priceId, {
-                    plan: 'creator',
-                    billingCycle: 'monthly',
-                    clerkUserId,
-                }, authToken);
-                
-                if (response && response.url) {
-                    window.location.replace(response.url);
-                    return;
-                }
-                
-                throw new Error('Failed to create checkout session');
-                
-            } catch (error) {
-                setCheckoutLoading(false);
-                setErrorModal({
-                    show: true,
-                    title: 'Subscription Required',
-                    message: `You need an active subscription to generate SEO reports. ${error.message || 'Failed to start checkout. Please try again.'}`,
-                    type: 'error'
+                const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/seo/`, requestData, {
+                    headers: { 'Content-Type': 'application/json' },
+                    timeout: 300000
                 });
+                
+                setSeoReport(response.data);
+                setEditedReport(response.data.report);
+                setIsEditing(false);
+            } catch (err) {
+                const errorMessage = err?.response?.data?.detail || 
+                    err?.response?.data?.message || 
+                    err?.message || 
+                    'Failed to generate SEO report';
+                setError(`Error: ${errorMessage}. Please check that the URL is correct and accessible.`);
+                throw err;
+            } finally {
+                setLoading(false);
             }
-            return;
-        }
-        
-        setLoading(true);
-        setError('');
+        },
+        successRedirectPath: '/seo-generator',
+        cancelRedirectPath: '/seo-generator'
+    });
 
-        try {
-            const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
-            // Always use current origin in browser (ALB routes /ai/* to Python backend)
-            // Only use localhost if explicitly in development and ORIGIN is localhost
-            const isLocalhost = ORIGIN.includes('localhost') || ORIGIN.includes('127.0.0.1');
-            const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
-                (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
-            
-            // Normalize the URL before sending
-            const normalizedUrl = normalizeUrl(formData.website_url);
-            const requestData = {
-                ...formData,
-                website_url: normalizedUrl
-            };
-            
-            const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/seo/`, requestData, {
-                headers: { 'Content-Type': 'application/json' },
-                timeout: 300000 // 5 minutes timeout for crawling and AI generation
-            });
-            setSeoReport(response.data);
-            setEditedReport(response.data.report);
-            setIsEditing(false);
-        } catch (err) {
-            const errorMessage = err?.response?.data?.detail || 
-                err?.response?.data?.message || 
-                err?.message || 
-                'Failed to generate SEO report';
-            setError(`Error: ${errorMessage}. Please check that the URL is correct and accessible.`);
-        } finally {
-            setLoading(false);
-        }
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        await createCheckoutSession();
     };
 
     const handleDownload = () => {
@@ -399,6 +276,35 @@ const SEOGenerator = () => {
             setQaResult(response.data);
         } catch (err) {
             alert(`Error checking quality: ${err?.response?.data?.detail || err?.message || 'Unknown error'}`);
+        }
+    };
+
+    const handleGenerateAIRecommendations = async () => {
+        const reportToUse = isEditing ? editedReport : (seoReport?.report || '');
+        if (!reportToUse) {
+            alert('Please generate an SEO report first');
+            return;
+        }
+        
+        setRecommendationsLoading(true);
+        try {
+            const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+            const isLocalhost = ORIGIN.includes('localhost') || ORIGIN.includes('127.0.0.1');
+            const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
+                (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
+            
+            const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/seo/ai-optimized-recommendations`, {
+                website_url: formData.website_url,
+                seo_report: reportToUse,
+                business_type: formData.business_type,
+                target_keywords: formData.target_keywords || null
+            });
+            
+            setAiOptimizedRecommendations(response.data);
+        } catch (err) {
+            alert(`Error generating recommendations: ${err?.response?.data?.detail || err?.message || 'Unknown error'}`);
+        } finally {
+            setRecommendationsLoading(false);
         }
     };
 
@@ -607,14 +513,14 @@ const SEOGenerator = () => {
 
                         <button
                             type="submit"
-                            disabled={loading || checkoutLoading}
+                            disabled={loading || paymentLoading}
                             className={`py-2 px-4 rounded font-medium text-white ${
-                                (loading || checkoutLoading)
+                                (loading || paymentLoading)
                                     ? 'bg-gray-400 cursor-not-allowed'
                                     : 'bg-blue-600 hover:bg-blue-700'
                             }`}
                         >
-                            {checkoutLoading ? 'Redirecting to checkout...' : loading ? 'Crawling website and analyzing SEO...' : 'Generate SEO Report'}
+                            {(loading || paymentLoading) ? 'Processing...' : 'Generate SEO Report'}
                         </button>
                         
                         {loading && (
@@ -675,6 +581,13 @@ const SEOGenerator = () => {
                                                 className="px-3 py-1 text-sm bg-indigo-600 text-white hover:bg-indigo-700 rounded disabled:bg-gray-400"
                                             >
                                                 Meta Tags
+                                            </button>
+                                            <button
+                                                onClick={handleGenerateAIRecommendations}
+                                                disabled={loading || recommendationsLoading}
+                                                className="px-3 py-1 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded disabled:bg-gray-400"
+                                            >
+                                                {recommendationsLoading ? 'Generating...' : 'AI Recommendations'}
                                             </button>
                                             <button
                                                 onClick={handleQualityCheck}
@@ -761,6 +674,33 @@ const SEOGenerator = () => {
                         </div>
                     )}
 
+                    {/* AI Optimized Recommendations */}
+                    {aiOptimizedRecommendations && (
+                        <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                            <div className="flex justify-between items-center mb-3">
+                                <h4 className="font-semibold">AI Optimized SEO Recommendations</h4>
+                                <button
+                                    onClick={() => {
+                                        const text = aiOptimizedRecommendations.recommendations;
+                                        navigator.clipboard.writeText(text);
+                                        alert('Recommendations copied to clipboard!');
+                                    }}
+                                    className="px-3 py-1 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-3">
+                                Prioritized, actionable recommendations with complete code examples you can implement directly.
+                            </p>
+                            <div className="p-4 bg-white rounded border">
+                                <pre className="whitespace-pre-wrap font-mono text-sm text-left" style={{ textAlign: 'left' }}>
+                                    {aiOptimizedRecommendations.recommendations}
+                                </pre>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Production Meta Tags */}
                     {productionMetaTags && (
                         <div className="mt-6 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
@@ -805,18 +745,8 @@ const SEOGenerator = () => {
                 </div>
             </main>
 
-            {/* Error Modal */}
-            <ErrorModal
-                isOpen={errorModal.show}
-                onClose={() => setErrorModal({ show: false, title: '', message: '', type: 'error' })}
-                title={errorModal.title}
-                message={errorModal.message}
-                type={errorModal.type}
-                onConfirm={() => setErrorModal({ show: false, title: '', message: '', type: 'error' })}
-                confirmText="OK"
-                showCancel={false}
-                cancelText="Cancel"
-            />
+            {/* Payment Error Modal */}
+            {ErrorModalComponent}
         </div>
     );
 };

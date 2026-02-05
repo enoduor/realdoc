@@ -1,9 +1,6 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ContentProvider } from "./context/ContentContext";
-import ClerkLogin from "./components/Auth/ClerkLogin";
-import ClerkRegister from "./components/Auth/ClerkRegister";
-import ClerkProtectedRoute from "./components/Auth/ClerkProtectedRoute";
 import DocumentationGenerator from "./components/DocumentationGenerator";
 import DocumentationLanding from "./components/DocumentationLanding";
 import SEOGenerator from "./components/SEOGenerator";
@@ -18,11 +15,9 @@ import AboutPage from "./components/AboutPage";
 import TermsOfService from "./components/TermsOfService";
 import PrivacyPolicy from "./components/PrivacyPolicy";
 import PartnerWithUs from "./components/PartnerWithUs";
-import AccountDeleted from "./components/AccountDeleted";
 import "./App.css";
 
 export default function App() {
-
   return (
     <ContentProvider>
       <div className="App">
@@ -30,54 +25,23 @@ export default function App() {
           {/* Public */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/landing" element={<LandingPage />} />
-          <Route path="/login" element={<ClerkLogin />} />
-          <Route path="/register" element={<ClerkRegister />} />
           <Route path="/pricing" element={<PricingPage />} />
-              <Route path="/help" element={<HelpCenter />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/terms" element={<TermsOfService />} />
-              <Route path="/privacy" element={<PrivacyPolicy />} />
-                        <Route path="/partner" element={<PartnerWithUs />} />
-          <Route path="/account-deleted" element={<AccountDeleted />} />
+          <Route path="/help" element={<HelpCenter />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/partner" element={<PartnerWithUs />} />
 
           {/* Feature Landing Pages */}
           <Route path="/documentation" element={<DocumentationLanding />} />
           <Route path="/seo" element={<SEOLanding />} />
           <Route path="/analytics" element={<AnalyticsLanding />} />
 
-          {/* Protected */}
-          <Route
-            path="/dashboard"
-            element={
-              <ClerkProtectedRoute>
-                <Dashboard />
-              </ClerkProtectedRoute>
-            }
-          />
-          <Route
-            path="/documentation-generator"
-            element={
-              <ClerkProtectedRoute>
-                <DocumentationGenerator />
-              </ClerkProtectedRoute>
-            }
-          />
-          <Route
-            path="/seo-generator"
-            element={
-              <ClerkProtectedRoute>
-                <SEOGenerator />
-              </ClerkProtectedRoute>
-            }
-          />
-          <Route
-            path="/website-analytics"
-            element={
-              <ClerkProtectedRoute>
-                <WebsiteAnalytics />
-              </ClerkProtectedRoute>
-            }
-          />
+          {/* Public Routes (no auth required) */}
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/documentation-generator" element={<DocumentationGenerator />} />
+          <Route path="/seo-generator" element={<SEOGenerator />} />
+          <Route path="/website-analytics" element={<WebsiteAnalytics />} />
 
           {/* Safety: anything unknown → landing */}
           <Route path="*" element={<Navigate to="/" replace />} />

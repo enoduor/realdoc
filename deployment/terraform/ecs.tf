@@ -111,6 +111,14 @@ resource "aws_ecs_task_definition" "node_backend" {
         {
           name      = "STRIPE_CREATOR_YEARLY_PRICE_ID"
           valueFrom = aws_secretsmanager_secret.stripe_creator_yearly_price_id.arn
+        },
+        {
+          name      = "STRIPE_SEO_REPORT_PRICE_ID"
+          valueFrom = aws_secretsmanager_secret.stripe_seo_report_price_id.arn
+        },
+        {
+          name      = "STRIPE_WEBHOOK_SECRET"
+          valueFrom = "arn:aws:secretsmanager:us-west-2:657053005765:secret:realdoc/stripe-webhook-secret-thbKFS"
         }
       ]
 
@@ -359,6 +367,14 @@ resource "aws_secretsmanager_secret" "stripe_creator_yearly_price_id" {
   }
 }
 
+resource "aws_secretsmanager_secret" "stripe_seo_report_price_id" {
+  name = "${var.project_name}/stripe-seo-report-price-id"
+  
+  tags = {
+    Name = "${var.project_name}-stripe-seo-report-price-id-secret"
+  }
+}
+
 
 # IAM Policy for Secrets Manager access
 resource "aws_iam_role_policy" "ecs_task_secrets" {
@@ -382,7 +398,9 @@ resource "aws_iam_role_policy" "ecs_task_secrets" {
           aws_secretsmanager_secret.openai_api_key.arn,
           aws_secretsmanager_secret.similarweb_api_key.arn,
           aws_secretsmanager_secret.stripe_creator_monthly_price_id.arn,
-          aws_secretsmanager_secret.stripe_creator_yearly_price_id.arn
+          aws_secretsmanager_secret.stripe_creator_yearly_price_id.arn,
+          aws_secretsmanager_secret.stripe_seo_report_price_id.arn,
+          "arn:aws:secretsmanager:us-west-2:657053005765:secret:realdoc/stripe-webhook-secret-thbKFS"
         ]
       }
     ]

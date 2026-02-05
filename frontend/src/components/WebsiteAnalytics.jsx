@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { useUser, useClerk } from '@clerk/clerk-react';
+import usePaymentModal from './PaymentModal';
 
 const WebsiteAnalytics = () => {
-    const { isSignedIn } = useUser();
-    const { openSignUp } = useClerk();
     
     const [formData, setFormData] = useState({
         website_url: '',
@@ -51,52 +49,61 @@ const WebsiteAnalytics = () => {
         return urls.length > 0 ? urls : null;
     };
 
+    // Use payment modal hook
+    const { createCheckoutSession, loading: paymentLoading, ErrorModalComponent } = usePaymentModal({
+        formData,
+        validateForm: () => {
+            if (!formData.website_url || !formData.website_url.trim()) {
+                return { valid: false, error: 'Please enter a website URL' };
+            }
+            return { valid: true };
+        },
+        onPaymentSuccess: async (savedFormData) => {
+            try {
+                setLoading(true);
+                setError('');
+                
+                // Generate analytics report with saved form data
+                const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+                const isLocalhost = ORIGIN.includes('localhost') || ORIGIN.includes('127.0.0.1');
+                const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
+                    (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
+                
+                const normalizedUrl = normalizeUrl(savedFormData.website_url);
+                const normalizedCompetitors = normalizeCompetitorUrls(savedFormData.competitor_urls);
+                
+                const requestData = {
+                    ...savedFormData,
+                    website_url: normalizedUrl,
+                    competitor_urls: normalizedCompetitors ? normalizedCompetitors.join(', ') : null
+                };
+                
+                const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/analytics/`, requestData, {
+                    headers: { 'Content-Type': 'application/json' },
+                    timeout: 300000
+                });
+                
+                setAnalyticsReport(response.data);
+                setEditedReport(response.data.report);
+                setIsEditing(false);
+            } catch (err) {
+                const errorMessage = err?.response?.data?.detail || 
+                    err?.response?.data?.message || 
+                    err?.message || 
+                    'Failed to generate analytics report';
+                setError(`Error: ${errorMessage}. Please check that the URLs are correct and accessible.`);
+                throw err;
+            } finally {
+                setLoading(false);
+            }
+        },
+        successRedirectPath: '/website-analytics',
+        cancelRedirectPath: '/website-analytics'
+    });
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        // Check if user is signed in
-        if (!isSignedIn) {
-            openSignUp();
-            return;
-        }
-        
-        setLoading(true);
-        setError('');
-
-        try {
-            const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
-            // Always use current origin in browser (ALB routes /ai/* to Python backend)
-            // Only use localhost if explicitly in development and ORIGIN is localhost
-            const isLocalhost = ORIGIN.includes('localhost') || ORIGIN.includes('127.0.0.1');
-            const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
-                (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
-            
-            // Normalize URLs before sending
-            const normalizedUrl = normalizeUrl(formData.website_url);
-            const normalizedCompetitors = normalizeCompetitorUrls(formData.competitor_urls);
-            
-            const requestData = {
-                ...formData,
-                website_url: normalizedUrl,
-                competitor_urls: normalizedCompetitors ? normalizedCompetitors.join(', ') : null
-            };
-            
-            const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/analytics/`, requestData, {
-                headers: { 'Content-Type': 'application/json' },
-                timeout: 300000 // 5 minutes timeout for crawling and AI generation
-            });
-            setAnalyticsReport(response.data);
-            setEditedReport(response.data.report);
-            setIsEditing(false);
-        } catch (err) {
-            const errorMessage = err?.response?.data?.detail || 
-                err?.response?.data?.message || 
-                err?.message || 
-                'Failed to generate analytics report';
-            setError(`Error: ${errorMessage}. Please check that the URLs are correct and accessible.`);
-        } finally {
-            setLoading(false);
-        }
+        await createCheckoutSession();
     };
 
     const handleDownload = () => {
@@ -323,14 +330,14 @@ const WebsiteAnalytics = () => {
 
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || paymentLoading}
                             className={`py-2 px-4 rounded font-medium text-white ${
-                                loading 
+                                (loading || paymentLoading)
                                     ? 'bg-gray-400 cursor-not-allowed'
                                     : 'bg-blue-600 hover:bg-blue-700'
                             }`}
                         >
-                            {loading ? 'Crawling and analyzing website...' : 'Generate Analytics Report'}
+                            {(loading || paymentLoading) ? 'Processing...' : 'Generate Analytics Report'}
                         </button>
                         
                         {loading && (
@@ -424,6 +431,9 @@ const WebsiteAnalytics = () => {
                     )}
                 </div>
             </main>
+
+            {/* Payment Error Modal */}
+            {ErrorModalComponent}
         </div>
     );
 };

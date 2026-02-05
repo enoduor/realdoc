@@ -1,150 +1,55 @@
 import React, { useState } from 'react';
-import { useClerk, useUser } from '@clerk/clerk-react';
-import ErrorModal from './ErrorModal';
+import { useNavigate } from 'react-router-dom';
+import usePaymentModal from './PaymentModal';
 import './PricingSection.css';
 
-// API functions moved inline
-const getApiUrl = () => {
-  // Always use current origin (ALB routes /api/* to node backend)
-  // This works in both production and development when running locally
-  if (typeof window !== 'undefined' && window.location) {
-    return window.location.origin;
-  }
-  
-  // Fallback only for non-browser environments (should never happen in React)
-  throw new Error('Unable to determine API URL: window.location is not available');
-};
-
-const getPriceId = async (plan, cycle) => {
-  const API_URL = getApiUrl();
-  const r = await fetch(`${API_URL}/api/stripe/get-price-id`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ plan, billingCycle: cycle })
-  });
-  const text = await r.text();
-  const isJson = (r.headers.get("content-type") || "").includes("application/json");
-  const data = isJson ? JSON.parse(text) : text;
-  if (!r.ok) {
-    if (r.status === 400 && typeof data === "object" && data.varName) {
-      throw new Error(`Pricing configuration error: ${data.error}. Please contact support.`);
-    }
-    throw new Error(`getPriceId: ${r.status} ${typeof data === "string" ? data : data?.error || 'Unknown error'}`);
-  }
-  return data;
-};
-
-const createSubscriptionSession = async (priceId, { plan, billingCycle, promoCode, email, clerkUserId } = {}, authToken) => {
-  try {
-    const API_URL = getApiUrl();
-    const headers = {
-      "Content-Type": "application/json",
-    };
-    
-    // Add Authorization header if auth token is provided
-    if (authToken) {
-      headers["Authorization"] = `Bearer ${authToken}`;
-    }
-    
-    const res = await fetch(`${API_URL}/api/billing/create-checkout-session`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ priceId, plan, billingCycle, promoCode, email, clerkUserId }),
-    });
-    const text = await res.text();
-    const isJson = (res.headers.get("content-type") || "").includes("application/json");
-    const data = isJson ? JSON.parse(text) : text;
-    if (!res.ok) {
-      throw new Error(typeof data === "string" ? data : data?.error || res.statusText);
-    }
-    return data;
-  } catch (error) {
-    console.error('Error creating subscription session:', error);
-    throw error;
-  }
-};
 
 const PricingSection = () => {
+  const navigate = useNavigate();
   const [billingCycle, setBillingCycle] = useState('monthly');
-  const [errorModal, setErrorModal] = useState({ 
-    show: false, 
-    title: '', 
-    message: '', 
-    type: 'error'
-  });
 
   const plan = {
     name: 'All in One',
-    monthlyPrice: 18,
-    originalPrice: 36,
-    yearlyPrice: 10.75,
-    yearlyTotal: 129,
-    yearlySavings: 87,
+    monthlyPrice: 36,
+    originalPrice: 72, // Show 50% discount
+    yearlyPrice: null, // Yearly pricing not shown
+    yearlyTotal: null,
+    yearlySavings: null,
     features: [
       'Unlimited documentation generation',
       'All documentation types (User guides, API docs, Developer guides, etc.)',
-      'SEO analysis & recommendations',
+      'AI Optimized SEO Recommendations with code examples',
+      'Production-ready meta tags & schema markup',
+      'Keyword ranking & competitor analysis',
+      'Automatic website analysis & content discovery',
       'Website analytics & competitor insights',
-      'Multiple output formats (Markdown, HTML, Text)',
       'Advanced customization options',
       'Code examples support',
       'Priority support'
     ]
   };
 
-  const [loading, setLoading] = useState(false);
-  const { isSignedIn } = useUser();
-  const { openSignUp } = useClerk();
+  // Use payment modal hook for subscription checkout
+  // For subscriptions, we'll use minimal formData since it's just a subscription signup
+  const { createCheckoutSession, loading: paymentLoading, ErrorModalComponent } = usePaymentModal({
+    formData: {
+      subscription_type: 'monthly',
+      plan: 'all-in-one'
+    },
+    validateForm: () => {
+      // No validation needed for subscription signup
+      return { valid: true };
+    },
+    onPaymentSuccess: async () => {
+      // After successful payment, redirect to dashboard or home
+      navigate('/dashboard');
+    },
+    successRedirectPath: '/pricing',
+    cancelRedirectPath: '/pricing'
+  });
 
-  const handleStartTrial = async () => {
-    // If user is not signed in, open Clerk signup
-    if (!isSignedIn) {
-      openSignUp();
-      return;
-    }
-
-    // User is signed in - proceed to Stripe checkout
-    try {
-      setLoading(true);
-      
-      // Get price ID from backend
-      const { priceId } = await getPriceId('creator', billingCycle);
-      
-      // Get Clerk auth token
-      let authToken = null;
-      let clerkUserId = null;
-      if (window.Clerk && window.Clerk.user) {
-        clerkUserId = window.Clerk.user.id;
-        if (window.Clerk.session) {
-          try {
-            authToken = await window.Clerk.session.getToken();
-          } catch (error) {
-            console.error('Error getting Clerk token:', error);
-          }
-        }
-      }
-      
-      // Create checkout session
-      const response = await createSubscriptionSession(priceId, {
-        plan: 'creator',
-        billingCycle,
-        clerkUserId,
-      }, authToken);
-      
-      // Redirect to Stripe checkout
-      window.location.href = response.url;
-      
-    } catch (error) {
-      console.error('❌ Error starting trial:', error);
-      setErrorModal({
-        show: true,
-        title: 'Trial Start Failed',
-        message: `Failed to start trial: ${error.message}`,
-        type: 'error'
-      });
-    } finally {
-      setLoading(false);
-    }
+  const handleStartTrial = () => {
+    createCheckoutSession();
   };
 
   return (
@@ -154,22 +59,6 @@ const PricingSection = () => {
         <div className="pricing-header">
           <h2 className="pricing-title">Pricing</h2>
           <p className="pricing-subtitle">Start your free trial. No credit card required.</p>
-          
-          {/* Billing Toggle */}
-          <div className="billing-toggle">
-            <span className={billingCycle === 'monthly' ? 'active' : ''}>Monthly</span>
-            <button 
-              className="toggle-switch"
-              onClick={() => setBillingCycle(billingCycle === 'monthly' ? 'yearly' : 'monthly')}
-              aria-label="Toggle billing cycle"
-            >
-              <div className={`toggle-slider ${billingCycle === 'yearly' ? 'yearly' : ''}`}></div>
-            </button>
-            <span className={billingCycle === 'yearly' ? 'active' : ''}>
-              Yearly
-              {billingCycle === 'yearly' && <span className="discount-badge">Save 40%</span>}
-            </span>
-          </div>
         </div>
 
         {/* Pricing Card */}
@@ -183,17 +72,10 @@ const PricingSection = () => {
                 <div className="plan-pricing">
                   <div className="price-container">
                     <span className="currency">$</span>
-                    <span className="price">
-                      {billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}
-                    </span>
-                    {billingCycle === 'monthly' && plan.originalPrice && (
+                    <span className="price">{plan.monthlyPrice}</span>
+                    {plan.originalPrice && (
                       <span className="original-price-inline">
                         <span className="strikethrough">${plan.originalPrice}/monthly</span>
-                      </span>
-                    )}
-                    {billingCycle === 'yearly' && (
-                      <span className="yearly-savings-inline">
-                        Billed ${plan.yearlyTotal}/year • Save ${plan.yearlySavings}
                       </span>
                     )}
                   </div>
@@ -203,9 +85,9 @@ const PricingSection = () => {
                   <button 
                     className="cta-button"
                     onClick={handleStartTrial}
-                    disabled={loading}
+                    disabled={paymentLoading}
                   >
-                    {loading ? 'Loading...' : (
+                    {paymentLoading ? 'Processing...' : (
                       <>
                         Start Growing Traffic Today
                         <svg className="arrow-icon" viewBox="0 0 20 20" fill="currentColor">
@@ -244,14 +126,8 @@ const PricingSection = () => {
         </div>
       </div>
 
-      {/* Error Modal */}
-      <ErrorModal
-        isOpen={errorModal.show}
-        onClose={() => setErrorModal({ show: false, title: '', message: '', type: 'error' })}
-        title={errorModal.title}
-        message={errorModal.message}
-        type={errorModal.type}
-      />
+      {/* Payment Error Modal */}
+      {ErrorModalComponent}
     </section>
   );
 };

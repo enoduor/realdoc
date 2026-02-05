@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, validator
 from typing import Optional, List, Dict, Any
-from utils.seo_helper import generate_seo_report, generate_production_ready_meta_tags, ai_rewrite_seo_content, quality_assurance_check
+from utils.seo_helper import generate_seo_report, generate_production_ready_meta_tags, ai_rewrite_seo_content, quality_assurance_check, generate_ai_optimized_recommendations
 from utils.web_crawler import crawl_and_extract
 import asyncio
 
@@ -155,6 +155,43 @@ async def check_quality(request: QACheckRequest):
     try:
         qa_result = quality_assurance_check(request.report, request.website_url)
         return qa_result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class AIOptimizedRecommendationsRequest(BaseModel):
+    website_url: str
+    seo_report: str
+    business_type: str = "saas"
+    target_keywords: Optional[str] = None
+
+
+class AIOptimizedRecommendationsResponse(BaseModel):
+    recommendations: str
+    word_count: int
+
+
+@router.post("/ai-optimized-recommendations", response_model=AIOptimizedRecommendationsResponse)
+async def get_ai_optimized_recommendations(request: AIOptimizedRecommendationsRequest):
+    """Generate AI-optimized, prioritized SEO recommendations with direct implementation code."""
+    try:
+        # Crawl website for current state
+        crawled_data = await crawl_and_extract(request.website_url)
+        
+        recommendations = await generate_ai_optimized_recommendations(
+            website_url=request.website_url,
+            seo_report=request.seo_report,
+            business_type=request.business_type,
+            target_keywords=request.target_keywords,
+            crawled_data=crawled_data
+        )
+        
+        word_count = count_words(recommendations)
+        
+        return AIOptimizedRecommendationsResponse(
+            recommendations=recommendations,
+            word_count=word_count
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
