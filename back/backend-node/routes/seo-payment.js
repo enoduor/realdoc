@@ -42,10 +42,10 @@ router.post("/create-checkout-session", async (req, res) => {
     }
 
     const frontendUrl = process.env.FRONTEND_URL || "https://app.reelpostly.com";
-    
-    // Create a one-time payment checkout session
+
+    // Create a subscription checkout session (we only use recurring prices)
     const session = await stripe.checkout.sessions.create({
-      mode: "payment", // One-time payment, not subscription
+      mode: "subscription",
       line_items: [
         {
           price: priceId,
@@ -53,6 +53,8 @@ router.post("/create-checkout-session", async (req, res) => {
         },
       ],
       payment_method_types: ["card"],
+      // Enable promo codes in Checkout (Stripe Dashboard must have active coupons/promo codes)
+      allow_promotion_codes: true,
       success_url: `${frontendUrl}${redirectPath}?session_id={CHECKOUT_SESSION_ID}&payment=success`,
       cancel_url: `${frontendUrl}${redirectPath}?payment=cancelled`,
       metadata: {
