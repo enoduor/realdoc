@@ -1,30 +1,32 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUser, useClerk } from '@clerk/clerk-react';
 import usePaymentModal from './PaymentModal';
 import './PricingSection.css';
 
 
 const PricingSection = () => {
   const navigate = useNavigate();
+  const { isLoaded, isSignedIn, user } = useUser();
+  const { openSignIn } = useClerk();
   const [billingCycle, setBillingCycle] = useState('monthly');
 
   const plan = {
     name: 'All in One',
-    monthlyPrice: 36,
-    originalPrice: 72, // Show 50% discount
+    monthlyPrice: 18,
+    originalPrice: 36, // Show discount
     yearlyPrice: null, // Yearly pricing not shown
     yearlyTotal: null,
     yearlySavings: null,
     features: [
       'Unlimited documentation generation',
-      'All documentation types (User guides, API docs, Developer guides, etc.)',
+      'Generate User guides, API docs, Developer guides, etc.',
       'AI Optimized SEO Recommendations with code examples',
       'Production-ready meta tags & schema markup',
       'Keyword ranking & competitor analysis',
       'Automatic website analysis & content discovery',
       'Website analytics & competitor insights',
-      'Advanced customization options',
-      'Code examples support',
+      'Generate AI Powered UGC content for social media campaigns',
       'Priority support'
     ]
   };
@@ -49,7 +51,22 @@ const PricingSection = () => {
   });
 
   const handleStartTrial = () => {
-    createCheckoutSession();
+    if (!isLoaded) {
+      return;
+    }
+
+    if (!isSignedIn) {
+      // If user signs in from pricing, take them straight to the dashboard
+      openSignIn({ redirectUrl: `${window.location.origin}/dashboard` });
+      return;
+    }
+
+    createCheckoutSession({
+      clerkUserId: user.id,
+      email: user.primaryEmailAddress?.emailAddress || '',
+      firstName: user.firstName || '',
+      lastName: user.lastName || ''
+    });
   };
 
   return (

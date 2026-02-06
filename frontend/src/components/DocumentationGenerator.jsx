@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+import { useUser, useClerk } from '@clerk/clerk-react';
 import usePaymentModal from './PaymentModal';
 import {
     DOCUMENTATION_TYPES,
@@ -13,6 +14,8 @@ import {
 } from '../constants/documentationTypes';
 
 const DocumentationGenerator = () => {
+    const { isLoaded, isSignedIn, user } = useUser();
+    const { openSignIn } = useClerk();
     const [searchParams] = useSearchParams();
     const urlDocType = searchParams.get('type');
     
@@ -60,19 +63,7 @@ const DocumentationGenerator = () => {
         }));
     };
 
-    // Use payment modal hook
-    const { createCheckoutSession, loading: paymentLoading, ErrorModalComponent } = usePaymentModal({
-        formData,
-        validateForm: () => {
-            if (!formData.app_name || !formData.app_name.trim()) {
-                return { valid: false, error: 'Please enter an app name' };
-            }
-            if (!formData.feature_description || !formData.feature_description.trim()) {
-                return { valid: false, error: 'Please enter a feature description' };
-            }
-            return { valid: true };
-        },
-        onPaymentSuccess: async (savedFormData) => {
+    const handlePaidAndGenerate = async (savedFormData) => {
             try {
                 setLoading(true);
                 setError('');
@@ -106,14 +97,64 @@ const DocumentationGenerator = () => {
             } finally {
                 setLoading(false);
             }
+        };
+
+    // Use payment modal hook
+    const { createCheckoutSession, loading: paymentLoading, ErrorModalComponent } = usePaymentModal({
+        formData,
+        validateForm: () => {
+            if (!formData.app_name || !formData.app_name.trim()) {
+                return { valid: false, error: 'Please enter an app name' };
+            }
+            if (!formData.feature_description || !formData.feature_description.trim()) {
+                return { valid: false, error: 'Please enter a feature description' };
+            }
+            return { valid: true };
         },
+        onPaymentSuccess: handlePaidAndGenerate,
         successRedirectPath: '/documentation-generator',
         cancelRedirectPath: '/documentation-generator'
     });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        await createCheckoutSession();
+
+        if (!isLoaded) {
+            return;
+        }
+
+        if (!isSignedIn) {
+            openSignIn({ redirectUrl: `${window.location.origin}/dashboard` });
+            return;
+        }
+
+        try {
+            const base = window.location.origin;
+            const res = await fetch(`${base}/api/dashboard/subscription-status?clerkUserId=${encodeURIComponent(user.id)}`);
+            const data = await res.json();
+
+            const hasActive =
+                data && data.success && data.hasActiveSubscription;
+
+            if (hasActive) {
+                try {
+                    await handlePaidAndGenerate(formData);
+                } catch (_e) {
+                    // handlePaidAndGenerate already sets user-visible error state
+                }
+                return;
+            }
+        } catch (err) {
+            console.error('Error checking subscription status before documentation checkout', err);
+            // Fall through to checkout
+        }
+
+        await createCheckoutSession({
+            clerkUserId: user.id,
+            email: user.primaryEmailAddress?.emailAddress || '',
+            firstName: user.firstName || '',
+            lastName: user.lastName || ''
+        });
     };
 
 
@@ -209,10 +250,10 @@ const DocumentationGenerator = () => {
                     </div>
                     
                     <Link
-                        to="/"
+                        to="/dashboard"
                         className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md"
                     >
-                        Back to Home
+                        Back to Dashboard
                     </Link>
                 </div>
             </header>

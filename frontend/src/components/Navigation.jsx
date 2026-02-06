@@ -1,18 +1,40 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useUser, useClerk } from '@clerk/clerk-react';
 import './Navigation.css';
 
 const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { isLoaded, isSignedIn } = useUser();
+  const { openSignIn, signOut } = useClerk();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  // Navigate to Documentation Generator
-  const handleGetStarted = () => {
-    navigate('/documentation-generator');
+  // Primary nav action:
+  // - If signed out → open Clerk sign in / sign up
+  // - If signed in and on dashboard → sign out
+  // - If signed in and on other pages → go to dashboard
+  const handlePrimaryAction = () => {
+    if (!isLoaded) return;
+
+    // Only used when signed out: opens Clerk sign-in / sign-up
+    if (!isSignedIn) {
+      openSignIn({
+        redirectUrl: `${window.location.origin}/dashboard`,
+      });
+    } else if (location.pathname === '/dashboard') {
+      // On dashboard page: sign out
+      signOut(() => {
+        navigate('/');
+      });
+    } else {
+      // On other pages: navigate to dashboard
+      navigate('/dashboard');
+    }
   };
 
   return (
@@ -33,7 +55,25 @@ const Navigation = () => {
         </div>
 
         <div className="nav-actions">
-          <button onClick={handleGetStarted} className="nav-btn nav-btn-primary">Generate Docs</button>
+          {!isLoaded ? null : (
+            <>
+              {!isSignedIn ? (
+                <button
+                  onClick={handlePrimaryAction}
+                  className="nav-btn nav-btn-primary"
+                >
+                  Sign in / Sign up
+                </button>
+              ) : (
+                <button
+                  onClick={handlePrimaryAction}
+                  className="nav-btn nav-btn-primary"
+                >
+                  {location.pathname === '/dashboard' ? 'Sign out' : 'Dashboard'}
+                </button>
+              )}
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -55,7 +95,25 @@ const Navigation = () => {
             <Link to="/documentation" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>Document Generator</Link>
           </div>
           <div className="mobile-nav-actions">
-            <button onClick={() => { handleGetStarted(); setIsMenuOpen(false); }} className="mobile-nav-btn mobile-nav-btn-primary">Generate Docs</button>
+            {!isLoaded ? null : (
+              <>
+                {!isSignedIn ? (
+                  <button
+                    onClick={() => { handlePrimaryAction(); setIsMenuOpen(false); }}
+                    className="mobile-nav-btn mobile-nav-btn-primary"
+                  >
+                    Sign in / Sign up
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => { handlePrimaryAction(); setIsMenuOpen(false); }}
+                    className="mobile-nav-btn mobile-nav-btn-primary"
+                  >
+                    {location.pathname === '/dashboard' ? 'Sign out' : 'Dashboard'}
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}

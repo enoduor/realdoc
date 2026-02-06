@@ -375,11 +375,11 @@ const LandingPage = () => {
 
             <div className={`faq-item-aidoc ${openFAQ === 5 ? 'active' : ''}`} onClick={() => toggleFAQ(5)}>
               <div className="faq-question-wrapper-aidoc">
-                <h3 className="faq-question-aidoc">How does the web crawling and competitor analysis work?</h3>
+                <h3 className="faq-question-aidoc">How does the automatic site analysis and competitor research work?</h3>
                 <span className="faq-icon-aidoc">{openFAQ === 5 ? '−' : '+'}</span>
               </div>
               <div className={`faq-answer-aidoc ${openFAQ === 5 ? 'open' : ''}`}>
-                <p>When you provide your app URL, RealDoc automatically crawls your website to gather information, searches for competitor applications, analyzes their documentation, and uses this comprehensive data to generate more accurate and complete documentation that follows industry best practices.</p>
+                <p>When you provide your app URL, RealDoc automatically analyzes your public pages, discovers similar products, reviews their content and documentation, and uses this combined insight to generate more accurate and complete documentation that follows industry best practices.</p>
               </div>
             </div>
           </div>

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { useUser, useClerk } from '@clerk/clerk-react';
 import usePaymentModal from './PaymentModal';
 
 const WebsiteAnalytics = () => {
-    
+    const { isLoaded, isSignedIn, user } = useUser();
+    const { openSignIn } = useClerk();
     const [formData, setFormData] = useState({
         website_url: '',
         competitor_urls: '',
@@ -49,16 +51,7 @@ const WebsiteAnalytics = () => {
         return urls.length > 0 ? urls : null;
     };
 
-    // Use payment modal hook
-    const { createCheckoutSession, loading: paymentLoading, ErrorModalComponent } = usePaymentModal({
-        formData,
-        validateForm: () => {
-            if (!formData.website_url || !formData.website_url.trim()) {
-                return { valid: false, error: 'Please enter a website URL' };
-            }
-            return { valid: true };
-        },
-        onPaymentSuccess: async (savedFormData) => {
+    const handlePaidAndGenerate = async (savedFormData) => {
             try {
                 setLoading(true);
                 setError('');
@@ -96,14 +89,61 @@ const WebsiteAnalytics = () => {
             } finally {
                 setLoading(false);
             }
+        };
+
+    // Use payment modal hook
+    const { createCheckoutSession, loading: paymentLoading, ErrorModalComponent } = usePaymentModal({
+        formData,
+        validateForm: () => {
+            if (!formData.website_url || !formData.website_url.trim()) {
+                return { valid: false, error: 'Please enter a website URL' };
+            }
+            return { valid: true };
         },
+        onPaymentSuccess: handlePaidAndGenerate,
         successRedirectPath: '/website-analytics',
         cancelRedirectPath: '/website-analytics'
     });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        await createCheckoutSession();
+
+        if (!isLoaded) {
+            return;
+        }
+
+        if (!isSignedIn) {
+            openSignIn({ redirectUrl: `${window.location.origin}/dashboard` });
+            return;
+        }
+
+        try {
+            const base = window.location.origin;
+            const res = await fetch(`${base}/api/dashboard/subscription-status?clerkUserId=${encodeURIComponent(user.id)}`);
+            const data = await res.json();
+
+            const hasActive =
+                data && data.success && data.hasActiveSubscription;
+
+            if (hasActive) {
+                try {
+                    await handlePaidAndGenerate(formData);
+                } catch (_e) {
+                    // handlePaidAndGenerate already sets user-visible error state
+                }
+                return;
+            }
+        } catch (err) {
+            console.error('Error checking subscription status before analytics checkout', err);
+            // Fall through to checkout
+        }
+
+        await createCheckoutSession({
+            clerkUserId: user.id,
+            email: user.primaryEmailAddress?.emailAddress || '',
+            firstName: user.firstName || '',
+            lastName: user.lastName || ''
+        });
     };
 
     const handleDownload = () => {
@@ -188,10 +228,10 @@ const WebsiteAnalytics = () => {
                     </div>
                     
                     <Link
-                        to="/"
+                        to="/dashboard"
                         className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md"
                     >
-                        Back to Home
+                        Back to Dashboard
                     </Link>
                 </div>
             </header>

@@ -42,6 +42,9 @@ export const usePaymentModal = ({
         const paymentStatus = searchParams.get('payment');
         
         if (sessionId && paymentStatus === 'success') {
+            // We compute redirect path once so we can always clean the URL
+            const redirectPath = successRedirectPath || window.location.pathname;
+
             // Verify payment and call success callback
             const verifyAndProcess = async () => {
                 try {
@@ -64,8 +67,7 @@ export const usePaymentModal = ({
                         await onPaymentSuccess(savedFormData);
                     }
                     
-                    // Clean URL
-                    const redirectPath = successRedirectPath || window.location.pathname;
+                    // Clean URL so we don't keep re-verifying on re-renders
                     window.history.replaceState({}, '', redirectPath);
                 } catch (err) {
                     const errorMessage = err?.message || 'Failed to verify payment';
@@ -78,6 +80,8 @@ export const usePaymentModal = ({
                     if (onPaymentError) {
                         onPaymentError(err);
                     }
+                    // Even on error, clear the URL query so we don't spam verification
+                    window.history.replaceState({}, '', redirectPath);
                 } finally {
                     setLoading(false);
                 }
@@ -99,7 +103,7 @@ export const usePaymentModal = ({
     /**
      * Create Stripe checkout session and redirect to payment
      */
-    const createCheckoutSession = async () => {
+    const createCheckoutSession = async (extraPayload = {}) => {
         // Validate form if validator provided
         if (validateForm) {
             const validation = validateForm();
@@ -123,7 +127,8 @@ export const usePaymentModal = ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     formData: formData,
-                    redirectPath: successRedirectPath || window.location.pathname
+                    redirectPath: successRedirectPath || window.location.pathname,
+                    ...extraPayload
                 })
             });
             

@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useUser, useClerk } from '@clerk/clerk-react';
+import Navigation from './Navigation';
 import ErrorModal from './ErrorModal';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { isLoaded, isSignedIn, user } = useUser();
+  const { openSignIn } = useClerk();
   const [errorModal, setErrorModal] = useState({ 
     show: false, 
     title: '', 
@@ -11,32 +15,135 @@ const Dashboard = () => {
     type: 'error'
   });
 
+  const [subscription, setSubscription] = useState({
+    loading: true,
+    hasActiveSubscription: false,
+    subscriptionStatus: 'none',
+    billingCycle: 'none',
+  });
+
+  // Protect dashboard route - redirect to sign-in if not authenticated
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      openSignIn({
+        redirectUrl: `${window.location.origin}/dashboard`,
+      });
+    }
+  }, [isLoaded, isSignedIn, openSignIn]);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      if (!isLoaded || !isSignedIn || !user) {
+        setSubscription((prev) => ({ ...prev, loading: false }));
+        return;
+      }
+
+      try {
+        const base = window.location.origin;
+        const res = await fetch(
+          `${base}/api/dashboard/subscription-status?clerkUserId=${encodeURIComponent(
+            user.id
+          )}`
+        );
+        const data = await res.json();
+
+        if (data && data.success) {
+          setSubscription({
+            loading: false,
+            hasActiveSubscription: data.hasActiveSubscription,
+            subscriptionStatus: data.subscriptionStatus,
+            billingCycle: data.billingCycle,
+          });
+        } else {
+          setSubscription((prev) => ({ ...prev, loading: false }));
+        }
+      } catch (err) {
+        console.error('Error fetching subscription status', err);
+        setSubscription((prev) => ({ ...prev, loading: false }));
+      }
+    };
+
+    fetchStatus();
+  }, [isLoaded, isSignedIn, user]);
+
   const features = [
-    { 
-      name: 'Documentation Generator', 
-      description: 'Generate comprehensive documentation for your online applications', 
-      icon: '📚', 
-      link: '/documentation-generator' 
+    {
+      name: 'SEO Generator',
+      description: 'Generate comprehensive SEO analysis and recommendations',
+      icon: '🔍',
+      link: '/seo-generator'
     },
-    { 
-      name: 'SEO Generator', 
-      description: 'Generate comprehensive SEO analysis and recommendations', 
-      icon: '🔍', 
-      link: '/seo-generator' 
+    {
+      name: 'Website Analytics',
+      description: 'Analyze website traffic and competitor insights',
+      icon: '📊',
+      link: '/website-analytics'
     },
-    { 
-      name: 'Website Analytics', 
-      description: 'Analyze website traffic and competitor insights', 
-      icon: '📊', 
-      link: '/website-analytics' 
+    {
+      name: 'Documentation Generator',
+      description: 'Generate comprehensive documentation for your online applications',
+      icon: '📚',
+      link: '/documentation-generator'
     }
   ];
 
+  // Don't render dashboard content if not signed in
+  if (!isLoaded || !isSignedIn) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 pt-24">
+          <div className="px-4 py-6 sm:px-0 text-center">
+            <p className="text-gray-600">Please sign in to access your dashboard.</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      {/* Global navigation with Clerk sign-in / dashboard / logout */}
+      <Navigation />
+
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 pt-24">
         <div className="px-4 py-6 sm:px-0">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+              {isLoaded && isSignedIn && user && (
+                <p className="mt-1 text-sm text-gray-600">
+                  Logged in as{' '}
+                  <span className="font-medium">
+                    {user.firstName && user.lastName
+                      ? `${user.firstName} ${user.lastName}`
+                      : user.primaryEmailAddress?.emailAddress || user.id}
+                  </span>
+                </p>
+              )}
+            </div>
+
+            {isLoaded && isSignedIn && !subscription.loading && (
+              <div className="mt-4 sm:mt-0">
+                {subscription.hasActiveSubscription ? (
+                  <span className="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700 border border-green-200">
+                    Subscribed ({subscription.subscriptionStatus}
+                    {subscription.billingCycle && subscription.billingCycle !== 'none'
+                      ? ` · ${subscription.billingCycle}`
+                      : ''}
+                    )
+                  </span>
+                ) : (
+                  <span
+                    className="inline-flex items-center rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700 border border-yellow-200 cursor-pointer"
+                    onClick={() => navigate('/pricing')}
+                  >
+                    No active subscription – View pricing
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Feature cards */}
           <div className="flex justify-center items-center min-h-[400px]">

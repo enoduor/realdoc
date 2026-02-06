@@ -117,6 +117,7 @@ app.get('/ping', (_req, res) => {
 
 // --- API routes ---
 app.use("/api/seo-payment", require("./routes/seo-payment"));
+app.use("/api/dashboard", require("./routes/dashboard"));
 app.use("/api", (_req, res) => res.send("ok"));
 
 // --- Simple root ---
