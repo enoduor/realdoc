@@ -128,7 +128,7 @@ const LandingPage = () => {
           </h1>
           
           <p className="hero-subtitle-aidoc">
-            See what's holding your site back, understand why competitors win, and fix exactly what matters. Optimize SEO, analyze your website, and generate clear, actionable documentation in minutes, without technical skills.
+            See what's holding your site back, understand why competitors win, and get clear next steps to help more people discover your business.
           </p>
 
           {/* Three Hero Cards */}

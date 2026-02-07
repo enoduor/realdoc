@@ -29,7 +29,7 @@ const SEOLanding = () => {
                     </h1>
                     
                     <p className="hero-subtitle-aidoc">
-                        Generate professional SEO reports instantly. Enter your website URL, and receive comprehensive SEO analysis with technical audits, on-page optimization, content strategy, and implementation roadmap. Copy, download, and use immediately - no SEO expertise required.
+                        See what's holding your site back and get clear next steps to help more people discover your business.
                     </p>
 
                     <div className="doc-types-selector">

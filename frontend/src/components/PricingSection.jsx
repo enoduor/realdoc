@@ -26,8 +26,7 @@ const PricingSection = () => {
       'Keyword ranking & competitor analysis',
       'Automatic website analysis & content discovery',
       'Website analytics & competitor insights',
-      'Generate AI Powered UGC content for social media campaigns',
-      'Priority support'
+      'Generate AI Powered UGC content'
     ]
   };
 

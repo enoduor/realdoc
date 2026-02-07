@@ -29,7 +29,7 @@ const DocumentationLanding = () => {
                     </h1>
                     
                     <p className="hero-subtitle-aidoc">
-                        Generate professional documentation instantly. Fill out a simple form, click generate, and receive complete documentation with proper structure, formatting, and code examples. Copy, download, or use immediately - no technical writing skills required.
+                        See what needs to be documented, generate clear structure instantly, and get ready-to-use documentation you can copy, download, and use right away.
                     </p>
 
                     <div className="doc-types-selector">
@@ -156,7 +156,7 @@ const DocumentationLanding = () => {
             <section className="final-cta-section-aidoc">
                 <div className="final-cta-container-aidoc">
                     <h2 className="final-cta-title-aidoc">Generate Professional Documentation</h2>
-                    <p className="final-cta-subtitle-aidoc">Start your 3-day free trial and cancel anytime. 30-day money-back guarantee</p>
+                    <p className="final-cta-subtitle-aidoc">7-Day Money-Back Guarantee</p>
                     <button onClick={handleGenerate} className="cta-button-aidoc">
                         Get Started
                     </button>
