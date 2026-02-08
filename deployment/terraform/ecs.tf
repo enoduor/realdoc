@@ -179,6 +179,10 @@ resource "aws_ecs_task_definition" "python_backend" {
         {
           name  = "ENVIRONMENT"
           value = "production"
+        },
+        {
+          name  = "FRONTEND_ORIGIN"
+          value = "https://${var.domain_name}"
         }
       ]
 

@@ -158,8 +158,6 @@ router.get("/verify-session/:sessionId", async (req, res) => {
               stripeCustomerId,
               stripeSubscriptionId,
               subscriptionStatus,
-              // Treat this as a single "all access" creator-style plan
-              selectedPlan: "creator",
               billingCycle: interval === "year" ? "yearly" : interval,
               lastActiveDate: new Date(),
             },
@@ -186,6 +184,7 @@ router.get("/verify-session/:sessionId", async (req, res) => {
       sessionId: session.id,
       paymentStatus: session.payment_status,
       formData: formData,
+      subscriptionId: stripeSubscriptionId || null, // Include subscription ID for AI Search state consumption
     });
   } catch (err) {
     console.error("❌ Error verifying session:", err);

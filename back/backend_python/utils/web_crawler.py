@@ -913,7 +913,7 @@ async def cluster_keywords_by_intent_difficulty_opportunity(
         - low_opportunity: Low opportunity keywords
     """
     import os
-    from openai import OpenAI
+    from openai import AsyncOpenAI
     from dotenv import load_dotenv
     
     load_dotenv()
@@ -922,7 +922,7 @@ async def cluster_keywords_by_intent_difficulty_opportunity(
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key or api_key == "sk-placeholder" or api_key.startswith("sk-placeholder"):
             raise ValueError("OpenAI API key is not configured.")
-        return OpenAI(api_key=api_key)
+        return AsyncOpenAI(api_key=api_key)
     
     # Create ranking map for quick lookup
     ranking_map = {r.get('keyword', ''): r for r in rankings_data if r}
@@ -985,7 +985,7 @@ Return a JSON object with this structure:
 
 Only return valid JSON, no additional text."""
         
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You are an expert SEO analyst specializing in keyword research and clustering. Return only valid JSON."},

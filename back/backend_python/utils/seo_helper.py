@@ -1,13 +1,16 @@
 import os
-from openai import OpenAI
+import asyncio
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from typing import Optional, List, Dict, Any
+from urllib.parse import urlparse
 from utils.web_crawler import crawl_and_extract, format_crawled_content_for_prompt, analyze_keyword_rankings, get_competitor_high_volume_keywords, cluster_keywords_by_intent_difficulty_opportunity
+from utils.brand_visibility_helper import get_brand_visibility_data, format_brand_visibility_data_for_prompt
 
 # Load environment variables
 load_dotenv()
 
-# Initialize OpenAI client dynamically
+# Initialize OpenAI async client dynamically
 def get_openai_client():
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key or api_key == "sk-placeholder" or api_key.startswith("sk-placeholder"):
@@ -15,7 +18,7 @@ def get_openai_client():
             "OpenAI API key is not configured. Please set OPENAI_API_KEY in your .env file. "
             "Get your API key from https://platform.openai.com/api-keys"
         )
-    return OpenAI(api_key=api_key)
+    return AsyncOpenAI(api_key=api_key)
 
 async def generate_seo_report(
     website_url: str,
@@ -115,6 +118,50 @@ async def generate_seo_report(
             error_msg = str(e)
             print(f"Error clustering keywords: {error_msg}")
             keyword_clusters = None
+    
+    # Fetch brand visibility data (always fetch - it's free and provides valuable context)
+    # Wrap in timeout to prevent hanging
+    brand_visibility_data = None
+    brand_visibility_text = ""
+    try:
+        print("Fetching brand visibility data...")
+        # Extract brand name from URL or use domain name
+        parsed_url = urlparse(normalized_url)
+        domain = parsed_url.netloc.replace('www.', '')
+        brand_name = domain.split('.')[0].title()  # Use first part of domain as brand name
+        
+        # Try to get brand name from crawled data if available
+        if crawled_data and crawled_data.get("title"):
+            # Use website title as brand name if available
+            title = crawled_data.get("title", "")
+            if title:
+                brand_name = title.split('|')[0].split('-')[0].strip()[:50]  # Take first part before | or -
+        
+        # Fetch with timeout to prevent hanging (35 seconds max)
+        try:
+            brand_visibility_data = await asyncio.wait_for(
+                get_brand_visibility_data(
+                    brand_name=brand_name,
+                    website_url=normalized_url,
+                    max_results=20,
+                    include_seo_sources=True,
+                    include_analytics_sources=False  # Analytics sources handled separately
+                ),
+                timeout=35.0
+            )
+        except asyncio.TimeoutError:
+            print("⚠️  Brand visibility fetch timed out - continuing without it")
+            brand_visibility_data = None
+        
+        if brand_visibility_data and brand_visibility_data.get("available"):
+            brand_visibility_text = format_brand_visibility_data_for_prompt(brand_visibility_data, brand_name)
+            print(f"Brand visibility data fetched: {brand_visibility_data.get('total_mentions', 0)} mentions found")
+        else:
+            print("No brand visibility data available")
+    except Exception as e:
+        error_msg = str(e)
+        print(f"Error fetching brand visibility data: {error_msg}")
+        brand_visibility_data = None
     
     # Build the prompt
     focus_areas_text = ", ".join(focus_areas)
@@ -258,7 +305,7 @@ Language: {language}"""
     section_num = 1
     
     # Always include Executive Summary
-    sections.append(f"{section_num}. **Executive Summary** (ALWAYS INCLUDE)\n   - Current SEO health score (0-100)\n   - Key strengths and weaknesses\n   - Priority action items")
+    sections.append(f"{section_num}. **Executive Summary** (ALWAYS INCLUDE)\n   - Current SEO health score (0-100)\n   - Key strengths and weaknesses\n   - **Brand Visibility Overview** (if brand visibility data is provided):\n     * Current brand presence in news and media\n     * Brand mention summary\n   - Priority action items")
     section_num += 1
     
     # Technical SEO
@@ -273,7 +320,7 @@ Language: {language}"""
     
     # Content SEO
     if "content" in focus_areas:
-        sections.append(f"{section_num}. **Content SEO & Keyword Rankings** (REQUIRED - Selected Focus Area)\n   - Current keyword ranking performance (based on actual search results analysis)\n   - Keywords the website currently ranks for and their positions\n   - Keywords that need optimization (not ranking or ranking low)\n   - **KEYWORD CLUSTERING ANALYSIS** (if provided):\n     * Keywords clustered by search intent (Informational, Navigational, Transactional, Commercial)\n     * Keywords categorized by ranking difficulty (Low, Medium, High)\n     * Keywords prioritized by opportunity score (High, Medium, Low)\n     * Strategic recommendations based on intent, difficulty, and opportunity clusters\n   - Content quality assessment\n   - Keyword research and targeting recommendations\n   - Content gaps and opportunities\n   - Content optimization recommendations\n   - Blog/content strategy\n   - E-A-T (Expertise, Authoritativeness, Trustworthiness) signals\n   - Specific recommendations to improve rankings for target keywords")
+        sections.append(f"{section_num}. **Content SEO & Keyword Rankings** (REQUIRED - Selected Focus Area)\n   - Current keyword ranking performance (based on actual search results analysis)\n   - Keywords the website currently ranks for and their positions\n   - Keywords that need optimization (not ranking or ranking low)\n   - **KEYWORD CLUSTERING ANALYSIS** (if provided):\n     * Keywords clustered by search intent (Informational, Navigational, Transactional, Commercial)\n     * Keywords categorized by ranking difficulty (Low, Medium, High)\n     * Keywords prioritized by opportunity score (High, Medium, Low)\n     * Strategic recommendations based on intent, difficulty, and opportunity clusters\n   - Content quality assessment\n   - Keyword research and targeting recommendations\n   - Content gaps and opportunities\n   - Content optimization recommendations\n   - Blog/content strategy\n   - E-A-T (Expertise, Authoritativeness, Trustworthiness) signals\n   - **Brand Mentions in Content** (if brand visibility data is provided):\n     * How brand is mentioned in news and media\n     * Content opportunities based on brand visibility\n   - Specific recommendations to improve rankings for target keywords")
         section_num += 1
     
     # Competitor Analysis (always include if data available)
@@ -283,7 +330,7 @@ Language: {language}"""
     
     # Off-Page SEO
     if "off-page" in focus_areas:
-        sections.append(f"{section_num}. **Off-Page SEO** (REQUIRED - Selected Focus Area)\n   - Backlink profile analysis\n   - Link building opportunities\n   - Social signals\n   - Local SEO (if applicable)\n   - Brand mentions")
+        sections.append(f"{section_num}. **Off-Page SEO** (REQUIRED - Selected Focus Area)\n   - Backlink profile analysis\n   - Link building opportunities\n   - Social signals\n   - Local SEO (if applicable)\n   - **Brand Mentions & Visibility** (if brand visibility data is provided):\n     * Current brand presence in news and media\n     * Brand mention analysis from Google News\n     * Media coverage assessment\n     * Brand reputation and sentiment analysis\n     * Recommendations for improving brand visibility")
         section_num += 1
     
     # Mobile SEO
@@ -332,6 +379,8 @@ Website Content (crawled):
 
 {keyword_clusters_text if keyword_clusters_text else ""}
 
+{brand_visibility_text if brand_visibility_text else ""}
+
 Please provide a comprehensive SEO analysis report covering ONLY the following sections based on the selected focus areas:
 
 {sections_text}
@@ -347,7 +396,7 @@ Please provide a comprehensive SEO analysis report covering ONLY the following s
     try:
         client = get_openai_client()
         
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -509,19 +558,59 @@ Generate the following in valid HTML/JSON format:
    - Article schema (if blog)
    - LocalBusiness schema (if local business)
 
-3. **Open Graph Tags**:
+3. **Open Graph Tags** (for Facebook, LinkedIn, WhatsApp, Telegram, Discord, Slack, etc.):
    - og:title
    - og:description
    - og:url
-   - og:type
-   - og:image (suggest placeholder URL)
+   - og:type (website, article, product, etc.)
+   - og:image (full URL to image, 1200x630px recommended)
+   - og:image:width
+   - og:image:height
+   - og:image:alt
    - og:site_name
+   - og:locale
+   - og:article:author (if article type)
+   - og:article:published_time (if article type)
+   - og:article:section (if article type)
+   - og:article:tag (if article type)
 
-4. **Twitter Card Tags**:
-   - twitter:card
+4. **Twitter/X Card Tags** (Complete set):
+   - twitter:card (summary, summary_large_image, app, or player)
    - twitter:title
    - twitter:description
-   - twitter:image
+   - twitter:image (full URL to image, 1200x630px recommended)
+   - twitter:image:alt (alt text for the image)
+   - twitter:site (Twitter handle, e.g., @username - optional but recommended)
+   - twitter:creator (Author's Twitter handle - optional)
+   - twitter:player (if card type is "player")
+   - twitter:player:width (if card type is "player")
+   - twitter:player:height (if card type is "player")
+
+5. **LinkedIn Tags** (LinkedIn primarily uses Open Graph, but also supports):
+   - All Open Graph tags above (LinkedIn reads og: tags)
+   - article:author (LinkedIn-specific)
+   - article:published_time (LinkedIn-specific)
+   - article:modified_time (LinkedIn-specific)
+
+6. **Pinterest Tags**:
+   - pinterest:description (Pinterest-specific description)
+   - pinterest:image (Pinterest-optimized image, 1000x1500px recommended for pins)
+   - pinterest:media (full URL to image for Rich Pins)
+
+7. **Facebook Tags** (Facebook uses Open Graph, but also supports):
+   - All Open Graph tags above
+   - fb:app_id (Facebook App ID - optional, for Facebook Insights)
+   - fb:admins (Facebook Admin IDs - optional)
+
+8. **WhatsApp Tags** (Uses Open Graph, but ensure):
+   - All Open Graph tags are present (WhatsApp reads og: tags)
+   - og:image is high quality (minimum 300x200px)
+
+9. **Telegram Tags** (Uses Open Graph):
+   - All Open Graph tags above (Telegram reads og: tags)
+
+10. **Discord Tags** (Uses Open Graph):
+    - All Open Graph tags above (Discord reads og: tags)
 
 Return ONLY valid HTML and JSON code, ready to copy-paste into production. Format as:
 
@@ -532,12 +621,18 @@ SCHEMA MARKUP:
 [JSON-LD code here]
 
 OPEN GRAPH:
-[HTML code here]
+[HTML code here - includes tags for Facebook, LinkedIn, WhatsApp, Telegram, Discord, Slack, etc.]
 
 TWITTER CARD:
-[HTML code here]"""
+[HTML code here - complete Twitter/X Card tags]
+
+PINTEREST:
+[HTML code here - Pinterest-specific tags]
+
+FACEBOOK:
+[HTML code here - Facebook-specific tags if applicable]"""
         
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You are an expert SEO developer. Generate production-ready, valid HTML and JSON-LD code."},
@@ -555,6 +650,8 @@ TWITTER CARD:
             "schema_markup": "",
             "open_graph": "",
             "twitter_card": "",
+            "pinterest": "",
+            "facebook": "",
             "full_code": generated_code
         }
         
@@ -562,18 +659,25 @@ TWITTER CARD:
         sections = generated_code.split("\n\n")
         current_section = None
         for section in sections:
-            if "META TAGS:" in section.upper():
+            section_upper = section.upper()
+            if "META TAGS:" in section_upper:
                 current_section = "meta_tags"
-                result["meta_tags"] = section.replace("META TAGS:", "").strip()
-            elif "SCHEMA MARKUP:" in section.upper():
+                result["meta_tags"] = section.replace("META TAGS:", "").replace("META TAGS", "").strip()
+            elif "SCHEMA MARKUP:" in section_upper:
                 current_section = "schema_markup"
-                result["schema_markup"] = section.replace("SCHEMA MARKUP:", "").strip()
-            elif "OPEN GRAPH:" in section.upper():
+                result["schema_markup"] = section.replace("SCHEMA MARKUP:", "").replace("SCHEMA MARKUP", "").strip()
+            elif "OPEN GRAPH:" in section_upper:
                 current_section = "open_graph"
-                result["open_graph"] = section.replace("OPEN GRAPH:", "").strip()
-            elif "TWITTER CARD:" in section.upper():
+                result["open_graph"] = section.replace("OPEN GRAPH:", "").replace("OPEN GRAPH", "").strip()
+            elif "TWITTER CARD:" in section_upper or "TWITTER:" in section_upper:
                 current_section = "twitter_card"
-                result["twitter_card"] = section.replace("TWITTER CARD:", "").strip()
+                result["twitter_card"] = section.replace("TWITTER CARD:", "").replace("TWITTER CARD", "").replace("TWITTER:", "").strip()
+            elif "PINTEREST:" in section_upper:
+                current_section = "pinterest"
+                result["pinterest"] = section.replace("PINTEREST:", "").replace("PINTEREST", "").strip()
+            elif "FACEBOOK:" in section_upper:
+                current_section = "facebook"
+                result["facebook"] = section.replace("FACEBOOK:", "").replace("FACEBOOK", "").strip()
             elif current_section:
                 result[current_section] += "\n" + section
         
@@ -586,6 +690,8 @@ TWITTER CARD:
             "schema_markup": "",
             "open_graph": "",
             "twitter_card": "",
+            "pinterest": "",
+            "facebook": "",
             "full_code": ""
         }
 
@@ -659,7 +765,7 @@ SEO Report Summary:
 
 Generate 10-15 prioritized recommendations with complete code examples."""
 
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You are an expert SEO developer. Generate specific, actionable SEO recommendations with complete, production-ready code examples that users can directly implement."},
@@ -712,7 +818,7 @@ Original Content:
 
 Return the rewritten content, maintaining the same format and structure but with improved SEO optimization."""
         
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You are an expert SEO content writer. Rewrite content to improve SEO while maintaining quality and readability."},

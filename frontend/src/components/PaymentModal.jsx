@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ErrorModal from './ErrorModal';
+import { useAISearchState } from '../hooks/useAISearchState';
 
 /**
  * usePaymentModal - Custom hook for handling Stripe payment flow
@@ -35,8 +36,11 @@ export const usePaymentModal = ({
         type: 'error'
     });
     const [loading, setLoading] = useState(false);
+    const [verifiedSubscriptionId, setVerifiedSubscriptionId] = useState(null);
 
-    // Handle payment success and verify
+    // ============================================================================
+    // ORIGINAL PAYMENT FLOW - Handle payment success and verify
+    // ============================================================================
     useEffect(() => {
         const sessionId = searchParams.get('session_id');
         const paymentStatus = searchParams.get('payment');
@@ -56,7 +60,7 @@ export const usePaymentModal = ({
                         throw new Error('Payment verification failed');
                     }
                     
-                    const { formData: savedFormData, paid } = await verifyResponse.json();
+                    const { formData: savedFormData, paid, subscriptionId } = await verifyResponse.json();
                     
                     if (!paid) {
                         throw new Error('Payment not completed');
@@ -65,6 +69,11 @@ export const usePaymentModal = ({
                     // Call success callback with saved form data
                     if (onPaymentSuccess) {
                         await onPaymentSuccess(savedFormData);
+                    }
+                    
+                    // Store subscription ID for AI Search integration (if needed)
+                    if (subscriptionId) {
+                        setVerifiedSubscriptionId(subscriptionId);
                     }
                     
                     // Clean URL so we don't keep re-verifying on re-renders
@@ -81,6 +90,7 @@ export const usePaymentModal = ({
                         onPaymentError(err);
                     }
                     // Even on error, clear the URL query so we don't spam verification
+                    const redirectPath = successRedirectPath || window.location.pathname;
                     window.history.replaceState({}, '', redirectPath);
                 } finally {
                     setLoading(false);
@@ -100,6 +110,41 @@ export const usePaymentModal = ({
         }
     }, [searchParams, onPaymentSuccess, onPaymentError, successRedirectPath, cancelRedirectPath, verifyEndpoint]);
 
+    // ============================================================================
+    // AI SEARCH INTEGRATION - Consume state after payment success
+    // ============================================================================
+    // This section handles AI Search redirects (only runs if state param exists)
+    // It's kept separate from the main payment flow for clarity
+    const { consumeState, hasState } = useAISearchState({
+        onStateConsumed: (data) => {
+            console.log('✅ AI Search state consumed successfully:', data);
+            // State consumption will handle redirect automatically
+        },
+        onError: (err) => {
+            console.error('❌ AI Search state consumption error:', err);
+            // Don't show error modal for AI Search - it's optional
+            // Payment was successful, just state consumption failed
+        }
+    });
+
+    // Consume AI Search state after subscription is verified
+    useEffect(() => {
+        // Only run if:
+        // 1. State parameter exists (user came from AI Search)
+        // 2. Subscription ID is available (payment was verified)
+        // 3. Not currently processing
+        if (hasState && verifiedSubscriptionId && !loading) {
+            console.log('🔄 Consuming AI Search state after payment success...');
+            consumeState(verifiedSubscriptionId);
+            // Note: consumeState will handle redirect automatically
+            // Clear subscription ID to prevent re-processing
+            setVerifiedSubscriptionId(null);
+        }
+    }, [hasState, verifiedSubscriptionId, loading, consumeState]);
+
+    // ============================================================================
+    // ORIGINAL PAYMENT FLOW - Create Stripe checkout session
+    // ============================================================================
     /**
      * Create Stripe checkout session and redirect to payment
      */

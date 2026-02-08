@@ -1,17 +1,20 @@
 import os
-from openai import OpenAI
+import asyncio
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from typing import Optional
+from urllib.parse import urlparse
 from utils.web_crawler import (
     crawl_and_extract, 
     format_crawled_content_for_prompt,
     analyze_competitors_and_crawl
 )
+from utils.brand_visibility_helper import get_brand_visibility_data, format_brand_visibility_data_for_prompt
 
 # Load environment variables
 load_dotenv()
 
-# Initialize OpenAI client dynamically
+# Initialize OpenAI async client dynamically
 def get_openai_client():
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key or api_key == "sk-placeholder" or api_key.startswith("sk-placeholder"):
@@ -19,7 +22,7 @@ def get_openai_client():
             "OpenAI API key is not configured. Please set OPENAI_API_KEY in your .env file. "
             "Get your API key from https://platform.openai.com/api-keys"
         )
-    return OpenAI(api_key=api_key)
+    return AsyncOpenAI(api_key=api_key)
 
 async def generate_documentation(
     app_name: str,
@@ -104,6 +107,8 @@ async def generate_documentation(
     # Crawl URL if provided
     crawled_context = ""
     competitor_analysis = ""
+    competitor_result = None
+    crawled_data = None
     
     if normalized_app_url:
         try:
@@ -151,6 +156,109 @@ async def generate_documentation(
                 print(f"Warning: Could not perform competitor analysis: {str(e)}")
                 import traceback
                 traceback.print_exc()
+    
+    # Fetch brand visibility data for the app (SEO sources for context)
+    # Wrap in timeout to prevent hanging
+    brand_visibility_text = ""
+    if normalized_app_url:
+        try:
+            print("Fetching brand visibility data for documentation context...")
+            parsed_url = urlparse(normalized_app_url)
+            domain = parsed_url.netloc.replace('www.', '')
+            brand_name = domain.split('.')[0].title()
+            
+            # Use app_name if available, otherwise domain
+            if app_name:
+                brand_name = app_name.split('|')[0].split('-')[0].strip()[:50]
+            
+            # Try to get brand name from crawled data if available
+            if crawled_data and crawled_data.get("title"):
+                title = crawled_data.get("title", "")
+                if title:
+                    brand_name = title.split('|')[0].split('-')[0].strip()[:50]
+            
+            # Fetch with timeout to prevent hanging (35 seconds max)
+            try:
+                brand_visibility_data = await asyncio.wait_for(
+                    get_brand_visibility_data(
+                        brand_name=brand_name,
+                        website_url=normalized_app_url,
+                        max_results=15,
+                        include_seo_sources=True,  # SEO sources provide context for documentation
+                        include_analytics_sources=False
+                    ),
+                    timeout=35.0
+                )
+            except asyncio.TimeoutError:
+                print("⚠️  Brand visibility fetch timed out - continuing without it")
+                brand_visibility_data = None
+            
+            if brand_visibility_data and brand_visibility_data.get("available"):
+                brand_visibility_text = format_brand_visibility_data_for_prompt(brand_visibility_data, brand_name, for_seo=True)
+                print(f"✅ Brand visibility data fetched: {brand_visibility_data.get('total_mentions', 0)} mentions found")
+        except Exception as e:
+            print(f"Error fetching brand visibility data: {e}")
+    
+    # Fetch brand visibility for competitors (if competitor analysis was done) - Run in parallel
+    competitor_brand_visibility_text = ""
+    if competitor_result and competitor_result.get("competitors"):
+        try:
+            print("Fetching brand visibility data for competitors...")
+            
+            # Create tasks for parallel execution
+            competitor_tasks = []
+            competitor_info = []
+            for competitor in competitor_result.get("competitors", [])[:3]:  # Limit to 3 competitors
+                comp_url = competitor.get("url", "")
+                if comp_url:
+                    parsed_comp = urlparse(comp_url)
+                    comp_domain = parsed_comp.netloc.replace('www.', '')
+                    comp_brand_name = comp_domain.split('.')[0].title()
+                    
+                    # Use competitor name if available
+                    if competitor.get("name"):
+                        comp_brand_name = competitor["name"].split('|')[0].split('-')[0].strip()[:50]
+                    
+                    competitor_info.append((comp_url, comp_brand_name))
+                    competitor_tasks.append(
+                        get_brand_visibility_data(
+                            brand_name=comp_brand_name,
+                            website_url=comp_url,
+                            max_results=10,
+                            include_seo_sources=True,
+                            include_analytics_sources=False
+                        )
+                    )
+            
+            # Execute all competitor fetches in parallel with timeout
+            if competitor_tasks:
+                try:
+                    competitor_results = await asyncio.wait_for(
+                        asyncio.gather(*competitor_tasks, return_exceptions=True),
+                        timeout=30.0
+                    )
+                except asyncio.TimeoutError:
+                    print("⚠️  Competitor brand visibility fetch timed out after 30 seconds")
+                    competitor_results = [{'available': False, 'error': 'timeout'} for _ in competitor_tasks]
+                
+                # Process results
+                competitor_brand_parts = []
+                for i, (comp_url, comp_brand_name) in enumerate(competitor_info):
+                    try:
+                        comp_brand_data = competitor_results[i] if not isinstance(competitor_results[i], Exception) else {'available': False, 'error': str(competitor_results[i])}
+                        
+                        if comp_brand_data and comp_brand_data.get("available"):
+                            comp_brand_text = format_brand_visibility_data_for_prompt(comp_brand_data, comp_brand_name, for_seo=True)
+                            if comp_brand_text:
+                                competitor_brand_parts.append(f"COMPETITOR: {comp_url}\n{comp_brand_text}")
+                    except Exception as e:
+                        print(f"Error processing brand visibility for {comp_url}: {e}")
+                
+                if competitor_brand_parts:
+                    competitor_brand_visibility_text = "\n\n".join(competitor_brand_parts)
+                    print(f"✅ Brand visibility data obtained for {len(competitor_brand_parts)} competitor(s)")
+        except Exception as e:
+            print(f"Error fetching competitor brand visibility data: {e}")
     
     # Build context parts
     context_parts = []
@@ -214,6 +322,38 @@ IMPORTANT: Use competitor information to enhance documentation comprehensiveness
 
 """
     
+    # Add brand visibility section
+    brand_visibility_section = ""
+    if brand_visibility_text:
+        brand_visibility_section = f"""
+
+{brand_visibility_text}
+
+IMPORTANT: Use brand visibility data to enhance documentation:
+- Understand how the brand is perceived and mentioned in the market
+- Identify common questions users ask (from People Also Ask)
+- Use search autocomplete suggestions to understand user intent
+- Reference real-world usage examples from GitHub, Reddit, Hacker News
+- Ensure documentation addresses actual user needs and questions
+
+"""
+    
+    # Add competitor brand visibility section
+    competitor_brand_visibility_section = ""
+    if competitor_brand_visibility_text:
+        competitor_brand_visibility_section = f"""
+
+COMPETITOR BRAND VISIBILITY DATA:
+{competitor_brand_visibility_text}
+
+IMPORTANT: Use competitor brand visibility to:
+- Understand how competitors are positioned in the market
+- Identify what users search for regarding competitors
+- Learn from competitor brand mentions and discussions
+- Ensure documentation addresses competitive positioning
+
+"""
+    
     # Check if feature description is too vague
     is_vague = len(feature_description.strip()) < 20 or feature_description.lower() in [
         "documentation", "docs", "guide", "tutorial", "help", "information", 
@@ -242,6 +382,8 @@ FAILURE TO CREATE DETAILED CONTENT WILL RESULT IN USELESS GENERIC OUTPUT.
     prompt = f"""Create a COMPREHENSIVE, DETAILED {doc_description} for an application called "{app_name}", which is a {app_type} application.
 {context_section if context_section else ""}
 {competitor_section if competitor_section else ""}
+{brand_visibility_section if brand_visibility_section else ""}
+{competitor_brand_visibility_section if competitor_brand_visibility_section else ""}
 {vague_warning}
 
 DOCUMENTATION TYPE: {doc_type}
@@ -332,9 +474,9 @@ If you create generic content, you have FAILED. Be specific, be detailed, be com
 
 Please configure your OpenAI API key in the backend .env file to generate documentation."""
         
-        # Prepare the OpenAI call
-        def make_openai_call():
-            return client.chat.completions.create(
+        # Prepare the OpenAI call (async)
+        async def make_openai_call():
+            return await client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {
@@ -377,9 +519,8 @@ Please configure your OpenAI API key in the backend .env file to generate docume
                 presence_penalty=0.05
             )
         
-        # Run synchronous OpenAI call in executor to avoid blocking
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(None, make_openai_call)
+        # Run async OpenAI call directly
+        response = await make_openai_call()
         documentation = response.choices[0].message.content.strip()
         return documentation
     except Exception as e:

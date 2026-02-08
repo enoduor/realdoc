@@ -34,7 +34,7 @@ router.get("/subscription-status", async (req, res) => {
       : {
           hasActiveSubscription: false,
           subscriptionStatus: "none",
-          selectedPlan: "creator",
+          selectedPlan: "none",
           billingCycle: "none",
           trialDaysRemaining: 0,
         };

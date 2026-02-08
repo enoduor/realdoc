@@ -77,7 +77,8 @@ app.get('/api/health', (_req, res) =>
   res.status(200).json({ status: 'ok', service: 'api' })
 );
 
-// Stripe webhook removed
+// --- Stripe webhook (must be BEFORE express.json() to receive raw body) ---
+app.use("/api/stripe", require("./routes/stripe-webhook"));
 
 // --- CORS / JSON ---
 app.use(cors({
@@ -91,12 +92,13 @@ app.use(cors({
     'https://app.reelpostly.com',
     'https://reelpostly.com',
     'https://www.reelpostly.com',
+    'https://courses.reelpostly.com', // AI Search domain
     'https://bigvideograb.com',
     'https://www.bigvideograb.com'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'stripe-signature']
 }));
 app.use(express.json());
 
@@ -118,6 +120,7 @@ app.get('/ping', (_req, res) => {
 // --- API routes ---
 app.use("/api/seo-payment", require("./routes/seo-payment"));
 app.use("/api/dashboard", require("./routes/dashboard"));
+app.use("/api", require("./routes/aiSearchState")); // AI Search state consumption
 app.use("/api", (_req, res) => res.send("ok"));
 
 // --- Simple root ---

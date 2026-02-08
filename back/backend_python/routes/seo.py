@@ -87,6 +87,8 @@ class ProductionMetaTagsResponse(BaseModel):
     schema_markup: str
     open_graph: str
     twitter_card: str
+    pinterest: str = ""
+    facebook: str = ""
     full_code: str
 
 

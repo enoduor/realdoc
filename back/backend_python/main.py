@@ -39,12 +39,32 @@ app = FastAPI(
 # ---- CORS ----
 # Allow all origins to support users accessing from any URL
 # Users will input their own URLs, and the frontend needs to make API calls without CORS blocking
+# Explicitly include common localhost origins for development
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://localhost:5000",
+    "http://127.0.0.1:5000",
+]
+
+# Add production origin if set
+production_origin = os.getenv("FRONTEND_ORIGIN")
+if production_origin:
+    allowed_origins.append(production_origin)
+
+# Allow all origins in development, specific origins in production
+if os.getenv("ENVIRONMENT") != "production":
+    allowed_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins - no CORS blocking
-    allow_credentials=False,  # Must be False when using allow_origins=["*"]
-    allow_methods=["*"],
+    allow_origins=allowed_origins,
+    allow_credentials=True if allowed_origins != ["*"] else False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # ---- Routers (single mount; root_path=/ai makes them externally /ai/...) ----

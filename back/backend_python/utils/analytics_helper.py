@@ -1,14 +1,17 @@
 import os
-from openai import OpenAI
+import asyncio
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from typing import Optional, List
 from utils.web_crawler import crawl_and_extract, format_crawled_content_for_prompt, crawl_competitors
 from utils.traffic_data_helper import get_traffic_data_for_domain, format_traffic_data_for_prompt
+from utils.brand_visibility_helper import get_brand_visibility_data, format_brand_visibility_data_for_prompt
+from urllib.parse import urlparse
 
 # Load environment variables
 load_dotenv()
 
-# Initialize OpenAI client dynamically
+# Initialize OpenAI async client dynamically
 def get_openai_client():
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key or api_key == "sk-placeholder" or api_key.startswith("sk-placeholder"):
@@ -16,7 +19,7 @@ def get_openai_client():
             "OpenAI API key is not configured. Please set OPENAI_API_KEY in your .env file. "
             "Get your API key from https://platform.openai.com/api-keys"
         )
-    return OpenAI(api_key=api_key)
+    return AsyncOpenAI(api_key=api_key)
 
 async def generate_analytics_report(
     website_url: str,
@@ -108,6 +111,102 @@ async def generate_analytics_report(
                 print(f"✅ Real traffic data obtained for {len(competitor_traffic_parts)} competitor(s)")
         except Exception as e:
             print(f"Error fetching competitor traffic data: {e}")
+    
+    # Fetch brand visibility data with analytics sources (PageSpeed, BuiltWith) for main website
+    # Wrap in timeout to prevent hanging
+    brand_visibility_data = None
+    brand_visibility_text = ""
+    try:
+        print("Fetching brand visibility and technical data...")
+        # Extract brand name from URL
+        parsed_url = urlparse(normalized_url)
+        domain = parsed_url.netloc.replace('www.', '')
+        brand_name = domain.split('.')[0].title()
+        
+        # Try to get brand name from crawled data if available
+        if website_data and website_data.get("title"):
+            title = website_data.get("title", "")
+            if title:
+                brand_name = title.split('|')[0].split('-')[0].strip()[:50]
+        
+        # Fetch with timeout to prevent hanging (25 seconds max for analytics sources)
+        try:
+            brand_visibility_data = await asyncio.wait_for(
+                get_brand_visibility_data(
+                    brand_name=brand_name,
+                    website_url=normalized_url,
+                    max_results=20,
+                    include_seo_sources=False,  # Only analytics sources for analytics reports
+                    include_analytics_sources=True
+                ),
+                timeout=25.0
+            )
+        except asyncio.TimeoutError:
+            print("⚠️  Brand visibility fetch timed out - continuing without it")
+            brand_visibility_data = None
+        
+        if brand_visibility_data:
+            brand_visibility_text = format_brand_visibility_data_for_prompt(brand_visibility_data, brand_name, for_seo=False)
+            if brand_visibility_text:
+                print("✅ Brand visibility and technical data fetched")
+            else:
+                print("⚠️  No brand visibility data available")
+    except Exception as e:
+        print(f"Error fetching brand visibility data: {e}")
+    
+    # Fetch brand visibility data for competitors (analytics sources) - Run in parallel
+    competitor_brand_visibility_text = ""
+    if normalized_competitor_urls and include_competitor_comparison:
+        try:
+            print(f"Fetching brand visibility data for {len(normalized_competitor_urls)} competitor(s)...")
+            
+            # Create tasks for parallel execution
+            competitor_tasks = []
+            competitor_info = []
+            for comp_url in normalized_competitor_urls:
+                parsed_comp = urlparse(comp_url)
+                comp_domain = parsed_comp.netloc.replace('www.', '')
+                comp_brand_name = comp_domain.split('.')[0].title()
+                
+                competitor_info.append((comp_url, comp_brand_name))
+                competitor_tasks.append(
+                    get_brand_visibility_data(
+                        brand_name=comp_brand_name,
+                        website_url=comp_url,
+                        max_results=10,
+                        include_seo_sources=False,
+                        include_analytics_sources=True
+                    )
+                )
+            
+            # Execute all competitor fetches in parallel with timeout
+            try:
+                competitor_results = await asyncio.wait_for(
+                    asyncio.gather(*competitor_tasks, return_exceptions=True),
+                    timeout=30.0
+                )
+            except asyncio.TimeoutError:
+                print("⚠️  Competitor brand visibility fetch timed out after 30 seconds")
+                competitor_results = [{'available': False, 'error': 'timeout'} for _ in competitor_tasks]
+            
+            # Process results
+            competitor_brand_parts = []
+            for i, (comp_url, comp_brand_name) in enumerate(competitor_info):
+                try:
+                    comp_brand_data = competitor_results[i] if not isinstance(competitor_results[i], Exception) else {'available': False, 'error': str(competitor_results[i])}
+                    
+                    if comp_brand_data and comp_brand_data.get('available'):
+                        comp_brand_text = format_brand_visibility_data_for_prompt(comp_brand_data, comp_brand_name, for_seo=False)
+                        if comp_brand_text:
+                            competitor_brand_parts.append(f"COMPETITOR: {comp_url}\n{comp_brand_text}")
+                except Exception as e:
+                    print(f"Error processing brand visibility for {comp_url}: {e}")
+            
+            if competitor_brand_parts:
+                competitor_brand_visibility_text = "\n\n".join(competitor_brand_parts)
+                print(f"✅ Brand visibility data obtained for {len(competitor_brand_parts)} competitor(s)")
+        except Exception as e:
+            print(f"Error fetching competitor brand visibility data: {e}")
     
     # Crawl competitors if provided
     competitor_analysis = ""
@@ -276,6 +375,14 @@ Language: {language}"""
     if competitor_analysis and include_competitor_comparison:
         competitor_analysis_section = f"Competitor Analysis Data:\n{competitor_analysis}"
     
+    brand_visibility_section = ""
+    if brand_visibility_text:
+        brand_visibility_section = f"{brand_visibility_text}\n"
+    
+    competitor_brand_visibility_section = ""
+    if competitor_brand_visibility_text:
+        competitor_brand_visibility_section = f"\nCOMPETITOR BRAND VISIBILITY & TECHNICAL DATA:\n{competitor_brand_visibility_text}\n"
+    
     user_prompt = f"""Analyze the following website and provide a comprehensive website analytics report:
 
 Website URL: {normalized_url}
@@ -283,7 +390,7 @@ Website URL: {normalized_url}
 Website Content (crawled):
 {website_context if website_context else "No website content available. Provide general analytics insights based on the URL and industry."}
 
-{traffic_section}{competitor_traffic_section}{competitor_analysis_section}
+{traffic_section}{competitor_traffic_section}{competitor_analysis_section}{brand_visibility_section}{competitor_brand_visibility_section}
 
 Please provide a comprehensive website analytics report covering ONLY the following sections based on the selected components:
 
@@ -303,7 +410,7 @@ Format the report in Markdown with clear sections, data tables where appropriate
     try:
         client = get_openai_client()
         
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": system_prompt},
