@@ -66,6 +66,40 @@ const Dashboard = () => {
     fetchStatus();
   }, [isLoaded, isSignedIn, user]);
 
+  const buildAiSearchLink = () => {
+    const baseUrl = process.env.REACT_APP_AI_SEARCH_URL || 'https://courses.reelpostly.com/ux/advisor.html';
+    if (!user || !user.id) return baseUrl;
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    return `${baseUrl}${separator}clerkUserId=${encodeURIComponent(user.id)}`;
+  };
+
+  const [aiSearchSessionReady, setAiSearchSessionReady] = useState(false);
+
+  useEffect(() => {
+    const createAiSearchSession = async () => {
+      if (!isLoaded || !isSignedIn || !user || aiSearchSessionReady) return;
+      if (!subscription.hasActiveSubscription) return;
+
+      try {
+        const base = window.location.origin;
+        const res = await fetch(`${base}/api/ai-search/create-session`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clerkUserId: user.id })
+        });
+        const data = await res.json();
+        if (data && data.hasActiveSubscription) {
+          setAiSearchSessionReady(true);
+        }
+      } catch (err) {
+        console.error('Error creating AI Search session', err);
+      }
+    };
+
+    createAiSearchSession();
+  }, [isLoaded, isSignedIn, user, subscription.hasActiveSubscription, aiSearchSessionReady]);
+
   const features = [
     {
       name: 'SEO Generator',
@@ -89,7 +123,7 @@ const Dashboard = () => {
       name: 'AI Search',
       description: 'Search the web with AI-powered insights and answers',
       icon: '🤖',
-      link: process.env.REACT_APP_AI_SEARCH_URL || 'https://courses.reelpostly.com/ux/advisor.html',
+      link: buildAiSearchLink(),
       external: true // Opens in new tab
     }
   ];

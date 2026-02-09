@@ -15,8 +15,8 @@ function getCookieOptions() {
   const isProduction = process.env.NODE_ENV === "production";
   return {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: "Lax",
+    secure: true,
+    sameSite: "None",
     domain: isProduction ? ".reelpostly.com" : undefined,
     path: "/",
     maxAge: SESSION_TTL_DAYS * 24 * 60 * 60 * 1000
@@ -169,6 +169,121 @@ router.post("/ai-search/consume-state", async (req, res) => {
 });
 
 /**
+ * POST /api/ai-search/acknowledge
+ *
+ * Persistently marks that this Clerk user has acknowledged / unlocked AI Search.
+ * This is the backend "source of truth" for gating that should be tied to identity.
+ *
+ * Body: { clerkUserId }
+ */
+router.post("/ai-search/acknowledge", async (req, res) => {
+  try {
+    const { clerkUserId } = req.body;
+
+    if (!clerkUserId) {
+      return res.status(400).json({
+        success: false,
+        error: "clerkUserId is required",
+      });
+    }
+
+    // Find or create user by Clerk ID
+    let user = await User.findOne({ clerkUserId });
+    if (!user) {
+      user = new User({
+        clerkUserId,
+        subscriptionStatus: "none",
+        selectedPlan: "none",
+        billingCycle: "none",
+      });
+    }
+
+    const now = new Date();
+    user.aiSearchAcknowledged = true;
+    user.aiSearchAcknowledgedAt = now;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      aiSearchAcknowledged: true,
+      aiSearchAcknowledgedAt: user.aiSearchAcknowledgedAt,
+      // Convenience: return subscription state so caller can gate UI correctly
+      hasActiveSubscription: user.hasActiveSubscription(),
+      subscriptionStatus: user.subscriptionStatus || "none",
+      subscriptionId: user.stripeSubscriptionId || null,
+      clerkUserId: user.clerkUserId,
+      email: user.email || null,
+    });
+  } catch (err) {
+    console.error("❌ Error acknowledging AI Search:", err);
+    return res.status(500).json({
+      success: false,
+      error: err.message || "Failed to acknowledge AI Search",
+    });
+  }
+});
+
+/**
+ * POST /api/ai-search/create-session
+ *
+ * Creates an AI Search session cookie for a known Clerk user.
+ * This is used when a subscribed user comes from the dashboard.
+ *
+ * Body: { clerkUserId }
+ */
+router.post("/ai-search/create-session", async (req, res) => {
+  try {
+    const { clerkUserId } = req.body;
+    console.log("AI_SEARCH_SESSION_CREATE_START", { clerkUserId: clerkUserId || null });
+    if (!clerkUserId) {
+      return res.status(400).json({ error: "Missing required field: clerkUserId" });
+    }
+
+    const user = await User.findOne({ clerkUserId });
+    console.log("AI_SEARCH_SESSION_CREATE_USER", {
+      found: !!user,
+      subscriptionStatus: user?.subscriptionStatus || null
+    });
+    if (!user || !user.hasActiveSubscription()) {
+      return res.status(403).json({
+        success: false,
+        hasActiveSubscription: false
+      });
+    }
+
+    const sessionId = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000);
+
+    await AiSearchSession.create({
+      sessionId,
+      clerkUserId,
+      subscriptionId: user.stripeSubscriptionId || null,
+      expiresAt
+    });
+
+    res.cookie(SESSION_COOKIE_NAME, sessionId, getCookieOptions());
+    console.log("AI_SEARCH_SESSION_CREATE_SUCCESS", {
+      clerkUserId,
+      sessionId
+    });
+
+    return res.status(200).json({
+      success: true,
+      hasActiveSubscription: true,
+      clerkUserId: user.clerkUserId,
+      subscriptionId: user.stripeSubscriptionId || null
+    });
+  } catch (err) {
+    console.error("❌ Error creating AI Search session:", err);
+    return res.status(500).json({
+      success: false,
+      error: err.message || "Failed to create AI Search session"
+    });
+  }
+});
+
+/**
  * GET /api/ai-search/verify-session
  *
  * Verifies an AI Search session via HttpOnly cookie.
@@ -180,6 +295,7 @@ router.get("/ai-search/verify-session", async (req, res) => {
     const sessionId = cookies[SESSION_COOKIE_NAME];
 
     if (!sessionId) {
+      console.log("AI_SEARCH_SESSION_VERIFY_NO_COOKIE");
       return res.status(200).json({
         success: true,
         hasActiveSubscription: false,
@@ -190,6 +306,7 @@ router.get("/ai-search/verify-session", async (req, res) => {
 
     const session = await AiSearchSession.findOne({ sessionId });
     if (!session) {
+      console.log("AI_SEARCH_SESSION_VERIFY_NOT_FOUND", { sessionId });
       res.clearCookie(SESSION_COOKIE_NAME, getCookieOptions());
       return res.status(200).json({
         success: true,
@@ -200,6 +317,7 @@ router.get("/ai-search/verify-session", async (req, res) => {
     }
 
     if (session.expiresAt && session.expiresAt.getTime() < Date.now()) {
+      console.log("AI_SEARCH_SESSION_VERIFY_EXPIRED", { sessionId });
       await AiSearchSession.deleteOne({ sessionId });
       res.clearCookie(SESSION_COOKIE_NAME, getCookieOptions());
       return res.status(200).json({
@@ -212,6 +330,7 @@ router.get("/ai-search/verify-session", async (req, res) => {
 
     const user = await User.findOne({ clerkUserId: session.clerkUserId });
     if (!user) {
+      console.log("AI_SEARCH_SESSION_VERIFY_USER_MISSING", { clerkUserId: session.clerkUserId });
       return res.status(200).json({
         success: true,
         hasActiveSubscription: false,
@@ -220,6 +339,10 @@ router.get("/ai-search/verify-session", async (req, res) => {
       });
     }
 
+    console.log("AI_SEARCH_SESSION_VERIFY_SUCCESS", {
+      clerkUserId: user.clerkUserId,
+      subscriptionStatus: user.subscriptionStatus
+    });
     return res.status(200).json({
       success: true,
       hasActiveSubscription: user.hasActiveSubscription(),
@@ -282,6 +405,8 @@ router.get("/ai-search/verify-subscription", async (req, res) => {
       subscriptionStatus,
       subscriptionId,
       billingCycle: user.billingCycle || "none",
+      aiSearchAcknowledged: !!user.aiSearchAcknowledged,
+      aiSearchAcknowledgedAt: user.aiSearchAcknowledgedAt || null,
       // Include additional context for AI Search
       clerkUserId: user.clerkUserId,
       email: user.email || null

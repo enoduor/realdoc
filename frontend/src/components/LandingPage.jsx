@@ -323,6 +323,7 @@ const LandingPage = () => {
           <h2 className="section-title-aidoc">Frequently Asked Questions</h2>
           
           <div className="faq-grid-aidoc">
+            {/* Documentation Generator FAQ */}
             <div className={`faq-item-aidoc ${openFAQ === 0 ? 'active' : ''}`} onClick={() => toggleFAQ(0)}>
               <div className="faq-question-wrapper-aidoc">
                 <h3 className="faq-question-aidoc">What do I get when I generate documentation?</h3>
@@ -333,6 +334,7 @@ const LandingPage = () => {
               </div>
             </div>
 
+            {/* Output formats FAQ */}
             <div className={`faq-item-aidoc ${openFAQ === 1 ? 'active' : ''}`} onClick={() => toggleFAQ(1)}>
               <div className="faq-question-wrapper-aidoc">
                 <h3 className="faq-question-aidoc">What output formats can I download?</h3>
@@ -343,6 +345,7 @@ const LandingPage = () => {
               </div>
             </div>
 
+            {/* Documentation types FAQ */}
             <div className={`faq-item-aidoc ${openFAQ === 2 ? 'active' : ''}`} onClick={() => toggleFAQ(2)}>
               <div className="faq-question-wrapper-aidoc">
                 <h3 className="faq-question-aidoc">What types of documentation can I generate?</h3>
@@ -353,6 +356,7 @@ const LandingPage = () => {
               </div>
             </div>
 
+            {/* Customization FAQ */}
             <div className={`faq-item-aidoc ${openFAQ === 3 ? 'active' : ''}`} onClick={() => toggleFAQ(3)}>
               <div className="faq-question-wrapper-aidoc">
                 <h3 className="faq-question-aidoc">Can I customize the documentation output?</h3>
@@ -363,6 +367,7 @@ const LandingPage = () => {
               </div>
             </div>
 
+            {/* Ease-of-use / no technical writing FAQ */}
             <div className={`faq-item-aidoc ${openFAQ === 4 ? 'active' : ''}`} onClick={() => toggleFAQ(4)}>
               <div className="faq-question-wrapper-aidoc">
                 <h3 className="faq-question-aidoc">Do I need technical writing skills to use RealDoc?</h3>
@@ -373,13 +378,36 @@ const LandingPage = () => {
               </div>
             </div>
 
+            {/* SEO Generator FAQ */}
             <div className={`faq-item-aidoc ${openFAQ === 5 ? 'active' : ''}`} onClick={() => toggleFAQ(5)}>
               <div className="faq-question-wrapper-aidoc">
-                <h3 className="faq-question-aidoc">How does the automatic site analysis and competitor research work?</h3>
+                <h3 className="faq-question-aidoc">What does the SEO Generator actually do?</h3>
                 <span className="faq-icon-aidoc">{openFAQ === 5 ? '−' : '+'}</span>
               </div>
               <div className={`faq-answer-aidoc ${openFAQ === 5 ? 'open' : ''}`}>
-                <p>When you provide your app URL, RealDoc automatically analyzes your public pages, discovers similar products, reviews their content and documentation, and uses this combined insight to generate more accurate and complete documentation that follows industry best practices.</p>
+                <p>The SEO Generator runs a full SEO audit on your site: technical SEO, on-page content, page speed, mobile experience, and more. It then gives you prioritized, plain-language recommendations you can hand to your developer or content team to improve rankings and click-through rates.</p>
+              </div>
+            </div>
+
+            {/* Website Analyzer FAQ */}
+            <div className={`faq-item-aidoc ${openFAQ === 6 ? 'active' : ''}`} onClick={() => toggleFAQ(6)}>
+              <div className="faq-question-wrapper-aidoc">
+                <h3 className="faq-question-aidoc">How does the Website Analyzer help me understand competitors?</h3>
+                <span className="faq-icon-aidoc">{openFAQ === 6 ? '−' : '+'}</span>
+              </div>
+              <div className={`faq-answer-aidoc ${openFAQ === 6 ? 'open' : ''}`}>
+                <p>The Website Analyzer looks at traffic patterns, technology stack, content focus, and monetization models across your site and your competitors. It summarizes how they attract visitors, where they likely earn revenue, and surfaces practical ideas you can copy or improve for your own business.</p>
+              </div>
+            </div>
+
+            {/* Combined workflow FAQ */}
+            <div className={`faq-item-aidoc ${openFAQ === 7 ? 'active' : ''}`} onClick={() => toggleFAQ(7)}>
+              <div className="faq-question-wrapper-aidoc">
+                <h3 className="faq-question-aidoc">How do SEO, Website Analyzer, and Document Generator work together?</h3>
+                <span className="faq-icon-aidoc">{openFAQ === 7 ? '−' : '+'}</span>
+              </div>
+              <div className={`faq-answer-aidoc ${openFAQ === 7 ? 'open' : ''}`}>
+                <p>RealDoc is designed as one workflow: SEO reveals what’s holding you back, the Website Analyzer shows how competitors win and where users drop off, and the Document Generator turns those insights into clear guides, FAQs, and release notes. You end up with a site that’s easier to discover, easier to understand, and easier to trust.</p>
               </div>
             </div>
           </div>

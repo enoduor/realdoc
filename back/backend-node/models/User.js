@@ -75,6 +75,17 @@ const UserSchema = new mongoose.Schema(
 
     // Activity tracking
     lastActiveDate: { type: Date, default: null },
+
+    // AI Search acknowledgement (persisted server-side, tied to identity)
+    aiSearchAcknowledged: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    aiSearchAcknowledgedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true, // adds createdAt, updatedAt
