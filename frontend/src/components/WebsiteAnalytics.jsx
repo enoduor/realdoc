@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import usePaymentModal from './PaymentModal';
+import { markdownToHtml } from '../utils/formatConverter';
 
 const WebsiteAnalytics = () => {
     const { isLoaded, isSignedIn, user } = useUser();
@@ -22,6 +23,7 @@ const WebsiteAnalytics = () => {
     const [error, setError] = useState('');
     const [isEditing, setIsEditing] = useState(false);
     const [editedReport, setEditedReport] = useState('');
+    const [viewFormat, setViewFormat] = useState('markdown'); // 'markdown' or 'html'
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -150,8 +152,12 @@ const WebsiteAnalytics = () => {
         const reportToDownload = isEditing ? editedReport : (analyticsReport?.report || '');
         if (!reportToDownload) return;
         
-        const filename = `Analytics_Report_${formData.website_url.replace(/https?:\/\//, '').replace(/\//g, '_')}.md`;
-        const blob = new Blob([reportToDownload], { type: 'text/markdown' });
+        // Download in current view format
+        const content = viewFormat === 'html' ? markdownToHtml(reportToDownload) : reportToDownload;
+        const extension = viewFormat === 'html' ? '.html' : '.md';
+        const mimeType = viewFormat === 'html' ? 'text/html' : 'text/markdown';
+        const filename = `Analytics_Report_${formData.website_url.replace(/https?:\/\//, '').replace(/\//g, '_')}${extension}`;
+        const blob = new Blob([content], { type: mimeType });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -160,6 +166,10 @@ const WebsiteAnalytics = () => {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+    };
+
+    const handleToggleFormat = () => {
+        setViewFormat(prev => prev === 'markdown' ? 'html' : 'markdown');
     };
 
     const handleEdit = () => {
@@ -435,16 +445,27 @@ const WebsiteAnalytics = () => {
                                                 onClick={handleDownload}
                                                 className="px-3 py-1 text-sm bg-green-600 text-white hover:bg-green-700 rounded"
                                             >
-                                                Download (MD)
+                                                Download ({viewFormat === 'html' ? 'HTML' : 'MD'})
                                             </button>
                                         </>
                                     )}
                                 </div>
                             </div>
                             
-                            <div className="mb-2 text-sm text-gray-600">
-                                <span>Words: {isEditing ? editedReport.split(/\s+/).filter(word => word.length > 0).length : analyticsReport.word_count}</span>
-                                <span className="ml-4">Est. Read Time: {isEditing ? Math.max(1, Math.round(editedReport.split(/\s+/).filter(word => word.length > 0).length / 200)) : analyticsReport.estimated_read_time} min</span>
+                            <div className="mb-2 flex items-center justify-between">
+                                <div className="text-sm text-gray-600">
+                                    <span>Words: {isEditing ? editedReport.split(/\s+/).filter(word => word.length > 0).length : analyticsReport.word_count}</span>
+                                    <span className="ml-4">Est. Read Time: {isEditing ? Math.max(1, Math.round(editedReport.split(/\s+/).filter(word => word.length > 0).length / 200)) : analyticsReport.estimated_read_time} min</span>
+                                </div>
+                                {!isEditing && (
+                                    <button
+                                        onClick={handleToggleFormat}
+                                        className="px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded"
+                                        title={`Switch to ${viewFormat === 'markdown' ? 'HTML' : 'Markdown'} view`}
+                                    >
+                                        View as {viewFormat === 'markdown' ? 'HTML' : 'Markdown'}
+                                    </button>
+                                )}
                             </div>
 
                             {isEditing ? (
@@ -464,7 +485,15 @@ const WebsiteAnalytics = () => {
                                 </div>
                             ) : (
                                 <div className="p-4 bg-gray-100 rounded border">
-                                    <pre className="whitespace-pre-wrap font-mono text-sm text-left" style={{ textAlign: 'left' }}>{analyticsReport.report}</pre>
+                                    {viewFormat === 'html' ? (
+                                        <div 
+                                            dangerouslySetInnerHTML={{ __html: markdownToHtml(analyticsReport.report) }}
+                                            className="prose max-w-none text-left"
+                                            style={{ textAlign: 'left' }}
+                                        />
+                                    ) : (
+                                        <pre className="whitespace-pre-wrap font-mono text-sm text-left" style={{ textAlign: 'left' }}>{analyticsReport.report}</pre>
+                                    )}
                                 </div>
                             )}
                         </div>

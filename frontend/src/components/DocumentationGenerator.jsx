@@ -12,6 +12,7 @@ import {
     TARGET_AUDIENCES,
     DOCUMENTATION_FORMATS
 } from '../constants/documentationTypes';
+import { markdownToHtml, htmlToMarkdown } from '../utils/formatConverter';
 
 const DocumentationGenerator = () => {
     const { isLoaded, isSignedIn, user } = useUser();
@@ -54,6 +55,7 @@ const DocumentationGenerator = () => {
     const [error, setError] = useState('');
     const [isEditing, setIsEditing] = useState(false);
     const [editedDocumentation, setEditedDocumentation] = useState('');
+    const [viewFormat, setViewFormat] = useState(null); // 'markdown' or 'html' - null means use original format
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -162,13 +164,22 @@ const DocumentationGenerator = () => {
         const docToDownload = isEditing ? editedDocumentation : (documentation?.documentation || '');
         if (!docToDownload) return;
         
-        const format = documentation.format || 'markdown';
-        const formatInfo = DOCUMENTATION_FORMATS.find(f => f.id === format);
+        // Use viewFormat if toggled, otherwise use original format
+        const currentFormat = viewFormat || documentation.format || 'markdown';
+        const formatInfo = DOCUMENTATION_FORMATS.find(f => f.id === currentFormat);
         const extension = formatInfo?.extension || '.md';
         const filename = `${formData.app_name.replace(/\s+/g, '_')}_${formData.doc_type}${extension}`;
         
-        const blob = new Blob([docToDownload], { 
-            type: format === 'html' ? 'text/html' : 'text/plain' 
+        // Convert content if needed
+        let content = docToDownload;
+        if (viewFormat === 'html' && documentation.format === 'markdown') {
+            content = markdownToHtml(docToDownload);
+        } else if (viewFormat === 'markdown' && documentation.format === 'html') {
+            content = htmlToMarkdown(docToDownload);
+        }
+        
+        const blob = new Blob([content], { 
+            type: currentFormat === 'html' ? 'text/html' : 'text/plain' 
         });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -179,6 +190,25 @@ const DocumentationGenerator = () => {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     };
+
+    const handleToggleFormat = () => {
+        if (!documentation) return;
+        const originalFormat = documentation.format || 'markdown';
+        
+        // Only allow toggle between markdown and html
+        if (originalFormat === 'markdown') {
+            setViewFormat(viewFormat === 'html' ? null : 'html');
+        } else if (originalFormat === 'html') {
+            setViewFormat(viewFormat === 'markdown' ? null : 'markdown');
+        }
+    };
+
+    // Reset view format when documentation changes
+    useEffect(() => {
+        if (documentation) {
+            setViewFormat(null);
+        }
+    }, [documentation]);
 
     const handleEdit = () => {
         setEditedDocumentation(documentation.documentation);
@@ -646,10 +676,21 @@ const DocumentationGenerator = () => {
                                 </div>
                             </div>
                             
-                            <div className="mb-2 text-sm text-gray-600">
-                                <span>Words: {isEditing ? editedDocumentation.split(/\s+/).filter(word => word.length > 0).length : documentation.word_count}</span>
-                                <span className="ml-4">Est. Read Time: {isEditing ? Math.max(1, Math.round(editedDocumentation.split(/\s+/).filter(word => word.length > 0).length / 200)) : documentation.estimated_read_time} min</span>
-                                <span className="ml-4">Format: {documentation.format?.toUpperCase() || 'MARKDOWN'}</span>
+                            <div className="mb-2 flex items-center justify-between">
+                                <div className="text-sm text-gray-600">
+                                    <span>Words: {isEditing ? editedDocumentation.split(/\s+/).filter(word => word.length > 0).length : documentation.word_count}</span>
+                                    <span className="ml-4">Est. Read Time: {isEditing ? Math.max(1, Math.round(editedDocumentation.split(/\s+/).filter(word => word.length > 0).length / 200)) : documentation.estimated_read_time} min</span>
+                                    <span className="ml-4">Format: {(viewFormat || documentation.format || 'markdown').toUpperCase()}</span>
+                                </div>
+                                {!isEditing && (documentation.format === 'markdown' || documentation.format === 'html') && (
+                                    <button
+                                        onClick={handleToggleFormat}
+                                        className="px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded"
+                                        title={`Switch to ${viewFormat === 'html' || (viewFormat === null && documentation.format === 'markdown') ? 'HTML' : 'Markdown'} view`}
+                                    >
+                                        View as {viewFormat === 'html' || (viewFormat === null && documentation.format === 'markdown') ? 'HTML' : 'Markdown'}
+                                    </button>
+                                )}
                             </div>
 
                             {isEditing ? (
@@ -672,15 +713,34 @@ const DocumentationGenerator = () => {
                                 </div>
                             ) : (
                                 <div className="p-4 bg-gray-100 rounded border">
-                                    {documentation.format === 'html' ? (
-                                        <div 
-                                            dangerouslySetInnerHTML={{ __html: documentation.documentation }}
-                                            className="prose max-w-none text-left"
-                                            style={{ textAlign: 'left' }}
-                                        />
-                                    ) : (
-                                        <pre className="whitespace-pre-wrap font-mono text-sm text-left" style={{ textAlign: 'left' }}>{documentation.documentation}</pre>
-                                    )}
+                                    {(() => {
+                                        const displayFormat = viewFormat || documentation.format || 'markdown';
+                                        const content = documentation.documentation;
+                                        
+                                        if (displayFormat === 'html') {
+                                            // If original is markdown, convert it; if original is html, use it directly
+                                            const htmlContent = documentation.format === 'markdown' 
+                                                ? markdownToHtml(content) 
+                                                : content;
+                                            return (
+                                                <div 
+                                                    dangerouslySetInnerHTML={{ __html: htmlContent }}
+                                                    className="prose max-w-none text-left"
+                                                    style={{ textAlign: 'left' }}
+                                                />
+                                            );
+                                        } else {
+                                            // If original is html, convert it; if original is markdown, use it directly
+                                            const markdownContent = documentation.format === 'html'
+                                                ? htmlToMarkdown(content)
+                                                : content;
+                                            return (
+                                                <pre className="whitespace-pre-wrap font-mono text-sm text-left" style={{ textAlign: 'left' }}>
+                                                    {markdownContent}
+                                                </pre>
+                                            );
+                                        }
+                                    })()}
                                 </div>
                             )}
                         </div>
