@@ -14,6 +14,7 @@ class SEORequest(BaseModel):
     current_seo_issues: Optional[str] = None
     focus_areas: List[str] = ["on-page", "technical", "content"]
     language: str = "en"
+    enable_js_render: bool = False
 
     @validator('business_type')
     def validate_business_type(cls, v):
@@ -54,7 +55,8 @@ async def create_seo_report(request: SEORequest):
             target_keywords=request.target_keywords,
             current_seo_issues=request.current_seo_issues,
             focus_areas=request.focus_areas,
-            language=request.language
+            language=request.language,
+            enable_js_render=request.enable_js_render,
         )
         
         # Quality assurance check

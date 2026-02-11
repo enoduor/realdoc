@@ -20,6 +20,7 @@ class DocumentationRequest(BaseModel):
     target_audience: Optional[str] = "developers"
     format: Optional[str] = "markdown"
     app_url: Optional[str] = None
+    enable_js_render: Optional[bool] = False
 
     @validator('doc_type')
     def validate_doc_type(cls, v):
@@ -101,7 +102,8 @@ async def create_documentation(request: DocumentationRequest):
             include_screenshots=request.include_screenshots,
             target_audience=request.target_audience,
             format=request.format,
-            app_url=request.app_url
+            app_url=request.app_url,
+            enable_js_render=request.enable_js_render,
         )
         
         word_count = count_words(documentation)

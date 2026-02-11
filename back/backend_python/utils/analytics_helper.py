@@ -28,7 +28,8 @@ async def generate_analytics_report(
     include_revenue_analysis: bool = True,
     include_traffic_analysis: bool = True,
     include_competitor_comparison: bool = True,
-    language: str = "en"
+    language: str = "en",
+    enable_js_render: bool = False,
 ) -> str:
     """
     Generate comprehensive website analytics report with competitor analysis and revenue insights.
@@ -41,6 +42,7 @@ async def generate_analytics_report(
         include_traffic_analysis (bool): Include traffic analysis (SimilarWeb-style)
         include_competitor_comparison (bool): Include competitor comparison
         language (str): Language code
+        enable_js_render (bool): If True, allow JS-rendered crawling for SPA/React sites
     
     Returns:
         str: Generated analytics report
@@ -59,7 +61,7 @@ async def generate_analytics_report(
     
     try:
         print(f"Attempting to crawl website: {normalized_url}")
-        website_data = await crawl_and_extract(normalized_url)
+        website_data = await crawl_and_extract(normalized_url, use_js_render=enable_js_render)
         if website_data:
             website_context = format_crawled_content_for_prompt(website_data)
             print(f"Successfully crawled website: {normalized_url}")

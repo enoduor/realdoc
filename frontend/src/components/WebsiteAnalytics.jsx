@@ -24,6 +24,7 @@ const WebsiteAnalytics = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [editedReport, setEditedReport] = useState('');
     const [viewFormat, setViewFormat] = useState('markdown'); // 'markdown' or 'html'
+    const [enableJsRender, setEnableJsRender] = useState(false);
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -70,7 +71,8 @@ const WebsiteAnalytics = () => {
                 const requestData = {
                     ...savedFormData,
                     website_url: normalizedUrl,
-                    competitor_urls: normalizedCompetitors ? normalizedCompetitors.join(', ') : null
+                    competitor_urls: normalizedCompetitors ? normalizedCompetitors.join(', ') : null,
+                    enable_js_render: enableJsRender,
                 };
                 
                 const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/analytics/`, requestData, {
@@ -294,6 +296,19 @@ const WebsiteAnalytics = () => {
                             <p className="text-xs text-gray-500 mt-1">
                                 Enter the website URL you want to analyze
                             </p>
+                            <div className="mt-2 flex items-start gap-2">
+                                <input
+                                    id="enable-js-render-analytics"
+                                    type="checkbox"
+                                    checked={enableJsRender}
+                                    onChange={(e) => setEnableJsRender(e.target.checked)}
+                                    className="mt-0.5"
+                                />
+                                <label htmlFor="enable-js-render-analytics" className="text-xs text-gray-600">
+                                    Enable JS rendering for SPA / React sites (uses a headless browser, can be slower but
+                                    captures content that only appears after JavaScript runs).
+                                </label>
+                            </div>
                         </div>
 
                         <div>

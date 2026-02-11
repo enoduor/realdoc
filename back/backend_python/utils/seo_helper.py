@@ -26,7 +26,8 @@ async def generate_seo_report(
     target_keywords: Optional[str] = None,
     current_seo_issues: Optional[str] = None,
     focus_areas: List[str] = None,
-    language: str = "en"
+    language: str = "en",
+    enable_js_render: bool = False,
 ) -> str:
     """
     Generate comprehensive SEO analysis and recommendations using OpenAI.
@@ -38,6 +39,7 @@ async def generate_seo_report(
         current_seo_issues (str): Known SEO issues or concerns
         focus_areas (List[str]): Areas to focus on (on-page, technical, content, etc.)
         language (str): Language code
+        enable_js_render (bool): If True, allow JS-rendered crawling for SPA/React sites
     
     Returns:
         str: Generated SEO report
@@ -60,7 +62,7 @@ async def generate_seo_report(
     
     try:
         print(f"Attempting to crawl website: {normalized_url}")
-        crawled_data = await crawl_and_extract(normalized_url)
+        crawled_data = await crawl_and_extract(normalized_url, use_js_render=enable_js_render)
         if crawled_data:
             website_context = format_crawled_content_for_prompt(crawled_data)
             print(f"Successfully crawled website: {normalized_url}")

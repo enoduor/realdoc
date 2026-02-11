@@ -1,37 +1,190 @@
 """
 Web crawler utility for extracting content from URLs to enhance documentation generation.
+
+Notes / real-world constraints:
+- Some sites block server-side crawlers (WAF / bot protection / IP reputation).
+- Some pages require authentication (login/paywall/VPN/intranet).
+- Some pages are JS-rendered (SPA) and won't expose content in raw HTML.
 """
+import os
+import random
 import re
 from typing import Optional, Dict, List, Any
+
 import aiohttp
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, quote_plus
 import asyncio
 
+try:
+    # Optional dependency for JS-rendered crawling
+    from playwright.async_api import async_playwright
+    PLAYWRIGHT_AVAILABLE = True
+except Exception:
+    async_playwright = None  # type: ignore
+    PLAYWRIGHT_AVAILABLE = False
 
-async def fetch_url_content(url: str, timeout: int = 10) -> Optional[str]:
+
+DEFAULT_USER_AGENTS = [
+    # A small rotation helps with overly strict bot heuristics (not a bypass for real WAF).
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+]
+
+
+def _build_headers(user_agent: Optional[str] = None) -> Dict[str, str]:
+    ua = user_agent or random.choice(DEFAULT_USER_AGENTS)
+    return {
+        "User-Agent": ua,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+    }
+
+
+def _classify_fetch_failure(status: Optional[int], body: str = "", exc: Optional[Exception] = None) -> str:
+    """
+    Best-effort classification used for logging and UX messaging.
+    We do NOT change behavior based on this classification (other than retries).
+    """
+    if exc:
+        if isinstance(exc, asyncio.TimeoutError):
+            return "timeout"
+        msg = str(exc).lower()
+        if "ssl" in msg or "certificate" in msg:
+            return "tls_error"
+        return "network_error"
+
+    if status is None:
+        return "unknown"
+
+    if status in (401, 402):
+        return "auth_required"
+    if status in (403, 406):
+        return "forbidden"
+    if status in (407,):
+        return "proxy_auth_required"
+    if status in (408, 504):
+        return "timeout"
+    if status in (429,):
+        return "rate_limited"
+    if status in (451,):
+        return "unavailable_legal"
+    if status in (500, 502, 503, 520, 521, 522, 523, 524):
+        # Includes common CDN/WAF edge failures
+        return "upstream_error"
+
+    body_l = (body or "").lower()
+    if "captcha" in body_l or "cloudflare" in body_l or "bot detection" in body_l:
+        return "waf_bot_protection"
+
+    return "http_error"
+
+
+def _should_retry(status: Optional[int], exc: Optional[Exception]) -> bool:
+    if exc:
+        return isinstance(exc, (aiohttp.ClientError, asyncio.TimeoutError))
+    if status is None:
+        return True
+    return status in (408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524)
+
+
+async def fetch_url_content(
+    url: str,
+    timeout: int = 10,
+    max_retries: int = 2,
+    proxy: Optional[str] = None,
+) -> Optional[str]:
     """
     Fetch content from a URL asynchronously.
     
     Args:
         url: The URL to fetch
         timeout: Request timeout in seconds
+        max_retries: Number of retries on transient failures / rate limits
+        proxy: Optional HTTP proxy URL (e.g. http://user:pass@host:port)
         
     Returns:
         Raw HTML content or None if error
     """
-    try:
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session:
-            async with session.get(url, headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }) as response:
-                if response.status == 200:
-                    return await response.text()
-                else:
-                    print(f"Error fetching URL {url}: Status {response.status}")
+    proxy = proxy or os.getenv("CRAWLER_HTTP_PROXY") or None
+    max_retries = int(os.getenv("CRAWLER_MAX_RETRIES", str(max_retries)))
+    timeout = int(os.getenv("CRAWLER_TIMEOUT_SECONDS", str(timeout)))
+
+    last_status: Optional[int] = None
+    last_body_preview: str = ""
+    last_exc: Optional[Exception] = None
+
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session:
+        for attempt in range(max_retries + 1):
+            last_exc = None
+            try:
+                headers = _build_headers()
+                async with session.get(
+                    url,
+                    headers=headers,
+                    allow_redirects=True,
+                    max_redirects=10,
+                    proxy=proxy,
+                ) as response:
+                    last_status = response.status
+                    # Read a small preview for classification/logging without keeping huge pages in memory
+                    text = await response.text(errors="ignore")
+                    last_body_preview = (text or "")[:2000]
+
+                    if response.status == 200:
+                        return text
+
+                    failure = _classify_fetch_failure(last_status, last_body_preview)
+                    print(f"Error fetching URL {url}: Status {response.status} ({failure})")
+
+                    if attempt < max_retries and _should_retry(last_status, None):
+                        # Exponential backoff with jitter
+                        await asyncio.sleep(min(2 ** attempt, 8) + random.random())
+                        continue
                     return None
+
+            except Exception as e:
+                last_exc = e
+                failure = _classify_fetch_failure(None, "", e)
+                print(f"Error fetching URL {url}: {str(e)} ({failure})")
+                if attempt < max_retries and _should_retry(None, e):
+                    await asyncio.sleep(min(2 ** attempt, 8) + random.random())
+                    continue
+                return None
+
+
+async def render_url_with_js(
+    url: str,
+    timeout: int = 20,
+) -> Optional[str]:
+    """
+    Render a URL with JavaScript using Playwright (headless Chromium) and return the final HTML.
+
+    This is useful for SPA / React / Vue apps where most content is injected client-side.
+    """
+    if not PLAYWRIGHT_AVAILABLE:
+        print("Playwright is not installed; JS render mode is unavailable.")
+        return None
+
+    # Playwright uses milliseconds for timeout
+    nav_timeout_ms = int(os.getenv("CRAWLER_JS_TIMEOUT_MS", str(timeout * 1000)))
+
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            try:
+                page = await browser.new_page()
+                await page.goto(url, wait_until="networkidle", timeout=nav_timeout_ms)
+                html = await page.content()
+                return html
+            finally:
+                await browser.close()
     except Exception as e:
-        print(f"Error fetching URL {url}: {str(e)}")
+        print(f"Error rendering URL with JS {url}: {e}")
         return None
 
 
@@ -129,26 +282,57 @@ def extract_text_content(html: str, url: str = "") -> Dict[str, str]:
         }
 
 
-async def crawl_and_extract(url: str) -> Optional[Dict[str, str]]:
+async def crawl_and_extract(
+    url: str,
+    timeout: int = 10,
+    max_retries: int = 2,
+    proxy: Optional[str] = None,
+    use_js_render: Optional[bool] = None,
+) -> Optional[Dict[str, str]]:
     """
     Crawl a URL and extract relevant content.
     
     Args:
         url: URL to crawl
+        timeout: Request timeout in seconds
+        max_retries: Number of retries on transient failures / rate limits
+        proxy: Optional HTTP proxy URL
+        use_js_render: If True, allow a JS-rendered fallback using Playwright
         
     Returns:
         Dictionary with extracted content or None if error
     """
+    # Decide JS-render behavior (per-call flag overrides env)
+    if use_js_render is None:
+        use_js_render = os.getenv("CRAWLER_ENABLE_JS_RENDER", "false").lower() in (
+            "1",
+            "true",
+            "yes",
+            "y",
+        )
+
     # Validate URL
     parsed = urlparse(url)
     if not parsed.scheme:
         url = f"https://{url}"
     
-    # Fetch content
-    html = await fetch_url_content(url)
+    # Fetch content (plain HTTP)
+    html = await fetch_url_content(url, timeout=timeout, max_retries=max_retries, proxy=proxy)
+
+    # Heuristic: if HTML is missing or extremely small / template-like, and JS render is enabled,
+    # try a JS-rendered fallback to catch SPA/React content.
+    if (not html or len(html or "") < 1000 or "<body" not in (html or "").lower()) and use_js_render:
+        print(f"Attempting JS-rendered crawl for {url}...")
+        rendered_html = await render_url_with_js(url, timeout=timeout * 2)
+        if rendered_html:
+            html = rendered_html
+        elif not html:
+            # If both plain fetch and JS render failed, give up
+            return None
+
     if not html:
         return None
-    
+
     # Extract content
     extracted = extract_text_content(html, url)
     # Ensure URL is included in the extracted data

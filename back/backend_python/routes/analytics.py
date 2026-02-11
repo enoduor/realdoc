@@ -14,6 +14,7 @@ class AnalyticsRequest(BaseModel):
     include_traffic_analysis: bool = True
     include_competitor_comparison: bool = True
     language: str = "en"
+    enable_js_render: bool = False
 
     @validator('analysis_depth')
     def validate_analysis_depth(cls, v):
@@ -59,7 +60,8 @@ async def create_analytics_report(request: AnalyticsRequest):
             include_revenue_analysis=request.include_revenue_analysis,
             include_traffic_analysis=request.include_traffic_analysis,
             include_competitor_comparison=request.include_competitor_comparison,
-            language=request.language
+            language=request.language,
+            enable_js_render=request.enable_js_render,
         )
         
         word_count = count_words(report)

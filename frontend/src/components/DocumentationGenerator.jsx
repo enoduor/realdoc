@@ -56,6 +56,7 @@ const DocumentationGenerator = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [editedDocumentation, setEditedDocumentation] = useState('');
     const [viewFormat, setViewFormat] = useState(null); // 'markdown' or 'html' - null means use original format
+    const [enableJsRender, setEnableJsRender] = useState(false);
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -77,7 +78,10 @@ const DocumentationGenerator = () => {
                     (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
                 
                 // Only include app_url if it's provided
-                const requestData = { ...savedFormData };
+                const requestData = { 
+                    ...savedFormData,
+                    enable_js_render: enableJsRender,
+                };
                 if (!requestData.app_url || requestData.app_url.trim() === '') {
                     delete requestData.app_url;
                 }
@@ -347,6 +351,19 @@ const DocumentationGenerator = () => {
                                         <option key={type.id} value={type.id}>{type.name}</option>
                                     ))}
                                 </select>
+                                <div className="mt-2 flex items-start gap-2">
+                                    <input
+                                        id="enable-js-render-docs"
+                                        type="checkbox"
+                                        checked={enableJsRender}
+                                        onChange={(e) => setEnableJsRender(e.target.checked)}
+                                        className="mt-0.5"
+                                    />
+                                    <label htmlFor="enable-js-render-docs" className="text-xs text-gray-600">
+                                        Enable JS rendering for app URL (SPA / React). Uses a headless browser, can be
+                                        slower but captures content that only appears after JavaScript runs.
+                                    </label>
+                                </div>
                             </div>
                         </div>
 

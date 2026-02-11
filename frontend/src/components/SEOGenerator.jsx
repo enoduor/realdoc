@@ -29,6 +29,7 @@ const SEOGenerator = () => {
     const [aiOptimizedRecommendations, setAiOptimizedRecommendations] = useState(null);
     const [recommendationsLoading, setRecommendationsLoading] = useState(false);
     const [viewFormat, setViewFormat] = useState('markdown'); // 'markdown' or 'html'
+    const [enableJsRender, setEnableJsRender] = useState(false);
 
     const handleInputChange = (e) => {
         const { name, value, type } = e.target;
@@ -75,7 +76,8 @@ const SEOGenerator = () => {
                 const normalizedUrl = normalizeUrl(savedFormData.website_url);
                 const requestData = {
                     ...savedFormData,
-                    website_url: normalizedUrl
+                    website_url: normalizedUrl,
+                    enable_js_render: enableJsRender,
                 };
                 
                 const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/seo/`, requestData, {
@@ -433,6 +435,19 @@ const SEOGenerator = () => {
                             <p className="text-xs text-gray-500 mt-1">
                                 Enter your website URL for comprehensive SEO analysis
                             </p>
+                            <div className="mt-2 flex items-start gap-2">
+                                <input
+                                    id="enable-js-render-seo"
+                                    type="checkbox"
+                                    checked={enableJsRender}
+                                    onChange={(e) => setEnableJsRender(e.target.checked)}
+                                    className="mt-0.5"
+                                />
+                                <label htmlFor="enable-js-render-seo" className="text-xs text-gray-600">
+                                    Enable JS rendering for SPA / React sites (uses a headless browser, can be slower but
+                                    captures content that only appears after JavaScript runs).
+                                </label>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

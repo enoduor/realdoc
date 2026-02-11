@@ -37,7 +37,8 @@ async def generate_documentation(
     include_screenshots: bool = False,
     target_audience: str = "developers",
     format: str = "markdown",
-    app_url: Optional[str] = None
+    app_url: Optional[str] = None,
+    enable_js_render: bool = False,
 ) -> str:
     """
     Generate documentation for online applications using OpenAI.
@@ -55,6 +56,7 @@ async def generate_documentation(
         include_screenshots (bool): Whether to include screenshot placeholders
         target_audience (str): Target audience (developers, end-users, admins, etc.)
         format (str): Output format (markdown, html, plain-text)
+        enable_js_render (bool): If True, allow JS-rendered crawling for SPA/React sites when app_url is provided
     
     Returns:
         str: Generated documentation
@@ -113,7 +115,7 @@ async def generate_documentation(
     if normalized_app_url:
         try:
             print(f"Attempting to crawl website: {normalized_app_url}")
-            crawled_data = await crawl_and_extract(normalized_app_url)
+            crawled_data = await crawl_and_extract(normalized_app_url, use_js_render=enable_js_render)
             if crawled_data:
                 crawled_context = format_crawled_content_for_prompt(crawled_data)
                 # Update app_name if we found a better title
