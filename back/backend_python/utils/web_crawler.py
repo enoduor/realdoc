@@ -198,6 +198,11 @@ def extract_text_content(html: str, url: str = "") -> Dict[str, Any]:
         elif soup.find("meta", property="og:description"):
             description = soup.find("meta", property="og:description").get("content", "").strip()
 
+        h1_text = ""
+        h1 = soup.find("h1")
+        if h1 and h1.get_text():
+            h1_text = h1.get_text().strip()[:200]
+
         for tag in soup(["script", "style", "noscript"]):
             tag.decompose()
 
@@ -253,26 +258,58 @@ def extract_text_content(html: str, url: str = "") -> Dict[str, Any]:
             except Exception:
                 pass
 
+        base_domain = ""
+        try:
+            base_domain = urlparse(url).netloc.lower().replace("www.", "")
+        except Exception:
+            base_domain = ""
+
+        internal_links: List[str] = []
+        for a in soup.find_all("a", href=True):
+            href = (a.get("href") or "").strip()
+            if not href or href.startswith(("mailto:", "tel:", "#")):
+                continue
+            abs_url = urljoin(url, href)
+            try:
+                d = urlparse(abs_url).netloc.lower().replace("www.", "")
+            except Exception:
+                d = ""
+            if not d or (base_domain and d == base_domain):
+                internal_links.append(abs_url)
+
+        seen_links = set()
+        unique_internal_links: List[str] = []
+        for u in internal_links:
+            if u not in seen_links:
+                seen_links.add(u)
+                unique_internal_links.append(u)
+
         if len(main_content) > 8000:
             main_content = main_content[:8000] + "..."
 
         return {
             "title": title,
             "description": description,
+            "h1": h1_text,
             "content": main_content,
             "headings": headings[:12],
             "features": features[:18],
             "url": url,
+            "internal_link_count": len(unique_internal_links),
+            "internal_links": unique_internal_links[:10],
             "debug": {"visible_text_len": len(main_content or "")},
         }
     except Exception as e:
         return {
             "title": "",
             "description": "",
+            "h1": "",
             "content": "",
             "headings": [],
             "features": [],
             "url": url,
+            "internal_link_count": 0,
+            "internal_links": [],
             "debug": {"error": str(e)},
         }
 
@@ -650,6 +687,40 @@ async def analyze_competitor_keywords(competitor_data_list: List[Dict[str, Any]]
     return {"competitor_keywords": competitor_keywords, "high_volume_keywords": high_volume}
 
 
+def compute_keyword_gaps(
+    site_keywords: List[str],
+    competitor_keywords_map: Dict[str, List[str]],
+    max_items: int = 25,
+) -> List[Dict[str, Any]]:
+    site_set = {k.lower().strip() for k in (site_keywords or []) if k}
+    counts: Dict[str, Dict[str, Any]] = {}
+
+    for comp_url, kws in (competitor_keywords_map or {}).items():
+        for kw in (kws or []):
+            k = (kw or "").lower().strip()
+            if not k:
+                continue
+            if k in site_set:
+                continue
+            if k not in counts:
+                counts[k] = {"keyword": kw, "competitors_using": set(), "count": 0}
+            counts[k]["competitors_using"].add(comp_url)
+
+    out: List[Dict[str, Any]] = []
+    for v in counts.values():
+        competitors = sorted(list(v["competitors_using"]))[:5]
+        out.append(
+            {
+                "keyword": v["keyword"],
+                "competitors_using": competitors,
+                "count": len(v["competitors_using"]),
+            }
+        )
+
+    out.sort(key=lambda x: x["count"], reverse=True)
+    return out[:max_items]
+
+
 async def get_competitor_high_volume_keywords(
     website_url: str,
     max_competitors: int = 5,
@@ -662,9 +733,30 @@ async def get_competitor_high_volume_keywords(
     competitor_data = await crawl_competitors(competitor_urls, max_concurrent=3, use_js_render=True)
     analysis = await analyze_competitor_keywords(competitor_data, max_keywords=max_keywords)
 
+    site_keywords: List[str] = []
+    # If you have the site crawled_data upstream, pass its keywords in from seo_helper.
+    # For now this remains empty unless you wire it in from seo_helper.
+    keyword_gaps = compute_keyword_gaps(site_keywords, analysis.get("competitor_keywords") or {}, max_items=25)
+
+    competitor_pages: List[Dict[str, Any]] = []
+    for c in competitor_data[:6]:
+        competitor_pages.append(
+            {
+                "url": c.get("url") or "",
+                "title": (c.get("title") or "")[:160],
+                "h1": (c.get("h1") or "")[:200],
+                "description": (c.get("description") or "")[:240],
+                "headings": (c.get("headings") or [])[:8],
+                "features": (c.get("features") or [])[:8],
+                "internal_link_count": c.get("internal_link_count", 0),
+            }
+        )
+
     return {
         "competitors_found": len(competitor_urls),
         "competitors_crawled": len(competitor_data),
+        "competitor_pages": competitor_pages,
+        "keyword_gaps": keyword_gaps,
         **analysis,
     }
 

@@ -27,6 +27,8 @@ from utils.web_crawler import (
     get_competitor_high_volume_keywords,
     cluster_keywords_by_intent_difficulty_opportunity,
     discover_related_sites,
+    extract_keywords_from_content,
+    compute_keyword_gaps,
 )
 
 from utils.brand_visibility_helper import (
@@ -252,8 +254,11 @@ def _build_site_evidence(data: Optional[Dict[str, Any]], fallback_url: str) -> D
             "url": fallback_url,
             "title": "",
             "description": "",
+            "h1": "",
             "headings": [],
             "features": [],
+            "internal_link_count": 0,
+            "internal_links": [],
             "content_excerpt": "",
             "quotes": [],
         }
@@ -261,6 +266,7 @@ def _build_site_evidence(data: Optional[Dict[str, Any]], fallback_url: str) -> D
     text_sources = [
         data.get("title", ""),
         data.get("description", ""),
+        data.get("h1", ""),
         " ".join((data.get("headings") or [])[:10]),
         data.get("content", ""),
     ]
@@ -269,8 +275,11 @@ def _build_site_evidence(data: Optional[Dict[str, Any]], fallback_url: str) -> D
         "url": url,
         "title": _truncate_text(data.get("title", ""), 160),
         "description": _truncate_text(data.get("description", ""), 400),
+        "h1": _truncate_text(data.get("h1", ""), 200),
         "headings": (data.get("headings") or [])[:10],
         "features": (data.get("features") or [])[:12],
+        "internal_link_count": int(data.get("internal_link_count") or 0),
+        "internal_links": (data.get("internal_links") or [])[:8],
         "content_excerpt": _truncate_text(data.get("content", ""), 1200),
         "quotes": _extract_quotes(text_sources, url, max_quotes=3),
     }
@@ -313,9 +322,29 @@ def _build_competitor_keywords_evidence(comp_data: Optional[Dict[str, Any]]) -> 
         return {}
     competitors = list((comp_data.get("competitor_keywords") or {}).keys())[:6]
     high_volume = (comp_data.get("high_volume_keywords") or [])[:15]
+    competitor_pages = (comp_data.get("competitor_pages") or [])[:6]
+    keyword_gaps = (comp_data.get("keyword_gaps") or [])[:25]
     return {
         "competitors_analyzed": comp_data.get("competitors_crawled") or comp_data.get("competitors_found"),
         "competitor_urls": competitors,
+        "competitor_pages": [
+            {
+                "url": p.get("url", ""),
+                "title": p.get("title", ""),
+                "h1": p.get("h1", ""),
+                "description": p.get("description", ""),
+                "headings": (p.get("headings") or [])[:8],
+            }
+            for p in competitor_pages
+        ],
+        "keyword_gaps": [
+            {
+                "keyword": g.get("keyword", ""),
+                "count": g.get("count", 0),
+                "competitors_using": (g.get("competitors_using") or [])[:5],
+            }
+            for g in keyword_gaps
+        ],
         "high_volume_keywords": [
             {
                 "keyword": k.get("keyword", ""),
@@ -325,6 +354,104 @@ def _build_competitor_keywords_evidence(comp_data: Optional[Dict[str, Any]]) -> 
             }
             for k in high_volume
         ],
+    }
+
+
+def _dedupe_case(items: List[str], max_items: int = 20) -> List[str]:
+    out: List[str] = []
+    seen = set()
+    for item in items:
+        it = (item or "").strip()
+        key = it.lower()
+        if not it or key in seen:
+            continue
+        seen.add(key)
+        out.append(it)
+        if len(out) >= max_items:
+            break
+    return out
+
+
+def _slugify_keyword(keyword: str, max_len: int = 60) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", (keyword or "").lower()).strip("-")
+    if len(slug) > max_len:
+        slug = slug[:max_len].rstrip("-")
+    return slug
+
+
+def _derive_strategy_evidence(
+    site_evidence: Dict[str, Any],
+    keyword_rankings: Dict[str, Any],
+    competitor_keywords: Dict[str, Any],
+    keyword_clusters: Dict[str, Any],
+    brand_name: str,
+) -> Dict[str, Any]:
+    extracted = keyword_rankings.get("extracted_keywords") or []
+    target = keyword_rankings.get("target_keywords") or []
+    high_volume = competitor_keywords.get("high_volume_keywords") or []
+    competitor_pages = competitor_keywords.get("competitor_pages") or []
+
+    hv_keywords = [k.get("keyword", "") for k in high_volume if k.get("keyword")]
+    suggestions: List[str] = []
+    for k in high_volume:
+        suggestions.extend(k.get("related_suggestions") or [])
+
+    priority_keywords = _dedupe_case(extracted + target + hv_keywords + suggestions, max_items=20)
+    phrase_keywords = [k for k in priority_keywords if " " in k][:10]
+
+    content_gaps = _dedupe_case([k for k in hv_keywords if k.lower() not in {x.lower() for x in extracted}], max_items=10)
+    landing_seeds = content_gaps or phrase_keywords or priority_keywords[:8]
+
+    landing_page_ideas: List[Dict[str, str]] = []
+    for k in landing_seeds[:8]:
+        slug = _slugify_keyword(k)
+        if not slug:
+            continue
+        landing_page_ideas.append(
+            {
+                "keyword": k,
+                "suggested_slug": f"/{slug}",
+                "title_example": f"{k.title()} | {brand_name}" if brand_name else k.title(),
+            }
+        )
+
+    faq_questions: List[str] = []
+    for s in suggestions[:12]:
+        if "?" in s:
+            faq_questions.append(s)
+        else:
+            faq_questions.append(f"What is {s}?")
+    faq_questions = _dedupe_case(faq_questions, max_items=8)
+
+    intent = keyword_clusters.get("intent") if isinstance(keyword_clusters, dict) else {}
+    commercial = intent.get("commercial") if isinstance(intent, dict) else []
+    transactional = intent.get("transactional") if isinstance(intent, dict) else []
+
+    title_patterns: List[str] = []
+    for c in competitor_pages[:6]:
+        t = c.get("title") or ""
+        if t and t not in title_patterns:
+            title_patterns.append(t[:160])
+
+    heading_patterns: List[str] = []
+    for c in competitor_pages[:6]:
+        h1 = (c.get("h1") or "").strip()
+        if h1 and h1 not in heading_patterns:
+            heading_patterns.append(h1[:160])
+
+    return {
+        "brand_name": brand_name,
+        "priority_keywords": priority_keywords[:15],
+        "content_gaps": content_gaps[:10],
+        "positioning_candidates": phrase_keywords[:6],
+        "landing_page_ideas": landing_page_ideas[:8],
+        "faq_questions": faq_questions[:8],
+        "commercial_intent_keywords": commercial[:10] if isinstance(commercial, list) else [],
+        "transactional_intent_keywords": transactional[:10] if isinstance(transactional, list) else [],
+        "competitor_title_patterns": title_patterns[:6],
+        "competitor_heading_patterns": heading_patterns[:8],
+        "site_internal_links_sample": (site_evidence.get("internal_links") or [])[:6],
+        "site_internal_link_count": site_evidence.get("internal_link_count", 0),
     }
 
 
@@ -416,6 +543,13 @@ async def generate_seo_report(
     except Exception:
         crawled_data = None
 
+    parsed = urlparse(normalized_url)
+    brand_name = parsed.netloc.replace("www.", "").split(".")[0].title()
+    if crawled_data and crawled_data.get("title"):
+        t = crawled_data.get("title", "")
+        if t:
+            brand_name = t.split("|")[0].split("-")[0].strip()[:50]
+
     if crawled_data:
         try:
             related_sites_urls = await discover_related_sites(
@@ -452,6 +586,11 @@ async def generate_seo_report(
             max_competitors=5,
             max_keywords=10,
         )
+        site_keywords_for_gap = extract_keywords_from_content(crawled_data or {}, max_keywords=20) if crawled_data else []
+        competitor_map = (competitor_keywords_data.get("competitor_keywords") or {}) if competitor_keywords_data else {}
+        keyword_gaps = compute_keyword_gaps(site_keywords_for_gap, competitor_map, max_items=25) if competitor_map else []
+        if competitor_keywords_data is not None:
+            competitor_keywords_data["keyword_gaps"] = keyword_gaps
     except Exception:
         competitor_keywords_data = None
 
@@ -469,15 +608,6 @@ async def generate_seo_report(
 
     brand_visibility_evidence: List[Dict[str, Any]] = []
     try:
-        parsed = urlparse(normalized_url)
-        domain = parsed.netloc.replace("www.", "")
-        brand_name = domain.split(".")[0].title()
-
-        if crawled_data and crawled_data.get("title"):
-            t = crawled_data.get("title", "")
-            if t:
-                brand_name = t.split("|")[0].split("-")[0].strip()[:50]
-
         brand_visibility_data = await asyncio.wait_for(
             get_brand_visibility_data(
                 brand_name=brand_name,
@@ -500,13 +630,14 @@ async def generate_seo_report(
     except Exception:
         brand_visibility_evidence = []
 
-    tech_evidence: Dict[str, Any] = {}
+    tech_evidence: Dict[str, Any] = {"available": False}
     try:
         tech_evidence = await asyncio.wait_for(collect_technical_evidence(normalized_url), timeout=25.0)
+        tech_evidence["available"] = True
     except asyncio.TimeoutError:
-        tech_evidence = {"error": "timeout"}
+        tech_evidence = {"error": "timeout", "available": False}
     except Exception as e:
-        tech_evidence = {"error": str(e)}
+        tech_evidence = {"error": str(e), "available": False}
 
     required_section_titles: List[str] = []
     sections: List[str] = []
@@ -520,7 +651,7 @@ async def generate_seo_report(
 
     add_section(
         "Executive Summary",
-        "(ALWAYS INCLUDE)\n   - Current SEO health score (0-100)\n   - Key strengths and weaknesses\n   - Priority action items",
+        "(ALWAYS INCLUDE)\n   - Current SEO health score (0-100)\n   - Positioning/keyword focus based on strategy evidence\n   - Key strengths and weaknesses\n   - Priority action items tied to revenue intent",
     )
 
     if "technical" in focus_areas:
@@ -538,13 +669,13 @@ async def generate_seo_report(
     if "content" in focus_areas:
         add_section(
             "Content SEO & Keyword Rankings",
-            "(REQUIRED)\n   - Current keyword ranking performance from evidence\n   - Content gaps based on evidence\n   - Keyword cluster guidance if present",
+            "(REQUIRED)\n   - Current keyword ranking performance from evidence\n   - Content gaps based on evidence\n   - Keyword cluster guidance if present\n   - Keyword-to-page plan with slugs and titles from strategy evidence",
         )
 
     if competitor_keywords_data and competitor_keywords_data.get("high_volume_keywords"):
         add_section(
             "Competitor Keyword Analysis & Meta-Tag Optimization",
-            "(REQUIRED when competitor data exists)\n   - List competitors and URLs\n   - For each keyword: which competitor uses it\n   - Title and meta examples grounded in competitor keyword evidence",
+            "(REQUIRED when competitor data exists)\n   - List competitors and URLs\n   - For each keyword: which competitor uses it\n   - Title/H1 patterns from competitor page evidence\n   - Title and meta examples grounded in competitor keyword evidence",
         )
 
     if "accessibility" in focus_areas:
@@ -571,7 +702,7 @@ async def generate_seo_report(
         or (competitor_keywords_data and competitor_keywords_data.get("high_volume_keywords"))
         or bool(brand_visibility_evidence)
         or bool(related_sites_data)
-        or bool(tech_evidence)
+        or (bool(tech_evidence) and not tech_evidence.get("error"))
     )
 
     data_availability_note = ""
@@ -581,13 +712,26 @@ async def generate_seo_report(
             "Return a short report requesting missing inputs."
         )
 
+    site_evidence = _build_site_evidence(crawled_data, normalized_url)
+    keyword_rankings_evidence = _build_keyword_rankings_evidence(keyword_rankings_data)
+    competitor_keywords_evidence = _build_competitor_keywords_evidence(competitor_keywords_data)
+    keyword_clusters_evidence = keyword_clusters if keyword_clusters and not keyword_clusters.get("error") else {}
+    strategy_evidence = _derive_strategy_evidence(
+        site_evidence=site_evidence,
+        keyword_rankings=keyword_rankings_evidence,
+        competitor_keywords=competitor_keywords_evidence,
+        keyword_clusters=keyword_clusters_evidence,
+        brand_name=brand_name,
+    )
+
     evidence_summary = {
-        "site": _build_site_evidence(crawled_data, normalized_url),
+        "site": site_evidence,
         "related_sites": _build_related_sites_evidence(related_sites_data, normalized_url),
         "tech": tech_evidence,
-        "keyword_rankings": _build_keyword_rankings_evidence(keyword_rankings_data),
-        "competitor_keywords": _build_competitor_keywords_evidence(competitor_keywords_data),
-        "keyword_clusters": keyword_clusters if keyword_clusters and not keyword_clusters.get("error") else {},
+        "keyword_rankings": keyword_rankings_evidence,
+        "competitor_keywords": competitor_keywords_evidence,
+        "keyword_clusters": keyword_clusters_evidence,
+        "strategy": strategy_evidence,
         "brand_visibility_evidence": brand_visibility_evidence,
         "data_availability_note": data_availability_note,
     }
@@ -638,6 +782,13 @@ what is missing
 the exact checks to run next
 Do not output generic advice paragraphs.
 
+6. DEPTH & STRATEGY RULE
+Use strategy evidence to produce a keyword-to-page plan, positioning focus, and revenue-intent priorities.
+If strategy evidence is empty, say Not available in evidence and list what to collect.
+
+7. EXECUTION RULE
+Include specific page ideas (slugs + titles), internal linking targets, and meta updates grounded in evidence.
+
 Focus Areas: {focus_areas_text}
 Business Type: {business_type}
 Language: {language}"""
@@ -672,6 +823,7 @@ Hard rules:
 Each section must include Examples from evidence and Evidence:
 Evidence can reference site, tech, related sites, rankings, competitor, brand visibility
 If a section has insufficient evidence, keep it short and list missing checks only
+Use strategy evidence to produce a keyword-to-page plan with slugs and titles
 """
 
     client = get_openai_client()
@@ -885,6 +1037,7 @@ async def generate_ai_optimized_recommendations(
         current_title = crawled_data.get("title", "") if crawled_data else ""
         current_description = crawled_data.get("description", "") if crawled_data else ""
         current_headings = crawled_data.get("headings", []) if crawled_data else []
+        current_h1 = crawled_data.get("h1", "") if crawled_data else ""
 
         prompt = f"""Generate prioritized SEO recommendations with direct implementation steps.
 Website: {website_url}
@@ -892,17 +1045,31 @@ Business Type: {business_type}
 Target Keywords: {target_keywords or 'Not specified'}
 Title: {current_title}
 Description: {current_description}
+H1: {current_h1}
 Headings: {', '.join(current_headings[:5]) if current_headings else 'None'}
 
 SEO Report Summary:
 {seo_report[:3000]}
+
+Hard rules:
+- Provide recommendations for EACH report section you see in the summary.
+- Each section must include 2-5 detailed recommendations with examples.
+- Start each section with a short "Competitor illustration" example when competitor evidence exists in the summary.
+- Recommendations MUST be derived from the SEO report summary and the crawl fields above.
+- For every recommendation, include an "Evidence:" line that quotes or references the exact report section.
+- Do not introduce new keywords, competitors, tools, or pages that are not present in the report summary.
+- If the report says "Not available in evidence" or lacks data, state the missing evidence and provide only the next checks to run.
+- Keep recommendations aligned to the analysis and avoid generic advice.
 
 Return Markdown with clear steps and code where applicable."""
 
         response = await client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": "You are an expert SEO developer. Provide specific, implementable recommendations."},
+                {
+                    "role": "system",
+                    "content": "You are an expert SEO developer. Use evidence-only recommendations tied to the provided report.",
+                },
                 {"role": "user", "content": prompt},
             ],
             temperature=0.4,
@@ -960,31 +1127,31 @@ def quality_assurance_check(
         quality_score -= 10
 
     if focus_on_competitor_analysis:
-        required_sections = ["Executive Summary", "Competitor"]
+        required_sections = ["Executive Summary", "Competitor Keyword Analysis"]
         found_sections = sum(1 for section in required_sections if section.lower() in report.lower())
         if found_sections < len(required_sections):
             issues.append(f"Missing required competitor analysis sections (found {found_sections}/{len(required_sections)})")
             quality_score -= 30
     else:
         focus_areas = focus_areas or ["on-page", "technical", "content"]
-        required_sections = ["Executive Summary", "Implementation Roadmap", "Tools and Resources", "AI Search Visibility (AEO)"]
+
+        required_sections = [
+            "Executive Summary",
+            "Implementation Roadmap",
+            "Tools and Resources",
+            "AI Search Visibility (AEO)",
+        ]
+
         if "technical" in focus_areas:
-            required_sections.append("Technical SEO")
+            required_sections.append("Technical SEO Analysis")
         if "on-page" in focus_areas:
             required_sections.append("On-Page SEO")
         if "content" in focus_areas:
-            required_sections.append("Content SEO")
-        if "off-page" in focus_areas:
-            required_sections.append("Off-Page SEO")
-        if "local" in focus_areas:
-            required_sections.append("Local SEO")
-        if "mobile" in focus_areas:
-            required_sections.append("Mobile SEO")
-        if "speed" in focus_areas:
-            required_sections.append("Page Speed Optimization")
+            required_sections.append("Content SEO & Keyword Rankings")
         if "accessibility" in focus_areas:
             required_sections.append("Accessibility")
-        required_sections.append("Competitor")
+
+        required_sections.append("Competitor Keyword Analysis & Meta-Tag Optimization")
 
         found_sections = sum(1 for section in required_sections if section.lower() in report.lower())
         if found_sections < len(required_sections) * 0.7:
@@ -1003,7 +1170,7 @@ def quality_assurance_check(
             if "keyword" not in report.lower():
                 issues.append("Missing keyword analysis")
                 quality_score -= 15
-        if "competitor" not in report.lower():
+        if "competitor keyword analysis" not in report.lower():
             issues.append("Missing competitor analysis")
             quality_score -= 5
 
