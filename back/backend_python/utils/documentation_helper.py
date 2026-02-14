@@ -1,28 +1,197 @@
+from __future__ import annotations
+
 import os
+import json
 import asyncio
-from openai import AsyncOpenAI
+from typing import Optional, List, Dict, Any
+
 from dotenv import load_dotenv
-from typing import Optional
+from openai import AsyncOpenAI
 from urllib.parse import urlparse
-from utils.web_crawler import (
-    crawl_and_extract, 
-    format_crawled_content_for_prompt,
-    analyze_competitors_and_crawl
-)
+
+from utils.web_crawler import crawl_and_extract, format_crawled_content_for_prompt, crawl_competitors
 from utils.brand_visibility_helper import get_brand_visibility_data, format_brand_visibility_data_for_prompt
 
-# Load environment variables
+
 load_dotenv()
 
-# Initialize OpenAI async client dynamically
-def get_openai_client():
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key or api_key == "sk-placeholder" or api_key.startswith("sk-placeholder"):
+HYPHEN = chr(45)
+
+
+def get_openai_client() -> AsyncOpenAI:
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
         raise ValueError(
-            "OpenAI API key is not configured. Please set OPENAI_API_KEY in your .env file. "
+            "OpenAI API key is not configured. Please set OPENAI_API_KEY in your env file. "
             "Get your API key from https://platform.openai.com/api-keys"
         )
+
+    lower_key = api_key.lower()
+    if lower_key == ("sk" + HYPHEN + "placeholder") or lower_key.startswith("sk" + HYPHEN + "placeholder"):
+        raise ValueError(
+            "OpenAI API key is not configured. Please set OPENAI_API_KEY in your env file. "
+            "Get your API key from https://platform.openai.com/api-keys"
+        )
+
+    if lower_key == "sk_placeholder" or lower_key.startswith("sk_placeholder"):
+        raise ValueError(
+            "OpenAI API key is not configured. Please set OPENAI_API_KEY in your env file. "
+            "Get your API key from https://platform.openai.com/api-keys"
+        )
+
     return AsyncOpenAI(api_key=api_key)
+
+
+def _normalize_url(u: Optional[str]) -> Optional[str]:
+    if not u:
+        return None
+    s = u.strip()
+    if not s:
+        return None
+    if not (s.startswith("http://") or s.startswith("https://")):
+        s = "https://" + s
+    return s.rstrip("/")
+
+
+def _safe_brand_name(app_name: str, website_url: Optional[str], crawled_title: str) -> str:
+    if crawled_title:
+        t = crawled_title.split("|")[0].strip()
+        if HYPHEN in t:
+            t = t.split(HYPHEN)[0].strip()
+        if t:
+            return t[:50]
+
+    if app_name:
+        t = app_name.split("|")[0].strip()
+        if HYPHEN in t:
+            t = t.split(HYPHEN)[0].strip()
+        if t:
+            return t[:50]
+
+    if website_url:
+        try:
+            host = urlparse(website_url).netloc.replace("www.", "").strip()
+            if host:
+                root = host.split(".")[0].strip()
+                if root:
+                    return root[:50].title()
+        except Exception:
+            pass
+
+    return "Unknown"
+
+
+def _count_words(text: str) -> int:
+    return len([w for w in (text or "").split() if w.strip()])
+
+
+def _truncate(text: str, limit: int) -> str:
+    s = (text or "").strip()
+    if len(s) <= limit:
+        return s
+    return s[: max(0, limit - 3)].rstrip() + "..."
+
+
+def _normalize_doc_type(doc_type: str) -> str:
+    s = (doc_type or "").strip().lower()
+    if not s:
+        return "documentation"
+    s = s.replace(HYPHEN, "_")
+    s = s.replace(" ", "_")
+    while "__" in s:
+        s = s.replace("__", "_")
+    return s
+
+
+def _normalize_format(output_format: str) -> str:
+    s = (output_format or "").strip().lower()
+    if not s:
+        return "markdown"
+    s = s.replace(HYPHEN, "_")
+    s = s.replace(" ", "_")
+    if s in ("plain", "plaintext", "plain_text", "text"):
+        return "plain_text"
+    if s in ("html",):
+        return "html"
+    return "markdown"
+
+
+def _build_evidence_summary(
+    app_name: str,
+    app_type: str,
+    doc_type: str,
+    feature_description: str,
+    target_audience: str,
+    technical_level: str,
+    style: str,
+    tone: str,
+    language: str,
+    output_format: str,
+    site_data: Optional[Dict[str, Any]],
+    competitor_data: List[Dict[str, Any]],
+    brand_visibility_evidence: List[Dict[str, Any]],
+    competitor_brand_visibility_evidence: List[Dict[str, Any]],
+    app_url: Optional[str],
+    competitor_urls: Optional[List[str]],
+) -> Dict[str, Any]:
+    site_payload: Dict[str, Any] = {
+        "url": app_url or "",
+        "title": "",
+        "description": "",
+        "headings": [],
+        "features": [],
+        "content_excerpt": "",
+        "crawl_context": "",
+    }
+
+    if site_data:
+        site_payload["url"] = site_data.get("url") or (app_url or "")
+        site_payload["title"] = _truncate(site_data.get("title", ""), 160)
+        site_payload["description"] = _truncate(site_data.get("description", ""), 400)
+        site_payload["headings"] = (site_data.get("headings") or [])[:12]
+        site_payload["features"] = (site_data.get("features") or [])[:16]
+        site_payload["content_excerpt"] = _truncate(site_data.get("content", ""), 2400)
+        try:
+            site_payload["crawl_context"] = _truncate(format_crawled_content_for_prompt(site_data), 3500)
+        except Exception:
+            site_payload["crawl_context"] = ""
+
+    competitors_payload: List[Dict[str, Any]] = []
+    for c in competitor_data[:6]:
+        competitors_payload.append(
+            {
+                "url": c.get("url", ""),
+                "title": _truncate(c.get("title", ""), 160),
+                "description": _truncate(c.get("description", ""), 400),
+                "headings": (c.get("headings") or [])[:10],
+                "features": (c.get("features") or [])[:14],
+                "content_excerpt": _truncate(c.get("content", ""), 1800),
+            }
+        )
+
+    return {
+        "request": {
+            "app_name": app_name,
+            "app_type": app_type,
+            "doc_type": doc_type,
+            "feature_description": feature_description,
+            "target_audience": target_audience,
+            "technical_level": technical_level,
+            "style": style,
+            "tone": tone,
+            "language": language,
+            "format": output_format,
+        },
+        "site": site_payload,
+        "competitors": competitors_payload,
+        "brand_visibility_evidence": brand_visibility_evidence,
+        "competitor_brand_visibility_evidence": competitor_brand_visibility_evidence,
+        "inputs": {
+            "app_url": app_url or "",
+            "competitor_urls": competitor_urls or [],
+        },
+    }
+
 
 async def generate_documentation(
     app_name: str,
@@ -36,580 +205,254 @@ async def generate_documentation(
     include_code_examples: bool = True,
     include_screenshots: bool = False,
     target_audience: str = "developers",
-    format: str = "markdown",
+    output_format: str = "markdown",
     app_url: Optional[str] = None,
+    competitor_urls: Optional[List[str]] = None,
     enable_js_render: bool = False,
-) -> str:
+) -> Dict[str, Any]:
     """
-    Generate documentation for online applications using OpenAI.
-    
-    Args:
-        app_name (str): Name of the application
-        app_type (str): Type of app (web, mobile, api, saas, etc.)
-        doc_type (str): Type of documentation (user-guide, api-docs, developer-guide, etc.)
-        feature_description (str): Description of the feature/functionality to document
-        technical_level (str): Technical level (beginner, intermediate, advanced)
-        style (str): Documentation style (tutorial, reference, conceptual)
-        tone (str): Tone (technical, friendly, formal, conversational)
-        language (str): Language code
-        include_code_examples (bool): Whether to include code examples
-        include_screenshots (bool): Whether to include screenshot placeholders
-        target_audience (str): Target audience (developers, end-users, admins, etc.)
-        format (str): Output format (markdown, html, plain-text)
-        enable_js_render (bool): If True, allow JS-rendered crawling for SPA/React sites when app_url is provided
-    
-    Returns:
-        str: Generated documentation
+    Returns a dict with
+    content string
+    brand_visibility_evidence list
+    competitor_brand_visibility_evidence list
+    evidence_summary dict
     """
-    
-    # Map doc types to descriptions and specific guidance
-    doc_type_map = {
-        "user-guide": {
-            "description": "user guide with step-by-step instructions",
-            "guidance": "Focus on how end users interact with the feature. Include step-by-step instructions, screenshots placeholders, and user-facing explanations."
-        },
-        "api-docs": {
-            "description": "API documentation with endpoints, parameters, and examples",
-            "guidance": "Document ONLY the API endpoints related to the feature described. Include request/response formats, authentication requirements, and code examples. Do NOT invent unrelated endpoints."
-        },
-        "developer-guide": {
-            "description": "developer guide covering setup, architecture, and integration",
-            "guidance": "Focus on technical setup, architecture decisions, and integration patterns specific to the feature. Include code examples and configuration details."
-        },
-        "admin-docs": {
-            "description": "admin documentation for configuration and management",
-            "guidance": "Document configuration options, management tasks, and administrative features related to the specific feature described."
-        },
-        "quick-start": {
-            "description": "quick start guide to get started in minutes",
-            "guidance": "Provide a concise, step-by-step guide to quickly get started with the feature. Keep it brief and focused on the essentials."
-        },
-        "faq": {
-            "description": "FAQ document with common questions and answers",
-            "guidance": "Create questions and answers based on the feature description. Focus on common issues, usage patterns, and clarifications related to the specific feature."
-        },
-        "release-notes": {
-            "description": "release notes with version changes and new features",
-            "guidance": "Document changes, new features, improvements, and breaking changes related to the feature. Base version numbers and changes on realistic assumptions."
-        }
-    }
-    
-    doc_info = doc_type_map.get(doc_type, {"description": "documentation", "guidance": "Create comprehensive documentation"})
-    doc_description = doc_info["description"]
-    doc_type_guidance = doc_info["guidance"]
-    
-    # Normalize URL if provided
-    normalized_app_url = None
-    if app_url:
-        normalized_app_url = app_url.strip()
-        if not normalized_app_url.startswith(('http://', 'https://')):
-            normalized_app_url = f"https://{normalized_app_url}"
-        normalized_app_url = normalized_app_url.rstrip('/')
-    
-    # Crawl URL if provided
-    crawled_context = ""
-    competitor_analysis = ""
-    competitor_result = None
-    crawled_data = None
-    
+
+    normalized_app_url = _normalize_url(app_url)
+    normalized_competitors: List[str] = []
+    if competitor_urls:
+        for u in competitor_urls:
+            nu = _normalize_url(u)
+            if nu:
+                normalized_competitors.append(nu)
+
+    doc_type_norm = _normalize_doc_type(doc_type)
+    format_norm = _normalize_format(output_format)
+
+    site_data: Optional[Dict[str, Any]] = None
+    crawl_available = False
+
     if normalized_app_url:
         try:
-            print(f"Attempting to crawl website: {normalized_app_url}")
-            crawled_data = await crawl_and_extract(normalized_app_url, use_js_render=enable_js_render)
-            if crawled_data:
-                crawled_context = format_crawled_content_for_prompt(crawled_data)
-                # Update app_name if we found a better title
-                if crawled_data.get("title") and not app_name:
-                    app_name = crawled_data["title"]
-                print(f"Successfully crawled website: {normalized_app_url}")
-            else:
-                print(f"Failed to crawl website: {normalized_app_url} - No data returned")
-            
-            # Perform competitor analysis after crawling the main app
-            print("Starting competitor analysis...")
-            competitor_result = await analyze_competitors_and_crawl(
-                app_name=app_name,
-                app_type=app_type,
-                app_url=normalized_app_url
+            site_data = await crawl_and_extract(normalized_app_url, use_js_render=enable_js_render)
+            if site_data:
+                crawl_available = bool(site_data.get("content"))
+        except Exception:
+            site_data = None
+            crawl_available = False
+
+    competitor_data: List[Dict[str, Any]] = []
+    if normalized_competitors:
+        try:
+            competitor_data = await crawl_competitors(
+                normalized_competitors,
+                max_concurrent=3,
+                use_js_render=enable_js_render,
             )
-            if competitor_result.get("analysis"):
-                competitor_analysis = competitor_result["analysis"]
-                print(f"Competitor analysis completed: {competitor_result.get('count', 0)} competitors analyzed")
-        except Exception as e:
-            error_msg = str(e)
-            print(f"Warning: Could not crawl URL {normalized_app_url}: {error_msg}")
-            # Continue without crawled content
-    else:
-        # Even without app_url, we can still do competitor analysis if we have app_name
-        if app_name:
-            try:
-                print(f"Starting competitor analysis for '{app_name}' (without app URL)...")
-                competitor_result = await analyze_competitors_and_crawl(
-                    app_name=app_name,
-                    app_type=app_type,
-                    app_url=None
-                )
-                if competitor_result and competitor_result.get("analysis"):
-                    competitor_analysis = competitor_result["analysis"]
-                    print(f"Competitor analysis completed: {competitor_result.get('count', 0)} competitors analyzed")
-                else:
-                    print("Competitor analysis returned no results")
-            except Exception as e:
-                print(f"Warning: Could not perform competitor analysis: {str(e)}")
-                import traceback
-                traceback.print_exc()
-    
-    # Fetch brand visibility data for the app (SEO sources for context)
-    # Wrap in timeout to prevent hanging
+        except Exception:
+            competitor_data = []
+
+    brand_visibility_evidence: List[Dict[str, Any]] = []
+    competitor_brand_visibility_evidence: List[Dict[str, Any]] = []
     brand_visibility_text = ""
+    competitor_brand_visibility_text = ""
+
+    brand_name = _safe_brand_name(app_name, normalized_app_url, (site_data or {}).get("title", ""))
+
     if normalized_app_url:
         try:
-            print("Fetching brand visibility data for documentation context...")
-            parsed_url = urlparse(normalized_app_url)
-            domain = parsed_url.netloc.replace('www.', '')
-            brand_name = domain.split('.')[0].title()
-            
-            # Use app_name if available, otherwise domain
-            if app_name:
-                brand_name = app_name.split('|')[0].split('-')[0].strip()[:50]
-            
-            # Try to get brand name from crawled data if available
-            if crawled_data and crawled_data.get("title"):
-                title = crawled_data.get("title", "")
-                if title:
-                    brand_name = title.split('|')[0].split('-')[0].strip()[:50]
-            
-            # Fetch with timeout to prevent hanging (35 seconds max)
-            try:
-                brand_visibility_data = await asyncio.wait_for(
-                    get_brand_visibility_data(
-                        brand_name=brand_name,
-                        website_url=normalized_app_url,
-                        max_results=15,
-                        include_seo_sources=True,  # SEO sources provide context for documentation
-                        include_analytics_sources=False
-                    ),
-                    timeout=35.0
-                )
-            except asyncio.TimeoutError:
-                print("⚠️  Brand visibility fetch timed out - continuing without it")
-                brand_visibility_data = None
-            
-            if brand_visibility_data and brand_visibility_data.get("available"):
-                brand_visibility_text = format_brand_visibility_data_for_prompt(brand_visibility_data, brand_name, for_seo=True)
-                print(f"✅ Brand visibility data fetched: {brand_visibility_data.get('total_mentions', 0)} mentions found")
-        except Exception as e:
-            print(f"Error fetching brand visibility data: {e}")
-    
-    # Fetch brand visibility for competitors (if competitor analysis was done) - Run in parallel
-    competitor_brand_visibility_text = ""
-    if competitor_result and competitor_result.get("competitors"):
-        try:
-            print("Fetching brand visibility data for competitors...")
-            
-            # Create tasks for parallel execution
-            competitor_tasks = []
-            competitor_info = []
-            for competitor in competitor_result.get("competitors", [])[:3]:  # Limit to 3 competitors
-                comp_url = competitor.get("url", "")
-                if comp_url:
-                    parsed_comp = urlparse(comp_url)
-                    comp_domain = parsed_comp.netloc.replace('www.', '')
-                    comp_brand_name = comp_domain.split('.')[0].title()
-                    
-                    # Use competitor name if available
-                    if competitor.get("name"):
-                        comp_brand_name = competitor["name"].split('|')[0].split('-')[0].strip()[:50]
-                    
-                    competitor_info.append((comp_url, comp_brand_name))
-                    competitor_tasks.append(
-                        get_brand_visibility_data(
-                            brand_name=comp_brand_name,
-                            website_url=comp_url,
-                            max_results=10,
-                            include_seo_sources=True,
-                            include_analytics_sources=False
-                        )
-                    )
-            
-            # Execute all competitor fetches in parallel with timeout
-            if competitor_tasks:
-                try:
-                    competitor_results = await asyncio.wait_for(
-                        asyncio.gather(*competitor_tasks, return_exceptions=True),
-                        timeout=30.0
-                    )
-                except asyncio.TimeoutError:
-                    print("⚠️  Competitor brand visibility fetch timed out after 30 seconds")
-                    competitor_results = [{'available': False, 'error': 'timeout'} for _ in competitor_tasks]
-                
-                # Process results
-                competitor_brand_parts = []
-                for i, (comp_url, comp_brand_name) in enumerate(competitor_info):
-                    try:
-                        comp_brand_data = competitor_results[i] if not isinstance(competitor_results[i], Exception) else {'available': False, 'error': str(competitor_results[i])}
-                        
-                        if comp_brand_data and comp_brand_data.get("available"):
-                            comp_brand_text = format_brand_visibility_data_for_prompt(comp_brand_data, comp_brand_name, for_seo=True)
-                            if comp_brand_text:
-                                competitor_brand_parts.append(f"COMPETITOR: {comp_url}\n{comp_brand_text}")
-                    except Exception as e:
-                        print(f"Error processing brand visibility for {comp_url}: {e}")
-                
-                if competitor_brand_parts:
-                    competitor_brand_visibility_text = "\n\n".join(competitor_brand_parts)
-                    print(f"✅ Brand visibility data obtained for {len(competitor_brand_parts)} competitor(s)")
-        except Exception as e:
-            print(f"Error fetching competitor brand visibility data: {e}")
-    
-    # Build context parts
-    context_parts = []
-    if include_code_examples:
-        context_parts.append("Include code examples with syntax highlighting placeholders")
-    if include_screenshots:
-        context_parts.append("Include screenshot placeholders with descriptions")
-    if style == "tutorial":
-        context_parts.append("Use step-by-step instructions with clear numbering")
-    elif style == "reference":
-        context_parts.append("Organize as a reference with clear sections and subsections")
-    elif style == "conceptual":
-        context_parts.append("Explain concepts and architecture clearly")
-    
-    context_str = "\n".join(f"- {part}" for part in context_parts) if context_parts else "- General documentation structure"
-    
-    # Format-specific instructions
-    format_instructions = {
-        "markdown": "Use Markdown formatting with headers, code blocks, lists, and emphasis",
-        "html": "Use HTML formatting with proper semantic tags",
-        "plain-text": "Use clear plain text with proper spacing and structure"
-    }
-    
-    # Build prompt with crawled context and competitor analysis
-    context_section = ""
-    if crawled_context:
-        context_section = f"""
-
-═══════════════════════════════════════════════════════════════
-CRITICAL: APPLICATION INFORMATION FROM WEBSITE (REQUIRED)
-═══════════════════════════════════════════════════════════════
-The following information was extracted from the application's website at {app_url}:
-
-{crawled_context}
-
-YOU MUST USE THIS INFORMATION AS THE PRIMARY SOURCE for creating the documentation. 
-- Base ALL content on what is described above
-- Use the exact application name, features, and capabilities mentioned
-- Do NOT invent features or capabilities not mentioned in the website information
-- **CRITICAL: Do NOT invent API endpoints, request/response formats, or code examples unless they are explicitly provided in the website information above**
-- If the website mentions "API" but doesn't provide specific endpoints, document that APIs exist but DO NOT create example endpoints or request/response formats
-- The documentation must accurately reflect what the application actually does based on the website content
-- If specific technical details (like endpoint URLs, request formats, response structures) are not in the website information, either omit them or clearly state that they are conceptual examples
-═══════════════════════════════════════════════════════════════
-
-"""
-    
-    # Add competitor analysis section
-    competitor_section = ""
-    if competitor_analysis:
-        competitor_section = f"""
-
-{competitor_analysis}
-
-IMPORTANT: Use competitor information to enhance documentation comprehensiveness:
-- Include features and sections that competitors commonly address
-- Follow industry best practices for documentation structure
-- Ensure the documentation is competitive and comprehensive
-- However, ALWAYS prioritize accuracy - only include features that are relevant to "{app_name}" based on the feature description and website information
-- Do NOT copy competitor features verbatim - use them as inspiration for comprehensive coverage
-
-"""
-    
-    # Add brand visibility section
-    brand_visibility_section = ""
-    if brand_visibility_text:
-        brand_visibility_section = f"""
-
-{brand_visibility_text}
-
-IMPORTANT: Use brand visibility data to enhance documentation:
-- Understand how the brand is perceived and mentioned in the market
-- Identify common questions users ask (from People Also Ask)
-- Use search autocomplete suggestions to understand user intent
-- Reference real-world usage examples from GitHub, Reddit, Hacker News
-- Ensure documentation addresses actual user needs and questions
-
-"""
-    
-    # Add competitor brand visibility section
-    competitor_brand_visibility_section = ""
-    if competitor_brand_visibility_text:
-        competitor_brand_visibility_section = f"""
-
-COMPETITOR BRAND VISIBILITY DATA:
-{competitor_brand_visibility_text}
-
-IMPORTANT: Use competitor brand visibility to:
-- Understand how competitors are positioned in the market
-- Identify what users search for regarding competitors
-- Learn from competitor brand mentions and discussions
-- Ensure documentation addresses competitive positioning
-
-"""
-    
-    # Check if feature description is too vague
-    is_vague = len(feature_description.strip()) < 20 or feature_description.lower() in [
-        "documentation", "docs", "guide", "tutorial", "help", "information", 
-        "documentation for", "docs for", "guide for", "documentation about"
-    ]
-    
-    vague_warning = ""
-    if is_vague:
-        vague_warning = f"""
-⚠️⚠️⚠️ CRITICAL: The feature description "{feature_description}" is too vague!
-You MUST expand on this and create COMPREHENSIVE, DETAILED documentation.
-DO NOT create generic placeholder content like "First step", "Second step", "Follow these steps".
-Instead, you MUST:
-- Research what "{app_name}" actually does (it's a well-known platform)
-- Create SPECIFIC, DETAILED instructions based on real functionality
-- Include actual code examples, commands, or procedures that would work for "{app_name}"
-- Write at least 1000+ words of meaningful content
-- Include multiple detailed sections with real information
-- If "{app_name}" is GitHub, include actual Git commands, repository setup, branching strategies, etc.
-- If it's a developer guide, include actual setup steps, architecture diagrams descriptions, integration examples
-- NEVER use generic placeholders like "First step", "Second step", "Additional Resources" without real content
-
-FAILURE TO CREATE DETAILED CONTENT WILL RESULT IN USELESS GENERIC OUTPUT.
-"""
-    
-    prompt = f"""Create a COMPREHENSIVE, DETAILED {doc_description} for an application called "{app_name}", which is a {app_type} application.
-{context_section if context_section else ""}
-{competitor_section if competitor_section else ""}
-{brand_visibility_section if brand_visibility_section else ""}
-{competitor_brand_visibility_section if competitor_brand_visibility_section else ""}
-{vague_warning}
-
-DOCUMENTATION TYPE: {doc_type}
-{doc_type_guidance}
-
-ABSOLUTE REQUIREMENTS - NO EXCEPTIONS:
-1. **NEVER use generic placeholders** like "First step", "Second step", "Third step", "Follow these steps", "Additional Resources", "For more information, please refer to the main documentation"
-2. **NEVER create template content** - Every single sentence must be specific and meaningful
-3. Use the EXACT app name "{app_name}" throughout - NEVER use placeholders
-4. Base ALL content on this specific feature: "{feature_description}"
-5. **IF APPLICATION INFORMATION FROM WEBSITE WAS PROVIDED ABOVE, IT IS THE PRIMARY SOURCE** - You MUST use that information
-6. **If "{app_name}" is a well-known platform (like GitHub, GitLab, etc.), you MUST use your knowledge of that platform to create accurate, detailed documentation**
-7. **For developer guides**: Include actual setup commands, configuration files, architecture explanations, integration code examples
-8. **For API docs**: Include actual endpoint structures, request/response examples, authentication methods (if known for the platform)
-9. **For user guides**: Include actual step-by-step procedures with specific UI elements, buttons, menus
-10. **Minimum content requirement**: Create at least 1000+ words of meaningful, specific content - NOT generic templates
-11. All code examples must be REAL, WORKING examples relevant to "{app_name}" and "{feature_description}"
-12. Every section must contain SUBSTANTIAL, SPECIFIC content - not just headings with placeholder text
-
-FEATURE TO DOCUMENT:
-{feature_description}
-
-DOCUMENTATION REQUIREMENTS:
-- Target Audience: {target_audience}
-- Technical Level: {technical_level}
-- Documentation Style: {style}
-- Tone: {tone}
-- Language: {language}
-- Format: {format_instructions.get(format, 'Markdown')}
-
-ADDITIONAL INSTRUCTIONS:
-{context_str}
-
-DOCUMENTATION STRUCTURE (with REAL content, not placeholders):
-- Clear headings and subheadings with ACTUAL content under each
-- Table of contents (if document is longer than 5 sections)
-- Step-by-step instructions with SPECIFIC, DETAILED steps (for tutorials)
-- Code blocks with REAL, WORKING code examples (if code examples are included)
-- Screenshot placeholders with DESCRIPTIVE descriptions (if screenshots are included)
-- Warnings and tips callout boxes with ACTUAL useful information
-- Proper formatting for {format} format
-
-WHAT TO INCLUDE (be specific):
-- For "{app_name}" as a {app_type} application, include actual:
-  * Setup/installation procedures
-  * Configuration examples
-  * Code snippets that would actually work
-  * Real-world use cases
-  * Troubleshooting tips
-  * Best practices specific to this platform/application
-
-WHAT TO NEVER INCLUDE:
-- Generic "First step", "Second step" without actual steps
-- "For more information, please refer to..." without providing information
-- "Additional Resources" sections with no actual resources
-- Placeholder text of any kind
-- Generic templates
-
-VALIDATION CHECKLIST (ALL must be true):
-✓ Every section has SUBSTANTIAL, SPECIFIC content (not just headings)
-✓ App name "{app_name}" is used consistently
-✓ Content is specific to "{app_name}" as a {app_type} application
-✓ At least 1000+ words of meaningful content
-✓ NO generic placeholders like "First step", "Second step"
-✓ Code examples are REAL and would work for "{app_name}"
-✓ All instructions are DETAILED and SPECIFIC
-✓ Content demonstrates deep understanding of "{app_name}" and "{feature_description}"
-
-REMEMBER: This is documentation for "{app_name}" about "{feature_description}". 
-Create COMPREHENSIVE, DETAILED, SPECIFIC content - NOT generic templates or placeholders.
-If you create generic content, you have FAILED. Be specific, be detailed, be comprehensive."""
-    
-    try:
-        import asyncio
-        # Validate API key before proceeding
-        try:
-            client = get_openai_client()
-        except ValueError as e:
-            error_msg = str(e)
-            print(f"ERROR: {error_msg}")
-            return f"""# {app_name} - {doc_description}
-
-## ⚠️ Configuration Error
-
-{error_msg}
-
-## Feature: {feature_description}
-
-Please configure your OpenAI API key in the backend .env file to generate documentation."""
-        
-        # Prepare the OpenAI call (async)
-        async def make_openai_call():
-            return await client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": f"""You are an expert technical writer specializing in software documentation. 
-                        You create documentation that is SPECIFIC, ACCURATE, DETAILED, and COMPREHENSIVE.
-                        
-                    ABSOLUTE RULES - NO EXCEPTIONS:
-                    1. **NEVER use generic templates or placeholder content** - Every sentence must be specific and meaningful
-                    2. **NEVER write "First step", "Second step", "Third step"** without actual detailed steps
-                    3. **NEVER write "For more information, please refer to..."** without providing the information
-                    4. **NEVER create "Additional Resources" sections** with no actual resources
-                    5. **ALWAYS create at least 1000+ words** of meaningful, specific content
-                    6. If website information was provided, it is the PRIMARY SOURCE - use it to understand what the application actually does
-                    7. If the app name is a well-known platform (GitHub, GitLab, etc.), use your knowledge to create accurate, detailed documentation
-                    8. ALWAYS use the exact app name provided - never use "example" or "your-app" placeholders
-                    9. **For developer guides**: Include actual setup commands, configuration files, architecture details, integration examples
-                    10. **For API docs**: Include actual endpoint structures, request/response examples (if known for the platform)
-                    11. **For user guides**: Include actual step-by-step procedures with specific UI elements
-                    12. ALL code examples must be REAL, WORKING examples relevant to the app and feature
-                    13. Every section must contain SUBSTANTIAL, SPECIFIC content - not just headings
-                    14. If website mentions specific platforms, document ONLY those platforms
-                    15. **CRITICAL: Do NOT invent API endpoints** - Only include technical details explicitly mentioned OR use your knowledge of well-known platforms
-                    16. Create realistic, specific content based on the app name, feature description, AND website information (if provided)
-                    17. Do NOT invent unrelated features or use examples from other domains
-                    18. If website information contradicts generic assumptions, TRUST THE WEBSITE INFORMATION
-                        
-                        You adapt content for different technical levels ({technical_level}) and audiences ({target_audience}).
-                        You create documentation that is comprehensive (1000+ words), detailed, accurate, and professionally formatted.
-                        
-                        Your documentation must be SPECIFIC, DETAILED, and COMPREHENSIVE - NOT generic templates or placeholders.
-                        If you create generic content like "First step", "Second step", you have FAILED."""
-                    },
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.7,  # Slightly higher for more creative, detailed content
-                max_tokens=6000,  # Increased for comprehensive documentation
-                top_p=0.95,
-                frequency_penalty=0.1,  # Lower to allow more detailed content
-                presence_penalty=0.05
+            brand_data = await asyncio.wait_for(
+                get_brand_visibility_data(
+                    brand_name=brand_name,
+                    website_url=normalized_app_url,
+                    max_results_per_source=5,
+                    include_press=True,
+                    include_community=True,
+                    include_dev=True,
+                    include_reputation=True,
+                    include_performance=False,
+                    include_tech_stack=False,
+                ),
+                timeout=30.0,
             )
-        
-        # Run async OpenAI call directly
-        response = await make_openai_call()
-        documentation = response.choices[0].message.content.strip()
-        return documentation
-    except Exception as e:
-        error_code = getattr(e, 'code', 'unknown')
-        error_type = type(e).__name__
-        error_message = str(e)
-        print(f"Error generating documentation: Type={error_type}, Code={error_code}, Message={error_message}")
-        
-        # Handle API key errors
-        if 'api key' in error_message.lower() or 'authentication' in error_message.lower() or 'invalid' in error_message.lower():
-            return f"""# {app_name} - {doc_description}
+            if brand_data and brand_data.get("available"):
+                formatted = format_brand_visibility_data_for_prompt(brand_data, brand_name)
+                brand_visibility_text = formatted.get("text", "")
+                brand_visibility_evidence = formatted.get("evidence", []) or []
+        except Exception:
+            brand_visibility_text = ""
+            brand_visibility_evidence = []
 
-## ⚠️ OpenAI API Key Error
+    if normalized_competitors:
 
-The OpenAI API key is invalid or not configured correctly.
+        async def _fetch_one(comp_url: str) -> List[Dict[str, Any]]:
+            try:
+                host = urlparse(comp_url).netloc.replace("www.", "").strip()
+                comp_name = host.split(".")[0].title() if host else "Competitor"
+                comp_data = await get_brand_visibility_data(
+                    brand_name=comp_name,
+                    website_url=comp_url,
+                    max_results_per_source=3,
+                    include_press=True,
+                    include_community=True,
+                    include_dev=True,
+                    include_reputation=True,
+                    include_performance=False,
+                    include_tech_stack=False,
+                )
+                if comp_data and comp_data.get("available"):
+                    formatted = format_brand_visibility_data_for_prompt(comp_data, comp_name)
+                    return formatted.get("evidence", []) or []
+                return []
+            except Exception:
+                return []
 
-**Error Details:**
-- Error Type: {error_type}
-- Error Code: {error_code}
-- Message: {error_message}
+        try:
+            results = await asyncio.wait_for(
+                asyncio.gather(*[_fetch_one(u) for u in normalized_competitors[:3]], return_exceptions=True),
+                timeout=30.0,
+            )
+            flat: List[Dict[str, Any]] = []
+            for r in results:
+                if isinstance(r, list):
+                    flat.extend(r)
+            competitor_brand_visibility_evidence = flat[:20]
+            if competitor_brand_visibility_evidence:
+                competitor_brand_visibility_text = "Competitor visibility evidence is available."
+        except Exception:
+            competitor_brand_visibility_evidence = []
+            competitor_brand_visibility_text = ""
 
-**To fix this:**
-1. Get your API key from https://platform.openai.com/api-keys
-2. Set it in `back/backend_python/.env` as: `OPENAI_API_KEY=sk-your-actual-key-here`
-3. Restart the backend server
+    evidence_summary = _build_evidence_summary(
+        app_name=app_name,
+        app_type=app_type,
+        doc_type=doc_type_norm,
+        feature_description=feature_description,
+        target_audience=target_audience,
+        technical_level=technical_level,
+        style=style,
+        tone=tone,
+        language=language,
+        output_format=format_norm,
+        site_data=site_data,
+        competitor_data=competitor_data,
+        brand_visibility_evidence=brand_visibility_evidence,
+        competitor_brand_visibility_evidence=competitor_brand_visibility_evidence,
+        app_url=normalized_app_url,
+        competitor_urls=normalized_competitors,
+    )
 
-## Feature: {feature_description}
+    evidence_json = json.dumps(evidence_summary, ensure_ascii=True, indent=2)
 
-Once the API key is configured, you can generate comprehensive documentation for this feature."""
-        
-        # Handle specific OpenAI errors
-        if hasattr(e, 'code') and e.code == 'insufficient_quota':
-            return f"""# {app_name} - {doc_description}
+    format_map = {
+        "markdown": "Use Markdown headings, lists, and code blocks.",
+        "html": "Use semantic HTML with headings, lists, and code blocks.",
+        "plain_text": "Use plain text with clear spacing and section titles.",
+    }
+    fmt_instruction = format_map.get(format_norm, format_map["markdown"])
 
-OpenAI API quota exceeded. Please check your billing.
+    min_words = 900
 
-## Feature: {feature_description}
+    system_prompt = (
+        "You are an expert technical writer. "
+        "You must be accurate and evidence grounded. "
+        "Never invent endpoints, commands, UI labels, pricing, limits, or features. "
+        "If a detail is missing in evidence, write Not available in evidence. "
+        "Write for the requested audience and level. "
+        "Return only valid JSON that matches the required schema."
+    )
 
-## Overview
+    guidance: List[str] = []
+    if include_code_examples:
+        guidance.append("Include code examples only when evidence supports the exact command or endpoint. Otherwise write Not available in evidence.")
+    if include_screenshots:
+        guidance.append("Include screenshot placeholders only as placeholders, not as claims about UI elements.")
+    if style:
+        guidance.append("Style requested is " + style + ".")
+    if tone:
+        guidance.append("Tone requested is " + tone + ".")
 
-This section describes {feature_description} for {app_name}.
+    user_prompt_parts: List[str] = []
+    user_prompt_parts.append("Create documentation using only the evidence summary below.")
+    user_prompt_parts.append("If something is not in evidence, write Not available in evidence.")
+    user_prompt_parts.append("Do not cite competitors by name unless their name is present in evidence.")
+    user_prompt_parts.append("Do not add any endpoints unless evidence includes them.")
+    user_prompt_parts.append("Follow these extra constraints.")
+    user_prompt_parts.extend(guidance)
+    user_prompt_parts.append("")
+    user_prompt_parts.append("Evidence summary follows.")
+    user_prompt_parts.append(evidence_json)
+    user_prompt_parts.append("")
+    if not crawl_available and not brand_visibility_evidence:
+        user_prompt_parts.append("Important: Site content is not available and brand evidence is not available.")
+        user_prompt_parts.append("Treat product and audience as Unknown unless evidence supports it.")
+    user_prompt_parts.append("")
+    user_prompt_parts.append("Output format instruction: " + fmt_instruction)
+    user_prompt_parts.append("")
+    user_prompt_parts.append("Minimum length: at least " + str(min_words) + " words.")
+    user_prompt_parts.append("")
+    user_prompt_parts.append("Return JSON only in this schema:")
+    user_prompt_parts.append('{ "content": "full documentation text" }')
 
-## Getting Started
+    user_prompt = "\n".join(user_prompt_parts)
 
-1. Understand the feature
-2. Follow the steps
-3. Review the results
+    response_format = {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "documentation",
+            "schema": {
+                "type": "object",
+                "properties": {"content": {"type": "string"}},
+                "required": ["content"],
+                "additionalProperties": False,
+            },
+            "strict": True,
+        },
+    }
 
-## Additional Information
+    client = get_openai_client()
 
-For more details, please contact support."""
-        elif hasattr(e, 'code') and e.code == 'rate_limit_exceeded':
-            return f"""# {app_name} - {doc_description}
+    model_name = "gpt" + HYPHEN + "4o"
 
-Rate limit exceeded. Please wait a moment and try again.
+    async def _call(messages: List[Dict[str, str]]) -> str:
+        resp = await client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            temperature=0.4,
+            max_tokens=6000,
+            response_format=response_format,
+        )
+        return (resp.choices[0].message.content or "").strip()
 
-## Feature: {feature_description}
+    messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
+    raw = await _call(messages)
 
-Please retry the documentation generation after a brief wait."""
-        else:
-            # Generate basic fallback documentation
-            return f"""# {app_name} - {doc_description}
+    doc_json: Dict[str, Any] = {}
+    try:
+        doc_json = json.loads(raw)
+    except Exception:
+        doc_json = {"content": ""}
 
-## Overview
+    if _count_words(doc_json.get("content", "")) < min_words:
+        retry_prompt = (
+            "Your output is too short. Expand to at least "
+            + str(min_words)
+            + " words while staying strictly within evidence. "
+            "Return JSON only with the same schema."
+        )
+        raw_retry = await _call(messages + [{"role": "assistant", "content": raw}, {"role": "user", "content": retry_prompt}])
+        try:
+            doc_json = json.loads(raw_retry)
+        except Exception:
+            doc_json = {"content": doc_json.get("content", "")}
 
-This documentation covers {feature_description} for {app_name}.
-
-## Feature Description
-
-{feature_description}
-
-## Target Audience
-
-{target_audience}
-
-## Technical Level
-
-{technical_level}
-
-## Getting Started
-
-Follow these steps to get started with this feature:
-
-1. First step
-2. Second step
-3. Third step
-
-## Additional Resources
-
-For more information, please refer to the main documentation."""
+    return {
+        "content": (doc_json.get("content") or "").strip(),
+        "brand_visibility_evidence": brand_visibility_evidence,
+        "competitor_brand_visibility_evidence": competitor_brand_visibility_evidence,
+        "evidence_summary": evidence_summary,
+        "notes": {
+            "brand_visibility_text": _truncate(brand_visibility_text, 400),
+            "competitor_brand_visibility_text": _truncate(competitor_brand_visibility_text, 400),
+        },
+    }

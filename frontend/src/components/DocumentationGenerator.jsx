@@ -501,8 +501,8 @@ const DocumentationGenerator = () => {
                                     )}
                                 </div>
                                 <p className="text-xs text-blue-600 mt-3 italic">
-                                    The AI will generate comprehensive documentation based on your feature description, app details, and selected preferences.
-                                    {formData.app_url && ' Your app URL will be crawled to gather additional context.'}
+                                    We will generate comprehensive documentation based on your feature description, app details, and selected preferences.
+                                    {formData.app_url && ' We are visiting your app URL to gather additional context.'}
                                 </p>
                             </div>
                         )}
@@ -740,11 +740,182 @@ const DocumentationGenerator = () => {
                                                 ? markdownToHtml(content) 
                                                 : content;
                                             return (
-                                                <div 
-                                                    dangerouslySetInnerHTML={{ __html: htmlContent }}
-                                                    className="prose max-w-none text-left"
-                                                    style={{ textAlign: 'left' }}
-                                                />
+                                                <>
+                                                    <div 
+                                                        dangerouslySetInnerHTML={{ __html: htmlContent }}
+                                                        className="prose max-w-none text-left"
+                                                        style={{ 
+                                                            textAlign: 'left',
+                                                            lineHeight: '1.75',
+                                                            fontSize: '16px',
+                                                            color: '#374151'
+                                                        }}
+                                                    />
+                                                    <style>{`
+                                                        .prose h1 {
+                                                            font-size: 2.25em;
+                                                            font-weight: 800;
+                                                            margin-top: 0;
+                                                            margin-bottom: 0.8888889em;
+                                                            line-height: 1.1111111;
+                                                            color: #111827;
+                                                        }
+                                                        .prose h2 {
+                                                            font-size: 1.5em;
+                                                            font-weight: 700;
+                                                            margin-top: 2em;
+                                                            margin-bottom: 1em;
+                                                            line-height: 1.3333333;
+                                                            color: #111827;
+                                                        }
+                                                        .prose h3 {
+                                                            font-size: 1.25em;
+                                                            font-weight: 600;
+                                                            margin-top: 1.6em;
+                                                            margin-bottom: 0.6em;
+                                                            line-height: 1.6;
+                                                            color: #111827;
+                                                        }
+                                                        .prose h4 {
+                                                            font-size: 1.125em;
+                                                            font-weight: 600;
+                                                            margin-top: 1.5em;
+                                                            margin-bottom: 0.5em;
+                                                            line-height: 1.5555556;
+                                                            color: #111827;
+                                                        }
+                                                        .prose p {
+                                                            margin-top: 1.25em;
+                                                            margin-bottom: 1.25em;
+                                                            line-height: 1.75;
+                                                        }
+                                                        .prose ul, .prose ol {
+                                                            margin-top: 1.25em;
+                                                            margin-bottom: 1.25em;
+                                                            padding-left: 1.625em;
+                                                        }
+                                                        .prose li {
+                                                            margin-top: 0.5em;
+                                                            margin-bottom: 0.5em;
+                                                            line-height: 1.75;
+                                                        }
+                                                        .prose ul > li {
+                                                            position: relative;
+                                                            padding-left: 0.375em;
+                                                        }
+                                                        .prose ul > li::before {
+                                                            content: "";
+                                                            position: absolute;
+                                                            background-color: #6b7280;
+                                                            border-radius: 50%;
+                                                            width: 0.375em;
+                                                            height: 0.375em;
+                                                            top: 0.875em;
+                                                            left: 0.25em;
+                                                        }
+                                                        .prose ol > li {
+                                                            counter-increment: list-counter;
+                                                        }
+                                                        .prose ol > li::before {
+                                                            content: counter(list-counter) ".";
+                                                            position: absolute;
+                                                            font-weight: 400;
+                                                            color: #6b7280;
+                                                            left: 0;
+                                                        }
+                                                        .prose ol {
+                                                            counter-reset: list-counter;
+                                                        }
+                                                        .prose ol > li {
+                                                            position: relative;
+                                                            padding-left: 1.75em;
+                                                        }
+                                                        .prose strong {
+                                                            font-weight: 600;
+                                                            color: #111827;
+                                                        }
+                                                        .prose code {
+                                                            font-size: 0.875em;
+                                                            font-weight: 600;
+                                                            color: #111827;
+                                                            background-color: #f3f4f6;
+                                                            padding: 0.125em 0.25em;
+                                                            border-radius: 0.25rem;
+                                                        }
+                                                        .prose pre {
+                                                            color: #e5e7eb;
+                                                            background-color: #1f2937;
+                                                            overflow-x: auto;
+                                                            font-weight: 400;
+                                                            font-size: 0.875em;
+                                                            line-height: 1.7142857;
+                                                            margin-top: 1.7142857em;
+                                                            margin-bottom: 1.7142857em;
+                                                            border-radius: 0.375rem;
+                                                            padding: 0.8571429em 1.1428571em;
+                                                        }
+                                                        .prose pre code {
+                                                            background-color: transparent;
+                                                            border-width: 0;
+                                                            border-radius: 0;
+                                                            padding: 0;
+                                                            font-weight: inherit;
+                                                            color: inherit;
+                                                            font-size: inherit;
+                                                            font-family: inherit;
+                                                            line-height: inherit;
+                                                        }
+                                                        .prose blockquote {
+                                                            font-weight: 500;
+                                                            font-style: italic;
+                                                            color: #111827;
+                                                            border-left-width: 0.25rem;
+                                                            border-left-color: #e5e7eb;
+                                                            quotes: "\\201C""\\201D""\\2018""\\2019";
+                                                            margin-top: 1.6em;
+                                                            margin-bottom: 1.6em;
+                                                            padding-left: 1em;
+                                                        }
+                                                        .prose hr {
+                                                            border-color: #e5e7eb;
+                                                            border-top-width: 1px;
+                                                            margin-top: 3em;
+                                                            margin-bottom: 3em;
+                                                        }
+                                                        .prose table {
+                                                            width: 100%;
+                                                            table-layout: auto;
+                                                            text-align: left;
+                                                            margin-top: 2em;
+                                                            margin-bottom: 2em;
+                                                            font-size: 0.875em;
+                                                            line-height: 1.7142857;
+                                                        }
+                                                        .prose thead {
+                                                            border-bottom-width: 1px;
+                                                            border-bottom-color: #e5e7eb;
+                                                        }
+                                                        .prose thead th {
+                                                            color: #111827;
+                                                            font-weight: 600;
+                                                            vertical-align: bottom;
+                                                            padding-right: 0.5714286em;
+                                                            padding-bottom: 0.5714286em;
+                                                            padding-left: 0.5714286em;
+                                                        }
+                                                        .prose tbody tr {
+                                                            border-bottom-width: 1px;
+                                                            border-bottom-color: #e5e7eb;
+                                                        }
+                                                        .prose tbody td {
+                                                            vertical-align: baseline;
+                                                            padding-top: 0.5714286em;
+                                                            padding-right: 0.5714286em;
+                                                            padding-bottom: 0.5714286em;
+                                                            padding-left: 0.5714286em;
+                                                        }
+                                                    `}</style>
+                                                </>
                                             );
                                         } else {
                                             // If original is html, convert it; if original is markdown, use it directly

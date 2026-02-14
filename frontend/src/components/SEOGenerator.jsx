@@ -367,7 +367,7 @@ const SEOGenerator = () => {
                 <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
                     <div>
                         <h1 className="text-xl font-bold">SEO Setup & Optimization</h1>
-                        <p className="text-sm text-gray-600 mt-1">AI-powered SEO analysis and recommendations for your website</p>
+                        <p className="text-sm text-gray-600 mt-1">Powered by advanced analysis and recommendations for your website</p>
                     </div>
                     
                     <Link
@@ -524,54 +524,54 @@ const SEOGenerator = () => {
                                     {formData.focus_areas.includes('technical') && (
                                         <div className="text-sm">
                                             <strong className="text-blue-800">⚙️ Technical SEO:</strong>
-                                            <p className="text-blue-700 mt-1">Will analyze site structure, crawlability, sitemaps, robots.txt, schema markup, HTTPS, page speed, mobile responsiveness, and technical errors.</p>
+                                            <p className="text-blue-700 mt-1">We will analyze site structure, crawlability, sitemaps, robots.txt, schema markup, HTTPS, page speed, mobile responsiveness, and technical errors.</p>
                                         </div>
                                     )}
                                     {formData.focus_areas.includes('on-page') && (
                                         <div className="text-sm">
                                             <strong className="text-blue-800">📄 On-Page SEO:</strong>
-                                            <p className="text-blue-700 mt-1">Will analyze title tags, meta descriptions, header structure (H1-H6), URL structure, internal linking, image alt text, and content optimization.</p>
+                                            <p className="text-blue-700 mt-1">We will analyze title tags, meta descriptions, header structure (H1-H6), URL structure, internal linking, image alt text, and content optimization.</p>
                                         </div>
                                     )}
                                     {formData.focus_areas.includes('content') && (
                                         <div className="text-sm">
                                             <strong className="text-blue-800">📝 Content SEO:</strong>
-                                            <p className="text-blue-700 mt-1">Will analyze content quality, keyword targeting, E-A-T signals, content depth, freshness, readability, and content gaps.</p>
+                                            <p className="text-blue-700 mt-1">We will analyze content quality, keyword targeting, E-A-T signals, content depth, freshness, readability, and content gaps.</p>
                                         </div>
                                     )}
                                     {formData.focus_areas.includes('off-page') && (
                                         <div className="text-sm">
                                             <strong className="text-blue-800">🔗 Off-Page SEO:</strong>
-                                            <p className="text-blue-700 mt-1">Will analyze backlink profile, domain authority, social signals, brand mentions, and link building opportunities.</p>
+                                            <p className="text-blue-700 mt-1">We will analyze backlink profile, domain authority, social signals, brand mentions, and link building opportunities.</p>
                                         </div>
                                     )}
                                     {formData.focus_areas.includes('local') && (
                                         <div className="text-sm">
                                             <strong className="text-blue-800">📍 Local SEO:</strong>
-                                            <p className="text-blue-700 mt-1">Will analyze Google Business Profile optimization, local citations, NAP consistency, local keywords, and local link building.</p>
+                                            <p className="text-blue-700 mt-1">We will analyze Google Business Profile optimization, local citations, NAP consistency, local keywords, and local link building.</p>
                                         </div>
                                     )}
                                     {formData.focus_areas.includes('mobile') && (
                                         <div className="text-sm">
                                             <strong className="text-blue-800">📱 Mobile SEO:</strong>
-                                            <p className="text-blue-700 mt-1">Will analyze mobile-first indexing readiness, responsive design, mobile page speed, mobile usability, and AMP implementation.</p>
+                                            <p className="text-blue-700 mt-1">We will analyze mobile-first indexing readiness, responsive design, mobile page speed, mobile usability, and AMP implementation.</p>
                                         </div>
                                     )}
                                     {formData.focus_areas.includes('speed') && (
                                         <div className="text-sm">
                                             <strong className="text-blue-800">⚡ Page Speed:</strong>
-                                            <p className="text-blue-700 mt-1">Will analyze Core Web Vitals (LCP, FID, CLS), page load times, resource optimization, caching, and performance bottlenecks.</p>
+                                            <p className="text-blue-700 mt-1">We will analyze Core Web Vitals (LCP, FID, CLS), page load times, resource optimization, caching, and performance bottlenecks.</p>
                                         </div>
                                     )}
                                     {formData.focus_areas.includes('accessibility') && (
                                         <div className="text-sm">
                                             <strong className="text-blue-800">♿ Accessibility:</strong>
-                                            <p className="text-blue-700 mt-1">Will analyze WCAG compliance, screen reader compatibility, keyboard navigation, ARIA labels, color contrast, and accessibility best practices.</p>
+                                            <p className="text-blue-700 mt-1">We will analyze WCAG compliance, screen reader compatibility, keyboard navigation, ARIA labels, color contrast, and accessibility best practices.</p>
                                         </div>
                                     )}
                                 </div>
                                 <p className="text-xs text-blue-600 mt-3 italic">
-                                    The AI will provide comprehensive analysis and actionable recommendations for all selected focus areas.
+                                    We will provide comprehensive analysis and actionable recommendations for all selected focus areas.
                                 </p>
                             </div>
                         )}
@@ -591,7 +591,9 @@ const SEOGenerator = () => {
                         {loading && (
                             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
                                 <p className="text-sm text-blue-800">
-                                    <strong>Processing:</strong> Crawling {formData.website_url || 'website'} and generating comprehensive SEO analysis. This may take 1-2 minutes...
+                                    <strong>We are now analyzing your website:</strong>{' '}
+                                    {formData.website_url || 'your site'} to understand its structure, content, and SEO signals.
+                                    Your detailed SEO report will be ready in about 1–2 minutes.
                                 </p>
                             </div>
                         )}
@@ -638,7 +640,7 @@ const SEOGenerator = () => {
                                                 disabled={rewriteLoading}
                                                 className="px-3 py-1 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded disabled:bg-gray-400"
                                             >
-                                                {rewriteLoading ? 'Rewriting...' : 'AI Rewrite'}
+                                                {rewriteLoading ? 'Rewriting...' : 'Rewrite'}
                                             </button>
                                             <button
                                                 onClick={handleGenerateMetaTags}
@@ -652,7 +654,7 @@ const SEOGenerator = () => {
                                                 disabled={loading || recommendationsLoading}
                                                 className="px-3 py-1 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded disabled:bg-gray-400"
                                             >
-                                                {recommendationsLoading ? 'Generating...' : 'AI Recommendations'}
+                                                {recommendationsLoading ? 'Generating...' : 'Recommendations'}
                                             </button>
                                             <button
                                                 onClick={handleQualityCheck}
@@ -714,10 +716,181 @@ const SEOGenerator = () => {
                                         <div 
                                             dangerouslySetInnerHTML={{ __html: markdownToHtml(seoReport.report) }}
                                             className="prose max-w-none text-left"
-                                            style={{ textAlign: 'left' }}
+                                            style={{ 
+                                                textAlign: 'left',
+                                                lineHeight: '1.75',
+                                                fontSize: '16px',
+                                                color: '#374151'
+                                            }}
                                         />
                                     ) : (
                                         <pre className="whitespace-pre-wrap font-mono text-sm text-left" style={{ textAlign: 'left' }}>{seoReport.report}</pre>
+                                    )}
+                                    {viewFormat === 'html' && (
+                                        <style>{`
+                                            .prose h1 {
+                                                font-size: 2.25em;
+                                                font-weight: 800;
+                                                margin-top: 0;
+                                                margin-bottom: 0.8888889em;
+                                                line-height: 1.1111111;
+                                                color: #111827;
+                                            }
+                                            .prose h2 {
+                                                font-size: 1.5em;
+                                                font-weight: 700;
+                                                margin-top: 2em;
+                                                margin-bottom: 1em;
+                                                line-height: 1.3333333;
+                                                color: #111827;
+                                            }
+                                            .prose h3 {
+                                                font-size: 1.25em;
+                                                font-weight: 600;
+                                                margin-top: 1.6em;
+                                                margin-bottom: 0.6em;
+                                                line-height: 1.6;
+                                                color: #111827;
+                                            }
+                                            .prose h4 {
+                                                font-size: 1.125em;
+                                                font-weight: 600;
+                                                margin-top: 1.5em;
+                                                margin-bottom: 0.5em;
+                                                line-height: 1.5555556;
+                                                color: #111827;
+                                            }
+                                            .prose p {
+                                                margin-top: 1.25em;
+                                                margin-bottom: 1.25em;
+                                                line-height: 1.75;
+                                            }
+                                            .prose ul, .prose ol {
+                                                margin-top: 1.25em;
+                                                margin-bottom: 1.25em;
+                                                padding-left: 1.625em;
+                                            }
+                                            .prose li {
+                                                margin-top: 0.5em;
+                                                margin-bottom: 0.5em;
+                                                line-height: 1.75;
+                                            }
+                                            .prose ul > li {
+                                                position: relative;
+                                                padding-left: 0.375em;
+                                            }
+                                            .prose ul > li::before {
+                                                content: "";
+                                                position: absolute;
+                                                background-color: #6b7280;
+                                                border-radius: 50%;
+                                                width: 0.375em;
+                                                height: 0.375em;
+                                                top: 0.875em;
+                                                left: 0.25em;
+                                            }
+                                            .prose ol > li {
+                                                counter-increment: list-counter;
+                                            }
+                                            .prose ol > li::before {
+                                                content: counter(list-counter) ".";
+                                                position: absolute;
+                                                font-weight: 400;
+                                                color: #6b7280;
+                                                left: 0;
+                                            }
+                                            .prose ol {
+                                                counter-reset: list-counter;
+                                            }
+                                            .prose ol > li {
+                                                position: relative;
+                                                padding-left: 1.75em;
+                                            }
+                                            .prose strong {
+                                                font-weight: 600;
+                                                color: #111827;
+                                            }
+                                            .prose code {
+                                                font-size: 0.875em;
+                                                font-weight: 600;
+                                                color: #111827;
+                                                background-color: #f3f4f6;
+                                                padding: 0.125em 0.25em;
+                                                border-radius: 0.25rem;
+                                            }
+                                            .prose pre {
+                                                color: #e5e7eb;
+                                                background-color: #1f2937;
+                                                overflow-x: auto;
+                                                font-weight: 400;
+                                                font-size: 0.875em;
+                                                line-height: 1.7142857;
+                                                margin-top: 1.7142857em;
+                                                margin-bottom: 1.7142857em;
+                                                border-radius: 0.375rem;
+                                                padding: 0.8571429em 1.1428571em;
+                                            }
+                                            .prose pre code {
+                                                background-color: transparent;
+                                                border-width: 0;
+                                                border-radius: 0;
+                                                padding: 0;
+                                                font-weight: inherit;
+                                                color: inherit;
+                                                font-size: inherit;
+                                                font-family: inherit;
+                                                line-height: inherit;
+                                            }
+                                            .prose blockquote {
+                                                font-weight: 500;
+                                                font-style: italic;
+                                                color: #111827;
+                                                border-left-width: 0.25rem;
+                                                border-left-color: #e5e7eb;
+                                                quotes: "\\201C""\\201D""\\2018""\\2019";
+                                                margin-top: 1.6em;
+                                                margin-bottom: 1.6em;
+                                                padding-left: 1em;
+                                            }
+                                            .prose hr {
+                                                border-color: #e5e7eb;
+                                                border-top-width: 1px;
+                                                margin-top: 3em;
+                                                margin-bottom: 3em;
+                                            }
+                                            .prose table {
+                                                width: 100%;
+                                                table-layout: auto;
+                                                text-align: left;
+                                                margin-top: 2em;
+                                                margin-bottom: 2em;
+                                                font-size: 0.875em;
+                                                line-height: 1.7142857;
+                                            }
+                                            .prose thead {
+                                                border-bottom-width: 1px;
+                                                border-bottom-color: #e5e7eb;
+                                            }
+                                            .prose thead th {
+                                                color: #111827;
+                                                font-weight: 600;
+                                                vertical-align: bottom;
+                                                padding-right: 0.5714286em;
+                                                padding-bottom: 0.5714286em;
+                                                padding-left: 0.5714286em;
+                                            }
+                                            .prose tbody tr {
+                                                border-bottom-width: 1px;
+                                                border-bottom-color: #e5e7eb;
+                                            }
+                                            .prose tbody td {
+                                                vertical-align: baseline;
+                                                padding-top: 0.5714286em;
+                                                padding-right: 0.5714286em;
+                                                padding-bottom: 0.5714286em;
+                                                padding-left: 0.5714286em;
+                                            }
+                                        `}</style>
                                     )}
                                 </div>
                             )}
@@ -758,11 +931,11 @@ const SEOGenerator = () => {
                         </div>
                     )}
 
-                    {/* AI Optimized Recommendations */}
+                    {/* Optimized Recommendations */}
                     {aiOptimizedRecommendations && (
                         <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
                             <div className="flex justify-between items-center mb-3">
-                                <h4 className="font-semibold">AI Optimized SEO Recommendations</h4>
+                                <h4 className="font-semibold">Optimized SEO Recommendations</h4>
                                 <button
                                     onClick={() => {
                                         const text = aiOptimizedRecommendations.recommendations;

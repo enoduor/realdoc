@@ -25,6 +25,11 @@ const WebsiteAnalytics = () => {
     const [editedReport, setEditedReport] = useState('');
     const [viewFormat, setViewFormat] = useState('markdown'); // 'markdown' or 'html'
     const [enableJsRender, setEnableJsRender] = useState(false);
+    const [productionMetaTags, setProductionMetaTags] = useState(null);
+    const [rewriteLoading, setRewriteLoading] = useState(false);
+    const [qaResult, setQaResult] = useState(null);
+    const [aiOptimizedRecommendations, setAiOptimizedRecommendations] = useState(null);
+    const [recommendationsLoading, setRecommendationsLoading] = useState(false);
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -229,6 +234,130 @@ const WebsiteAnalytics = () => {
         }
     };
 
+    const handleGenerateMetaTags = async () => {
+        if (!formData.website_url) {
+            alert('Please enter a website URL first');
+            return;
+        }
+        
+        setLoading(true);
+        try {
+            const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+            const isLocalhost = ORIGIN.includes('localhost') || ORIGIN.includes('127.0.0.1');
+            const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
+                (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
+            
+            const normalizedUrl = normalizeUrl(formData.website_url);
+            const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/seo/production-meta-tags`, {
+                website_url: normalizedUrl,
+                page_type: 'homepage',
+                business_type: 'saas',
+                target_keywords: null
+            });
+            
+            setProductionMetaTags(response.data);
+        } catch (err) {
+            alert(`Error generating meta tags: ${err?.response?.data?.detail || err?.message || 'Unknown error'}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAIRewrite = async (rewriteType = 'improve') => {
+        const contentToRewrite = isEditing ? editedReport : (analyticsReport?.report || '');
+        if (!contentToRewrite) {
+            alert('No content to rewrite');
+            return;
+        }
+        
+        setRewriteLoading(true);
+        try {
+            const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+            const isLocalhost = ORIGIN.includes('localhost') || ORIGIN.includes('127.0.0.1');
+            const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
+                (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
+            
+            const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/seo/rewrite`, {
+                content: contentToRewrite,
+                rewrite_type: rewriteType,
+                focus: 'Business intelligence and analytics optimization'
+            });
+            
+            if (isEditing) {
+                setEditedReport(response.data.rewritten_content);
+            } else {
+                setAnalyticsReport({
+                    ...analyticsReport,
+                    report: response.data.rewritten_content,
+                    word_count: response.data.rewritten_length
+                });
+                setEditedReport(response.data.rewritten_content);
+            }
+            alert('Content rewritten successfully!');
+        } catch (err) {
+            alert(`Error rewriting content: ${err?.response?.data?.detail || err?.message || 'Unknown error'}`);
+        } finally {
+            setRewriteLoading(false);
+        }
+    };
+
+    const handleQualityCheck = async () => {
+        const reportToCheck = isEditing ? editedReport : (analyticsReport?.report || '');
+        if (!reportToCheck) {
+            alert('No report to check');
+            return;
+        }
+        
+        try {
+            const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+            const isLocalhost = ORIGIN.includes('localhost') || ORIGIN.includes('127.0.0.1');
+            const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
+                (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
+            
+            // If competitor comparison is enabled, focus quality check on competitor analysis parameters only
+            const isCompetitorAnalysis = formData.include_competitor_comparison === true;
+            
+            const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/seo/quality-check`, {
+                report: reportToCheck,
+                website_url: formData.website_url,
+                focus_on_competitor_analysis: isCompetitorAnalysis
+            });
+            
+            setQaResult(response.data);
+        } catch (err) {
+            alert(`Error checking quality: ${err?.response?.data?.detail || err?.message || 'Unknown error'}`);
+        }
+    };
+
+    const handleGenerateAIRecommendations = async () => {
+        const reportToUse = isEditing ? editedReport : (analyticsReport?.report || '');
+        if (!reportToUse) {
+            alert('Please generate an analytics report first');
+            return;
+        }
+        
+        setRecommendationsLoading(true);
+        try {
+            const ORIGIN = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+            const isLocalhost = ORIGIN.includes('localhost') || ORIGIN.includes('127.0.0.1');
+            const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
+                (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
+            
+            const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/seo/ai-optimized-recommendations`, {
+                website_url: formData.website_url,
+                seo_report: reportToUse,
+                business_type: 'saas',
+                target_keywords: null
+            });
+            
+            setAiOptimizedRecommendations(response.data);
+        } catch (err) {
+            alert(`Error generating recommendations: ${err?.response?.data?.detail || err?.message || 'Unknown error'}`);
+        } finally {
+            setRecommendationsLoading(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Navigation Header */}
@@ -336,25 +465,25 @@ const WebsiteAnalytics = () => {
                                     {formData.include_traffic_analysis && (
                                         <div className="text-sm">
                                             <strong className="text-blue-800">📊 Traffic Analysis:</strong>
-                                            <p className="text-blue-700 mt-1">Will analyze monthly visitors, traffic sources (organic, direct, referral, social, paid), geographic distribution, device breakdown (desktop, mobile, tablet), engagement metrics (bounce rate, session duration, pages per visit), traffic trends, and SimilarWeb-style insights.</p>
+                                            <p className="text-blue-700 mt-1">We will analyze monthly visitors, traffic sources (organic, direct, referral, social, paid), geographic distribution, device breakdown (desktop, mobile, tablet), engagement metrics (bounce rate, session duration, pages per visit), traffic trends, and SimilarWeb-style insights.</p>
                                         </div>
                                     )}
                                     {formData.include_competitor_comparison && (
                                         <div className="text-sm">
                                             <strong className="text-blue-800">🏆 Competitor Comparison:</strong>
-                                            <p className="text-blue-700 mt-1">Will compare your website with competitors across traffic volume, traffic sources, features and functionality, content strategy, market positioning, competitive advantages, technology stack, user experience, and market share.</p>
+                                            <p className="text-blue-700 mt-1">We will compare your website with competitors across traffic volume, traffic sources, features and functionality, content strategy, market positioning, competitive advantages, technology stack, user experience, and market share.</p>
                                         </div>
                                     )}
                                     {formData.include_revenue_analysis && (
                                         <div className="text-sm">
                                             <strong className="text-blue-800">💰 Revenue Intelligence:</strong>
-                                            <p className="text-blue-700 mt-1">Will analyze revenue models including subscription plans, advertising revenue, e-commerce sales, affiliate marketing, freemium models, licensing, and other monetization strategies. Will identify pricing strategies and revenue streams.</p>
+                                            <p className="text-blue-700 mt-1">We will analyze revenue models including subscription plans, advertising revenue, e-commerce sales, affiliate marketing, freemium models, licensing, and other monetization strategies. We will identify pricing strategies and revenue streams.</p>
                                         </div>
                                     )}
                                 </div>
                                 <p className="text-xs text-blue-600 mt-3 italic">
-                                    The AI will provide comprehensive analysis and strategic recommendations for all selected components.
-                                    {formData.competitor_urls && ' Competitor websites will be crawled and analyzed for comparison.'}
+                                    We will provide comprehensive analysis and strategic recommendations for all selected components.
+                                    {formData.competitor_urls && ' We are analyzing competitor websites for comparison.'}
                                 </p>
                             </div>
                         )}
@@ -408,7 +537,9 @@ const WebsiteAnalytics = () => {
                         {loading && (
                             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
                                 <p className="text-sm text-blue-800">
-                                    <strong>Processing:</strong> Crawling {formData.website_url || 'website'}{formData.competitor_urls ? ' and competitors' : ''} and generating comprehensive analytics report. This may take 2-3 minutes...
+                                    <strong>We are now analyzing your website</strong>
+                                    {formData.competitor_urls ? ' and selected competitors' : ''} to understand traffic, engagement,
+                                    and revenue patterns. Your full analytics report will be ready in about 2–3 minutes.
                                 </p>
                             </div>
                         )}
@@ -449,6 +580,35 @@ const WebsiteAnalytics = () => {
                                                 className="px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded"
                                             >
                                                 Edit
+                                            </button>
+                                            <button
+                                                onClick={() => handleAIRewrite('improve')}
+                                                disabled={rewriteLoading}
+                                                className="px-3 py-1 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded disabled:bg-gray-400"
+                                            >
+                                                {rewriteLoading ? 'Rewriting...' : 'Rewrite'}
+                                            </button>
+                                            {!formData.include_competitor_comparison && (
+                                                <button
+                                                    onClick={handleGenerateMetaTags}
+                                                    disabled={loading}
+                                                    className="px-3 py-1 text-sm bg-indigo-600 text-white hover:bg-indigo-700 rounded disabled:bg-gray-400"
+                                                >
+                                                    Meta Tags
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={handleGenerateAIRecommendations}
+                                                disabled={loading || recommendationsLoading}
+                                                className="px-3 py-1 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded disabled:bg-gray-400"
+                                            >
+                                                {recommendationsLoading ? 'Generating...' : 'Recommendations'}
+                                            </button>
+                                            <button
+                                                onClick={handleQualityCheck}
+                                                className="px-3 py-1 text-sm bg-yellow-600 text-white hover:bg-yellow-700 rounded"
+                                            >
+                                                Quality Check
                                             </button>
                                             <button
                                                 onClick={handleCopyToClipboard}
@@ -504,13 +664,287 @@ const WebsiteAnalytics = () => {
                                         <div 
                                             dangerouslySetInnerHTML={{ __html: markdownToHtml(analyticsReport.report) }}
                                             className="prose max-w-none text-left"
-                                            style={{ textAlign: 'left' }}
+                                            style={{ 
+                                                textAlign: 'left',
+                                                lineHeight: '1.75',
+                                                fontSize: '16px',
+                                                color: '#374151'
+                                            }}
                                         />
                                     ) : (
                                         <pre className="whitespace-pre-wrap font-mono text-sm text-left" style={{ textAlign: 'left' }}>{analyticsReport.report}</pre>
                                     )}
+                                    {viewFormat === 'html' && (
+                                        <style>{`
+                                            .prose h1 {
+                                                font-size: 2.25em;
+                                                font-weight: 800;
+                                                margin-top: 0;
+                                                margin-bottom: 0.8888889em;
+                                                line-height: 1.1111111;
+                                                color: #111827;
+                                            }
+                                            .prose h2 {
+                                                font-size: 1.5em;
+                                                font-weight: 700;
+                                                margin-top: 2em;
+                                                margin-bottom: 1em;
+                                                line-height: 1.3333333;
+                                                color: #111827;
+                                            }
+                                            .prose h3 {
+                                                font-size: 1.25em;
+                                                font-weight: 600;
+                                                margin-top: 1.6em;
+                                                margin-bottom: 0.6em;
+                                                line-height: 1.6;
+                                                color: #111827;
+                                            }
+                                            .prose h4 {
+                                                font-size: 1.125em;
+                                                font-weight: 600;
+                                                margin-top: 1.5em;
+                                                margin-bottom: 0.5em;
+                                                line-height: 1.5555556;
+                                                color: #111827;
+                                            }
+                                            .prose p {
+                                                margin-top: 1.25em;
+                                                margin-bottom: 1.25em;
+                                                line-height: 1.75;
+                                            }
+                                            .prose ul, .prose ol {
+                                                margin-top: 1.25em;
+                                                margin-bottom: 1.25em;
+                                                padding-left: 1.625em;
+                                            }
+                                            .prose li {
+                                                margin-top: 0.5em;
+                                                margin-bottom: 0.5em;
+                                                line-height: 1.75;
+                                            }
+                                            .prose ul > li {
+                                                position: relative;
+                                                padding-left: 0.375em;
+                                            }
+                                            .prose ul > li::before {
+                                                content: "";
+                                                position: absolute;
+                                                background-color: #6b7280;
+                                                border-radius: 50%;
+                                                width: 0.375em;
+                                                height: 0.375em;
+                                                top: 0.875em;
+                                                left: 0.25em;
+                                            }
+                                            .prose ol > li {
+                                                counter-increment: list-counter;
+                                            }
+                                            .prose ol > li::before {
+                                                content: counter(list-counter) ".";
+                                                position: absolute;
+                                                font-weight: 400;
+                                                color: #6b7280;
+                                                left: 0;
+                                            }
+                                            .prose ol {
+                                                counter-reset: list-counter;
+                                            }
+                                            .prose ol > li {
+                                                position: relative;
+                                                padding-left: 1.75em;
+                                            }
+                                            .prose strong {
+                                                font-weight: 600;
+                                                color: #111827;
+                                            }
+                                            .prose code {
+                                                font-size: 0.875em;
+                                                font-weight: 600;
+                                                color: #111827;
+                                                background-color: #f3f4f6;
+                                                padding: 0.125em 0.25em;
+                                                border-radius: 0.25rem;
+                                            }
+                                            .prose pre {
+                                                color: #e5e7eb;
+                                                background-color: #1f2937;
+                                                overflow-x: auto;
+                                                font-weight: 400;
+                                                font-size: 0.875em;
+                                                line-height: 1.7142857;
+                                                margin-top: 1.7142857em;
+                                                margin-bottom: 1.7142857em;
+                                                border-radius: 0.375rem;
+                                                padding: 0.8571429em 1.1428571em;
+                                            }
+                                            .prose pre code {
+                                                background-color: transparent;
+                                                border-width: 0;
+                                                border-radius: 0;
+                                                padding: 0;
+                                                font-weight: inherit;
+                                                color: inherit;
+                                                font-size: inherit;
+                                                font-family: inherit;
+                                                line-height: inherit;
+                                            }
+                                            .prose blockquote {
+                                                font-weight: 500;
+                                                font-style: italic;
+                                                color: #111827;
+                                                border-left-width: 0.25rem;
+                                                border-left-color: #e5e7eb;
+                                                quotes: "\\201C""\\201D""\\2018""\\2019";
+                                                margin-top: 1.6em;
+                                                margin-bottom: 1.6em;
+                                                padding-left: 1em;
+                                            }
+                                            .prose hr {
+                                                border-color: #e5e7eb;
+                                                border-top-width: 1px;
+                                                margin-top: 3em;
+                                                margin-bottom: 3em;
+                                            }
+                                            .prose table {
+                                                width: 100%;
+                                                table-layout: auto;
+                                                text-align: left;
+                                                margin-top: 2em;
+                                                margin-bottom: 2em;
+                                                font-size: 0.875em;
+                                                line-height: 1.7142857;
+                                            }
+                                            .prose thead {
+                                                border-bottom-width: 1px;
+                                                border-bottom-color: #e5e7eb;
+                                            }
+                                            .prose thead th {
+                                                color: #111827;
+                                                font-weight: 600;
+                                                vertical-align: bottom;
+                                                padding-right: 0.5714286em;
+                                                padding-bottom: 0.5714286em;
+                                                padding-left: 0.5714286em;
+                                            }
+                                            .prose tbody tr {
+                                                border-bottom-width: 1px;
+                                                border-bottom-color: #e5e7eb;
+                                            }
+                                            .prose tbody td {
+                                                vertical-align: baseline;
+                                                padding-top: 0.5714286em;
+                                                padding-right: 0.5714286em;
+                                                padding-bottom: 0.5714286em;
+                                                padding-left: 0.5714286em;
+                                            }
+                                        `}</style>
+                                    )}
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {/* Quality Assurance Results */}
+                    {qaResult && (
+                        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <h4 className="font-semibold mb-2">Quality Assurance Check</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                <div>
+                                    <strong>Quality Score:</strong> {qaResult.quality_score}/100
+                                    <span className={`ml-2 ${qaResult.quality_score >= 90 ? 'text-green-600' : qaResult.quality_score >= 70 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                        ({qaResult.status})
+                                    </span>
+                                </div>
+                                <div><strong>Word Count:</strong> {qaResult.word_count}</div>
+                                <div><strong>Sections:</strong> {qaResult.sections_found}</div>
+                                <div>
+                                    <strong>Checks:</strong> 
+                                    {qaResult.has_meta_tags && ' ✓ Meta'}
+                                    {qaResult.has_schema && ' ✓ Schema'}
+                                    {qaResult.has_keywords && ' ✓ Keywords'}
+                                    {qaResult.has_competitor_analysis && ' ✓ Competitor'}
+                                </div>
+                            </div>
+                            {qaResult.issues && qaResult.issues.length > 0 && (
+                                <div className="mt-3">
+                                    <strong>Issues Found:</strong>
+                                    <ul className="list-disc list-inside mt-1">
+                                        {qaResult.issues.map((issue, idx) => (
+                                            <li key={idx} className="text-red-700">{issue}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* AI Optimized Recommendations */}
+                    {aiOptimizedRecommendations && (
+                        <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                            <div className="flex justify-between items-center mb-3">
+                                <h4 className="font-semibold">Optimized Business Intelligence Recommendations</h4>
+                                <button
+                                    onClick={() => {
+                                        const text = aiOptimizedRecommendations.recommendations;
+                                        navigator.clipboard.writeText(text);
+                                        alert('Recommendations copied to clipboard!');
+                                    }}
+                                    className="px-3 py-1 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-3">
+                                Prioritized, actionable recommendations with complete implementation examples you can use directly.
+                            </p>
+                            <div className="p-4 bg-white rounded border">
+                                <pre className="whitespace-pre-wrap font-mono text-sm text-left" style={{ textAlign: 'left' }}>
+                                    {aiOptimizedRecommendations.recommendations}
+                                </pre>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Production Meta Tags */}
+                    {productionMetaTags && (
+                        <div className="mt-6 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                            <h4 className="font-semibold mb-3">Production-Ready Meta Tags & Schema</h4>
+                            <div className="space-y-4">
+                                <div>
+                                    <h5 className="font-medium mb-2">Meta Tags:</h5>
+                                    <pre className="bg-white p-3 rounded border text-xs overflow-x-auto">{productionMetaTags.meta_tags || productionMetaTags.full_code}</pre>
+                                </div>
+                                {productionMetaTags.schema_markup && (
+                                    <div>
+                                        <h5 className="font-medium mb-2">Schema Markup (JSON-LD):</h5>
+                                        <pre className="bg-white p-3 rounded border text-xs overflow-x-auto">{productionMetaTags.schema_markup}</pre>
+                                    </div>
+                                )}
+                                {productionMetaTags.open_graph && (
+                                    <div>
+                                        <h5 className="font-medium mb-2">Open Graph Tags:</h5>
+                                        <pre className="bg-white p-3 rounded border text-xs overflow-x-auto">{productionMetaTags.open_graph}</pre>
+                                    </div>
+                                )}
+                                {productionMetaTags.twitter_card && (
+                                    <div>
+                                        <h5 className="font-medium mb-2">Twitter Card Tags:</h5>
+                                        <pre className="bg-white p-3 rounded border text-xs overflow-x-auto">{productionMetaTags.twitter_card}</pre>
+                                    </div>
+                                )}
+                                <button
+                                    onClick={() => {
+                                        const fullCode = productionMetaTags.full_code || 
+                                            `${productionMetaTags.meta_tags}\n\n${productionMetaTags.schema_markup}\n\n${productionMetaTags.open_graph}\n\n${productionMetaTags.twitter_card}`;
+                                        navigator.clipboard.writeText(fullCode);
+                                        alert('Meta tags copied to clipboard!');
+                                    }}
+                                    className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                                >
+                                    Copy All Code
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>

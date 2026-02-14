@@ -28,6 +28,8 @@ class AnalyticsResponse(BaseModel):
     word_count: int
     estimated_read_time: int
     website_url: str
+    brand_visibility_evidence: List[dict] = []
+    competitor_brand_visibility_evidence: List[dict] = []
 
 def count_words(text: str) -> int:
     """Count words in text"""
@@ -53,7 +55,7 @@ async def create_analytics_report(request: AnalyticsRequest):
                     url = url.rstrip('/')
                     competitor_list.append(url)
         
-        report = await generate_analytics_report(
+        result = await generate_analytics_report(
             website_url=request.website_url,
             competitor_urls=competitor_list if competitor_list else None,
             analysis_depth=request.analysis_depth,
@@ -64,6 +66,7 @@ async def create_analytics_report(request: AnalyticsRequest):
             enable_js_render=request.enable_js_render,
         )
         
+        report = result.get("report", "")
         word_count = count_words(report)
         estimated_read_time = estimate_read_time(word_count)
         
@@ -71,7 +74,9 @@ async def create_analytics_report(request: AnalyticsRequest):
             report=report,
             word_count=word_count,
             estimated_read_time=estimated_read_time,
-            website_url=request.website_url
+            website_url=request.website_url,
+            brand_visibility_evidence=result.get("brand_visibility_evidence", []),
+            competitor_brand_visibility_evidence=result.get("competitor_brand_visibility_evidence", [])
         )
         return response
     except Exception as e:

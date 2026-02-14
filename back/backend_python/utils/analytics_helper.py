@@ -1,18 +1,35 @@
+"""
+Analytics Report Generator
+
+Generates a structured, evidence grounded website analytics report using
+1 Website crawl evidence from utils.web_crawler
+2 Traffic data evidence from utils.traffic_data_helper
+3 Brand visibility evidence from utils.brand_visibility_helper
+
+Important
+This file returns a dict in all paths
+Never returns a plain string
+"""
+
 import os
 import asyncio
-from openai import AsyncOpenAI
+import json
+import re
+from typing import Optional, List, Dict, Any
+from urllib.parse import urlparse
+
 from dotenv import load_dotenv
-from typing import Optional, List
+from openai import AsyncOpenAI
+
 from utils.web_crawler import crawl_and_extract, format_crawled_content_for_prompt, crawl_competitors
 from utils.traffic_data_helper import get_traffic_data_for_domain, format_traffic_data_for_prompt
 from utils.brand_visibility_helper import get_brand_visibility_data, format_brand_visibility_data_for_prompt
-from urllib.parse import urlparse
 
-# Load environment variables
+
 load_dotenv()
 
-# Initialize OpenAI async client dynamically
-def get_openai_client():
+
+def get_openai_client() -> AsyncOpenAI:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key or api_key == "sk-placeholder" or api_key.startswith("sk-placeholder"):
         raise ValueError(
@@ -20,6 +37,118 @@ def get_openai_client():
             "Get your API key from https://platform.openai.com/api-keys"
         )
     return AsyncOpenAI(api_key=api_key)
+
+
+def _normalize_url(u: str) -> str:
+    u = (u or "").strip()
+    if not u:
+        return ""
+    if not u.startswith(("http://", "https://")):
+        u = f"https://{u}"
+    return u.rstrip("/")
+
+
+def _to_domain(u: str) -> str:
+    try:
+        p = urlparse(u)
+        host = (p.netloc or "").replace("www.", "")
+        return host if host else u.replace("www.", "")
+    except Exception:
+        return u.replace("www.", "")
+
+
+def _truncate_text(text: str, max_chars: int) -> str:
+    if not text:
+        return ""
+    if len(text) <= max_chars:
+        return text
+    return text[: max_chars - 3].rstrip() + "..."
+
+
+def _extract_sentences(text: str, max_sentences: int = 3) -> List[str]:
+    if not text:
+        return []
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    return [s.strip() for s in sentences if s.strip()][:max_sentences]
+
+
+def _extract_pricing_signals(content: str) -> List[str]:
+    if not content:
+        return []
+    signals: List[str] = []
+    for sentence in _extract_sentences(content, max_sentences=10):
+        lower = sentence.lower()
+        if "$" in sentence or "pricing" in lower or "plan" in lower or "per month" in lower or "per user" in lower:
+            signals.append(_truncate_text(sentence, 200))
+    return signals[:3]
+
+
+def _extract_trust_signals(content: str) -> List[str]:
+    if not content:
+        return []
+    signals: List[str] = []
+    for sentence in _extract_sentences(content, max_sentences=12):
+        lower = sentence.lower()
+        if any(k in lower for k in ["testimonial", "review", "case study", "trusted by", "customers", "ratings"]):
+            signals.append(_truncate_text(sentence, 200))
+    return signals[:3]
+
+
+def _extract_quotes(content: str, source_url: str, max_quotes: int = 3) -> List[Dict[str, str]]:
+    quotes: List[Dict[str, str]] = []
+    for sentence in _extract_sentences(content, max_sentences=max_quotes * 2):
+        if len(sentence) >= 40:
+            quotes.append({"quote": _truncate_text(sentence, 220), "source": source_url})
+        if len(quotes) >= max_quotes:
+            break
+    return quotes
+
+
+def _build_site_evidence(data: Optional[Dict[str, Any]], fallback_url: str) -> Dict[str, Any]:
+    if not data:
+        return {
+            "url": fallback_url,
+            "title": "",
+            "description": "",
+            "headings": [],
+            "features": [],
+            "pricing_signals": [],
+            "trust_signals": [],
+            "quotes": [],
+        }
+    content = data.get("content", "") or ""
+    url = data.get("url") or fallback_url
+    return {
+        "url": url,
+        "title": _truncate_text(data.get("title", "") or "", 160),
+        "description": _truncate_text(data.get("description", "") or "", 400),
+        "headings": (data.get("headings") or [])[:10],
+        "features": (data.get("features") or [])[:12],
+        "pricing_signals": _extract_pricing_signals(content),
+        "trust_signals": _extract_trust_signals(content),
+        "quotes": _extract_quotes(content, url, max_quotes=5),
+    }
+
+
+def _build_competitor_evidence(data_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    competitors: List[Dict[str, Any]] = []
+    for data in (data_list or [])[:6]:
+        content = data.get("content", "") or ""
+        url = data.get("url", "") or ""
+        competitors.append(
+            {
+                "name": _truncate_text(data.get("title", "") or "", 160),
+                "url": url,
+                "description": _truncate_text(data.get("description", "") or "", 400),
+                "headings": (data.get("headings") or [])[:8],
+                "features": (data.get("features") or [])[:12],
+                "pricing_signals": _extract_pricing_signals(content),
+                "trust_signals": _extract_trust_signals(content),
+                "quotes": _extract_quotes(content, url, max_quotes=4),
+            }
+        )
+    return competitors
+
 
 async def generate_analytics_report(
     website_url: str,
@@ -30,487 +159,495 @@ async def generate_analytics_report(
     include_competitor_comparison: bool = True,
     language: str = "en",
     enable_js_render: bool = False,
-) -> str:
-    """
-    Generate comprehensive website analytics report with competitor analysis and revenue insights.
-    
-    Args:
-        website_url (str): URL of the website to analyze
-        competitor_urls (List[str]): List of competitor URLs for comparison
-        analysis_depth (str): Depth of analysis (quick, standard, comprehensive, deep)
-        include_revenue_analysis (bool): Include revenue model analysis
-        include_traffic_analysis (bool): Include traffic analysis (SimilarWeb-style)
-        include_competitor_comparison (bool): Include competitor comparison
-        language (str): Language code
-        enable_js_render (bool): If True, allow JS-rendered crawling for SPA/React sites
-    
-    Returns:
-        str: Generated analytics report
-    """
-    
-    # Normalize URL - ensure it has a protocol
-    normalized_url = website_url.strip()
-    if not normalized_url.startswith(('http://', 'https://')):
-        normalized_url = f"https://{normalized_url}"
-    # Remove trailing slashes
-    normalized_url = normalized_url.rstrip('/')
-    
-    # Crawl the main website
-    website_data = None
+) -> Dict[str, Any]:
+    normalized_url = _normalize_url(website_url)
+    if not normalized_url:
+        return {
+            "report": "",
+            "brand_visibility_evidence": [],
+            "competitor_brand_visibility_evidence": [],
+            "error": {"type": "validation_error", "message": "website_url is required"},
+        }
+
+    normalized_competitor_urls: List[str] = []
+    if competitor_urls:
+        for u in competitor_urls:
+            nu = _normalize_url(u)
+            if nu:
+                normalized_competitor_urls.append(nu)
+
+    website_data: Optional[Dict[str, Any]] = None
     website_context = ""
-    
+    crawl_available = False
+
     try:
-        print(f"Attempting to crawl website: {normalized_url}")
         website_data = await crawl_and_extract(normalized_url, use_js_render=enable_js_render)
         if website_data:
-            website_context = format_crawled_content_for_prompt(website_data)
-            print(f"Successfully crawled website: {normalized_url}")
+            website_context = format_crawled_content_for_prompt(website_data) or ""
+            crawl_available = bool(website_data.get("content"))
         else:
-            website_context = f"Note: Could not fetch content from {normalized_url}. The website may be blocking crawlers or may not be accessible. Analysis will proceed with available information."
-            print(f"Failed to crawl website: {normalized_url} - No data returned")
+            website_context = (
+                f"Note: Could not fetch content from {normalized_url}. "
+                "The site may block crawlers or require authentication."
+            )
     except Exception as e:
-        error_msg = str(e)
-        website_context = f"Note: Could not crawl website {normalized_url} ({error_msg}). Analysis will proceed with available information."
-        print(f"Error crawling website {normalized_url}: {error_msg}")
-    
-    # Fetch real traffic data for main website
+        website_context = (
+            f"Note: Could not crawl website {normalized_url} ({str(e)}). "
+            "Analysis will proceed with available information."
+        )
+
     traffic_data_text = ""
     if include_traffic_analysis:
         try:
-            print(f"Fetching real traffic data for: {normalized_url}")
-            traffic_data = await get_traffic_data_for_domain(normalized_url)
-            if traffic_data.get('available'):
-                traffic_data_text = format_traffic_data_for_prompt(traffic_data, normalized_url)
-                print(f"✅ Real traffic data obtained from {traffic_data.get('source', 'unknown')}")
-            else:
-                print("⚠️  No real traffic data available, will use AI estimates")
-        except Exception as e:
-            print(f"Error fetching traffic data: {e}")
-    
-    # Normalize competitor URLs
-    normalized_competitor_urls = []
-    if competitor_urls:
-        for url in competitor_urls:
-            normalized = url.strip()
-            if not normalized.startswith(('http://', 'https://')):
-                normalized = f"https://{normalized}"
-            normalized = normalized.rstrip('/')
-            normalized_competitor_urls.append(normalized)
-    
-    # Fetch real traffic data for competitors
+            main_domain = _to_domain(normalized_url)
+            traffic_data = await get_traffic_data_for_domain(main_domain)
+            if isinstance(traffic_data, dict) and traffic_data.get("available"):
+                traffic_data_text = format_traffic_data_for_prompt(traffic_data, normalized_url) or ""
+        except Exception:
+            traffic_data_text = ""
+
     competitor_traffic_data_text = ""
     if normalized_competitor_urls and include_competitor_comparison and include_traffic_analysis:
         try:
-            print(f"Fetching real traffic data for {len(normalized_competitor_urls)} competitor(s)")
-            competitor_traffic_parts = []
+            parts: List[str] = []
             for comp_url in normalized_competitor_urls:
-                comp_traffic = await get_traffic_data_for_domain(comp_url)
-                if comp_traffic.get('available'):
-                    competitor_traffic_parts.append(format_traffic_data_for_prompt(comp_traffic, comp_url))
-            
-            if competitor_traffic_parts:
-                competitor_traffic_data_text = "\n".join(competitor_traffic_parts)
-                print(f"✅ Real traffic data obtained for {len(competitor_traffic_parts)} competitor(s)")
-        except Exception as e:
-            print(f"Error fetching competitor traffic data: {e}")
-    
-    # Fetch brand visibility data with analytics sources (PageSpeed, BuiltWith) for main website
-    # Wrap in timeout to prevent hanging
-    brand_visibility_data = None
+                comp_domain = _to_domain(comp_url)
+                comp_traffic = await get_traffic_data_for_domain(comp_domain)
+                if isinstance(comp_traffic, dict) and comp_traffic.get("available"):
+                    parts.append(format_traffic_data_for_prompt(comp_traffic, comp_url) or "")
+            competitor_traffic_data_text = "\n".join([p for p in parts if p])
+        except Exception:
+            competitor_traffic_data_text = ""
+
+    brand_visibility_data: Optional[Dict[str, Any]] = None
     brand_visibility_text = ""
+    brand_visibility_evidence: List[Dict[str, Any]] = []
+
+    competitor_brand_visibility_text = ""
+    competitor_brand_evidence: List[Dict[str, Any]] = []
+
     try:
-        print("Fetching brand visibility and technical data...")
-        # Extract brand name from URL
-        parsed_url = urlparse(normalized_url)
-        domain = parsed_url.netloc.replace('www.', '')
-        brand_name = domain.split('.')[0].title()
-        
-        # Try to get brand name from crawled data if available
+        parsed = urlparse(normalized_url)
+        domain = (parsed.netloc or "").replace("www.", "")
+        brand_name = (domain.split(".")[0] if domain else "Brand").title()
+
         if website_data and website_data.get("title"):
-            title = website_data.get("title", "")
-            if title:
-                brand_name = title.split('|')[0].split('-')[0].strip()[:50]
-        
-        # Fetch with timeout to prevent hanging (25 seconds max for analytics sources)
+            t = (website_data.get("title") or "").strip()
+            if t:
+                brand_name = t.split("|")[0].split("-")[0].strip()[:50] or brand_name
+
         try:
             brand_visibility_data = await asyncio.wait_for(
                 get_brand_visibility_data(
                     brand_name=brand_name,
                     website_url=normalized_url,
-                    max_results=20,
-                    include_seo_sources=False,  # Only analytics sources for analytics reports
-                    include_analytics_sources=True
+                    max_results_per_source=5,
+                    include_press=True,
+                    include_community=True,
+                    include_dev=True,
+                    include_reputation=True,
+                    include_performance=True,
+                    include_tech_stack=False,
                 ),
-                timeout=25.0
+                timeout=25.0,
             )
         except asyncio.TimeoutError:
-            print("⚠️  Brand visibility fetch timed out - continuing without it")
             brand_visibility_data = None
-        
+
         if brand_visibility_data:
-            brand_visibility_text = format_brand_visibility_data_for_prompt(brand_visibility_data, brand_name, for_seo=False)
-            if brand_visibility_text:
-                print("✅ Brand visibility and technical data fetched")
-            else:
-                print("⚠️  No brand visibility data available")
-    except Exception as e:
-        print(f"Error fetching brand visibility data: {e}")
-    
-    # Fetch brand visibility data for competitors (analytics sources) - Run in parallel
-    competitor_brand_visibility_text = ""
+            formatted = format_brand_visibility_data_for_prompt(brand_visibility_data, brand_name)
+            brand_visibility_text = formatted.get("text", "") or ""
+            brand_visibility_evidence = formatted.get("evidence", []) or []
+    except Exception:
+        brand_visibility_text = ""
+        brand_visibility_evidence = []
+
     if normalized_competitor_urls and include_competitor_comparison:
         try:
-            print(f"Fetching brand visibility data for {len(normalized_competitor_urls)} competitor(s)...")
-            
-            # Create tasks for parallel execution
-            competitor_tasks = []
-            competitor_info = []
+            competitor_tasks: List[asyncio.Task] = []
+            competitor_info: List[Dict[str, str]] = []
             for comp_url in normalized_competitor_urls:
                 parsed_comp = urlparse(comp_url)
-                comp_domain = parsed_comp.netloc.replace('www.', '')
-                comp_brand_name = comp_domain.split('.')[0].title()
-                
-                competitor_info.append((comp_url, comp_brand_name))
+                comp_domain = (parsed_comp.netloc or "").replace("www.", "")
+                comp_brand = (comp_domain.split(".")[0] if comp_domain else "Competitor").title()
+                competitor_info.append({"url": comp_url, "brand": comp_brand})
                 competitor_tasks.append(
-                    get_brand_visibility_data(
-                        brand_name=comp_brand_name,
-                        website_url=comp_url,
-                        max_results=10,
-                        include_seo_sources=False,
-                        include_analytics_sources=True
+                    asyncio.create_task(
+                        get_brand_visibility_data(
+                            brand_name=comp_brand,
+                            website_url=comp_url,
+                            max_results_per_source=3,
+                            include_press=True,
+                            include_community=True,
+                            include_dev=True,
+                            include_reputation=True,
+                            include_performance=False,
+                            include_tech_stack=False,
+                        )
                     )
                 )
-            
-            # Execute all competitor fetches in parallel with timeout
+
             try:
-                competitor_results = await asyncio.wait_for(
-                    asyncio.gather(*competitor_tasks, return_exceptions=True),
-                    timeout=30.0
-                )
+                results = await asyncio.wait_for(asyncio.gather(*competitor_tasks, return_exceptions=True), timeout=30.0)
             except asyncio.TimeoutError:
-                print("⚠️  Competitor brand visibility fetch timed out after 30 seconds")
-                competitor_results = [{'available': False, 'error': 'timeout'} for _ in competitor_tasks]
-            
-            # Process results
-            competitor_brand_parts = []
-            for i, (comp_url, comp_brand_name) in enumerate(competitor_info):
-                try:
-                    comp_brand_data = competitor_results[i] if not isinstance(competitor_results[i], Exception) else {'available': False, 'error': str(competitor_results[i])}
-                    
-                    if comp_brand_data and comp_brand_data.get('available'):
-                        comp_brand_text = format_brand_visibility_data_for_prompt(comp_brand_data, comp_brand_name, for_seo=False)
-                        if comp_brand_text:
-                            competitor_brand_parts.append(f"COMPETITOR: {comp_url}\n{comp_brand_text}")
-                except Exception as e:
-                    print(f"Error processing brand visibility for {comp_url}: {e}")
-            
-            if competitor_brand_parts:
-                competitor_brand_visibility_text = "\n\n".join(competitor_brand_parts)
-                print(f"✅ Brand visibility data obtained for {len(competitor_brand_parts)} competitor(s)")
-        except Exception as e:
-            print(f"Error fetching competitor brand visibility data: {e}")
-    
-    # Crawl competitors if provided
+                results = []
+
+            parts: List[str] = []
+            for idx, res in enumerate(results):
+                if isinstance(res, Exception) or not isinstance(res, dict):
+                    continue
+                if not res.get("available"):
+                    continue
+                info = competitor_info[idx] if idx < len(competitor_info) else {"url": "", "brand": "Competitor"}
+                formatted = format_brand_visibility_data_for_prompt(res, info["brand"])
+                txt = formatted.get("text", "") or ""
+                if txt:
+                    parts.append(f"COMPETITOR: {info['url']}\n{txt}")
+                competitor_brand_evidence.extend(formatted.get("evidence", []) or [])
+
+            competitor_brand_visibility_text = "\n\n".join(parts)
+        except Exception:
+            competitor_brand_visibility_text = ""
+            competitor_brand_evidence = []
+
+    competitor_data_list: List[Dict[str, Any]] = []
     competitor_analysis = ""
     if normalized_competitor_urls and include_competitor_comparison:
         try:
-            print(f"Attempting to crawl {len(normalized_competitor_urls)} competitor(s)")
-            competitor_data_list = await crawl_competitors(normalized_competitor_urls, max_concurrent=3)
-            if competitor_data_list and len(competitor_data_list) > 0:
-                # Format competitor data for the prompt
-                competitor_parts = []
-                competitor_parts.append("═══════════════════════════════════════════════════════════════")
-                competitor_parts.append(f"COMPETITOR ANALYSIS - {len(competitor_data_list)} Competitor(s) Analyzed")
-                competitor_parts.append("═══════════════════════════════════════════════════════════════")
+            competitor_data_list = await crawl_competitors(
+                normalized_competitor_urls,
+                max_concurrent=3,
+                use_js_render=enable_js_render,
+            )
+            if competitor_data_list:
+                competitor_parts: List[str] = []
+                competitor_parts.append("COMPETITOR ANALYSIS DATA")
+                competitor_parts.append(f"Competitors crawled: {len(competitor_data_list)}")
                 competitor_parts.append("")
-                
-                for idx, competitor in enumerate(competitor_data_list, 1):
-                    comp_parts = [f"COMPETITOR {idx}:"]
-                    
-                    if competitor.get("url"):
-                        comp_parts.append(f"  URL: {competitor['url']}")
-                    
-                    if competitor.get("title"):
-                        comp_parts.append(f"  Name: {competitor['title']}")
-                    
-                    if competitor.get("description"):
-                        comp_parts.append(f"  Description: {competitor['description'][:400]}")
-                    
-                    if competitor.get("features"):
-                        comp_parts.append(f"  Key Features: {', '.join(competitor['features'][:8])}")
-                    
-                    if competitor.get("headings"):
-                        comp_parts.append(f"  Main Sections: {', '.join(competitor['headings'][:5])}")
-                    
-                    if competitor.get("content"):
-                        content_preview = competitor['content'][:800]
-                        comp_parts.append(f"  Content Summary: {content_preview}")
-                    
-                    competitor_parts.append("\n".join(comp_parts))
+                for idx, c in enumerate(competitor_data_list, 1):
+                    comp_lines: List[str] = [f"COMPETITOR {idx}"]
+                    if c.get("url"):
+                        comp_lines.append(f"URL: {c.get('url')}")
+                    if c.get("title"):
+                        comp_lines.append(f"Title: {c.get('title')}")
+                    if c.get("description"):
+                        comp_lines.append(f"Description: {_truncate_text(c.get('description') or '', 500)}")
+                    if c.get("features"):
+                        comp_lines.append("Features:")
+                        for f in (c.get("features") or [])[:20]:
+                            comp_lines.append(f"* {f}")
+                    if c.get("headings"):
+                        comp_lines.append("Headings:")
+                        for h in (c.get("headings") or [])[:12]:
+                            comp_lines.append(f"* {h}")
+                    if c.get("content"):
+                        comp_lines.append("Content excerpt:")
+                        comp_lines.append(_truncate_text(c.get("content") or "", 2200))
+                    competitor_parts.append("\n".join(comp_lines))
                     competitor_parts.append("")
-                
-                competitor_parts.append("═══════════════════════════════════════════════════════════════")
                 competitor_analysis = "\n".join(competitor_parts)
-                print(f"Successfully analyzed {len(competitor_data_list)} competitor(s)")
             else:
-                competitor_analysis = "Note: Could not crawl competitor websites. Analysis will proceed without competitor data."
-                print("Failed to crawl competitor data - no data returned")
+                competitor_analysis = "Note: Competitor crawl not available."
         except Exception as e:
-            error_msg = str(e)
-            competitor_analysis = f"Note: Could not analyze competitors ({error_msg}). Analysis will proceed without competitor data."
-            print(f"Error analyzing competitors: {error_msg}")
-    
-    # Build depth-specific instructions
+            competitor_analysis = f"Note: Could not analyze competitors ({str(e)})."
+
     depth_instructions = {
-        "quick": "Provide a high-level overview with key metrics and top recommendations. Keep it concise (800-1200 words).",
-        "standard": "Provide a detailed analysis with metrics, insights, and actionable recommendations (1500-2500 words).",
-        "comprehensive": "Provide an exhaustive analysis covering all aspects with detailed metrics, deep insights, and comprehensive recommendations (3000-4000 words).",
-        "deep": "Provide an extremely detailed, in-depth analysis with extensive metrics, strategic insights, and detailed implementation plans (4000+ words)."
+        "quick": "Provide a high level overview with key metrics and top recommendations. Keep it concise (800 to 1200 words).",
+        "standard": "Provide a detailed analysis with metrics, insights, and actionable recommendations (1500 to 2500 words).",
+        "comprehensive": "Provide an exhaustive analysis with detailed metrics, deep insights, and comprehensive recommendations (3000 to 4000 words).",
+        "deep": "Provide an extremely detailed analysis with extensive metrics, strategic insights, and detailed implementation plans (4000 plus words).",
     }
-    
     depth_instruction = depth_instructions.get(analysis_depth, depth_instructions["comprehensive"])
-    
-    system_prompt = f"""You are an expert digital marketing analyst and business intelligence consultant with deep knowledge of:
-- Website analytics and traffic analysis (SimilarWeb, Google Analytics, etc.)
-- Competitive intelligence and market research
-- Revenue model analysis and monetization strategies
-- Digital marketing metrics and KPIs
-- Business model analysis
+    min_words = 800 if analysis_depth == "quick" else 2000
 
-Your task is to analyze websites and provide comprehensive, data-driven analytics reports with competitor insights and revenue intelligence.
-
-CRITICAL REQUIREMENTS:
-1. Provide SPECIFIC, DATA-DRIVEN insights based on the actual website content
-2. Include realistic estimates and metrics (clearly marked as estimates when actual data isn't available)
-3. Minimum word count based on analysis depth: {depth_instruction}
-4. Use real data from crawled websites when available
-5. Provide actionable business intelligence
-6. Include competitive positioning analysis
-7. Analyze revenue models and monetization strategies
-8. Reference specific pages, features, or elements found on the website
-9. DO NOT provide generic, templated analysis
-10. **IF COMPETITOR DATA IS PROVIDED**: You MUST explicitly list each competitor's name and URL in the Competitive Analysis section AND in any section where you use competitor data for estimates (especially Traffic Analysis). Reference specific features, content, and strategies from the competitor data provided. DO NOT use generic competitor names or phrases like "similar niche websites" - ALWAYS use the actual competitor names and URLs from the data provided. When making estimates based on competitors, explicitly state: "Based on comparison with [Competitor Name] ([competitor-url.com]), [Competitor Name 2] ([competitor-url2.com]), etc."
-
-Analysis Depth: {analysis_depth}
-Language: {language}"""
-
-    # Build sections based on selected components
-    sections = []
+    required_section_titles: List[str] = []
+    sections: List[str] = []
     section_num = 1
-    
-    # Always include Executive Summary
-    sections.append(f"{section_num}. **Executive Summary** (ALWAYS INCLUDE)\n   - Website overview and primary purpose\n   - Key performance indicators (KPIs)\n   - Overall health score (0-100)\n   - Top strategic insights\n   - Priority recommendations")
-    section_num += 1
-    
-    # Traffic Analysis (if selected)
+
+    def add_section(title: str, body: str) -> None:
+        nonlocal section_num
+        sections.append(f"{section_num}. **{title}** {body}")
+        required_section_titles.append(title)
+        section_num += 1
+
+    data_availability_required = (not crawl_available) and (not brand_visibility_text)
+
+    if data_availability_required:
+        add_section(
+            "Data Availability",
+            "List which data sources were available and which were missing. "
+            "Explicitly mark product, audience, and revenue model as Unknown if not supported by evidence.",
+        )
+
+    add_section(
+        "Executive Summary",
+        "Website overview, key KPIs, top insights, and priority recommendations grounded in evidence.",
+    )
+
     if include_traffic_analysis:
-        traffic_label = "(Using REAL traffic data from SimilarWeb API)" if traffic_data_text else "(SimilarWeb-style insights)"
-        traffic_instruction = "Use the REAL TRAFFIC DATA provided above. If real data is available, prioritize it over estimates. Clearly indicate when you're using real data vs estimates." if traffic_data_text else "If you provide traffic estimates based on competitor comparison, you MUST explicitly list the specific competitor websites used for comparison. For example: 'Based on comparison with [Competitor Name 1] (competitor1.com), [Competitor Name 2] (competitor2.com), and [Competitor Name 3] (competitor3.com), estimated monthly traffic is...'"
-        traffic_data_label = "Monthly traffic (from real data)" if traffic_data_text else "Estimated monthly traffic (based on website structure and content)"
-        
-        sections.append(f"{section_num}. **Traffic Analysis** {traffic_label} (REQUIRED - Selected Component)\n   - **CRITICAL**: {traffic_instruction}\n   - {traffic_data_label}\n   - **If using competitor data for estimates**: List each competitor website name and URL that informed the traffic estimate\n   - Traffic sources breakdown:\n     * Direct traffic\n     * Organic search\n     * Referral traffic\n     * Social media\n     * Paid advertising\n   - Geographic distribution (if identifiable)\n   - Device breakdown (desktop vs mobile)\n   - Bounce rate estimates\n   - Average session duration estimates\n   - Pages per session estimates\n   - Top performing pages (based on content analysis)\n   - Traffic trends and patterns")
-        section_num += 1
-    
-    # Website Performance Metrics (always include)
-    sections.append(f"{section_num}. **Website Performance Metrics** (ALWAYS INCLUDE)\n   - Page load speed analysis\n   - Core Web Vitals assessment\n   - Mobile responsiveness\n   - User experience metrics\n   - Conversion funnel analysis (if applicable)\n   - Engagement metrics")
-    section_num += 1
-    
-    # Content Analysis (always include)
-    sections.append(f"{section_num}. **Content Analysis** (ALWAYS INCLUDE)\n   - Content quality assessment\n   - Content depth and comprehensiveness\n   - Content freshness\n   - Content gaps and opportunities\n   - SEO content performance\n   - Content marketing effectiveness")
-    section_num += 1
-    
-    # Competitive Analysis (if selected)
+        add_section(
+            "Traffic Analysis",
+            "Use real traffic evidence if provided. If not available, mark as Not available in evidence and avoid inventing numbers.",
+        )
+
+    add_section(
+        "Website Performance Metrics",
+        "Performance and UX signals. If PageSpeed evidence exists, cite it. Otherwise mark as Not available in evidence.",
+    )
+
+    add_section(
+        "Content Analysis",
+        "Content quality, structure, gaps, and opportunities grounded in crawl evidence only.",
+    )
+
+    add_section(
+        "Brand Visibility & Technical Signals",
+        "Summarize brand visibility evidence, reputation signals, and technical signals if available. Provide evidence tied insights.",
+    )
+
     if include_competitor_comparison:
-        sections.append(f"{section_num}. **Competitive Analysis** (REQUIRED - Selected Component)\n   - **List of Competitors Analyzed**: Start by explicitly listing each competitor's name and URL that was analyzed\n   - Competitive positioning\n   - Market share estimates\n   - Feature comparison with competitors (create a detailed comparison table if possible)\n   - Content comparison\n   - Traffic comparison (relative estimates)\n   - Strengths and weaknesses vs competitors (be specific about each competitor)\n   - Competitive advantages and disadvantages\n   - Market opportunities\n   - **Specific competitor insights**: For each competitor listed, provide 2-3 specific insights about their approach, features, or strategy")
-        section_num += 1
-    
-    # Revenue Model Analysis (if selected)
+        add_section(
+            "Competitive Analysis",
+            "List competitors analyzed, then compare features and positioning using only crawled competitor evidence.",
+        )
+
     if include_revenue_analysis:
-        sections.append(f"{section_num}. **Revenue Model Analysis** (REQUIRED - Selected Component)\n   - Identified revenue streams:\n     * Subscription/SaaS model\n     * Advertising revenue\n     * E-commerce/sales\n     * Affiliate marketing\n     * Freemium model\n     * Enterprise sales\n     * Other monetization methods\n   - Revenue model assessment\n   - Pricing strategy analysis\n   - Monetization effectiveness\n   - Revenue potential estimates (if possible)\n   - Revenue optimization opportunities\n   - Business model strengths and weaknesses")
-        section_num += 1
-    
-    # Marketing & Growth Analysis (always include)
-    sections.append(f"{section_num}. **Marketing & Growth Analysis** (ALWAYS INCLUDE)\n   - Marketing channels effectiveness\n   - Brand presence and awareness\n   - Social media presence\n   - Content marketing strategy\n   - SEO performance\n   - Paid advertising presence\n   - Growth opportunities")
-    section_num += 1
-    
-    # Technical Infrastructure (always include)
-    sections.append(f"{section_num}. **Technical Infrastructure** (ALWAYS INCLUDE)\n   - Website architecture\n   - Technology stack (if identifiable)\n   - Hosting and CDN analysis\n   - Security assessment\n   - Scalability considerations")
-    section_num += 1
-    
-    # User Experience & Conversion (always include)
-    sections.append(f"{section_num}. **User Experience & Conversion** (ALWAYS INCLUDE)\n   - UX/UI assessment\n   - Conversion optimization opportunities\n   - User journey analysis\n   - Friction points identification\n   - Improvement recommendations")
-    section_num += 1
-    
-    # Strategic Recommendations (always include)
-    sections.append(f"{section_num}. **Strategic Recommendations** (ALWAYS INCLUDE)\n    - Quick wins (implement immediately)\n    - High-impact improvements (1-3 months)\n    - Long-term strategic initiatives (3-12 months)\n    - Investment priorities\n    - Risk assessment")
-    section_num += 1
-    
-    # Benchmarking & Industry Comparison (always include)
-    sections.append(f"{section_num}. **Benchmarking & Industry Comparison** (ALWAYS INCLUDE)\n    - Industry benchmarks\n    - Performance vs industry standards\n    - Market positioning\n    - Competitive advantages")
-    section_num += 1
-    
-    # Tools & Monitoring Recommendations (always include)
-    sections.append(f"{section_num}. **Tools & Monitoring Recommendations** (ALWAYS INCLUDE)\n    - Analytics tools setup\n    - Key metrics to track\n    - Reporting dashboards\n    - Monitoring strategies")
-    
+        add_section(
+            "Revenue Model Analysis",
+            "Identify monetization signals only if present in evidence. Otherwise mark as Not available in evidence.",
+        )
+
+    add_section(
+        "Marketing & Growth Analysis",
+        "Channels and growth opportunities grounded in evidence. Avoid generic advice.",
+    )
+
+    add_section(
+        "Technical Infrastructure",
+        "Architecture and stack only if evidence supports it. Otherwise mark unknown.",
+    )
+
+    add_section(
+        "User Experience & Conversion",
+        "User journey and friction points grounded in evidence only.",
+    )
+
+    add_section(
+        "Strategic Recommendations",
+        "All recommendations must be product specific, competitor referenced when competitor evidence exists, and include an Evidence line.",
+    )
+
+    add_section(
+        "Benchmarking & Industry Comparison",
+        "Benchmark only what evidence supports. Otherwise use qualitative comparisons with explicit uncertainty.",
+    )
+
+    add_section(
+        "Tools & Monitoring Recommendations",
+        "Monitoring suggestions grounded in what is missing from evidence and what is feasible to instrument.",
+    )
+
+    sections.append(
+        f"{section_num}. **References & Evidence** "
+        "List every URL analyzed and every evidence source used. Call out missing data explicitly."
+    )
+    required_section_titles.append("References & Evidence")
+
     sections_text = "\n\n".join(sections)
-    
-    # Build selected components text
-    selected_components = []
-    if include_traffic_analysis:
-        selected_components.append("Traffic Analysis")
-    if include_competitor_comparison:
-        selected_components.append("Competitor Comparison")
-    if include_revenue_analysis:
-        selected_components.append("Revenue Intelligence")
-    selected_components_text = ", ".join(selected_components) if selected_components else "None"
-    
-    # Build traffic data sections (avoid backslashes in f-string expressions)
-    traffic_section = ""
-    if traffic_data_text:
-        traffic_section = f"REAL TRAFFIC DATA:\n{traffic_data_text}\n"
-    
-    competitor_traffic_section = ""
-    if competitor_traffic_data_text:
-        competitor_traffic_section = f"COMPETITOR TRAFFIC DATA:\n{competitor_traffic_data_text}\n"
-    
-    competitor_analysis_section = ""
-    if competitor_analysis and include_competitor_comparison:
-        competitor_analysis_section = f"Competitor Analysis Data:\n{competitor_analysis}"
-    
-    brand_visibility_section = ""
-    if brand_visibility_text:
-        brand_visibility_section = f"{brand_visibility_text}\n"
-    
-    competitor_brand_visibility_section = ""
-    if competitor_brand_visibility_text:
-        competitor_brand_visibility_section = f"\nCOMPETITOR BRAND VISIBILITY & TECHNICAL DATA:\n{competitor_brand_visibility_text}\n"
-    
-    user_prompt = f"""Analyze the following website and provide a comprehensive website analytics report:
 
-Website URL: {normalized_url}
+    evidence_summary = {
+        "site": _build_site_evidence(website_data, normalized_url),
+        "competitors": _build_competitor_evidence(competitor_data_list),
+        "traffic_data": _truncate_text(traffic_data_text, 2000),
+        "competitor_traffic_data": _truncate_text(competitor_traffic_data_text, 2000),
+        "brand_visibility_evidence": brand_visibility_evidence,
+        "competitor_brand_visibility_evidence": competitor_brand_evidence,
+        "notes": {
+            "crawl_available": bool(crawl_available),
+            "brand_visibility_text_available": bool(brand_visibility_text),
+            "competitor_crawl_available": bool(competitor_data_list),
+        },
+    }
+    evidence_json = json.dumps(evidence_summary, ensure_ascii=True, indent=2)
 
-Website Content (crawled):
-{website_context if website_context else "No website content available. Provide general analytics insights based on the URL and industry."}
+    fallback_message = ""
+    if not crawl_available:
+        fallback_message = (
+            f"Warning: Website crawl content is not available for {normalized_url}. "
+            "Do not infer product, audience, or revenue model unless supported by other evidence."
+        )
 
-{traffic_section}{competitor_traffic_section}{competitor_analysis_section}{brand_visibility_section}{competitor_brand_visibility_section}
+    system_prompt = f"""
+You are an expert digital marketing analyst and business intelligence consultant.
 
-Please provide a comprehensive website analytics report covering ONLY the following sections based on the selected components:
+Hard rules
+Use only the evidence summary provided
+If a claim is not supported by evidence write Not available in evidence
+Every recommendation must include a short Evidence line pointing to a URL or excerpt from evidence
+Avoid generic advice
+If competitor evidence exists reference competitors by name and URL in recommendations
 
-{sections_text}
-
-**CRITICAL INSTRUCTIONS:**
-- ONLY include sections that match the selected components: {selected_components_text}
-- DO NOT include sections that were not selected
-- Executive Summary, Website Performance, Content Analysis, Marketing & Growth, Technical Infrastructure, User Experience, Strategic Recommendations, Benchmarking, and Tools sections should always be included
-- Traffic Analysis should ONLY be included if "Traffic Analysis" component is selected
-- Competitive Analysis should ONLY be included if "Competitor Comparison" component is selected
-- Revenue Model Analysis should ONLY be included if "Revenue Intelligence" component is selected
+Minimum length requirement
 {depth_instruction}
 
-Format the report in Markdown with clear sections, data tables where appropriate, and actionable insights. Be specific and reference actual elements from the website when possible. When providing estimates, clearly mark them as such."""
+Language
+{language}
+""".strip()
+
+    user_prompt = f"""
+Analyze the website and produce a comprehensive analytics report.
+
+Website URL
+{normalized_url}
+
+Evidence summary
+{evidence_json}
+
+{fallback_message}
+
+Return only valid JSON matching this schema
+{{
+  "sections": [
+    {{
+      "title": "Executive Summary",
+      "content": "Markdown content for this section only"
+    }}
+  ]
+}}
+
+The sections must appear in this exact order
+{", ".join(required_section_titles)}
+""".strip()
+
+    def _count_words(text: str) -> int:
+        return len([w for w in (text or "").split() if w.strip()])
+
+    def _build_report_text(report_json: Dict[str, Any]) -> str:
+        contents: List[str] = []
+        for s in report_json.get("sections", []) or []:
+            if isinstance(s, dict):
+                c = s.get("content", "")
+                if c:
+                    contents.append(c)
+        return "\n\n".join(contents)
+
+    def _validate_report_schema(report_json: Dict[str, Any]) -> List[str]:
+        issues: List[str] = []
+        sections_json = report_json.get("sections")
+        if not isinstance(sections_json, list) or not sections_json:
+            return ["sections array is missing or empty"]
+        titles = [s.get("title") for s in sections_json if isinstance(s, dict)]
+        if len(titles) != len(required_section_titles):
+            issues.append("section count does not match required sections")
+            return issues
+        if titles != required_section_titles:
+            issues.append("section order or titles do not match required sections")
+        return issues
 
     try:
         client = get_openai_client()
-        
+
+        response_format = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "analytics_report",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "sections": {
+                            "type": "array",
+                            "minItems": len(required_section_titles),
+                            "maxItems": len(required_section_titles),
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {"type": "string", "enum": required_section_titles},
+                                    "content": {"type": "string"},
+                                },
+                                "required": ["title", "content"],
+                                "additionalProperties": False,
+                            },
+                        }
+                    },
+                    "required": ["sections"],
+                    "additionalProperties": False,
+                },
+                "strict": True,
+            },
+        }
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+
         response = await client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
+            model=os.getenv("OPENAI_MODEL", "gpt-4o"),
+            messages=messages,
             temperature=0.7,
-            max_tokens=6000,
+            max_tokens=7000,
             frequency_penalty=0.1,
-            presence_penalty=0.05
+            presence_penalty=0.05,
+            seed=42,
+            response_format=response_format,
         )
-        
-        report = response.choices[0].message.content.strip()
-        return report
-        
+
+        raw_report = (response.choices[0].message.content or "").strip()
+
+        report_json: Optional[Dict[str, Any]] = None
+        try:
+            report_json = json.loads(raw_report)
+        except Exception:
+            report_json = None
+
+        needs_retry = True
+        if report_json:
+            issues = _validate_report_schema(report_json)
+            report_text = _build_report_text(report_json)
+            if (not issues) and (_count_words(report_text) >= min_words):
+                needs_retry = False
+
+        if needs_retry:
+            follow_up = (
+                "Fix the output to meet strict JSON schema. "
+                f"Use exact section order: {', '.join(required_section_titles)}. "
+                f"Ensure at least {min_words} words across section contents. "
+                "Use only evidence and add Evidence lines for recommendations."
+            )
+
+            response2 = await client.chat.completions.create(
+                model=os.getenv("OPENAI_MODEL", "gpt-4o"),
+                messages=messages + [
+                    {"role": "assistant", "content": raw_report},
+                    {"role": "user", "content": follow_up},
+                ],
+                temperature=0.7,
+                max_tokens=7000,
+                frequency_penalty=0.1,
+                presence_penalty=0.05,
+                seed=42,
+                response_format=response_format,
+            )
+            raw_report = (response2.choices[0].message.content or "").strip()
+
+        return {
+            "report": raw_report,
+            "brand_visibility_evidence": brand_visibility_evidence,
+            "competitor_brand_visibility_evidence": competitor_brand_evidence,
+        }
+
     except ValueError as e:
-        # API key error
-        error_msg = str(e)
-        return f"""# ⚠️ OpenAI API Key Error
+        return {
+            "report": "",
+            "brand_visibility_evidence": brand_visibility_evidence,
+            "competitor_brand_visibility_evidence": competitor_brand_evidence,
+            "error": {"type": "api_key_error", "message": str(e)},
+        }
 
-The OpenAI API key is invalid or not configured correctly.
-
-**Error Details:**
-- Error Type: ValueError
-- Message: {error_msg}
-
-**To fix this:**
-1. Get your API key from https://platform.openai.com/api-keys
-2. Set it in `back/backend_python/.env` as: `OPENAI_API_KEY=sk-your-actual-key-here`
-3. Restart the backend server
-
-## Website Analytics for {website_url}
-
-Once the API key is configured, you can generate comprehensive analytics reports for this website."""
-    
     except Exception as e:
-        error_type = type(e).__name__
-        error_msg = str(e)
-        
-        # Check for specific OpenAI errors
-        if "AuthenticationError" in error_type or "invalid_api_key" in error_msg.lower():
-            return f"""# ⚠️ OpenAI API Key Error
-
-The OpenAI API key is invalid or not configured correctly.
-
-**Error Details:**
-- Error Type: {error_type}
-- Message: {error_msg}
-
-**To fix this:**
-1. Get your API key from https://platform.openai.com/api-keys
-2. Set it in `back/backend_python/.env` as: `OPENAI_API_KEY=sk-your-actual-key-here`
-3. Restart the backend server
-
-## Website Analytics for {website_url}
-
-Once the API key is configured, you can generate comprehensive analytics reports for this website."""
-        
-        elif "insufficient_quota" in error_msg.lower() or "quota" in error_msg.lower():
-            return f"""# ⚠️ OpenAI API Quota Exceeded
-
-Your OpenAI API quota has been exceeded.
-
-**Error Details:**
-- Error Type: {error_type}
-- Message: {error_msg}
-
-**To fix this:**
-1. Check your OpenAI account usage at https://platform.openai.com/usage
-2. Add payment method or upgrade your plan
-3. Wait for quota reset or contact OpenAI support
-
-## Website Analytics for {website_url}
-
-Once the quota issue is resolved, you can generate analytics reports for this website."""
-        
-        elif "rate_limit" in error_msg.lower():
-            return f"""# ⚠️ OpenAI API Rate Limit
-
-The OpenAI API rate limit has been exceeded. Please try again in a moment.
-
-**Error Details:**
-- Error Type: {error_type}
-- Message: {error_msg}
-
-## Website Analytics for {website_url}
-
-Please wait a moment and try generating the analytics report again."""
-        
-        else:
-            return f"""# ⚠️ Error Generating Analytics Report
-
-An error occurred while generating the analytics report.
-
-**Error Details:**
-- Error Type: {error_type}
-- Message: {error_msg}
-
-## Website Analytics for {website_url}
-
-Please check the backend logs for more details and try again."""
-
+        return {
+            "report": "",
+            "brand_visibility_evidence": brand_visibility_evidence,
+            "competitor_brand_visibility_evidence": competitor_brand_evidence,
+            "error": {"type": type(e).__name__, "message": str(e)},
+        }
