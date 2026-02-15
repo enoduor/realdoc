@@ -59,3 +59,18 @@ export const isHtml = (content) => {
     const htmlTagRegex = /<[^>]+>/;
     return htmlTagRegex.test(content);
 };
+
+/**
+ * Normalize analytics report to markdown string (for display/download).
+ * API returns report as string; accept string or object for robustness.
+ * @param {string|object} report - Analytics report (string markdown or object with content)
+ * @returns {string} Markdown string
+ */
+export const analyticsReportToMarkdown = (report) => {
+    if (report == null) return '';
+    if (typeof report === 'string') return report;
+    if (typeof report === 'object' && report.markdown) return report.markdown;
+    if (typeof report === 'object' && report.report) return report.report;
+    if (typeof report === 'object' && report.content) return report.content;
+    return String(report);
+};

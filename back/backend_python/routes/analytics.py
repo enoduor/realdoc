@@ -1,7 +1,14 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, validator
 from typing import Optional, List
-from utils.analytics_helper import generate_analytics_report
+from utils.analytics_helper import (
+    generate_analytics_report,
+    ai_rewrite_analytics_content,
+    analytics_quality_check,
+    generate_analytics_ai_recommendations,
+    generate_analytics_action_points,
+)
+from utils.web_crawler import crawl_and_extract
 import asyncio
 
 router = APIRouter()
@@ -79,6 +86,136 @@ async def create_analytics_report(request: AnalyticsRequest):
             competitor_brand_visibility_evidence=result.get("competitor_brand_visibility_evidence", [])
         )
         return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class AnalyticsRewriteRequest(BaseModel):
+    content: str
+    rewrite_type: str = "improve"
+    website_url: Optional[str] = None
+
+
+class AnalyticsRewriteResponse(BaseModel):
+    rewritten_content: str
+    original_length: int
+    rewritten_length: int
+    word_count: Optional[int] = None  # word count of rewritten content for display
+
+
+@router.post("/rewrite", response_model=AnalyticsRewriteResponse)
+async def rewrite_analytics_content(request: AnalyticsRewriteRequest):
+    try:
+        rewritten = await ai_rewrite_analytics_content(
+            original_content=request.content,
+            rewrite_type=request.rewrite_type,
+            website_url=request.website_url,
+        )
+        return AnalyticsRewriteResponse(
+            rewritten_content=rewritten,
+            original_length=len(request.content),
+            rewritten_length=len(rewritten),
+            word_count=count_words(rewritten),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class AnalyticsQACheckRequest(BaseModel):
+    report: str
+    website_url: str
+    include_traffic_analysis: bool = True
+    include_competitor_comparison: bool = True
+    include_revenue_analysis: bool = True
+
+
+@router.post("/quality-check")
+async def check_analytics_quality(request: AnalyticsQACheckRequest):
+    try:
+        return analytics_quality_check(
+            request.report,
+            request.website_url,
+            include_traffic_analysis=request.include_traffic_analysis,
+            include_competitor_comparison=request.include_competitor_comparison,
+            include_revenue_analysis=request.include_revenue_analysis,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class AnalyticsRecommendationsRequest(BaseModel):
+    website_url: str
+    analytics_report: str
+    include_traffic_analysis: bool = True
+    include_competitor_comparison: bool = True
+    include_revenue_analysis: bool = True
+
+
+class AnalyticsRecommendationsResponse(BaseModel):
+    recommendations: str
+    word_count: int
+
+
+@router.post("/ai-recommendations", response_model=AnalyticsRecommendationsResponse)
+async def get_analytics_ai_recommendations(request: AnalyticsRecommendationsRequest):
+    try:
+        recommendations = await generate_analytics_ai_recommendations(
+            website_url=request.website_url,
+            analytics_report=request.analytics_report,
+            include_traffic_analysis=request.include_traffic_analysis,
+            include_competitor_comparison=request.include_competitor_comparison,
+            include_revenue_analysis=request.include_revenue_analysis,
+        )
+        return AnalyticsRecommendationsResponse(
+            recommendations=recommendations,
+            word_count=count_words(recommendations),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class AnalyticsActionPointsRequest(BaseModel):
+    website_url: str
+    analytics_report: str
+    include_traffic_analysis: bool = True
+    include_competitor_comparison: bool = True
+    include_revenue_analysis: bool = True
+    competitor_urls: Optional[List[str]] = None
+    enable_js_render: bool = False
+
+
+@router.post("/action-points", response_model=AnalyticsRecommendationsResponse)
+async def get_analytics_action_points(request: AnalyticsActionPointsRequest):
+    """Website Analytics Recommendations: extract recommendations from report sections; uses AI and optional competitor crawl to ground recommendations."""
+    try:
+        competitor_list = request.competitor_urls
+        competitor_crawl_data = None
+        if competitor_list:
+            first_url = competitor_list[0].strip()
+            if not first_url.startswith(("http://", "https://")):
+                first_url = f"https://{first_url}"
+            first_url = first_url.rstrip("/")
+            try:
+                competitor_crawl_data = await crawl_and_extract(first_url, use_js_render=request.enable_js_render)
+                if competitor_crawl_data:
+                    competitor_crawl_data["url"] = first_url
+            except Exception:
+                pass
+        recommendations = await generate_analytics_action_points(
+            website_url=request.website_url,
+            analytics_report=request.analytics_report,
+            include_traffic_analysis=request.include_traffic_analysis,
+            include_competitor_comparison=request.include_competitor_comparison,
+            include_revenue_analysis=request.include_revenue_analysis,
+            competitor_urls=competitor_list,
+            competitor_crawl_data=competitor_crawl_data,
+            discover_and_crawl_competitor=(competitor_crawl_data is None),
+            use_js_render=request.enable_js_render,
+        )
+        return AnalyticsRecommendationsResponse(
+            recommendations=recommendations,
+            word_count=count_words(recommendations),
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

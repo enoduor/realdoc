@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import usePaymentModal from './PaymentModal';
-import { markdownToHtml } from '../utils/formatConverter';
+import { markdownToHtml, analyticsReportToMarkdown } from '../utils/formatConverter';
 
 const WebsiteAnalytics = () => {
     const { isLoaded, isSignedIn, user } = useUser();
@@ -30,6 +30,7 @@ const WebsiteAnalytics = () => {
     const [qaResult, setQaResult] = useState(null);
     const [aiOptimizedRecommendations, setAiOptimizedRecommendations] = useState(null);
     const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+    const [actionPointsViewFormat, setActionPointsViewFormat] = useState('markdown'); // 'markdown' or 'html'
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -85,8 +86,9 @@ const WebsiteAnalytics = () => {
                     timeout: 300000
                 });
                 
-                setAnalyticsReport(response.data);
-                setEditedReport(response.data.report);
+                const reportMarkdown = analyticsReportToMarkdown(response.data.report);
+                setAnalyticsReport({ ...response.data, report: reportMarkdown });
+                setEditedReport(reportMarkdown);
                 setIsEditing(false);
             } catch (err) {
                 const errorMessage = err?.response?.data?.detail || 
@@ -277,19 +279,20 @@ const WebsiteAnalytics = () => {
             const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
                 (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
             
-            const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/seo/rewrite`, {
+            const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/analytics/rewrite`, {
                 content: contentToRewrite,
                 rewrite_type: rewriteType,
-                focus: 'Business intelligence and analytics optimization'
+                website_url: formData.website_url || null
             });
             
             if (isEditing) {
                 setEditedReport(response.data.rewritten_content);
             } else {
+                const wordCount = response.data.word_count ?? response.data.rewritten_length;
                 setAnalyticsReport({
                     ...analyticsReport,
                     report: response.data.rewritten_content,
-                    word_count: response.data.rewritten_length
+                    word_count: wordCount
                 });
                 setEditedReport(response.data.rewritten_content);
             }
@@ -314,13 +317,12 @@ const WebsiteAnalytics = () => {
             const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
                 (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
             
-            // If competitor comparison is enabled, focus quality check on competitor analysis parameters only
-            const isCompetitorAnalysis = formData.include_competitor_comparison === true;
-            
-            const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/seo/quality-check`, {
+            const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/analytics/quality-check`, {
                 report: reportToCheck,
                 website_url: formData.website_url,
-                focus_on_competitor_analysis: isCompetitorAnalysis
+                include_traffic_analysis: formData.include_traffic_analysis,
+                include_competitor_comparison: formData.include_competitor_comparison,
+                include_revenue_analysis: formData.include_revenue_analysis
             });
             
             setQaResult(response.data);
@@ -343,11 +345,15 @@ const WebsiteAnalytics = () => {
             const PYTHON_API_BASE_URL = process.env.REACT_APP_AI_API || 
                 (isLocalhost ? 'http://localhost:5001' : `${ORIGIN}/ai`);
             
-            const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/seo/ai-optimized-recommendations`, {
-                website_url: formData.website_url,
-                seo_report: reportToUse,
-                business_type: 'saas',
-                target_keywords: null
+            const competitorList = normalizeCompetitorUrls(formData.competitor_urls);
+            const response = await axios.post(`${PYTHON_API_BASE_URL}/api/v1/analytics/action-points`, {
+                website_url: normalizeUrl(formData.website_url) || formData.website_url,
+                analytics_report: reportToUse,
+                include_traffic_analysis: formData.include_traffic_analysis,
+                include_competitor_comparison: formData.include_competitor_comparison,
+                include_revenue_analysis: formData.include_revenue_analysis,
+                competitor_urls: competitorList || undefined,
+                enable_js_render: enableJsRender
             });
             
             setAiOptimizedRecommendations(response.data);
@@ -660,9 +666,11 @@ const WebsiteAnalytics = () => {
                                 </div>
                             ) : (
                                 <div className="p-4 bg-gray-100 rounded border">
-                                    {viewFormat === 'html' ? (
+                                    {(() => {
+                                        const reportToDisplay = analyticsReportToMarkdown(analyticsReport?.report || '');
+                                        return viewFormat === 'html' ? (
                                         <div 
-                                            dangerouslySetInnerHTML={{ __html: markdownToHtml(analyticsReport.report) }}
+                                            dangerouslySetInnerHTML={{ __html: markdownToHtml(reportToDisplay) }}
                                             className="prose max-w-none text-left"
                                             style={{ 
                                                 textAlign: 'left',
@@ -672,8 +680,9 @@ const WebsiteAnalytics = () => {
                                             }}
                                         />
                                     ) : (
-                                        <pre className="whitespace-pre-wrap font-mono text-sm text-left" style={{ textAlign: 'left' }}>{analyticsReport.report}</pre>
-                                    )}
+                                        <pre className="whitespace-pre-wrap font-mono text-sm text-left" style={{ textAlign: 'left' }}>{reportToDisplay}</pre>
+                                    );
+                                    })()}
                                     {viewFormat === 'html' && (
                                         <style>{`
                                             .prose h1 {
@@ -716,16 +725,18 @@ const WebsiteAnalytics = () => {
                                             .prose ul, .prose ol {
                                                 margin-top: 1.25em;
                                                 margin-bottom: 1.25em;
-                                                padding-left: 1.625em;
+                                                padding-left: 1.5em;
+                                                list-style-position: outside;
                                             }
                                             .prose li {
                                                 margin-top: 0.5em;
                                                 margin-bottom: 0.5em;
                                                 line-height: 1.75;
+                                                padding-left: 0.5em;
                                             }
                                             .prose ul > li {
                                                 position: relative;
-                                                padding-left: 0.375em;
+                                                padding-left: 1.5em;
                                             }
                                             .prose ul > li::before {
                                                 content: "";
@@ -734,11 +745,12 @@ const WebsiteAnalytics = () => {
                                                 border-radius: 50%;
                                                 width: 0.375em;
                                                 height: 0.375em;
-                                                top: 0.875em;
-                                                left: 0.25em;
+                                                top: 0.75em;
+                                                left: 0;
                                             }
                                             .prose ol > li {
                                                 counter-increment: list-counter;
+                                                padding-left: 2.25em;
                                             }
                                             .prose ol > li::before {
                                                 content: counter(list-counter) ".";
@@ -746,13 +758,14 @@ const WebsiteAnalytics = () => {
                                                 font-weight: 400;
                                                 color: #6b7280;
                                                 left: 0;
+                                                min-width: 2em;
+                                                display: inline-block;
                                             }
                                             .prose ol {
                                                 counter-reset: list-counter;
                                             }
                                             .prose ol > li {
                                                 position: relative;
-                                                padding-left: 1.75em;
                                             }
                                             .prose strong {
                                                 font-weight: 600;
@@ -845,7 +858,7 @@ const WebsiteAnalytics = () => {
                         </div>
                     )}
 
-                    {/* Quality Assurance Results */}
+                    {/* Quality Assurance Results (analytics context-specific) */}
                     {qaResult && (
                         <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                             <h4 className="font-semibold mb-2">Quality Assurance Check</h4>
@@ -859,11 +872,24 @@ const WebsiteAnalytics = () => {
                                 <div><strong>Word Count:</strong> {qaResult.word_count}</div>
                                 <div><strong>Sections:</strong> {qaResult.sections_found}</div>
                                 <div>
-                                    <strong>Checks:</strong> 
-                                    {qaResult.has_meta_tags && ' ✓ Meta'}
-                                    {qaResult.has_schema && ' ✓ Schema'}
-                                    {qaResult.has_keywords && ' ✓ Keywords'}
-                                    {qaResult.has_competitor_analysis && ' ✓ Competitor'}
+                                    <strong>Checks:</strong>
+                                    {qaResult.has_executive_summary !== undefined ? (
+                                        <>
+                                            {qaResult.has_executive_summary && ' ✓ Executive Summary'}
+                                            {qaResult.has_traffic_section && ' ✓ Traffic'}
+                                            {qaResult.has_competitor_section && ' ✓ Competitor'}
+                                            {qaResult.has_revenue_section && ' ✓ Revenue'}
+                                            {qaResult.has_strategic_recommendations && ' ✓ Strategic'}
+                                            {qaResult.has_tools_monitoring && ' ✓ Tools'}
+                                        </>
+                                    ) : (
+                                        <>
+                                            {qaResult.has_meta_tags && ' ✓ Meta'}
+                                            {qaResult.has_schema && ' ✓ Schema'}
+                                            {qaResult.has_keywords && ' ✓ Keywords'}
+                                            {qaResult.has_competitor_analysis && ' ✓ Competitor'}
+                                        </>
+                                    )}
                                 </div>
                             </div>
                             {qaResult.issues && qaResult.issues.length > 0 && (
@@ -879,11 +905,11 @@ const WebsiteAnalytics = () => {
                         </div>
                     )}
 
-                    {/* AI Optimized Recommendations */}
+                    {/* Recommendations (analytics) — match report sections */}
                     {aiOptimizedRecommendations && (
                         <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                            <div className="flex justify-between items-center mb-3">
-                                <h4 className="font-semibold">Optimized Business Intelligence Recommendations</h4>
+                            <div className="flex justify-between items-center mb-2">
+                                <h4 className="font-semibold">Recommendations</h4>
                                 <button
                                     onClick={() => {
                                         const text = aiOptimizedRecommendations.recommendations;
@@ -895,13 +921,54 @@ const WebsiteAnalytics = () => {
                                     Copy
                                 </button>
                             </div>
-                            <p className="text-sm text-gray-600 mb-3">
-                                Prioritized, actionable recommendations with complete implementation examples you can use directly.
+                            <p className="text-sm text-gray-600 mb-2">
+                                Recommendations from each section of your Website Analytics report.
                             </p>
+                            <div className="mb-3 flex items-center gap-2 flex-wrap">
+                                <span className="text-sm text-gray-600">View format:</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setActionPointsViewFormat('markdown')}
+                                    className={`px-3 py-1 text-sm rounded ${actionPointsViewFormat === 'markdown' ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                >
+                                    Markdown
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActionPointsViewFormat('html')}
+                                    className={`px-3 py-1 text-sm rounded ${actionPointsViewFormat === 'html' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                >
+                                    HTML
+                                </button>
+                            </div>
                             <div className="p-4 bg-white rounded border">
-                                <pre className="whitespace-pre-wrap font-mono text-sm text-left" style={{ textAlign: 'left' }}>
-                                    {aiOptimizedRecommendations.recommendations}
-                                </pre>
+                                {actionPointsViewFormat === 'html' ? (
+                                    <>
+                                        <div
+                                            className="recommendations-prose prose max-w-none text-left"
+                                            dangerouslySetInnerHTML={{ __html: markdownToHtml(aiOptimizedRecommendations.recommendations) }}
+                                            style={{ textAlign: 'left', lineHeight: '1.75', fontSize: '16px', color: '#374151' }}
+                                        />
+                                        <style>{`
+                                            .recommendations-prose.prose h2 { font-size: 1.5em; font-weight: 700; margin-top: 1.5em; margin-bottom: 0.75em; color: #111827; }
+                                            .recommendations-prose.prose h3 { font-size: 1.25em; font-weight: 600; margin-top: 1.25em; margin-bottom: 0.5em; color: #111827; }
+                                            .recommendations-prose.prose p, .recommendations-prose.prose ul { margin-top: 0.75em; margin-bottom: 0.75em; line-height: 1.75; }
+                                            .recommendations-prose.prose ul { padding-left: 1.5em; list-style-position: outside; }
+                                            .recommendations-prose.prose li { margin-top: 0.35em; padding-left: 0.5em; }
+                                            .recommendations-prose.prose ul > li { position: relative; padding-left: 1.5em; }
+                                            .recommendations-prose.prose ul > li::before { content: ""; position: absolute; background-color: #6b7280; border-radius: 50%; width: 0.375em; height: 0.375em; top: 0.6em; left: 0; }
+                                            .recommendations-prose.prose strong { font-weight: 600; color: #111827; }
+                                            .recommendations-prose.prose a { color: #7c3aed; text-decoration: underline; }
+                                            .recommendations-prose.prose pre { background-color: #1f2937; color: #e5e7eb; padding: 1em; border-radius: 0.375rem; overflow-x: auto; font-size: 0.875em; margin: 0.75em 0; }
+                                            .recommendations-prose.prose code { font-size: 0.875em; background-color: #f3f4f6; padding: 0.125em 0.25em; border-radius: 0.25rem; color: #111827; }
+                                            .recommendations-prose.prose pre code { background: transparent; padding: 0; color: inherit; }
+                                        `}</style>
+                                    </>
+                                ) : (
+                                    <pre className="whitespace-pre-wrap font-mono text-sm text-left" style={{ textAlign: 'left' }}>
+                                        {aiOptimizedRecommendations.recommendations}
+                                    </pre>
+                                )}
                             </div>
                         </div>
                     )}

@@ -29,6 +29,7 @@ const SEOGenerator = () => {
     const [aiOptimizedRecommendations, setAiOptimizedRecommendations] = useState(null);
     const [recommendationsLoading, setRecommendationsLoading] = useState(false);
     const [viewFormat, setViewFormat] = useState('markdown'); // 'markdown' or 'html'
+    const [recommendationsViewFormat, setRecommendationsViewFormat] = useState('html'); // 'markdown' or 'html' for Optimized Recommendations
     const [enableJsRender, setEnableJsRender] = useState(false);
 
     const handleInputChange = (e) => {
@@ -331,6 +332,8 @@ const SEOGenerator = () => {
         }
     };
 
+    // Uses the current SEO Analysis Report: sends it to the backend, which extracts Implementation Roadmap
+    // and section Recommendations and returns prioritized action points (Action / What to do / Example) + Tools and Resources.
     const handleGenerateAIRecommendations = async () => {
         const reportToUse = isEditing ? editedReport : (seoReport?.report || '');
         if (!reportToUse) {
@@ -654,7 +657,7 @@ const SEOGenerator = () => {
                                                 disabled={loading || recommendationsLoading}
                                                 className="px-3 py-1 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded disabled:bg-gray-400"
                                             >
-                                                {recommendationsLoading ? 'Generating...' : 'Recommendations'}
+                                                {recommendationsLoading ? 'Generating...' : 'Action points'}
                                             </button>
                                             <button
                                                 onClick={handleQualityCheck}
@@ -935,25 +938,42 @@ const SEOGenerator = () => {
                     {aiOptimizedRecommendations && (
                         <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
                             <div className="flex justify-between items-center mb-3">
-                                <h4 className="font-semibold">Optimized SEO Recommendations</h4>
-                                <button
-                                    onClick={() => {
-                                        const text = aiOptimizedRecommendations.recommendations;
-                                        navigator.clipboard.writeText(text);
-                                        alert('Recommendations copied to clipboard!');
-                                    }}
-                                    className="px-3 py-1 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded"
-                                >
-                                    Copy
-                                </button>
+                                <h4 className="font-semibold">SEO Action Points</h4>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setRecommendationsViewFormat(prev => prev === 'markdown' ? 'html' : 'markdown')}
+                                        className="px-3 py-1 text-sm bg-purple-200 hover:bg-purple-300 rounded"
+                                    >
+                                        View as {recommendationsViewFormat === 'markdown' ? 'HTML' : 'Markdown'}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const text = aiOptimizedRecommendations.recommendations;
+                                            navigator.clipboard.writeText(text);
+                                            alert('Action points copied to clipboard!');
+                                        }}
+                                        className="px-3 py-1 text-sm bg-purple-600 text-white hover:bg-purple-700 rounded"
+                                    >
+                                        Copy
+                                    </button>
+                                </div>
                             </div>
                             <p className="text-sm text-gray-600 mb-3">
-                                Prioritized, actionable recommendations with complete code examples you can implement directly.
+                                Action points derived from your SEO report (Implementation Roadmap + section recommendations), with concrete examples and links you can implement directly.
                             </p>
                             <div className="p-4 bg-white rounded border">
-                                <pre className="whitespace-pre-wrap font-mono text-sm text-left" style={{ textAlign: 'left' }}>
-                                    {aiOptimizedRecommendations.recommendations}
-                                </pre>
+                                {recommendationsViewFormat === 'html' ? (
+                                    <div
+                                        dangerouslySetInnerHTML={{ __html: markdownToHtml(aiOptimizedRecommendations.recommendations || '') }}
+                                        className="prose max-w-none text-left prose-pre:bg-gray-100 prose-pre:border prose-pre:rounded"
+                                        style={{ textAlign: 'left', lineHeight: '1.75', fontSize: '16px', color: '#374151' }}
+                                    />
+                                ) : (
+                                    <pre className="whitespace-pre-wrap font-mono text-sm text-left" style={{ textAlign: 'left' }}>
+                                        {aiOptimizedRecommendations.recommendations}
+                                    </pre>
+                                )}
                             </div>
                         </div>
                     )}

@@ -1,13 +1,12 @@
 """
 utils/seo_helper.py
 
-Updates included
-Section 1 Brand visibility integration that stays useful for SEO
-Keeps router output shape the same
-brand_visibility_evidence remains a list of dicts
+SEO reports are generated from what we crawl and AI research:
 
-Section 2 Technical evidence pack is always collected
-Prevents empty Technical SEO sections when crawl is blocked
+1. Crawl the given URL — title, meta description, H1, headings, content, internal links, features.
+2. Crawl competitor URLs when provided (or discover and crawl them).
+3. Technical signals (robots, sitemap, schema) when Technical SEO is in focus.
+4. AI research: best practices, benchmarks for this business type, competitor norms—so every section gives actionable advice.
 """
 
 import os
@@ -521,7 +520,13 @@ async def generate_seo_report(
     focus_areas: Optional[List[str]] = None,
     language: str = "en",
     enable_js_render: bool = False,
+    competitor_urls: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
+    """
+    Generate an SEO report from crawled data: we crawl the given URL and competitor URLs
+    (passed in or discovered). Sections follow the requested focus_areas (e.g. On-Page, Content,
+    Technical, Accessibility); we also fetch robots/sitemap/schema when Technical SEO is in focus.
+    """
     if focus_areas is None:
         focus_areas = ["on-page", "technical", "content"]
 
@@ -531,15 +536,12 @@ async def generate_seo_report(
     normalized_url = normalized_url.rstrip("/")
 
     crawled_data: Optional[Dict[str, Any]] = None
-    crawl_available = False
     keyword_rankings_data: Optional[Dict[str, Any]] = None
     related_sites_data: List[Dict[str, Any]] = []
     related_sites_urls: List[str] = []
 
     try:
         crawled_data = await crawl_and_extract(normalized_url, use_js_render=enable_js_render)
-        if crawled_data:
-            crawl_available = bool(crawled_data.get("content"))
     except Exception:
         crawled_data = None
 
@@ -580,11 +582,20 @@ async def generate_seo_report(
         keyword_rankings_data = None
 
     competitor_keywords_data: Optional[Dict[str, Any]] = None
+    normalized_competitor_urls: List[str] = []
+    if competitor_urls:
+        for u in competitor_urls:
+            uu = (u or "").strip()
+            if uu and uu not in normalized_competitor_urls:
+                if not uu.startswith(("http://", "https://")):
+                    uu = f"https://{uu}"
+                normalized_competitor_urls.append(uu.rstrip("/"))
     try:
         competitor_keywords_data = await get_competitor_high_volume_keywords(
             website_url=normalized_url,
             max_competitors=5,
             max_keywords=10,
+            competitor_urls=normalized_competitor_urls if normalized_competitor_urls else None,
         )
         site_keywords_for_gap = extract_keywords_from_content(crawled_data or {}, max_keywords=20) if crawled_data else []
         competitor_map = (competitor_keywords_data.get("competitor_keywords") or {}) if competitor_keywords_data else {}
@@ -651,66 +662,75 @@ async def generate_seo_report(
 
     add_section(
         "Executive Summary",
-        "(ALWAYS INCLUDE)\n   - Current SEO health score (0-100)\n   - Positioning/keyword focus based on strategy evidence\n   - Key strengths and weaknesses\n   - Priority action items tied to revenue intent",
+        "(ALWAYS INCLUDE)\n   - Name the website under review (URL and/or brand) in the first sentence.\n   - Use specific instances from the page: show actual crawled/tech values (e.g. current title tag, meta description, H1, robots.txt snippet, sitemap URL) — not labels like 'Tech Evidence' or 'Robots Evidence'.\n   - For each finding: state what is wrong with the current value and what needs to be done.\n   - Current SEO health score (0-100), key strengths/weaknesses, priority actions. No generic template; every line must reference this site's real data.",
     )
 
     if "technical" in focus_areas:
         add_section(
             "Technical SEO Analysis",
-            "(REQUIRED)\n   - Site status and redirects\n   - robots.txt and sitemap.xml status\n   - Canonical and meta robots\n   - Schema types detected\n   - Open Graph and Twitter tags presence\n   - Security headers snapshot\n   - Specific fixes grounded in the tech evidence",
+            "(REQUIRED)\n   - Site status and redirects\n   - robots.txt and sitemap.xml status\n   - Canonical and meta robots\n   - Schema types detected\n   - Open Graph and Twitter tags presence\n   - Security headers snapshot\n   - Cite current value from technical signals and exact recommended change; when relevant, tie to crawled page (e.g. which pages need canonical or schema).",
         )
 
     if "on-page" in focus_areas:
         add_section(
             "On-Page SEO",
-            "(REQUIRED)\n   - Title tags and meta descriptions with specific examples\n   - Header tags structure\n   - Internal linking hints from evidence\n   - Page type specific recommendations",
+            "(REQUIRED)\n   - Title tags and meta descriptions: show current value from evidence (URL + current title/description) and recommended change\n   - Header tags structure from evidence\n   - Internal linking: specific pages/URLs from evidence and suggested links\n   - Actionable only: no generic advice; use site or competitor examples or concrete best-practice step with example",
         )
 
     if "content" in focus_areas:
         add_section(
             "Content SEO & Keyword Rankings",
-            "(REQUIRED)\n   - Current keyword ranking performance from evidence\n   - Content gaps based on evidence\n   - Keyword cluster guidance if present\n   - Keyword-to-page plan with slugs and titles from strategy evidence",
+            "(REQUIRED)\n   - Keyword ranking performance: when data exists, cite specific keywords and pages and recommended changes.\n   - When no ranking data: use the crawled site (title, description, features, content) to recommend many options — not just 2–3. Provide a substantial list: 10–15+ keyword themes and matching page ideas (slugs + suggested titles), e.g. /ai-video-generator, /brand-video-creation, /video-marketing-tips, /ugc-campaigns, /social-video-tools, /reel-creation, etc., all inferred from what the site offers. Reader-friendly: say what is not present on the website, then give a rich set of keyword and content recommendations.\n   - Formatting: present Keywords, Extracted Keywords, and Content Gaps with clear markdown (e.g. **Keywords:** on its own line or as a bullet item), not with leading spaces (which would render as a code block). Example: use \"**Keywords:** No keywords currently ranking in the top 10.\" not \"    Keywords: ...\".",
+        )
+
+    if "off-page" in focus_areas:
+        add_section(
+            "Off-Page SEO",
+            "(REQUIRED)\n   - Backlink profile and domain authority: what we can infer or recommend measuring (e.g. Ahrefs/SEMrush).\n   - Social signals and brand mentions: actionable next steps (e.g. claim profiles, monitor mentions).\n   - Link building opportunities: concrete, site-specific ideas (e.g. which types of sites to approach for this business, sample outreach angle). Use crawl and AI research; when data is missing, give concrete next steps (tools to run, metrics to track).",
+        )
+
+    if "local" in focus_areas:
+        add_section(
+            "Local SEO",
+            "(REQUIRED)\n   - Google Business Profile optimization: what to add or fix (hours, categories, photos, posts, Q&A).\n   - Local citations and NAP consistency: recommend directories and how to fix name/address/phone across the web.\n   - Local keywords and local link building: location-based keyword ideas and local link tactics. Use site URL and business type; when local data is missing, give concrete steps (e.g. create/claim GMB for [URL], run a NAP audit with Moz Local or BrightLocal).",
+        )
+
+    if "mobile" in focus_areas:
+        add_section(
+            "Mobile SEO",
+            "(REQUIRED)\n   - Mobile-first indexing readiness: viewport, font size, tap targets, responsive structure from crawl when available.\n   - Mobile page speed and usability: recommend running Lighthouse mobile audit for [URL] and list typical fixes (image optimization, lazy load, reduce blocking resources).\n   - AMP or non-AMP: when relevant, one line and next step. Use AI research for typical mobile issues; give concrete next steps (e.g. run PageSpeed with mobile device emulation, fix viewport meta).",
+        )
+
+    if "speed" in focus_areas:
+        add_section(
+            "Page Speed & Core Web Vitals",
+            "(REQUIRED)\n   - Core Web Vitals (LCP, FID/INP, CLS): recommend running PageSpeed Insights or Lighthouse for [URL]; interpret typical bottlenecks (server response, render-blocking, images, layout shift).\n   - Page load times and resource optimization: caching headers, compression, image format/sizing, critical path.\n   - Concrete next steps: e.g. 'Run PageSpeed for [URL], then fix LCP by [typical fix], CLS by [typical fix].' Use AI research for benchmarks and common fixes when no speed data is in evidence.",
         )
 
     if competitor_keywords_data and competitor_keywords_data.get("high_volume_keywords"):
         add_section(
             "Competitor Keyword Analysis & Meta-Tag Optimization",
-            "(REQUIRED when competitor data exists)\n   - List competitors and URLs\n   - For each keyword: which competitor uses it\n   - Title/H1 patterns from competitor page evidence\n   - Title and meta examples grounded in competitor keyword evidence",
+            "(REQUIRED when competitor data exists)\n   - List competitors and URLs from evidence\n   - For each keyword: which competitor uses it (specific URL)\n   - Title/H1 and meta examples from competitor pages with recommended changes for client site\n   - Actionable: specific competitor URL + current value + what to do on client pages",
         )
 
     if "accessibility" in focus_areas:
         add_section(
             "Accessibility",
-            "(REQUIRED)\n   - Only include verifiable findings\n   - If no scan evidence exists, output a short unverified checklist and say it is unverified",
+            "(REQUIRED)\n   - Only include verifiable findings from evidence\n   - If no scan evidence: short unverified checklist and concrete next step (e.g. run Lighthouse accessibility audit for [URL])",
         )
 
     add_section(
         "Implementation Roadmap",
-        "(ALWAYS INCLUDE)\n   - Priority 1\n   - Priority 2\n   - Priority 3",
+        "(ALWAYS INCLUDE)\n   - The roadmap MUST address and capture recommendations from every selected SEO section that appears in this report. For each focus-area section above (Technical SEO, On-Page, Content, Off-Page, Local, Mobile, Page Speed, Accessibility, and Competitor Keyword Analysis when present), include at least one concrete next step that reflects that section's key recommendations—so all recommendations from the selected options are captured in the roadmap.\n   - Name the website. Use the crawled site (pages, product, features, content) to suggest next steps that are specific to this website — not generic advice like 'Conduct keyword analysis' or 'Develop a content calendar'.\n   - Provide 5–10+ concrete next steps: e.g. add meta/H1 to specific URLs or slugs from the crawl, create pages for product-specific topics, internal links, schema, technical fixes, local/off-page/mobile/speed/accessibility actions—tied to this site's URLs, product, or content. Order steps logically (e.g. technical and on-page first, then content, then off-page/local).",
     )
     add_section(
         "Tools and Resources",
-        "(ALWAYS INCLUDE)\n   - Minimal recommended tools\n   - Monitoring setup",
+        "(ALWAYS INCLUDE)\n   - Recommend a few tools (e.g. Search Console, SEMrush/Ahrefs, on-page plugin) tied to this website. For each tool, use AI to show the steps of implementing: e.g. 'Google Search Console: 1) Go to search.google.com/search-console, 2) Add property [website URL], 3) Verify via HTML tag or DNS, 4) Submit sitemap [URL/sitemap.xml], 5) Use Coverage and Performance to monitor.' Do not just list tools and generic 'Set up X' — give 3–5 concrete implementation steps per tool so the reader can follow them.",
     )
     add_section(
         "AI Search Visibility (AEO)",
-        "(ALWAYS INCLUDE)\n   - Structured data\n   - Clear answer blocks\n   - AI ready checklist",
+        "(ALWAYS INCLUDE)\n   - Use the crawled site (and competitors when available) to give actionable, AI-supported advice. Cite current schema (e.g. WebPage, WebSite) and what is missing. Provide concrete implementation steps: which schema types to add and where (e.g. Product for /pricing or key landing pages, FAQ for /help or feature pages), with example JSON-LD or key properties; which voice/search queries to target based on the product (e.g. 'how to create AI videos for my brand') and how to answer them on the page. Tie every recommendation to this website's pages and product — not generic 'add FAQ schema' or 'optimize for voice search' without specifics.",
     )
-
-    other_evidence_available = bool(
-        (keyword_rankings_data and keyword_rankings_data.get("rankings"))
-        or (competitor_keywords_data and competitor_keywords_data.get("high_volume_keywords"))
-        or bool(brand_visibility_evidence)
-        or bool(related_sites_data)
-        or (bool(tech_evidence) and not tech_evidence.get("error"))
-    )
-
-    data_availability_note = ""
-    if not crawl_available and not other_evidence_available:
-        data_availability_note = (
-            "DATA WARNING: No site content evidence and no technical evidence. "
-            "Return a short report requesting missing inputs."
-        )
 
     site_evidence = _build_site_evidence(crawled_data, normalized_url)
     keyword_rankings_evidence = _build_keyword_rankings_evidence(keyword_rankings_data)
@@ -733,67 +753,55 @@ async def generate_seo_report(
         "keyword_clusters": keyword_clusters_evidence,
         "strategy": strategy_evidence,
         "brand_visibility_evidence": brand_visibility_evidence,
-        "data_availability_note": data_availability_note,
     }
 
     evidence_json = json.dumps(evidence_summary, ensure_ascii=True, indent=2)
-
-    fallback_message = ""
-    if not crawl_available and tech_evidence and not tech_evidence.get("error"):
-        fallback_message = (
-            f"NOTE: Page content crawl is missing for {normalized_url}, "
-            "but technical evidence exists. Use the technical evidence to produce technical fixes."
-        )
-    elif not crawl_available:
-        fallback_message = (
-            f"WARNING: Could not crawl page content from {normalized_url}. "
-            "Do not infer product or audience. Use only evidence provided."
-        )
 
     focus_areas_text = ", ".join(focus_areas)
 
     system_prompt = f"""You are an expert SEO consultant with deep knowledge of search engine optimization, technical SEO, content strategy, and digital marketing.
 
+Use AI research to enrich the report: combine your knowledge (SEO best practices, benchmarks for this business type, typical competitor tactics, ranking and conversion norms) with the crawled site and competitor data. In this AI era we always provide actionable advice—when data is missing, use research to suggest concrete next steps (e.g. typical meta length, common schema for this industry) rather than leaving gaps.
+
 CRITICAL REQUIREMENTS:
 1. PRODUCT SPECIFIC ANALYSIS
-Use only evidence provided in the evidence summary.
+Use the crawled data and competitor data from the summary; use AI research to inform recommendations where it adds value.
 
-2. EVIDENCE SOURCES
-You may cite evidence from:
-site content evidence
-related site evidence
-technical evidence pack (headers, robots, sitemap, head signals, schema types)
-keyword ranking evidence
-competitor keyword evidence
-brand visibility evidence
+2. EVIDENCE SOURCES — match evidence to each focus area
+Crawled page: title, meta description, H1, headings, content, internal links, features → use for On-Page, Content, structure, Accessibility.
+Competitor crawl → use for competitor and positioning.
+Keyword rankings, brand visibility → when present.
+For Technical SEO focus only: robots.txt, sitemap, schema, headers. For other focus areas use the crawl; do not default to technical.
 
-3. EVIDENCE FORMAT RULE
-Every section must include:
-Examples from evidence
-Evidence: a URL or a specific evidence object path plus a URL when available
+3. SITE-SPECIFIC, SHOW ACTUAL DATA (NO GENERIC TEMPLATE)
+- Every section must mention the website being reviewed (by URL or name). For each section use the data that fits the focus (On-Page/Content → crawl; Technical → robots/sitemap/schema; etc.). Show real values. Do not use the word "evidence" in the report — use "On the page:", "Current state:", "Not present on the website", "Missing on the page".
+- For each finding: state the current value, explain what is wrong or missing, and what to do (e.g. "Current title 'X'; change to 'Y' under 60 chars").
+- Match data to the focus area; do not default to technical when the section is On-Page, Content, or Accessibility.
 
-4. EVIDENCE ONLY RULE
-If a data point is not present in evidence, mark it as Not available in evidence and do not invent it.
+4. READER-FRIENDLY LANGUAGE — do not use the word "evidence" in the report
+When something is missing on the website, say "Not present on the website" or "Missing on the page" — never "Not available in evidence". When citing what is on the page, use "On the page:" or "Current state:" (e.g. "On the page: meta description missing. Recommend: add under 160 characters."). Do not invent data; when data is missing, still be actionable with a concrete next step.
 
-5. SECTION QUALITY RULE
-If a section has insufficient evidence to provide fixes, output only:
-what could be verified
-what is missing
-the exact checks to run next
-Do not output generic advice paragraphs.
+4b. MARKDOWN FORMATTING — no code-block style for normal text
+Do not indent normal sentences with 4 or more spaces (that becomes a code block and looks broken). For subsections such as Keywords, Extracted Keywords, Content Gaps, use clear markdown instead:
+- Use **Keywords:** or **Extracted Keywords:** or **Content Gaps:** as a bold label on its own line, then the value on the next line (or same line after a space). No leading spaces before the label.
+- Or use a bullet list: "- **Keywords:** No keywords currently ranking..."
+- Never output lines like "    Keywords: ..." (leading spaces) — use "**Keywords:** ..." or "- **Keywords:** ..." so the report renders correctly.
+
+5. SECTION QUALITY RULE (ACTIONABLE, SITE-SPECIFIC)
+Recommendations must be actionable. Use the crawled data per focus and AI research (best practices, benchmarks) to inform fixes. Show the real value and the fix. If data for a section is thin, use your knowledge to give a concrete next step (e.g. "Run PageSpeed for [URL]" or "Add FAQ schema using this pattern") so the user always has something to act on.
 
 6. DEPTH & STRATEGY RULE
-Use strategy evidence to produce a keyword-to-page plan, positioning focus, and revenue-intent priorities.
-If strategy evidence is empty, say Not available in evidence and list what to collect.
+Use strategy evidence when present to produce a keyword-to-page plan and priorities. If strategy evidence is empty, use AI research (typical keywords and content structure for this business type) to suggest a keyword-to-page plan and what to collect so the user has actionable next steps.
 
 7. EXECUTION RULE
-Include specific page ideas (slugs + titles), internal linking targets, and meta updates grounded in evidence.
+Include specific page ideas (slugs + titles), internal linking targets, and meta updates grounded in evidence. When keyword/ranking data is missing, use the crawled site to recommend many options (e.g. 10–15+ keyword themes and matching slugs/titles). For Implementation Roadmap: it must address every selected focus area—for each section that appears in the report (Technical, On-Page, Content, Off-Page, Local, Mobile, Page Speed, Accessibility, Competitor Keyword Analysis when present), include at least one concrete roadmap step that captures that section's recommendations, so no recommendation from the selected SEO options is left out. Use the crawled website and tie each step to this site's URLs or product — never generic lines like "Conduct keyword analysis" or "Develop a content calendar" without specifics.
 
 Focus Areas: {focus_areas_text}
+You MUST include a dedicated section for EACH selected focus area (technical, on-page, content, off-page, local, mobile, speed, accessibility). Every section listed in the required section order must be filled with detailed, actionable analysis—do not skip or merge focus areas. Local SEO, Page Speed, Off-Page, and Mobile each get their own full section when selected.
 Business Type: {business_type}
 Language: {language}"""
 
-    user_prompt = f"""Analyze the website and return an SEO report.
+    user_prompt = f"""Analyze the website and return an SEO report. Use the crawled data and competitor data below, plus AI research (best practices, benchmarks for this business type), to provide actionable advice in every section. There is no reason to leave the user without something to act on.
 
 Website URL: {normalized_url}
 Business Type: {business_type}
@@ -801,10 +809,8 @@ Business Type: {business_type}
 {f"Target Keywords: {target_keywords}" if target_keywords else ""}
 {f"Known Issues: {current_seo_issues}" if current_seo_issues else ""}
 
-EVIDENCE SUMMARY:
+Data we have (crawl, competitors, keyword/tech when available):
 {evidence_json}
-
-{fallback_message}
 
 Return ONLY valid JSON matching this schema:
 {{
@@ -820,10 +826,10 @@ Section order must match:
 {", ".join(required_section_titles)}
 
 Hard rules:
-Each section must include Examples from evidence and Evidence:
-Evidence can reference site, tech, related sites, rankings, competitor, brand visibility
-If a section has insufficient evidence, keep it short and list missing checks only
-Use strategy evidence to produce a keyword-to-page plan with slugs and titles
+Name the website under review in each section. Use the crawled data and AI research so every section gives actionable advice—no dead ends. For each finding: state current value, what is wrong, what to do.
+Use reader-friendly language. When something is missing, say "Not present on the website" or "Missing on the page" and give a concrete next step (informed by research if needed). Use "On the page:" or "Current state:" for citations; do not use the word "Evidence" in the report.
+Format section content as proper markdown: do not indent normal text with 4+ spaces (that becomes a code block). For labels like Keywords, Extracted Keywords, Content Gaps use **Label:** or bullet items (e.g. "- **Keywords:** ...") so they render correctly.
+Implementation Roadmap: must address every selected focus area—for each section that appears in the report (Technical, On-Page, Content, Off-Page, Local, Mobile, Page Speed, Accessibility, Competitor Keyword Analysis when present), include at least one concrete roadmap item that captures that section's recommendations so all recommendations are captured. 5–10+ site-specific next steps total, ordered logically. Tools and Resources: 3–5 implementation steps per tool. AI Search Visibility (AEO): actionable advice tied to the website and competitors. Content SEO when no ranking data: many options (10–15+) from the crawled site and research. Competitor analysis: use competitor crawl when present and AI research (typical tactics for this space) so recommendations are actionable.
 """
 
     client = get_openai_client()
@@ -850,10 +856,12 @@ Use strategy evidence to produce a keyword-to-page plan with slugs and titles
 
         for s in sections_json:
             content = s.get("content", "") if isinstance(s, dict) else ""
-            if "Examples from" not in content:
-                issues.append("missing Examples from evidence")
-            if "Evidence:" not in content:
-                issues.append("missing Evidence line")
+            has_citation = "On the page" in content or "Current state" in content or "Evidence:" in content
+            has_examples = "On the page" in content or "Current state" in content or "Examples from" in content
+            if not has_citation:
+                issues.append("missing citation (use 'On the page:' or 'Current state:' with value and fix)")
+            if not has_examples:
+                issues.append("missing concrete examples from the page")
         return issues
 
     response_format = {
@@ -920,8 +928,8 @@ Use strategy evidence to produce a keyword-to-page plan with slugs and titles
         tech_snapshot = json.dumps(tech_evidence, ensure_ascii=True, indent=2)[:2000]
         report_markdown = (
             "## Executive Summary\n\n"
-            "Examples from evidence: Technical evidence collected but model output invalid\n"
-            f"Evidence: {normalized_url}\n\n"
+            "On the page: Technical data collected but model output invalid.\n"
+            f"Current state: {normalized_url}\n\n"
             "Technical evidence snapshot:\n\n"
             f"```json\n{tech_snapshot}\n```"
         )
@@ -1031,53 +1039,172 @@ async def generate_ai_optimized_recommendations(
     business_type: str = "saas",
     target_keywords: Optional[str] = None,
     crawled_data: Optional[Dict[str, Any]] = None,
+    competitor_urls: Optional[List[str]] = None,
+    competitor_crawl_data: Optional[Dict[str, Any]] = None,
+    discover_and_crawl_competitor: bool = True,
+    use_js_render: bool = False,
 ) -> str:
+    """
+    Action points are driven dynamically by the report content: (1) every item in
+    the Implementation Roadmap, (2) every Recommendations bullet from each section
+    that appears in the report (sections depend on the user's selected focus areas—
+    e.g. Technical, On-Page, Content, Off-Page, Local, Mobile, Page Speed,
+    Accessibility, AEO). Examples come from a crawled competitor page so patterns
+    match and are implementable.
+    """
     try:
         client = get_openai_client()
+        # If no competitor data provided, use AI to find top competitors and crawl the first
+        if competitor_crawl_data is None and discover_and_crawl_competitor:
+            urls_to_try = competitor_urls or await _get_top_competitor_urls_for_site(website_url, business_type)
+            for first_url in (urls_to_try or [])[:1]:
+                try:
+                    normalized = first_url.strip()
+                    if not normalized.startswith(("http://", "https://")):
+                        normalized = f"https://{normalized}"
+                    competitor_crawl_data = await crawl_and_extract(normalized, use_js_render=use_js_render)
+                    if competitor_crawl_data:
+                        competitor_crawl_data["url"] = normalized.rstrip("/")
+                        break
+                except Exception:
+                    continue
+
         current_title = crawled_data.get("title", "") if crawled_data else ""
         current_description = crawled_data.get("description", "") if crawled_data else ""
         current_headings = crawled_data.get("headings", []) if crawled_data else []
         current_h1 = crawled_data.get("h1", "") if crawled_data else ""
 
-        prompt = f"""Generate prioritized SEO recommendations with direct implementation steps.
+        competitor_block = ""
+        if competitor_crawl_data:
+            c_url = competitor_crawl_data.get("url", "competitor")
+            c_title = competitor_crawl_data.get("title", "") or ""
+            c_desc = competitor_crawl_data.get("description", "") or ""
+            c_h1 = competitor_crawl_data.get("h1", "") or ""
+            c_headings = competitor_crawl_data.get("headings", []) or []
+            c_content = (competitor_crawl_data.get("content") or "")[:2000]
+            competitor_block = f"""
+Real competitor page (crawled — use this as the source for example patterns):
+URL: {c_url}
+Title tag: {c_title}
+Meta description: {c_desc}
+H1: {c_h1}
+Headings (first 12): {', '.join(c_headings[:12]) if c_headings else '—'}
+Content excerpt: {(c_content[:1500] + '...') if len(c_content) > 1500 else c_content or '—'}
+
+You MUST derive action-point examples from these real values. Use the competitor's pattern (title length/structure, meta format, heading hierarchy) and adapt for the client's site (brand/product). Every action point must include a complete, copy-paste-able example (full meta tag, JSON-LD snippet, or exact code) based on this crawl so patterns match and make sense.
+"""
+        else:
+            competitor_block = """
+Use your knowledge of a top competitor in this space: name that competitor and use their typical SEO patterns (title format, meta length, schema, content structure) so examples are realistic. Every action point must include a complete, copy-paste-able example.
+"""
+
+        report_excerpt = seo_report[:6000]
+
+        prompt = f"""Generate SEO ACTION POINTS that are actionable and aligned to the SEO report's own recommendations and roadmap.
+
 Website: {website_url}
-Business Type: {business_type}
-Target Keywords: {target_keywords or 'Not specified'}
+Business type: {business_type}
+Target keywords: {target_keywords or 'Not specified'}
+
+Client's current page (from crawl):
 Title: {current_title}
 Description: {current_description}
 H1: {current_h1}
-Headings: {', '.join(current_headings[:5]) if current_headings else 'None'}
+Headings: {', '.join(current_headings[:8]) if current_headings else '—'}
 
-SEO Report Summary:
-{seo_report[:3000]}
+SEO Analysis Report:
+{report_excerpt}
 
-Hard rules:
-- Provide recommendations for EACH report section you see in the summary.
-- Each section must include 2-5 detailed recommendations with examples.
-- Start each section with a short "Competitor illustration" example when competitor evidence exists in the summary.
-- Recommendations MUST be derived from the SEO report summary and the crawl fields above.
-- For every recommendation, include an "Evidence:" line that quotes or references the exact report section.
-- Do not introduce new keywords, competitors, tools, or pages that are not present in the report summary.
-- If the report says "Not available in evidence" or lacks data, state the missing evidence and provide only the next checks to run.
-- Keep recommendations aligned to the analysis and avoid generic advice.
+STEP 1 — EXTRACT FROM THE REPORT (do not invent):
+- Implementation Roadmap: Extract every bullet/item from the "Implementation Roadmap" section (every listed action).
+- Section recommendations: Extract the "Recommendations:" bullets from every section that appears in the report (Technical SEO, On-Page, Content, Off-Page, Local, Mobile, Page Speed, Accessibility, AEO, etc.). Also extract any tool recommendations from the "Tools and Resources" section when present. Use only sections that actually exist in this report.
 
-Return Markdown with clear steps and code where applicable."""
+STEP 2 — STRUCTURE ACTION POINTS:
+- Build one Action Point per extracted item. Order them in a logical implementation order (e.g. meta/schema and on-page first, then content and local, then reviews).
+- Each Action Point must map to one item from the Implementation Roadmap or from the Recommendations in whichever report sections are present. Do not add actions that are not in the report.
+
+STEP 3 — FOR EACH ACTION POINT OUTPUT (applicable only—no vague wording):
+Use the website under review ({website_url}) in actions and examples wherever it makes the step concrete (e.g. "Run PageSpeed on {website_url}", "Add property {website_url} in Search Console", "Meta for your homepage at {website_url}").
+(a) Action: the exact recommendation from the report (roadmap item or section recommendation). State it as a concrete step the user can do, not abstract advice. Where the step involves the site, use the website URL above.
+(b) What to do: 1–2 sentences on how to implement it for this site. Include a link to a guide or resource when it helps (e.g. [PageSpeed Insights](https://pagespeed.web.dev/), [Schema guide](https://developers.google.com/search/docs/appearance/structured-data), [Search Console help](https://support.google.com/webmasters)) so the user has a URL to follow.
+(c) Example: a complete, copy-paste-able example (full meta tag, JSON-LD snippet, code, or step-by-step). Use the website under review in the example where relevant (e.g. canonical URL, og:url, tool input). When the action involves a blog post or content page, show a brief concrete example (e.g. sample title, 1–2 sentence outline, or opening line) tailored to the client's site—not generic words. Where a tool or guide exists, include its URL in the example so the user can click and follow. Adapt the pattern for the client's brand/product, but base the pattern on the competitor data below so it matches real-world usage.
+{competitor_block}
+
+STEP 4 — FINAL SECTION (REQUIRED): Tools and Resources
+Always end the output with a dedicated section "## Tools and Resources". For each tool include: (1) the tool name as a clickable link (use the URL below), (2) what it is for, (3) one concrete action step so the user can get started immediately. Use this exact format for each entry:
+
+- **[Tool Name](tool_url)** — Purpose in one sentence. **Action:** One concrete step (e.g. open the link, enter [website URL], then do X). Replace [website URL] with the actual client website from the prompt.
+
+Required tools and their URLs (use these links in the output):
+- Google PageSpeed Insights: https://pagespeed.web.dev/
+- Google Mobile-Friendly Test: https://search.google.com/test/mobile-friendly
+- Screaming Frog SEO Spider: https://www.screamingfrog.co.uk/seo-spider/
+- WAVE Accessibility Tool: https://wave.webaim.org/
+- Google Search Console: https://search.google.com/search-console
+
+Example for one tool: "**[Google PageSpeed Insights](https://pagespeed.web.dev/)** — Analyze and improve page speed and Core Web Vitals. **Action:** Open the link, enter [website URL], run the test, then fix the top issues it reports (e.g. LCP, CLS)."
+
+If the report's "Tools and Resources" section lists additional tools, include those too with the same format (clickable name + URL, purpose, Action step). Every tool must have a URL link so the user can take action.
+
+OUTPUT FORMAT (Markdown):
+## Action point 1: [Short title]
+- **Action:** [concrete step from report—applicable, not abstract; use the website under review ({website_url}) where the step involves the site]
+- **What to do:** [1–2 sentences; include a link to a guide/URL when it helps the user follow the action]
+- **Example:** [code block, snippet, or brief concrete example; use the website URL where relevant (canonical, og:url, tool input); if blog/content is involved, show a short example e.g. title or outline; include URLs to tools or guides where relevant]
+
+Repeat for every extracted roadmap and section recommendation. Then add the final "## Tools and Resources" section as above. Every action and example must be applicable and implementable—no vague wording. Use the website under review ({website_url}) in actions and examples wherever it makes the step concrete. Examples must include links (URLs) to guides or tools when they help the user complete the action. When a blog or content piece is mentioned, the example must show a brief, concrete example (e.g. sample title or outline) for this site.
+"""
 
         response = await client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an expert SEO developer. Use evidence-only recommendations tied to the provided report.",
+                    "content": "You are an expert SEO developer. Action points are driven by: (1) every item in the Implementation Roadmap, (2) every Recommendations bullet from each section in the report. Each action must be applicable and concrete—no vague wording. Use the website under review (the URL provided in the prompt) in actions and examples wherever it makes the step concrete (e.g. run tool on that URL, add property for that URL, canonical/og:url in examples). In examples: include URLs/links to guides or tools so the user can click and follow; when a blog or content piece is mentioned, show a brief concrete example (e.g. sample blog title or outline) for the client's site. You must always end with a final 'Tools and Resources' section with clickable URLs and one concrete Action step each; in tool actions, use the client website URL. Derive example patterns from the crawled competitor page when provided.",
                 },
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.4,
-            max_tokens=2000,
+            temperature=0.35,
+            max_tokens=5000,
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        return f"# Error Generating AI Optimized Recommendations\n\nError: {str(e)}"
+        return f"# Error Generating Action Points\n\nError: {str(e)}"
+
+
+async def _get_top_competitor_urls_for_site(
+    website_url: str,
+    business_type: str = "saas",
+) -> List[str]:
+    """Use AI to return 3 real competitor homepage URLs (same industry/niche) for crawling."""
+    try:
+        client = get_openai_client()
+        domain = urlparse(website_url).netloc.replace("www.", "") if website_url else ""
+        resp = await client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an SEO analyst. Return a JSON array of exactly 3 competitor website homepage URLs. They must be real, live sites in the same industry/niche as the given site. Return only valid JSON, e.g. [\"https://example.com\", \"https://example2.com\", \"https://example3.com\"].",
+                },
+                {
+                    "role": "user",
+                    "content": f"Site: {website_url} (domain: {domain}). Business type: {business_type}. Return a JSON array of 3 competitor homepage URLs.",
+                },
+            ],
+            temperature=0.3,
+            max_tokens=400,
+        )
+        raw = (resp.choices[0].message.content or "").strip()
+        if "[" in raw and "]" in raw:
+            start, end = raw.index("["), raw.rindex("]") + 1
+            arr = json.loads(raw[start:end])
+            if isinstance(arr, list):
+                urls = [u for u in arr if isinstance(u, str) and u.startswith(("http://", "https://"))][:3]
+                return urls
+    except Exception:
+        pass
+    return []
 
 
 async def ai_rewrite_seo_content(
@@ -1148,6 +1275,14 @@ def quality_assurance_check(
             required_sections.append("On-Page SEO")
         if "content" in focus_areas:
             required_sections.append("Content SEO & Keyword Rankings")
+        if "off-page" in focus_areas:
+            required_sections.append("Off-Page SEO")
+        if "local" in focus_areas:
+            required_sections.append("Local SEO")
+        if "mobile" in focus_areas:
+            required_sections.append("Mobile SEO")
+        if "speed" in focus_areas:
+            required_sections.append("Page Speed & Core Web Vitals")
         if "accessibility" in focus_areas:
             required_sections.append("Accessibility")
 

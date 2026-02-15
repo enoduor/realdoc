@@ -1,14 +1,16 @@
 """
 Analytics Report Generator
 
-Generates a structured, evidence grounded website analytics report using
-1 Website crawl evidence from utils.web_crawler
-2 Traffic data evidence from utils.traffic_data_helper
-3 Brand visibility evidence from utils.brand_visibility_helper
+Generates an actionable website analytics report from:
+1 Crawled site and competitors (utils.web_crawler)
+2 Traffic data when available (utils.traffic_data_helper)
+3 Brand visibility when available (utils.brand_visibility_helper)
+4 AI research: industry benchmarks, best practices, typical metrics and tactics
 
-Important
-This file returns a dict in all paths
-Never returns a plain string
+The report combines crawled data with AI research to say what is wrong and what to do next.
+No "evidence" or "not available" filler—actionable, research-informed advice only.
+
+This file returns a dict in all paths. Never returns a plain string.
 """
 
 import os
@@ -175,6 +177,22 @@ async def generate_analytics_report(
             nu = _normalize_url(u)
             if nu:
                 normalized_competitor_urls.append(nu)
+
+    # When Competitor Comparison is on and user provided few or no URLs, discover competitors via AI and run same pipeline
+    if include_competitor_comparison and len(normalized_competitor_urls) < 3:
+        try:
+            discovered = await _get_top_competitor_urls_for_analytics(normalized_url)
+            seen_domains = {_to_domain(u) for u in normalized_competitor_urls}
+            for u in (discovered or []):
+                nu = _normalize_url(u)
+                if not nu or _to_domain(nu) in seen_domains:
+                    continue
+                seen_domains.add(_to_domain(nu))
+                normalized_competitor_urls.append(nu)
+                if len(normalized_competitor_urls) >= 5:
+                    break
+        except Exception:
+            pass
 
     website_data: Optional[Dict[str, Any]] = None
     website_context = ""
@@ -351,6 +369,14 @@ async def generate_analytics_report(
         except Exception as e:
             competitor_analysis = f"Note: Could not analyze competitors ({str(e)})."
 
+    # Optional: industry context for structured guidance (what to compare, key metrics)
+    industry_context = ""
+    try:
+        site_title = (website_data.get("title") or "").strip() if website_data else None
+        industry_context = await _get_industry_context_for_analytics(normalized_url, site_title=site_title)
+    except Exception:
+        pass
+
     depth_instructions = {
         "quick": "Provide a high level overview with key metrics and top recommendations. Keep it concise (800 to 1200 words).",
         "standard": "Provide a detailed analysis with metrics, insights, and actionable recommendations (1500 to 2500 words).",
@@ -370,88 +396,58 @@ async def generate_analytics_report(
         required_section_titles.append(title)
         section_num += 1
 
-    data_availability_required = (not crawl_available) and (not brand_visibility_text)
-
-    if data_availability_required:
-        add_section(
-            "Data Availability",
-            "List which data sources were available and which were missing. "
-            "Explicitly mark product, audience, and revenue model as Unknown if not supported by evidence.",
-        )
-
     add_section(
         "Executive Summary",
-        "Website overview, key KPIs, top insights, and priority recommendations grounded in evidence.",
+        "Based on the crawled site and any competitor data, plus AI research (industry benchmarks, best practices for this business type): website overview, what is wrong or missing, and top 3–5 priority actions. Use the actual title, meta, content from the crawl. No paragraph about data limitations; give actionable findings and next steps informed by research.",
     )
 
     if include_traffic_analysis:
         add_section(
             "Traffic Analysis",
-            "Use real traffic evidence if provided. If not available, mark as Not available in evidence and avoid inventing numbers.",
+            "If traffic data is in the summary, use it and recommend changes. If not, one short line then concrete next step: e.g. 'Set up Google Analytics for [URL] and add the property to this dashboard.' No 'Not available in evidence.'",
         )
 
     add_section(
         "Website Performance Metrics",
-        "Performance and UX signals. If PageSpeed evidence exists, cite it. Otherwise mark as Not available in evidence.",
+        "If PageSpeed or performance data exists, cite it and recommend fixes. If not, one line then e.g. 'Run PageSpeed Insights for [URL] and fix the issues it reports.' Actionable only.",
     )
 
     add_section(
         "Content Analysis",
-        "Content quality, structure, gaps, and opportunities grounded in crawl evidence only.",
+        "Use the crawled site: title, description, headings, content, features. Say what is wrong (e.g. missing meta, thin content) and what to do. If no crawl, recommend: 'Crawl [URL] to analyze content; then add meta and headings as needed.'",
     )
 
     add_section(
-        "Brand Visibility & Technical Signals",
-        "Summarize brand visibility evidence, reputation signals, and technical signals if available. Provide evidence tied insights.",
+        "Brand Visibility",
+        "Use brand visibility data when present (press, dev, community, reputation, and when requested performance/tech_stack). When brand visibility data is missing, focus on competitors (use competitor_brand_visibility_evidence and competitor crawl when available) and AI research (typical brand visibility, press/dev/community benchmarks for this business type) to give actionable recommendations. No 'not available' or data-availability paragraphs.",
     )
 
     if include_competitor_comparison:
         add_section(
             "Competitive Analysis",
-            "List competitors analyzed, then compare features and positioning using only crawled competitor evidence.",
+            "Use crawled competitor data: compare features, positioning, titles. Name competitors and URLs. If no competitor data, one line then e.g. 'Add competitor URLs and re-run to compare.'",
         )
 
     if include_revenue_analysis:
         add_section(
             "Revenue Model Analysis",
-            "Identify monetization signals only if present in evidence. Otherwise mark as Not available in evidence.",
+            "Use pricing/revenue signals from the crawl when present. If not, one line and e.g. 'Add a clear pricing page and schema for Product/Offer.' No 'Not available in evidence.'",
         )
 
     add_section(
         "Marketing & Growth Analysis",
-        "Channels and growth opportunities grounded in evidence. Avoid generic advice.",
+        "Use the site and competitor crawl to suggest channels and tactics. Concrete steps (e.g. add UTM tracking, run ads to [landing page]).",
     )
 
     add_section(
         "Technical Infrastructure",
-        "Architecture and stack only if evidence supports it. Otherwise mark unknown.",
+        "Infer from crawl or say one line and next step (e.g. 'Check hosting and CDN for [URL]'). No long uncertainty paragraphs.",
     )
 
     add_section(
         "User Experience & Conversion",
-        "User journey and friction points grounded in evidence only.",
+        "Use crawl (structure, links, content) to suggest UX and conversion improvements. Concrete steps. If no data, one line and e.g. 'Add analytics and heatmaps to [URL].'",
     )
-
-    add_section(
-        "Strategic Recommendations",
-        "All recommendations must be product specific, competitor referenced when competitor evidence exists, and include an Evidence line.",
-    )
-
-    add_section(
-        "Benchmarking & Industry Comparison",
-        "Benchmark only what evidence supports. Otherwise use qualitative comparisons with explicit uncertainty.",
-    )
-
-    add_section(
-        "Tools & Monitoring Recommendations",
-        "Monitoring suggestions grounded in what is missing from evidence and what is feasible to instrument.",
-    )
-
-    sections.append(
-        f"{section_num}. **References & Evidence** "
-        "List every URL analyzed and every evidence source used. Call out missing data explicitly."
-    )
-    required_section_titles.append("References & Evidence")
 
     sections_text = "\n\n".join(sections)
 
@@ -462,6 +458,7 @@ async def generate_analytics_report(
         "competitor_traffic_data": _truncate_text(competitor_traffic_data_text, 2000),
         "brand_visibility_evidence": brand_visibility_evidence,
         "competitor_brand_visibility_evidence": competitor_brand_evidence,
+        "industry_context": industry_context,
         "notes": {
             "crawl_available": bool(crawl_available),
             "brand_visibility_text_available": bool(brand_visibility_text),
@@ -469,41 +466,32 @@ async def generate_analytics_report(
         },
     }
     evidence_json = json.dumps(evidence_summary, ensure_ascii=True, indent=2)
-
-    fallback_message = ""
-    if not crawl_available:
-        fallback_message = (
-            f"Warning: Website crawl content is not available for {normalized_url}. "
-            "Do not infer product, audience, or revenue model unless supported by other evidence."
+    brand_visibility_no_data_hint = ""
+    if not brand_visibility_text and not brand_visibility_evidence:
+        brand_visibility_no_data_hint = (
+            "\nNote: Brand visibility returned no data (brand_visibility_evidence is empty). "
+            "For the 'Brand Visibility' section focus on competitors (use competitor data when available) and AI research (typical brand visibility, press/dev/community benchmarks for this industry) to give actionable recommendations. Do not write 'not available' or data-availability paragraphs.\n\n"
         )
 
     system_prompt = f"""
 You are an expert digital marketing analyst and business intelligence consultant.
 
-Hard rules
-Use only the evidence summary provided
-If a claim is not supported by evidence write Not available in evidence
-Every recommendation must include a short Evidence line pointing to a URL or excerpt from evidence
-Avoid generic advice
-If competitor evidence exists reference competitors by name and URL in recommendations
-
-Minimum length requirement
-{depth_instruction}
-
-Language
-{language}
+Use AI research to enrich the report: conduct research using your knowledge where it helps—e.g. industry benchmarks for this business type, typical conversion rates, best practices for SaaS/ecommerce/content sites, common competitor tactics, SEO and performance norms. Combine that research with the crawled site and competitor data so recommendations are both data-driven and informed by best practices and benchmarks.
+Use the crawled site (title, meta, headings, content, features, links) and competitor crawl when provided. Give actionable advice: what is wrong and what to do next.
+Do not write "Not available in evidence" or "Data Availability" or long paragraphs about missing data. If data for a section is missing, give one short line and 1–2 concrete next steps (e.g. "Set up Google Analytics for [URL]" or "Add competitor URLs and re-run").
+Do not add Evidence lines or "evidence suggests." Use the actual data from the summary and your research to give clear, actionable recommendations.
+Reference competitors by name and URL when competitor data is in the summary. Be specific: which page, which fix, which tool.
+Minimum length: {depth_instruction}
+Language: {language}
 """.strip()
 
     user_prompt = f"""
-Analyze the website and produce a comprehensive analytics report.
+Analyze the website and produce a comprehensive analytics report. Use AI research (industry benchmarks, best practices, typical metrics for this business type) together with the data below to make recommendations actionable and well-informed. When industry_context is present in the data, use it to focus comparisons and key metrics.
 
 Website URL
 {normalized_url}
-
-Evidence summary
+{brand_visibility_no_data_hint}Data we have (crawl, competitors, traffic, brand visibility when available; industry_context when present):
 {evidence_json}
-
-{fallback_message}
 
 Return only valid JSON matching this schema
 {{
@@ -523,13 +511,16 @@ The sections must appear in this exact order
         return len([w for w in (text or "").split() if w.strip()])
 
     def _build_report_text(report_json: Dict[str, Any]) -> str:
-        contents: List[str] = []
+        parts: List[str] = []
         for s in report_json.get("sections", []) or []:
             if isinstance(s, dict):
-                c = s.get("content", "")
-                if c:
-                    contents.append(c)
-        return "\n\n".join(contents)
+                title = (s.get("title") or "").strip()
+                content = (s.get("content") or "").strip()
+                if title and content:
+                    parts.append(f"## {title}\n\n{content}")
+                elif content:
+                    parts.append(content)
+        return "\n\n".join(parts)
 
     def _validate_report_schema(report_json: Dict[str, Any]) -> List[str]:
         issues: List[str] = []
@@ -595,6 +586,7 @@ The sections must appear in this exact order
         raw_report = (response.choices[0].message.content or "").strip()
 
         report_json: Optional[Dict[str, Any]] = None
+        report_text = ""
         try:
             report_json = json.loads(raw_report)
         except Exception:
@@ -612,7 +604,7 @@ The sections must appear in this exact order
                 "Fix the output to meet strict JSON schema. "
                 f"Use exact section order: {', '.join(required_section_titles)}. "
                 f"Ensure at least {min_words} words across section contents. "
-                "Use only evidence and add Evidence lines for recommendations."
+                "Use the crawl and competitor data; give actionable recommendations without Evidence lines."
             )
 
             response2 = await client.chat.completions.create(
@@ -629,9 +621,15 @@ The sections must appear in this exact order
                 response_format=response_format,
             )
             raw_report = (response2.choices[0].message.content or "").strip()
+            try:
+                report_json = json.loads(raw_report)
+                if report_json:
+                    report_text = _build_report_text(report_json)
+            except Exception:
+                pass
 
         return {
-            "report": raw_report,
+            "report": report_text if report_text else raw_report,
             "brand_visibility_evidence": brand_visibility_evidence,
             "competitor_brand_visibility_evidence": competitor_brand_evidence,
         }
@@ -651,3 +649,315 @@ The sections must appear in this exact order
             "competitor_brand_visibility_evidence": competitor_brand_evidence,
             "error": {"type": type(e).__name__, "message": str(e)},
         }
+
+
+async def ai_rewrite_analytics_content(
+    original_content: str,
+    rewrite_type: str = "improve",
+    website_url: Optional[str] = None,
+) -> str:
+    """Context-specific rewrite for website analytics reports: clarity, executive summary, recommendations, competitor/revenue language."""
+    try:
+        client = get_openai_client()
+        url_context = f" Website URL (for context): {website_url}" if website_url else ""
+        prompt = f"""Rewrite the following website analytics report. Focus: {rewrite_type}.
+{url_context}
+
+Keep the same structure (sections and headings). Improve clarity, actionability, and business intelligence tone. Preserve metrics, competitor names, and concrete recommendations; make executive summary punchy and recommendations specific (what to do, which URLs or tools). Do not add generic filler or "evidence" language.
+
+Original report:
+{_truncate_text(original_content, 12000)}
+"""
+        response = await client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4o"),
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert business intelligence and analytics report writer. Rewrite for clarity and actionability; keep analytics context (traffic, competitors, revenue, strategic recommendations).",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.4,
+            max_tokens=8000,
+        )
+        return (response.choices[0].message.content or "").strip()
+    except Exception as e:
+        return f"Error rewriting analytics content: {str(e)}"
+
+
+def analytics_quality_check(
+    report: str,
+    website_url: str,
+    include_traffic_analysis: bool = True,
+    include_competitor_comparison: bool = True,
+    include_revenue_analysis: bool = True,
+) -> Dict[str, Any]:
+    """Context-specific quality check for analytics reports: expected sections and actionable content."""
+    issues: List[str] = []
+    quality_score = 100
+    report_lower = (report or "").lower()
+
+    word_count = len([w for w in (report or "").split() if w.strip()])
+    if word_count < 800:
+        issues.append("Report is too short (under 800 words)")
+        quality_score -= 20
+    elif word_count > 6000:
+        issues.append("Report may be too long (over 6000 words)")
+        quality_score -= 5
+
+    required_sections = ["Executive Summary", "Website Performance Metrics", "Content Analysis", "Brand Visibility", "Marketing & Growth Analysis", "Technical Infrastructure", "User Experience & Conversion"]
+    if include_traffic_analysis:
+        required_sections.append("Traffic Analysis")
+    if include_competitor_comparison:
+        required_sections.append("Competitive Analysis")
+    if include_revenue_analysis:
+        required_sections.append("Revenue Model Analysis")
+
+    found = [s for s in required_sections if s.lower() in report_lower]
+    if len(found) < len(required_sections) * 0.8:
+        issues.append(f"Missing key sections (found {len(found)}/{len(required_sections)})")
+        quality_score -= 20
+
+    if "executive summary" not in report_lower:
+        issues.append("Missing Executive Summary")
+        quality_score -= 10
+    if "strategic recommendation" not in report_lower and "recommendation" not in report_lower:
+        issues.append("Missing actionable recommendations")
+        quality_score -= 15
+    if include_competitor_comparison and "competitor" not in report_lower and "competitive" not in report_lower:
+        issues.append("Missing competitor/competitive analysis content")
+        quality_score -= 10
+
+    quality_score = max(0, quality_score)
+    return {
+        "word_count": word_count,
+        "sections_found": len(found),
+        "quality_score": quality_score,
+        "issues": issues,
+        "status": "excellent" if quality_score >= 90 else "good" if quality_score >= 70 else "needs_improvement",
+        "has_executive_summary": "executive summary" in report_lower,
+        "has_traffic_section": "traffic" in report_lower,
+        "has_competitor_section": "competitor" in report_lower or "competitive" in report_lower,
+        "has_revenue_section": "revenue" in report_lower or "revenue model" in report_lower,
+        "has_strategic_recommendations": "strategic" in report_lower and "recommendation" in report_lower,
+        "has_tools_monitoring": "tools" in report_lower or "monitoring" in report_lower,
+        "has_meta_tags": False,
+        "has_schema": False,
+        "has_keywords": "recommendation" in report_lower or "metric" in report_lower,
+        "has_competitor_analysis": "competitor" in report_lower or "competitive" in report_lower,
+    }
+
+
+async def generate_analytics_ai_recommendations(
+    website_url: str,
+    analytics_report: str,
+    include_traffic_analysis: bool = True,
+    include_competitor_comparison: bool = True,
+    include_revenue_analysis: bool = True,
+) -> str:
+    """Context-specific prioritized recommendations derived from the analytics report (traffic, competitors, revenue, monitoring)."""
+    try:
+        client = get_openai_client()
+        context = []
+        if include_traffic_analysis:
+            context.append("traffic and engagement")
+        if include_competitor_comparison:
+            context.append("competitor comparison")
+        if include_revenue_analysis:
+            context.append("revenue and pricing")
+        context_str = ", ".join(context) if context else "analytics"
+
+        prompt = f"""Generate prioritized, actionable recommendations from this website analytics report.
+Website: {website_url}
+Report focus: {context_str}
+
+Analytics report (excerpt):
+{_truncate_text(analytics_report, 5000)}
+
+Rules:
+- Derive recommendations only from the report: traffic, competitors, revenue, UX, marketing, tools. Be specific (which URL, which tool, which metric to add).
+- Each recommendation: what to do, why, and 1–2 implementation steps. No generic advice like "conduct an audit" without a concrete next step.
+- Order by impact. Use the report's data and competitor names/URLs when present.
+- Return markdown with clear headings and bullet points.
+"""
+        response = await client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4o"),
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert digital marketing and business intelligence consultant. Output only actionable, context-specific recommendations from the analytics report.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.4,
+            max_tokens=2500,
+        )
+        return (response.choices[0].message.content or "").strip()
+    except Exception as e:
+        return f"# Error Generating Analytics Recommendations\n\nError: {str(e)}"
+
+
+async def _get_industry_context_for_analytics(
+    website_url: str,
+    site_title: Optional[str] = None,
+) -> str:
+    """Infer industry, business type, and analysis focus from URL and site title. Return a short blob for the report prompt."""
+    try:
+        client = get_openai_client()
+        domain = (urlparse(website_url).netloc or "").replace("www.", "") if website_url else ""
+        prompt = f"Website: {website_url} (domain: {domain})."
+        if site_title:
+            prompt += f" Site title: {site_title}."
+        prompt += (
+            " From the URL and title alone, infer and output in 2–4 short sentences: "
+            "(1) likely industry/vertical and business type (e.g. SaaS, ecommerce, content, agency), "
+            "(2) what to compare against competitors (e.g. traffic sources, positioning, pricing, features), "
+            "(3) 1–2 key metrics or dimensions to focus on for this type of business. Plain text, no bullets or labels."
+        )
+        resp = await client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4o"),
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a business intelligence analyst. Infer industry and business type from the URL and site title. Output only the requested short context, no preamble.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+            max_tokens=250,
+        )
+        raw = (resp.choices[0].message.content or "").strip()
+        return _truncate_text(raw, 500) if raw else ""
+    except Exception:
+        return ""
+
+
+async def _get_top_competitor_urls_for_analytics(website_url: str) -> List[str]:
+    """Return 3 real competitor homepage URLs (same industry) for analytics comparison."""
+    try:
+        client = get_openai_client()
+        domain = (urlparse(website_url).netloc or "").replace("www.", "") if website_url else ""
+        resp = await client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4o"),
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a business intelligence analyst. Return a JSON array of exactly 3 competitor website homepage URLs. They must be real, live sites in the same industry/niche. Return only valid JSON, e.g. [\"https://example.com\", \"https://example2.com\"].",
+                },
+                {
+                    "role": "user",
+                    "content": f"Site: {website_url} (domain: {domain}). Return a JSON array of 3 competitor homepage URLs.",
+                },
+            ],
+            temperature=0.3,
+            max_tokens=400,
+        )
+        raw = (resp.choices[0].message.content or "").strip()
+        if "[" in raw and "]" in raw:
+            start, end = raw.index("["), raw.rindex("]") + 1
+            arr = json.loads(raw[start:end])
+            if isinstance(arr, list):
+                return [u for u in arr if isinstance(u, str) and u.startswith(("http://", "https://"))][:3]
+    except Exception:
+        pass
+    return []
+
+
+async def generate_analytics_action_points(
+    website_url: str,
+    analytics_report: str,
+    include_traffic_analysis: bool = True,
+    include_competitor_comparison: bool = True,
+    include_revenue_analysis: bool = True,
+    crawled_data: Optional[Dict[str, Any]] = None,
+    competitor_urls: Optional[List[str]] = None,
+    competitor_crawl_data: Optional[Dict[str, Any]] = None,
+    discover_and_crawl_competitor: bool = True,
+    use_js_render: bool = False,
+) -> str:
+    """
+    Recommendations for Website Analytics: extract recommendations from each section of the
+    analytics report. Uses AI (LLM) to extract and organize by report section. When competitor
+    data is available (from request or AI-discovered and crawled), passes it into the prompt
+    so recommendations—especially Competitive Analysis—can be grounded with concrete examples.
+    Output matches report sections only; no extra sections.
+    """
+    try:
+        client = get_openai_client()
+
+        # Use competitor crawl from route, or discover one via AI and crawl when comparison is on
+        if competitor_crawl_data is None and include_competitor_comparison and discover_and_crawl_competitor:
+            urls_to_try = competitor_urls or await _get_top_competitor_urls_for_analytics(website_url)
+            for first_url in (urls_to_try or [])[:1]:
+                try:
+                    u = first_url.strip()
+                    if not u.startswith(("http://", "https://")):
+                        u = f"https://{u}"
+                    u = u.rstrip("/")
+                    competitor_crawl_data = await crawl_and_extract(u, use_js_render=use_js_render)
+                    if competitor_crawl_data:
+                        competitor_crawl_data["url"] = u
+                        break
+                except Exception:
+                    continue
+
+        competitor_block = ""
+        if competitor_crawl_data:
+            c_url = competitor_crawl_data.get("url", "")
+            c_title = competitor_crawl_data.get("title", "") or ""
+            c_desc = competitor_crawl_data.get("description", "") or ""
+            c_features = (competitor_crawl_data.get("features") or [])[:8]
+            competitor_block = f"""
+
+Competitor page (crawled; use only to make recommendations more concrete when the report mentions competitors):
+URL: {c_url}
+Title: {c_title}
+Description: {c_desc}
+Features: {', '.join(c_features) if c_features else '—'}
+
+When extracting recommendations from the report, you may reference this competitor (e.g. "Competitor does X; apply similar to {website_url}") only where the report already mentions competitors or competitive analysis. Do not add new recommendations; only clarify or ground what is in the report.
+"""
+
+        report_excerpt = _truncate_text(analytics_report, 6000)
+        section_list = "Executive Summary, Traffic Analysis, Website Performance Metrics, Content Analysis, Brand Visibility, Competitive Analysis, Revenue Model Analysis, Marketing & Growth Analysis, Technical Infrastructure, User Experience & Conversion"
+
+        prompt = f"""Extract RECOMMENDATIONS from this Website Analytics report. Output must match the report's sections and contain only recommendations that appear in the report.
+
+Website: {website_url}
+
+Analytics Report:
+{report_excerpt}
+{competitor_block}
+
+RULES:
+1. Use only the section names that actually appear in the report above. Section names (in report order): {section_list}.
+2. For each section that exists in the report, output a heading "## [exact section name]" then list the recommendations from that section only. Use the same order as the report.
+3. Do not add any section, heading, or content that is not in the report. Do not invent recommendations. Copy or paraphrase only what the report says. If competitor data is provided above, you may use it only to make existing recommendations more concrete (e.g. name the competitor, cite their approach); do not add new recommendations.
+4. Do not add "Tools and Resources", "Action points", or any extra block at the end. Only sections that are in the report.
+
+OUTPUT FORMAT (Markdown):
+## [Section name from report]
+- [Recommendation from that section]
+- [Next recommendation from that section]
+
+## [Next section name from report]
+- [Recommendation from that section]
+...
+
+Continue for every section that appears in the report. Nothing else."""
+
+        response = await client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4o"),
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a business intelligence analyst. Extract recommendations from the Website Analytics report. Output must match the report sections exactly (Executive Summary, Traffic Analysis, Website Performance Metrics, Content Analysis, Brand Visibility, Competitive Analysis, Revenue Model Analysis, Marketing & Growth Analysis, Technical Infrastructure, User Experience & Conversion). For each section in the report, list only the recommendations that appear in that section. If competitor data is provided, use it only to ground or clarify those recommendations; do not add sections or content that are not in the report. Do not add Tools and Resources or Action points.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+            max_tokens=4000,
+        )
+        return (response.choices[0].message.content or "").strip()
+    except Exception as e:
+        return f"# Error Generating Recommendations\n\nError: {str(e)}"

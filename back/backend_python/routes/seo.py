@@ -24,6 +24,7 @@ class SEORequest(BaseModel):
     focus_areas: List[str] = ["on-page", "technical", "content"]
     language: str = "en"
     enable_js_render: bool = False
+    competitor_urls: Optional[List[str]] = None
 
     @validator("business_type")
     def validate_business_type(cls, v):
@@ -70,6 +71,7 @@ async def create_seo_report(request: SEORequest):
             focus_areas=request.focus_areas,
             language=request.language,
             enable_js_render=request.enable_js_render,
+            competitor_urls=request.competitor_urls,
         )
 
         report = result.get("report", "")
@@ -189,7 +191,8 @@ class AIOptimizedRecommendationsRequest(BaseModel):
     seo_report: str
     business_type: str = "saas"
     target_keywords: Optional[str] = None
-    enable_js_render: bool = False  # ADDED
+    enable_js_render: bool = False
+    competitor_urls: Optional[List[str]] = None  # optional; when set, first is crawled for real examples
 
 
 class AIOptimizedRecommendationsResponse(BaseModel):
@@ -197,14 +200,33 @@ class AIOptimizedRecommendationsResponse(BaseModel):
     word_count: int
 
 
+def _normalize_url_for_crawl(u: str) -> str:
+    u = (u or "").strip()
+    if not u:
+        return ""
+    if not u.startswith(("http://", "https://")):
+        u = f"https://{u}"
+    return u.rstrip("/")
+
+
 @router.post("/ai-optimized-recommendations", response_model=AIOptimizedRecommendationsResponse)
 async def get_ai_optimized_recommendations(request: AIOptimizedRecommendationsRequest):
     try:
-        # FIXED: honor JS render flag
         crawled_data = await crawl_and_extract(
             request.website_url,
             use_js_render=request.enable_js_render,
         )
+
+        competitor_crawl_data = None
+        if request.competitor_urls:
+            first_url = _normalize_url_for_crawl(request.competitor_urls[0])
+            if first_url:
+                competitor_crawl_data = await crawl_and_extract(
+                    first_url,
+                    use_js_render=request.enable_js_render,
+                )
+                if competitor_crawl_data:
+                    competitor_crawl_data["url"] = first_url
 
         recommendations = await generate_ai_optimized_recommendations(
             website_url=request.website_url,
@@ -212,6 +234,10 @@ async def get_ai_optimized_recommendations(request: AIOptimizedRecommendationsRe
             business_type=request.business_type,
             target_keywords=request.target_keywords,
             crawled_data=crawled_data,
+            competitor_urls=request.competitor_urls,
+            competitor_crawl_data=competitor_crawl_data,
+            discover_and_crawl_competitor=True,
+            use_js_render=request.enable_js_render,
         )
 
         word_count = count_words(recommendations)
